@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.11.0
+
+- Instruções e estado aparecem na janela usando texto básico do Windows/OpenGL.
+
 ## 0.10.0
 
 - Avanço de um passo com a simulação pausada e inspeção dos estados observados da montagem.
