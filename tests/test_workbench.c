@@ -1,8 +1,21 @@
 #include <assert.h>
+#include <math.h>
 #include "workbench.h"
 
 int main(void)
 {
+    {
+        Wire wire={0}; WirePoint points[WIRE_PATH_CAPACITY]; int count, i;
+        wire.knee_count=2; wire.knees[0]=(WirePoint){100,0}; wire.knees[1]=(WirePoint){100,100};
+        count=wire_path(&wire,(WirePoint){0,0},(WirePoint){200,100},20,points);
+        assert(count==20 && points[0].x==0 && points[count-1].x==200);
+        for(i=0;i<count;++i) assert(isfinite(points[i].x)&&isfinite(points[i].y));
+        count=wire_path(&wire,(WirePoint){0,0},(WirePoint){200,100},0,points);
+        assert(count==4 && points[1].x==100 && points[1].y==0);
+        wire.knees[1]=wire.knees[0];
+        count=wire_path(&wire,(WirePoint){100,0},(WirePoint){200,100},20,points);
+        for(i=0;i<count;++i) assert(isfinite(points[i].x)&&isfinite(points[i].y));
+    }
     Workbench b = {0};
     int led[WORKBENCH_MAX_COMPONENTS];
     Pin sp = {0, 0}, sn = {0, 1}, a = {1, 0}, c = {1, 1}, sw0 = {2, 0}, sw1 = {2, 1};

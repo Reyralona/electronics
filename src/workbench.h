@@ -8,7 +8,10 @@
 typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD } PartType;
 typedef struct { PartType type; float x, y; int on; } Part;
 typedef struct { int component, pin; } Pin;
-typedef struct { Pin a, b; } Wire;
+typedef struct { float x, y; } WirePoint;
+#define WIRE_MAX_KNEES 16
+#define WIRE_PATH_CAPACITY (WIRE_MAX_KNEES * 9 + 2)
+typedef struct { Pin a, b; WirePoint knees[WIRE_MAX_KNEES]; int knee_count; } Wire;
 typedef struct {
     Part parts[WORKBENCH_MAX_COMPONENTS];
     Wire wires[WORKBENCH_MAX_WIRES];
@@ -21,4 +24,5 @@ int bench_pin_count(PartType type);
 int bench_toggle_wire(Workbench *bench, Pin a, Pin b);
 void bench_remove(Workbench *bench, int index);
 void bench_simulate(const Workbench *bench, int led_on[WORKBENCH_MAX_COMPONENTS]);
+int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, WirePoint output[WIRE_PATH_CAPACITY]);
 #endif
