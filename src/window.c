@@ -2,6 +2,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include "project.h"
+#include "history.h"
 
 static void rectangle(float x, float y, float w, float h)
 {
@@ -35,8 +36,10 @@ int main(void)
                                  {0.4f, -0.15f, 0.3f, 0.3f}}};
     Circuit *circuit = &project.circuit;
     Block *blocks = project.blocks;
+    History history = {0};
     const char *status = "S salvar | L carregar";
     int dragging = -1;
+    int drag_recorded = 0;
     float drag_x = 0, drag_y = 0;
     float zoom = 1.0f, pan_x = 0.0f, pan_y = 0.0f;
     int running = 1;
@@ -67,10 +70,26 @@ int main(void)
             if (event.type == SDL_EVENT_QUIT) running = 0;
             else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
                 if (event.key.key == SDLK_ESCAPE) running = 0;
-                else if (event.key.key == SDLK_I) circuit->switch_closed = !circuit->switch_closed;
-                else if (event.key.key == SDLK_F) circuit->source_on = !circuit->source_on;
+                else if ((event.key.mod & SDL_KMOD_CTRL) && event.key.key == SDLK_Z) {
+                    dragging = -1;
+                    status = history_undo(&history, &project) ? "Desfeito" : "Nada para desfazer";
+                }
+                else if ((event.key.mod & SDL_KMOD_CTRL) && event.key.key == SDLK_Y) {
+                    dragging = -1;
+                    status = history_redo(&history, &project) ? "Refeito" : "Nada para refazer";
+                }
+                else if (event.key.key == SDLK_I) { history_record(&history, &project); circuit->switch_closed = !circuit->switch_closed; }
+                else if (event.key.key == SDLK_F) { history_record(&history, &project); circuit->source_on = !circuit->source_on; }
                 else if (event.key.key == SDLK_S) status = project_save("circuito.elec", &project) ? "Salvo: circuito.elec" : "Erro ao salvar";
-                else if (event.key.key == SDLK_L) status = project_load("circuito.elec", &project) ? "Carregado: circuito.elec" : "Erro ao carregar";
+                else if (event.key.key == SDLK_L) {
+                    Project loaded = project;
+                    if (project_load("circuito.elec", &loaded)) {
+                        history_record(&history, &project);
+                        project = loaded;
+                        dragging = -1;
+                        status = "Carregado: circuito.elec";
+                    } else status = "Erro ao carregar";
+                }
                 else if (event.key.key == SDLK_LEFT) pan_x += 0.1f;
                 else if (event.key.key == SDLK_RIGHT) pan_x -= 0.1f;
                 else if (event.key.key == SDLK_UP) pan_y -= 0.1f;
@@ -96,10 +115,11 @@ int main(void)
                         if (!inside(x, y, b->x, b->y, b->w, b->h)) continue;
                         if (event.button.button == SDL_BUTTON_RIGHT) {
                             dragging = i;
+                            drag_recorded = 0;
                             drag_x = x - b->x;
                             drag_y = y - b->y;
-                        } else if (i == 0) circuit->source_on = !circuit->source_on;
-                        else if (i == 1) circuit->switch_closed = !circuit->switch_closed;
+                        } else if (i == 0) { history_record(&history, &project); circuit->source_on = !circuit->source_on; }
+                        else if (i == 1) { history_record(&history, &project); circuit->switch_closed = !circuit->switch_closed; }
                         break;
                     }
                 }
@@ -110,6 +130,7 @@ int main(void)
                 int logical_width, logical_height;
                 SDL_GetWindowSize(window, &logical_width, &logical_height);
                 if (logical_width > 0 && logical_height > 0) {
+                    if (!drag_recorded) { history_record(&history, &project); drag_recorded = 1; }
                     blocks[dragging].x = (2.0f * event.motion.x / logical_width - 1.0f - pan_x) / zoom - drag_x;
                     blocks[dragging].y = (1.0f - 2.0f * event.motion.y / logical_height - pan_y) / zoom - drag_y;
                 }
