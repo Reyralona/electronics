@@ -8,6 +8,7 @@
 #include "workbench_file.h"
 #include "spice_process.h"
 #include "spice_job.h"
+#include "spice_trace.h"
 #include "workbench_history.h"
 #include "workbench_view.h"
 
@@ -265,12 +266,13 @@ int main(int argc, char **argv) {
     SpiceJob dc_job={0}; SpiceTrace trace={0}; Workbench trace_snapshot={0};
     int trace_valid=0, trace_index=0, trace_pin=0, probe_pin=0, show_trace=1, probe_current=0, trace_current=0, trace_wire=-1; char trace_status[128];
     double transient_step=1e-5, transient_stop=.005;
+    Uint64 trace_play_started=0; int trace_play_start_index=0;
     BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
     BenchView view={1,0,0}; int panning=0;
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -332,13 +334,15 @@ int main(int argc, char **argv) {
         if(dc_valid) dc_snapshot=bench;
         status=dc_status;
     }
-    if(capture && (strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0)) {
+    if(capture && (strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-play")==0)) {
         bench=(Workbench){0}; bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_RESISTOR,550,220); bench_add(&bench,PART_CAPACITOR,720,220);
         bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1});
         trace_current=strcmp(argv[1],"--capture-trace-wire")==0?2:strcmp(argv[1],"--capture-trace-current")==0;
         if(trace_current==2) { trace_wire=0; show_current=1; bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){311,150}; bench.wires[0].knees[1]=(WirePoint){501,150}; }
         trace_valid=trace_current==2?spice_transient_wire(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",0,transient_step,transient_stop,&trace,dc_status,sizeof(dc_status)):trace_current?spice_transient_current(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",1,transient_step,transient_stop,&trace,dc_status,sizeof(dc_status)):spice_transient_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){2,0},transient_step,transient_stop,&trace,dc_status,sizeof(dc_status));
-        if(trace_valid) { trace_snapshot=bench; trace_index=trace.count/3; sim_running=0; status="Sondagem RC calculada."; }
+        if(trace_valid) { trace_snapshot=bench; trace_index=trace.count/3; sim_running=0; status="Sondagem RC calculada.";
+            if(strcmp(argv[1],"--capture-play")==0) { trace_play_start_index=0; trace_play_started=SDL_GetTicks()-2000; sim_running=1; status="Reproducao da curva: intervalo completo em 5 s reais."; }
+        }
         else { fprintf(stderr,"Captura transitoria: %s\n",dc_status); return 1; }
     }
     while(running) {
@@ -410,6 +414,11 @@ int main(int argc, char **argv) {
             else if(selftest_phase==62) queued=test_click(window,50,390) && test_click(window,1100,400);
             else if(selftest_phase==63) queued=test_click(window,50,510) && test_click(window,1000,500);
             else if(selftest_phase==64) queued=test_click_count(window,1000,500,2);
+            else if(selftest_phase==65) { trace.count=3; trace.samples[0]=(SpiceSample){0,0}; trace.samples[1]=(SpiceSample){1,2}; trace.samples[2]=(SpiceSample){2,3}; trace_index=0; trace_valid=1; trace_snapshot=bench; sim_running=0; queued=test_key(window,SDLK_SPACE); }
+            else if(selftest_phase==66) queued=test_key(window,SDLK_SPACE);
+            else if(selftest_phase==67) queued=test_key(window,SDLK_SPACE);
+            else if(selftest_phase==68) { trace_play_started=SDL_GetTicks()-6000; queued=test_key(window,SDLK_UNKNOWN); }
+            else if(selftest_phase==69) queued=test_key(window,SDLK_UNKNOWN);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -448,7 +457,15 @@ int main(int argc, char **argv) {
                     continue;
                 }
                 if(e.key.key==SDLK_ESCAPE) { pending.component=-1; route_count=0; placing=-1; dragging=-1; drag_wire=-1; status="Selecao cancelada."; }
-                else if(e.key.key==SDLK_SPACE) { sim_running=!sim_running; status=sim_running?"Simulacao executando.":"Simulacao pausada."; }
+                else if(e.key.key==SDLK_SPACE) {
+                    sim_running=!sim_running;
+                    if(trace_valid && sim_running) {
+                        if(trace_index>=trace.count-1) trace_index=0;
+                        trace_play_start_index=trace_index; trace_play_started=SDL_GetTicks();
+                        status="Reproducao da curva: intervalo completo em 5 s reais.";
+                    } else if(trace_valid) status="Reproducao pausada; B/N percorrem as amostras.";
+                    else status=sim_running?"Simulacao executando.":"Simulacao pausada.";
+                }
                 else if(e.key.key==SDLK_R && selected>=0) {
                     Workbench before=bench;
                     if(bench_rotate_part(&bench,selected)) { bench_snap_to_breadboard(&bench,selected); bench_history_record(history,&before); dragging=-1; pending.component=-1; route_count=0; status="Componente girado 90 graus."; }
@@ -648,8 +665,12 @@ int main(int argc, char **argv) {
             else if(selftest_phase==62) valid=bench.part_count==6 && bench.parts[5].type==PART_XOR;
             else if(selftest_phase==63) valid=bench.part_count==7 && bench.parts[6].type==PART_CLOCK && bench.parts[6].value==1000 && bench.parts[6].on;
             else if(selftest_phase==64) valid=bench.parts[6].on==0;
+            else if(selftest_phase==65) valid=trace_valid && sim_running && trace_index==0;
+            else if(selftest_phase==66) valid=trace_valid && !sim_running;
+            else if(selftest_phase==67 || selftest_phase==68) valid=trace_valid && sim_running;
+            else if(selftest_phase==69) valid=trace_valid && !sim_running && trace_index==trace.count-1;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==65) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==70) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -661,6 +682,11 @@ int main(int argc, char **argv) {
             else { dc_valid=dc_job.success; dc_wire_valid=dc_job.success && dc_job.measures_wires; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); if(dc_wire_valid) memcpy(dc_wire_currents,dc_job.wire_currents,sizeof(dc_wire_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
         }
         if(trace_valid && memcmp(&trace_snapshot,&bench,sizeof(bench))!=0) { trace_valid=0; status="Montagem alterada; transitorio descartado."; }
+        if(trace_valid && sim_running) {
+            int finished=0, index=spice_trace_replay_index(&trace,trace_play_start_index,SDL_GetTicks()-trace_play_started,&finished);
+            if(index<0) { sim_running=0; status="Nao foi possivel reproduzir a curva."; }
+            else { trace_index=index; if(finished) { sim_running=0; status="Fim da curva; Espaco reinicia, B volta."; } }
+        }
         if(dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem alterada; pressione P para recalcular."; }
         if(dc_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && dc_led_currents[i]>=1e-6; }
         else if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
@@ -672,7 +698,7 @@ int main(int argc, char **argv) {
         text(font,830,42,"Configuracoes [F1]");
         if(!bench_boolean_supported(&bench)) color(.66f,.36f,.12f);
         else color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f);
-        text(font,1030,42,trace_valid?"TRANSITORIO DISPONIVEL":dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
+        text(font,1030,42,trace_valid?(sim_running?"REPRODUCAO":"TRANSITORIO PAUSADO"):dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
         color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,palette_page?"PORTAS [TAB]":"COMPONENTES [TAB]");
         for(i=0;i<(palette_page?6:8);++i) { float y=140+i*72; PartType type=palette_part(palette_page,i); color(placing==(int)type?.79f:.92f,placing==(int)type?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,part_name(type)); color(type==PART_SOURCE?.2f:type==PART_SWITCH?.38f:.84f,type==PART_SOURCE?.54f:.42f,type==PART_LED?.28f:.6f); circle(42,y+31,13); }
         glEnable(GL_SCISSOR_TEST);
@@ -776,7 +802,7 @@ int main(int argc, char **argv) {
                 snprintf(setting,sizeof(setting),"Passo solicitado: %.6g s (clique)",transient_step); text(font,860,455,setting);
                 snprintf(setting,sizeof(setting),"Duracao: %.6g s (clique)",transient_stop); text(font,860,495,setting);
             }
-            text(font,860,535,"T: transitorio | B/N: amostras | G: grafico");
+            text(font,860,535,"T: transitorio | Espaco: reproduzir | B/N: amostras");
             text(font,860,565,"F1 fecha este painel");
         }
         if(editing>=0) {
