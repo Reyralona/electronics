@@ -21,7 +21,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
 {
     int i, k;
     if(!f || !b || !settings_valid(s)) return 0;
-    if (fprintf(f,"workbench 13\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
+    if (fprintf(f,"workbench 14\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
     for (i=0;i<b->part_count;++i) {
         const Part *p=&b->parts[i];
         if (fprintf(f,"%d %.9g %.9g %d %.17g %d %d\n",(int)p->type,p->x,p->y,p->on,p->value,p->rotation,p->board_layout)<0) return 0;
@@ -40,10 +40,10 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
 {
     Workbench b={0}; WorkbenchSettings saved=workbench_settings_default(); char magic[32], extra; int version, parts, wires, i, k;
     if(!f || !destination || !settings) return 0;
-    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>13) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
+    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>14) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
     for(i=0;i<parts;++i) {
         int type,on; float x,y;
-        if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || (version==1 && type>PART_BREADBOARD) || (version==2 && type>PART_CAPACITOR) || (version<11 && type>PART_INDUCTOR) || (version==11 && type>PART_AND) || (version==12 && type>PART_NOT) || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
+        if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || (version==1 && type>PART_BREADBOARD) || (version==2 && type>PART_CAPACITOR) || (version<11 && type>PART_INDUCTOR) || (version==11 && type>PART_AND) || (version==12 && type>PART_NOT) || (version==13 && type>PART_CLOCK) || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
         b.parts[i].on=on;
         if(version<9 && type==PART_BREADBOARD) b.parts[i].board_layout=0;
         if(version>=4) {

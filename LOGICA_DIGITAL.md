@@ -18,3 +18,11 @@ Consulta: 14/11/2026. Esta nota separa o que foi verificado das decisões ainda 
 ## Recomendação e pendências
 
 Usar XSPICE como candidato inicial para portas mistas, com pontes explícitas e valores documentados, enquanto se avaliam requisitos de abstração digital e distribuição. Antes de apresentar CIs como componentes reais, faltam pinagem, alimentação, comportamento sem energia, impedância e conflitos de saída, testes de temporização, modelos específicos e integração com a bancada. As portas didáticas AND, NAND, OR, XOR e NOT foram integradas à bancada usando essas pontes fixas. Elas não modelam alimentação ou um CI comercial.
+
+## Flip-flop D: comparação (14/11/2026)
+
+**Fatos:** o [manual oficial ngspice 45, seção 8.4.12](https://ngspice.sourceforge.io/docs/ngspice-45-manual.pdf) descreve `d_dff` como elemento de um bit sensível à borda de subida, com condição inicial e entradas assíncronas opcionais. Uma prova local com `d_dff`, pontes ADC/DAC, clock e fonte PWL confirmou retenção após mudança de D e atualização na borda seguinte.
+
+**Hipótese e recomendação:** usar uma abstração didática com D, clock e Q, condição inicial zero e set/reset não expostos; isso permite validar memória básica usando o mesmo motor das portas. Uma alternativa construída com portas pode ser adicionada depois para comparação, mas requer testes próprios de realimentação e inicialização.
+
+**Pendente:** pinagem e alimentação de um CI comercial, saída complementar, set/reset, tempos de setup/hold e comportamento físico não são representados por essa abstração.

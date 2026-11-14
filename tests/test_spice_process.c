@@ -254,5 +254,27 @@ int main(int argc, char **argv)
         assert(spice_dc_analyze_wires(&branches,argv[1],&current,led,wire,message,sizeof(message)));
         for(i=0;i<3;++i) assert(spice_wire_current_level(wire[i*2])==i+1);
     }
+    if(argc>1) {
+        Workbench seq={0}; SpiceTrace trace={0}; double times[]={.0011,.0015,.00225,.00325}, expected[]={5,5,0,5}; int i,j;
+        assert(bench_add(&seq,PART_CLOCK,0,0)==0);
+        assert(bench_add(&seq,PART_CLOCK,0,0)==1);
+        assert(bench_set_value(&seq,1,400));
+        assert(bench_add(&seq,PART_DFF,0,0)==2);
+        assert(bench_add(&seq,PART_RESISTOR,0,0)==3);
+        assert(bench_add(&seq,PART_LED,0,0)==4);
+        assert(bench_toggle_wire(&seq,(Pin){0,1},(Pin){1,1})==1);
+        assert(bench_toggle_wire(&seq,(Pin){1,0},(Pin){2,0})==1);
+        assert(bench_toggle_wire(&seq,(Pin){0,0},(Pin){2,1})==1);
+        assert(bench_toggle_wire(&seq,(Pin){2,2},(Pin){3,0})==1);
+        assert(bench_toggle_wire(&seq,(Pin){3,1},(Pin){4,0})==1);
+        assert(bench_toggle_wire(&seq,(Pin){4,1},(Pin){0,1})==1);
+        assert(spice_transient_instrumented(&seq,argv[1],1,(Pin){2,2},1e-5,.0035,&trace,message,sizeof(message)));
+        for(i=0;i<4;++i) {
+            int nearest=0; for(j=1;j<trace.count;++j) if(fabs(trace.samples[j].time-times[i])<fabs(trace.samples[nearest].time-times[i])) nearest=j;
+            assert(fabs(trace.samples[nearest].time-times[i])<1e-5);
+            assert(fabs(trace.samples[nearest].value-expected[i])<.01);
+            assert(((trace.leds_on[nearest]>>4)&1)==(expected[i]>0));
+        }
+    }
     return 0;
 }
