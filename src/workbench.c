@@ -30,7 +30,7 @@ int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, Wi
 
 int bench_pin_count(PartType type)
 {
-    return type == PART_BREADBOARD ? 100 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR ? 2 : 0);
+    return type == PART_BREADBOARD ? 100 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR ? 2 : 0);
 }
 
 static int pin_valid(const Workbench *b, Pin p)

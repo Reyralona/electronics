@@ -5,4 +5,6 @@
 /* Experimental DC: one 5 V source, 1 kOhm resistors, generic diode LEDs, switches and breadboards. */
 typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERROR } NetlistResult;
 NetlistResult netlist_write_dc(FILE *out, const Workbench *bench);
+/* Transient output contains time and voltage at probe; capacitors start at 0 V. */
+NetlistResult netlist_write_transient(FILE *out, const Workbench *bench, Pin probe, double step_seconds, double stop_seconds);
 #endif

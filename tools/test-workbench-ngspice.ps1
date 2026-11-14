@@ -22,3 +22,19 @@ foreach ($case in @(@{ Name = 'forward'; Min = 0.002; Max = 0.004 }, @{ Name = '
     if ($current -lt $case.Min -or $current -gt $case.Max) { throw "Corrente fora do intervalo em $($case.Name): $current" }
     Write-Output "LED $($case.Name): $current A verificados."
 }
+$result = & (Join-Path $resolvedRoot 'bin/ngspice_con.exe') -b 'build/netlist-rc.cir' 2>&1
+if ($LASTEXITCODE -ne 0) { throw "Falha ngspice (RC): $result" }
+$value = $result -join "`n"
+if ($value -match '(?im)^\s*error\b' -or $value -match '(?i)couldn.t be loaded') { throw "Erro do ngspice: $value" }
+$rows = [regex]::Matches($value, '(?m)^\s*\d+\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s*$')
+if ($rows.Count -lt 2) { throw 'A análise RC não retornou amostras.' }
+$bestDistance = [double]::PositiveInfinity
+foreach ($row in $rows) {
+    $time = [double]::Parse($row.Groups[1].Value, [Globalization.CultureInfo]::InvariantCulture)
+    $voltage = [double]::Parse($row.Groups[2].Value, [Globalization.CultureInfo]::InvariantCulture)
+    $distance = [Math]::Abs($time - 0.001)
+    if ($distance -lt $bestDistance) { $bestDistance = $distance; $bestTime = $time; $bestVoltage = $voltage }
+}
+$expected = 5 * (1 - [Math]::Exp(-$bestTime / 0.001))
+if ($bestDistance -gt 0.000011 -or [Math]::Abs($bestVoltage - $expected) -gt 0.01) { throw "Resposta RC inesperada: t=$bestTime V=$bestVoltage" }
+Write-Output "RC da bancada: $bestVoltage V em $bestTime s verificados."
