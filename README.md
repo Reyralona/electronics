@@ -33,9 +33,9 @@ Para visualizar corrente nos fios, abra `F1`, ative **Visualizar corrente nos fi
 
 Sem uma análise DC válida, a simulação antiga é discreta: o LED acende quando seu terminal esquerdo alcança o positivo de uma fonte ligada e o direito alcança o negativo por fios e interruptores fechados. Se houver resistor, capacitor ou indutor, a interface indica **cálculo indisponível** e mostra o LED em cinza até uma análise DC bem-sucedida. A breadboard tem 100 furos, em dois lados separados; em cada lado, cada coluna de cinco furos forma um grupo conectado. Ela ainda não tem trilhos de alimentação nem encaixe físico de componentes: use fios para ligar terminais aos furos. Fontes em curto não acendem LEDs no modelo discreto. A análise SPICE usa parâmetros genéricos e não deve ser usada para dimensionar uma montagem física. O desenho usa formas originais provisórias, ainda não modelos finais. Os projetos antigos não são alterados.
 
-Na bancada experimental, `Ctrl+Z` desfaz e `Ctrl+Y` refaz até 24 alterações por sessão. O histórico inclui componentes, fios, joelhos, valores, estados e carregamento; não é salvo no projeto. A bancada ainda não possui zoom.
+Na bancada experimental, `Ctrl+Z` desfaz e `Ctrl+Y` refaz até 24 alterações por sessão. O histórico inclui componentes, fios, joelhos, valores, estados e carregamento; não é salvo no projeto. A roda do mouse ajusta o zoom ao redor do cursor; arraste com o botão central para deslocar a vista e use `Home` para restaurá-la. A posição e o zoom da vista ainda não são salvos.
 
-Para incluir um teste automatizado dos eventos de janela (adição de componentes, criação de fio, movimento e remoção de joelho e desfazer/refazer), execute `./build.ps1 -OutputName bancada-next -GuiTests`. Esse teste requer uma sessão gráfica Windows com OpenGL; não substitui uma avaliação manual completa da interface.
+Para incluir um teste automatizado dos eventos de janela (componentes, fios, joelhos, desfazer/refazer, zoom e deslocamento), execute `./build.ps1 -OutputName bancada-next -GuiTests`. Esse teste requer uma sessão gráfica Windows com OpenGL; não substitui uma avaliação manual completa da interface.
 
 ## Protótipo anterior
 

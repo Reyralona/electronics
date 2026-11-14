@@ -9,6 +9,7 @@
 #include "spice_process.h"
 #include "spice_job.h"
 #include "workbench_history.h"
+#include "workbench_view.h"
 
 static void rect(float x, float y, float w, float h) {
     glBegin(GL_QUADS); glVertex2f(x,y); glVertex2f(x+w,y); glVertex2f(x+w,y+h); glVertex2f(x,y+h); glEnd();
@@ -62,6 +63,25 @@ static int test_key(SDL_Window *window,SDL_Keycode key)
     event.type=SDL_EVENT_KEY_DOWN;
     event.key.windowID=SDL_GetWindowID(window);
     event.key.key=key; event.key.mod=SDL_KMOD_CTRL;
+    return SDL_PushEvent(&event);
+}
+static int test_wheel(SDL_Window *window,float x,float y,float amount)
+{
+    SDL_Event event={0};
+    event.type=SDL_EVENT_MOUSE_WHEEL; event.wheel.windowID=SDL_GetWindowID(window);
+    event.wheel.mouse_x=x; event.wheel.mouse_y=y; event.wheel.y=amount;
+    return SDL_PushEvent(&event);
+}
+static int test_pan(SDL_Window *window)
+{
+    SDL_Event event={0};
+    event.type=SDL_EVENT_MOUSE_BUTTON_DOWN; event.button.windowID=SDL_GetWindowID(window);
+    event.button.button=SDL_BUTTON_MIDDLE; event.button.x=600; event.button.y=400;
+    if(!SDL_PushEvent(&event)) return 0;
+    SDL_zero(event); event.type=SDL_EVENT_MOUSE_MOTION; event.motion.windowID=SDL_GetWindowID(window);
+    event.motion.xrel=100; event.motion.yrel=40;
+    if(!SDL_PushEvent(&event)) return 0;
+    SDL_zero(event); event.type=SDL_EVENT_MOUSE_BUTTON_UP; event.button.windowID=SDL_GetWindowID(window); event.button.button=SDL_BUTTON_MIDDLE;
     return SDL_PushEvent(&event);
 }
 static void pin_xy(const Part *p,int pin,float *x,float *y) {
@@ -126,10 +146,11 @@ int main(int argc, char **argv) {
     double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
     SpiceJob dc_job={0};
     BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
+    BenchView view={1,0,0}; int panning=0;
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -154,6 +175,7 @@ int main(int argc, char **argv) {
     context=SDL_GL_CreateContext(window);
     if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); free(history); return 1; }
     font=make_font(); SDL_GL_SetSwapInterval(1);
+    if(capture && strcmp(argv[1],"--capture-zoom")==0) bench_view_zoom_at(&view,1.8f,550,430);
     if(capture && strcmp(argv[1],"--capture-edit")==0) { editing=3; strcpy(edit_text,"2200"); }
     if(capture && (strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0)) {
         show_current=strcmp(argv[1],"--capture-current")==0;
@@ -176,6 +198,15 @@ int main(int argc, char **argv) {
             else if(selftest_phase==7) queued=test_key(window,SDLK_Y);
             else if(selftest_phase==8) queued=test_click_count(window,460,190,2);
             else if(selftest_phase==9) queued=test_key(window,SDLK_Z);
+            else if(selftest_phase==10) queued=test_wheel(window,400,250,1);
+            else if(selftest_phase==11) queued=test_click(window,337.6f,250);
+            else if(selftest_phase==12) queued=test_click(window,577.6f,250);
+            else if(selftest_phase==13) queued=test_key(window,SDLK_Z);
+            else if(selftest_phase==14) queued=test_key(window,SDLK_HOME);
+            else if(selftest_phase==15) queued=test_pan(window);
+            else if(selftest_phase==16) queued=test_click(window,448,290);
+            else if(selftest_phase==17) queued=test_key(window,SDLK_ESCAPE);
+            else if(selftest_phase==18) queued=test_key(window,SDLK_HOME);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -198,6 +229,7 @@ int main(int argc, char **argv) {
             else if(editing>=0 && (e.type==SDL_EVENT_MOUSE_BUTTON_DOWN || e.type==SDL_EVENT_MOUSE_MOTION)) { continue; }
             else if(e.type==SDL_EVENT_KEY_DOWN && !e.key.repeat) {
                 if(e.key.key==SDLK_F1) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
+                if(e.key.key==SDLK_HOME) { view=(BenchView){1,0,0}; status="Vista restaurada."; continue; }
                 if((e.key.mod & SDL_KMOD_CTRL) && (e.key.key==SDLK_Z || e.key.key==SDLK_Y)) {
                     int changed=e.key.key==SDLK_Z?bench_history_undo(history,&bench):bench_history_redo(history,&bench);
                     if(changed) { selected=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); status=e.key.key==SDLK_Z?"Acao desfeita.":"Acao refeita."; }
@@ -232,6 +264,16 @@ int main(int argc, char **argv) {
                     else status="Falha ao carregar; bancada preservada.";
                 }
                 else if(e.key.key==SDLK_DELETE && selected>=0) { bench_history_record(history,&bench); bench_remove(&bench,selected); selected=-1; pending.component=-1; memset(leds,0,sizeof(leds)); status="Componente e seus fios removidos."; }
+            } else if(e.type==SDL_EVENT_MOUSE_WHEEL && !settings && editing<0) {
+                int w,h; float x,y,direction=e.wheel.direction==SDL_MOUSEWHEEL_FLIPPED?-e.wheel.y:e.wheel.y;
+                SDL_GetWindowSize(window,&w,&h);
+                if(w>0 && h>0) { x=e.wheel.mouse_x*1280.0f/w; y=e.wheel.mouse_y*720.0f/h; if(x>=220 && y>=70 && y<660 && direction!=0) bench_view_zoom_at(&view,direction>0?1.2f:1.0f/1.2f,x,y); }
+            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_MIDDLE && !settings && editing<0) {
+                int w,h; SDL_GetWindowSize(window,&w,&h);
+                if(w>0 && h>0 && e.button.x*1280.0f/w>=220 && e.button.y*720.0f/h>=70 && e.button.y*720.0f/h<660) panning=1;
+            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_MIDDLE) panning=0;
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && panning && editing<0) {
+                int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0 && h>0) { view.pan_x+=e.motion.xrel*1280.0f/w; view.pan_y+=e.motion.yrel*720.0f/h; }
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_LEFT) {
                 int w,h,hit=-1,hitpin=-1; float x,y; SDL_GetWindowSize(window,&w,&h); if(w<=0||h<=0) continue;
                 x=e.button.x*1280.0f/w; y=e.button.y*720.0f/h;
@@ -247,6 +289,7 @@ int main(int argc, char **argv) {
                 }
                 if(x<220 && y>=140 && y<644) { int item=(int)((y-140)/72); if(item<7) { placing=item; pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
                 if(x<220||y<70||y>660) continue;
+                bench_view_to_world(&view,x,y,&x,&y);
                 if(pending.component<0 && placing<0 && show_handles) {
                     int k;
                     for(i=0;i<bench.wire_count && drag_wire<0;++i) for(k=0;k<bench.wires[i].knee_count;++k) {
@@ -268,8 +311,8 @@ int main(int argc, char **argv) {
                 if(hit>=0) { if(e.button.clicks>=2 && (bench.parts[hit].type==PART_SOURCE || bench.parts[hit].type==PART_SWITCH)) { bench_history_record(history,&bench); bench.parts[hit].on=!bench.parts[hit].on; status="Estado alterado."; } else { dragging=hit; move_recorded=0; offset_x=x-bench.parts[hit].x; offset_y=y-bench.parts[hit].y; status="Arraste para mover; dois cliques alternam fonte ou chave."; } }
                 else { pending.component=-1; status="Bancada livre."; }
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { dragging=-1; drag_wire=-1; }
-            else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; WirePoint *point=&bench.wires[drag_wire].knees[drag_knee]; if(point->x!=x || point->y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } *point=(WirePoint){x,y}; } } }
-            else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { float x=e.motion.x*1280.0f/w-offset_x,y=e.motion.y*720.0f/h-offset_y; if(bench.parts[dragging].x!=x || bench.parts[dragging].y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } bench.parts[dragging].x=x; bench.parts[dragging].y=y; } } }
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; WirePoint *point=&bench.wires[drag_wire].knees[drag_knee]; bench_view_to_world(&view,x,y,&x,&y); if(point->x!=x || point->y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } *point=(WirePoint){x,y}; } } }
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; bench_view_to_world(&view,x,y,&x,&y); x-=offset_x; y-=offset_y; if(bench.parts[dragging].x!=x || bench.parts[dragging].y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } bench.parts[dragging].x=x; bench.parts[dragging].y=y; } } }
         }
         if(selftest) {
             int valid=1;
@@ -283,8 +326,17 @@ int main(int argc, char **argv) {
             else if(selftest_phase==7) valid=bench.wires[0].knees[0].x==460 && bench.wires[0].knees[0].y==190;
             else if(selftest_phase==8) valid=bench.wires[0].knee_count==0;
             else if(selftest_phase==9) valid=bench.wires[0].knee_count==1 && bench.wires[0].knees[0].x==460;
+            else if(selftest_phase==10) valid=fabsf(view.zoom-1.2f)<.001f;
+            else if(selftest_phase==11) valid=pending.component==0 && pending.pin==0;
+            else if(selftest_phase==12) valid=bench.wire_count==0;
+            else if(selftest_phase==13) valid=bench.wire_count==1;
+            else if(selftest_phase==14) valid=view.zoom==1 && view.pan_x==0 && view.pan_y==0;
+            else if(selftest_phase==15) valid=view.pan_x==100 && view.pan_y==40;
+            else if(selftest_phase==16) valid=pending.component==0 && pending.pin==0;
+            else if(selftest_phase==17) valid=pending.component<0;
+            else if(selftest_phase==18) valid=view.zoom==1 && view.pan_x==0 && view.pan_y==0;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==10) { if(!exit_code) puts("Autoteste de eventos e historico passou."); running=0; }
+            if(++selftest_phase==19) { if(!exit_code) puts("Autoteste de eventos, historico e navegacao passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -304,6 +356,9 @@ int main(int argc, char **argv) {
         text(font,1030,42,dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
         color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,"COMPONENTES");
         for(i=0;i<7;++i) { float y=140+i*72; color(placing==i?.79f:.92f,placing==i?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,i==0?"Fonte":i==1?"Interruptor":i==2?"LED":i==3?"Breadboard":i==4?"Resistor":i==5?"Capacitor":"Indutor"); color(i==0?.2f:i==1?.38f:.84f,i==0?.54f:.42f,i==2?.28f:.6f); circle(42,y+31,13); }
+        glEnable(GL_SCISSOR_TEST);
+        glScissor((int)(width*220.0/1280), (int)(height*60.0/720), (int)(width*1060.0/1280), (int)(height*590.0/720));
+        glPushMatrix(); glTranslatef(220+view.pan_x,70+view.pan_y,0); glScalef(view.zoom,view.zoom,1); glTranslatef(-220,-70,0);
         color(.85f,.88f,.89f); glLineWidth(1); if(show_grid) { for(i=240;i<1280;i+=24) line((float)i,69,(float)i,659); for(i=92;i<660;i+=24) line(220,(float)i,1280,(float)i); }
         color(.25f,.45f,.57f); glLineWidth(3);
         for(i=0;i<bench.wire_count;++i) {
@@ -337,6 +392,7 @@ int main(int argc, char **argv) {
         if(show_handles) for(i=0;i<bench.wire_count;++i) { int k; for(k=0;k<bench.wires[i].knee_count;++k) { WirePoint p=bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
         glLineWidth(1);
         for(i=0;i<bench.part_count;++i) { int p; part_draw(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; int board=bench.parts[i].type==PART_BREADBOARD; pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,board?3.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,board?3.0f:5.0f); } else if(!board) { color(.93f,.95f,.96f); circle(x,y,5); } } }
+        glPopMatrix(); glDisable(GL_SCISSOR_TEST);
         if(selected>=0) {
             Part *part=&bench.parts[selected]; char reading[100];
             const char *unit=part->type==PART_SOURCE?"V":part->type==PART_RESISTOR?"ohm":part->type==PART_CAPACITOR?"F":part->type==PART_INDUCTOR?"H":NULL;
