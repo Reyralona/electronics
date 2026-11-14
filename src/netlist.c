@@ -20,6 +20,9 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
     }
     for(i=0;i<b->part_count;++i) {
         int base=i*WORKBENCH_MAX_PINS;
+        PartType type=b->parts[i].type;
+        if((type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR) &&
+           (!isfinite(b->parts[i].value) || b->parts[i].value<1e-12 || b->parts[i].value>1e12)) return NETLIST_INVALID;
         switch(b->parts[i].type) {
         case PART_SOURCE: if(source>=0) return NETLIST_UNSUPPORTED; source=i; break;
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
@@ -42,14 +45,14 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         }
         if(find_root(paths,ground)==find_root(paths,positive)) return NETLIST_INVALID;
     }
-    if(fprintf(out,"Electronics experimental %s\nVsource %d 0 %d\n",transient?"transient":"DC",positive==ground?0:positive+1,b->parts[source].on?5:0)<0) return NETLIST_IO_ERROR;
+    if(fprintf(out,"Electronics experimental %s\nVsource %d 0 %.17g\n",transient?"transient":"DC",positive==ground?0:positive+1,b->parts[source].on?b->parts[source].value:0.0)<0) return NETLIST_IO_ERROR;
     if(measure_wires) for(i=0;i<b->wire_count;++i) {
         int a=find_root(parents,pin_index(b->wires[i].a)),c=find_root(parents,pin_index(b->wires[i].b));
         if(fprintf(out,"Vwire%d %d %d 0\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
     }
     for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_RESISTOR) {
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
-        if(fprintf(out,"R%d %d %d 1000\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
+        if(fprintf(out,"R%d %d %d %.17g\n",i,a==ground?0:a+1,c==ground?0:c+1,b->parts[i].value)<0) return NETLIST_IO_ERROR;
     }
     for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_LED) {
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
@@ -57,11 +60,11 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
     }
     for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_CAPACITOR) {
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
-        if(fprintf(out,"C%d %d %d 1u IC=0\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
+        if(fprintf(out,"C%d %d %d %.17g IC=0\n",i,a==ground?0:a+1,c==ground?0:c+1,b->parts[i].value)<0) return NETLIST_IO_ERROR;
     }
     for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_INDUCTOR) {
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
-        if(fprintf(out,"L%d %d %d 10m IC=0\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
+        if(fprintf(out,"L%d %d %d %.17g IC=0\n",i,a==ground?0:a+1,c==ground?0:c+1,b->parts[i].value)<0) return NETLIST_IO_ERROR;
     }
     if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2)\n")<0) return NETLIST_IO_ERROR;
     if(transient) {

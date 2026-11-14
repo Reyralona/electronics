@@ -46,8 +46,19 @@ int bench_add(Workbench *b, PartType type, float x, float y)
     int id;
     if (b->part_count >= WORKBENCH_MAX_COMPONENTS || bench_pin_count(type) == 0) return -1;
     id = b->part_count++;
-    b->parts[id] = (Part){type, x, y, type == PART_SOURCE};
+    b->parts[id] = (Part){type, x, y, type == PART_SOURCE,
+        type==PART_SOURCE?5.0:type==PART_RESISTOR?1000.0:type==PART_CAPACITOR?1e-6:type==PART_INDUCTOR?.01:0.0};
     return id;
+}
+
+int bench_set_value(Workbench *b, int component, double value)
+{
+    PartType type;
+    if(!b || component<0 || component>=b->part_count || !isfinite(value) || value<1e-12 || value>1e12) return 0;
+    type=b->parts[component].type;
+    if(type!=PART_SOURCE && type!=PART_RESISTOR && type!=PART_CAPACITOR && type!=PART_INDUCTOR) return 0;
+    b->parts[component].value=value;
+    return 1;
 }
 
 int bench_toggle_wire(Workbench *b, Pin a, Pin c)

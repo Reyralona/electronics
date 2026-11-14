@@ -6,7 +6,7 @@
 #define WORKBENCH_MAX_PINS 100
 
 typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR } PartType;
-typedef struct { PartType type; float x, y; int on; } Part;
+typedef struct { PartType type; float x, y; int on; double value; } Part;
 typedef struct { int component, pin; } Pin;
 typedef struct { float x, y; } WirePoint;
 #define WIRE_MAX_KNEES 16
@@ -20,6 +20,7 @@ typedef struct {
 
 int bench_add(Workbench *bench, PartType type, float x, float y);
 int bench_pin_count(PartType type);
+int bench_set_value(Workbench *bench, int component, double value);
 /* Returns 1 for added, 2 for removed, 0 for invalid/capacity. */
 int bench_toggle_wire(Workbench *bench, Pin a, Pin b);
 void bench_remove(Workbench *bench, int index);

@@ -6,10 +6,10 @@
 int workbench_write(FILE *f, const Workbench *b)
 {
     int i, k;
-    if (fprintf(f,"workbench 3\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
+    if (fprintf(f,"workbench 4\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
     for (i=0;i<b->part_count;++i) {
         const Part *p=&b->parts[i];
-        if (fprintf(f,"%d %.9g %.9g %d\n",(int)p->type,p->x,p->y,p->on)<0) return 0;
+        if (fprintf(f,"%d %.9g %.9g %d %.17g\n",(int)p->type,p->x,p->y,p->on,p->value)<0) return 0;
     }
     for (i=0;i<b->wire_count;++i) {
         const Wire *w=&b->wires[i];
@@ -23,11 +23,17 @@ int workbench_write(FILE *f, const Workbench *b)
 int workbench_read(FILE *f, Workbench *destination)
 {
     Workbench b={0}; char magic[32], extra; int version, parts, wires, i, k;
-    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version!=1 && version!=2 && version!=3) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
+    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>4) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
     for(i=0;i<parts;++i) {
         int type,on; float x,y;
         if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || (version==1 && type>PART_BREADBOARD) || (version==2 && type>PART_CAPACITOR) || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
         b.parts[i].on=on;
+        if(version==4) {
+            double value;
+            if(fscanf(f,"%lf",&value)!=1 || !isfinite(value)) return 0;
+            if(type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR) { if(!bench_set_value(&b,i,value)) return 0; }
+            else if(value!=0) return 0;
+        }
     }
     for(i=0;i<wires;++i) {
         Pin a,c; int knees;

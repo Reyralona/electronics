@@ -16,6 +16,9 @@ int main(void)
     assert(netlist_write_dc(f,&b)==NETLIST_OK); rewind(f);
     n=fread(text,1,sizeof(text)-1,f); text[n]='\0'; fclose(f);
     assert(strstr(text,"Vsource") && strstr(text,"R1 ") && strstr(text," 1000"));
+    assert(bench_set_value(&b,0,10)); assert(bench_set_value(&b,1,2000));
+    f=fopen("build/netlist-adjustable.cir","w"); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_OK); fclose(f);
+    assert(bench_set_value(&b,0,5)); assert(bench_set_value(&b,1,1000));
     f=fopen("build/netlist-wires.cir","w"); assert(f);
     assert(netlist_write_dc_instrumented(f,&b)==NETLIST_OK); fclose(f);
     /* A second path between holes in the same two ideal groups has no unique wire currents. */
