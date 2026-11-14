@@ -120,5 +120,27 @@ int main(int argc, char **argv)
         assert(!spice_transient_current(&rc,argv[1],3,1e-7,5e-5,&trace,message,sizeof(message)));
         assert(trace.count==i);
     }
+    if(argc>1) {
+        int bits;
+        for(bits=0;bits<4;++bits) {
+            Workbench logic={0}; SpiceTrace measured={0}; int i;
+            assert(bench_add(&logic,PART_SOURCE,0,0)==0);
+            assert(bench_add(&logic,PART_AND,0,0)==1);
+            assert(bench_add(&logic,PART_RESISTOR,0,0)==2);
+            assert(bench_add(&logic,PART_LED,0,0)==3);
+            assert(bench_toggle_wire(&logic,(Pin){0,(bits&1)?0:1},(Pin){1,0})==1);
+            assert(bench_toggle_wire(&logic,(Pin){0,(bits&2)?0:1},(Pin){1,1})==1);
+            assert(bench_toggle_wire(&logic,(Pin){1,2},(Pin){2,0})==1);
+            assert(bench_toggle_wire(&logic,(Pin){2,1},(Pin){3,0})==1);
+            assert(bench_toggle_wire(&logic,(Pin){3,1},(Pin){0,1})==1);
+            assert(spice_transient_analyze(&logic,argv[1],(Pin){1,2},1e-5,.001,&measured,message,sizeof(message)));
+            i=measured.count-1;
+            if(bits==3) assert(measured.samples[i].value>4.9);
+            else assert(fabs(measured.samples[i].value)<.01);
+            assert(spice_dc_analyze(&logic,argv[1],&current,led,message,sizeof(message)));
+            if(bits==3) assert(led[3]>.003 && led[3]<.004);
+            else assert(fabs(led[3])<1e-8);
+        }
+    }
     return 0;
 }

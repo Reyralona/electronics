@@ -23,7 +23,7 @@ int main(void)
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==2 && loaded.wires[0].b.pin==99);
     {
-        const char *invalid[]={"workbench 11\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
+        const char *invalid[]={"workbench 12\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
         unsigned int i;
         for(i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i) {
             file=tmpfile(); assert(file); fputs(invalid[i],file); rewind(file);
@@ -140,6 +140,20 @@ int main(void)
         restored.wire_color=0;
         assert(workbench_load_project("build/test-settings.elec",&loaded,&restored));
         assert(restored.wire_color==4); assert(remove("build/test-settings.elec")==0);
+    }
+    {
+        Workbench gate={0}; float x,y;
+        assert(bench_add(&gate,PART_AND,100,100)==0);
+        assert(bench_pin_count(PART_AND)==3);
+        bench_pin_position(&gate.parts[0],0,&x,&y); assert(x==51 && y==85);
+        bench_pin_position(&gate.parts[0],2,&x,&y); assert(x==149 && y==100);
+        assert(bench_rotate_part(&gate,0));
+        bench_pin_position(&gate.parts[0],0,&x,&y); assert(x==115 && y==51);
+        file=tmpfile(); assert(file); assert(workbench_write(file,&gate)); rewind(file);
+        assert(workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.parts[0].type==PART_AND && loaded.parts[0].rotation==1);
+        file=tmpfile(); assert(file); fputs("workbench 10\n1 0\n7 100 100 0 0 0 0\nsettings 1 1 1 0 0 0 0 1e-5 .005\n",file); rewind(file);
+        assert(!workbench_read(file,&loaded)); fclose(file);
     }
     return 0;
 }

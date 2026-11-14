@@ -11,7 +11,7 @@ static int settings_valid(const WorkbenchSettings *s)
 {
     return s && (s->show_grid==0 || s->show_grid==1) && (s->show_handles==0 || s->show_handles==1) &&
         (s->round_wires==0 || s->round_wires==1) && (s->show_current==0 || s->show_current==1) &&
-        s->wire_color>=0 && s->wire_color<WIRE_COLOR_COUNT && (s->probe_pin==0 || s->probe_pin==1) &&
+        s->wire_color>=0 && s->wire_color<WIRE_COLOR_COUNT && (s->probe_pin>=0 && s->probe_pin<=2) &&
         (s->probe_current==0 || s->probe_current==1) && isfinite(s->transient_step) && isfinite(s->transient_stop) &&
         s->transient_step>=1e-12 && s->transient_stop<=1e12 && s->transient_step<=s->transient_stop &&
         s->transient_stop/s->transient_step<=500.0*(1.0+1e-12);
@@ -21,7 +21,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
 {
     int i, k;
     if(!f || !b || !settings_valid(s)) return 0;
-    if (fprintf(f,"workbench 10\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
+    if (fprintf(f,"workbench 11\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
     for (i=0;i<b->part_count;++i) {
         const Part *p=&b->parts[i];
         if (fprintf(f,"%d %.9g %.9g %d %.17g %d %d\n",(int)p->type,p->x,p->y,p->on,p->value,p->rotation,p->board_layout)<0) return 0;
@@ -40,10 +40,10 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
 {
     Workbench b={0}; WorkbenchSettings saved=workbench_settings_default(); char magic[32], extra; int version, parts, wires, i, k;
     if(!f || !destination || !settings) return 0;
-    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>10) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
+    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>11) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
     for(i=0;i<parts;++i) {
         int type,on; float x,y;
-        if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || (version==1 && type>PART_BREADBOARD) || (version==2 && type>PART_CAPACITOR) || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
+        if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || (version==1 && type>PART_BREADBOARD) || (version==2 && type>PART_CAPACITOR) || (version<11 && type>PART_INDUCTOR) || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
         b.parts[i].on=on;
         if(version<9 && type==PART_BREADBOARD) b.parts[i].board_layout=0;
         if(version>=4) {

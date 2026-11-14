@@ -17,4 +17,4 @@ Consulta: 14/11/2026. Esta nota separa o que foi verificado das decisões ainda 
 
 ## Recomendação e pendências
 
-Usar XSPICE como candidato inicial para portas mistas, com pontes explícitas e valores documentados, enquanto se avaliam requisitos de abstração digital e distribuição. Antes de apresentar CIs como componentes reais, faltam pinagem, alimentação, comportamento sem energia, impedância e conflitos de saída, testes de temporização, modelos específicos e integração com a bancada. A prova de conceito é independente da interface e não implementa esses componentes no aplicativo.
+Usar XSPICE como candidato inicial para portas mistas, com pontes explícitas e valores documentados, enquanto se avaliam requisitos de abstração digital e distribuição. Antes de apresentar CIs como componentes reais, faltam pinagem, alimentação, comportamento sem energia, impedância e conflitos de saída, testes de temporização, modelos específicos e integração com a bancada. A porta AND didática de três terminais foi integrada à bancada usando essas pontes fixas; as demais portas continuam apenas na prova de conceito. A porta não modela alimentação ou um CI comercial.

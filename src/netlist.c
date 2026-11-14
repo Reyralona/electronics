@@ -9,7 +9,7 @@ static int valid_pin(const Workbench *b,Pin p) { return p.component>=0 && p.comp
 
 static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,int measure_wires,Pin probe,double step,double stop)
 {
-    int parents[PIN_TOTAL],i,j,source=-1,ground,positive;
+    int parents[PIN_TOTAL],i,j,source=-1,ground,positive,gate_count=0;
     if(!out || !b || b->part_count<0 || b->part_count>WORKBENCH_MAX_COMPONENTS || b->wire_count<0 || b->wire_count>WORKBENCH_MAX_WIRES) return NETLIST_INVALID;
     if(transient && ((transient==3?(probe.component<0 || probe.component>=b->wire_count):!valid_pin(b,probe)) || !isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || step>stop)) return NETLIST_INVALID;
     for(i=0;i<PIN_TOTAL;++i) parents[i]=i;
@@ -27,6 +27,7 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         case PART_SOURCE: if(source<0) source=i; break;
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
         case PART_BREADBOARD: for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+bench_board_group_first(j),base+j); break;
+        case PART_AND: ++gate_count; break;
         case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: break;
         default: return NETLIST_UNSUPPORTED;
         }
@@ -78,6 +79,11 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
         if(fprintf(out,"L%d %d %d %.17g IC=0\n",i,a==ground?0:a+1,c==ground?0:c+1,b->parts[i].value)<0) return NETLIST_IO_ERROR;
     }
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_AND) {
+        int a=find_root(parents,i*WORKBENCH_MAX_PINS), c=find_root(parents,i*WORKBENCH_MAX_PINS+1), output_node=find_root(parents,i*WORKBENCH_MAX_PINS+2);
+        if(fprintf(out,"Aadc%d [%d %d] [din%d_0 din%d_1] gate_adc\nAgate%d [din%d_0 din%d_1] dout%d gate_and\nAdac%d [dout%d] [%d] gate_dac\n",i,a==ground?0:a+1,c==ground?0:c+1,i,i,i,i,i,i,i,i,output_node==ground?0:output_node+1)<0) return NETLIST_IO_ERROR;
+    }
+    if(gate_count && fprintf(out,".model gate_adc adc_bridge(in_low=1.5 in_high=3.5)\n.model gate_and d_and(rise_delay=1n fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n")<0) return NETLIST_IO_ERROR;
     if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2)\n")<0) return NETLIST_IO_ERROR;
     if(transient) {
         int node=transient==3?0:find_root(parents,pin_index(probe)); char vector[40]={0};
