@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.5.0
+
+- Salvar e carregar posições e estados em arquivo local versionado; validação impede carregamento parcial.
+
 ## 0.4.0
 
 - Zoom com a roda do mouse, deslocamento com setas e restauração da vista com Home.
