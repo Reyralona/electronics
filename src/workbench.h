@@ -1,0 +1,22 @@
+#ifndef WORKBENCH_H
+#define WORKBENCH_H
+
+#define WORKBENCH_MAX_COMPONENTS 64
+#define WORKBENCH_MAX_WIRES 128
+
+typedef enum { PART_SOURCE, PART_SWITCH, PART_LED } PartType;
+typedef struct { PartType type; float x, y; int on; } Part;
+typedef struct { int component, pin; } Pin;
+typedef struct { Pin a, b; } Wire;
+typedef struct {
+    Part parts[WORKBENCH_MAX_COMPONENTS];
+    Wire wires[WORKBENCH_MAX_WIRES];
+    int part_count, wire_count;
+} Workbench;
+
+int bench_add(Workbench *bench, PartType type, float x, float y);
+/* Returns 1 for added, 2 for removed, 0 for invalid/capacity. */
+int bench_toggle_wire(Workbench *bench, Pin a, Pin b);
+void bench_remove(Workbench *bench, int index);
+void bench_simulate(const Workbench *bench, int led_on[WORKBENCH_MAX_COMPONENTS]);
+#endif
