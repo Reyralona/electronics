@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.13.0
+
+- Breadboard instanciável com 100 furos e 20 grupos independentes de cinco contatos; fios podem ser ligados aos furos.
+
 ## 0.12.0
 
 - Nova bancada experimental separada, com biblioteca, componentes posicionáveis e fios entre terminais selecionados.

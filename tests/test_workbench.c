@@ -24,5 +24,24 @@ int main(void)
     bench_remove(&b, 0);
     assert(b.part_count == 2 && b.wire_count == 1);
     assert(b.wires[0].a.component < 2 && b.wires[0].b.component < 2);
+    {
+        Workbench bread = {0};
+        Pin positive = {0, 0}, negative = {0, 1}, anode = {1, 0}, cathode = {1, 1};
+        Pin hole0 = {2, 0}, hole4 = {2, 4}, other = {2, 5}, opposite = {2, 50};
+        assert(bench_add(&bread, PART_SOURCE, 0, 0) == 0);
+        assert(bench_add(&bread, PART_LED, 0, 0) == 1);
+        assert(bench_add(&bread, PART_BREADBOARD, 0, 0) == 2);
+        assert(bench_pin_count(PART_BREADBOARD) == 100);
+        assert(bench_toggle_wire(&bread, positive, hole0));
+        assert(bench_toggle_wire(&bread, hole4, anode));
+        assert(bench_toggle_wire(&bread, cathode, negative));
+        bench_simulate(&bread, led); assert(led[1]);
+        assert(bench_toggle_wire(&bread, hole4, anode) == 2);
+        assert(bench_toggle_wire(&bread, other, anode));
+        bench_simulate(&bread, led); assert(!led[1]);
+        assert(bench_toggle_wire(&bread, other, anode) == 2);
+        assert(bench_toggle_wire(&bread, opposite, anode));
+        bench_simulate(&bread, led); assert(!led[1]);
+    }
     return 0;
 }
