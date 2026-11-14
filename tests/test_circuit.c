@@ -16,5 +16,13 @@ int main(void)
     c.disconnected_wires = 0;
     c.switch_closed = 0;
     assert(!circuit_led_on(&c));
+    for (int first = 0; first < 6; ++first) {
+        for (int second = 0; second < 6; ++second) {
+            int expected = first != second && first / 2 == second / 2 ? first / 2 : -1;
+            assert(circuit_wire_for_terminals(first, second) == expected);
+        }
+    }
+    assert(circuit_wire_for_terminals(-1, 0) == -1);
+    assert(circuit_wire_for_terminals(0, 6) == -1);
     return 0;
 }

@@ -3,6 +3,7 @@
 #include <SDL3/SDL_opengl.h>
 #include "project.h"
 #include "history.h"
+#include "simulation.h"
 
 static void rectangle(float x, float y, float w, float h)
 {
@@ -35,6 +36,14 @@ static void component_face(const Block *block, float r, float g, float b)
     rectangle(block->x, block->y, block->w, block->h);
 }
 
+static void terminal_position(const Block *blocks, int terminal, float *x, float *y)
+{
+    static const int owner[] = {0, 1, 1, 2, 2, 0};
+    const Block *b = &blocks[owner[terminal]];
+    if (terminal == 4 || terminal == 5) { *x = b->x + b->w / 2; *y = b->y; }
+    else { *x = b->x + (terminal == 0 || terminal == 2 ? b->w : 0); *y = b->y + b->h / 2; }
+}
+
 int main(void)
 {
     SDL_Window *window;
@@ -45,9 +54,11 @@ int main(void)
     Circuit *circuit = &project.circuit;
     Block *blocks = project.blocks;
     History history = {0};
+    Simulation simulation = {1, 0};
     const char *status = "S salvar | L carregar";
     int dragging = -1;
     int drag_recorded = 0;
+    int selected_terminal = -1;
     float drag_x = 0, drag_y = 0;
     float zoom = 1.0f, pan_x = 0.0f, pan_y = 0.0f;
     int running = 1;
@@ -77,7 +88,12 @@ int main(void)
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) running = 0;
             else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
-                if (event.key.key == SDLK_ESCAPE) running = 0;
+                if (event.key.key == SDLK_ESCAPE && selected_terminal >= 0) { selected_terminal = -1; status = "Conexao cancelada"; }
+                else if (event.key.key == SDLK_ESCAPE) running = 0;
+                else if (event.key.key == SDLK_SPACE) {
+                    simulation.running = !simulation.running;
+                    status = simulation.running ? "Simulacao em execucao" : "Simulacao pausada";
+                }
                 else if ((event.key.mod & SDL_KMOD_CTRL) && event.key.key == SDLK_Z) {
                     dragging = -1;
                     status = history_undo(&history, &project) ? "Desfeito" : "Nada para desfazer";
@@ -124,6 +140,34 @@ int main(void)
                     float x = (2.0f * event.button.x / logical_width - 1.0f - pan_x) / zoom;
                     float y = (1.0f - 2.0f * event.button.y / logical_height - pan_y) / zoom;
                     int i;
+                    int hit_terminal = -1;
+                    if (event.button.button == SDL_BUTTON_LEFT) {
+                        for (i = 5; i >= 0; --i) {
+                            float tx, ty;
+                            terminal_position(blocks, i, &tx, &ty);
+                            if (inside(x, y, tx - .035f, ty - .035f, .07f, .07f)) { hit_terminal = i; break; }
+                        }
+                        if (hit_terminal >= 0) {
+                            if (selected_terminal < 0) {
+                                selected_terminal = hit_terminal;
+                                status = "Selecione o outro terminal";
+                            } else if (selected_terminal == hit_terminal) {
+                                selected_terminal = -1;
+                                status = "Conexao cancelada";
+                            } else {
+                                int wire = circuit_wire_for_terminals(selected_terminal, hit_terminal);
+                                if (wire < 0) status = "Par nao suportado neste prototipo";
+                                else {
+                                    history_record(&history, &project);
+                                    circuit->disconnected_wires ^= 1u << wire;
+                                    status = "Ligacao alterada";
+                                }
+                                selected_terminal = -1;
+                            }
+                            continue;
+                        }
+                        if (selected_terminal >= 0) { selected_terminal = -1; status = "Conexao cancelada"; continue; }
+                    }
                     for (i = 2; i >= 0; --i) {
                         Block *b = &blocks[i];
                         if (!inside(x, y, b->x, b->y, b->w, b->h)) continue;
@@ -150,10 +194,12 @@ int main(void)
                 }
             }
         }
-        snprintf(title, sizeof(title), "Fonte: %s | Interruptor: %s | LED: %s | %s",
+        simulation_update(&simulation, circuit);
+        snprintf(title, sizeof(title), "%s | Fonte: %s | Interruptor: %s | LED: %s | %s",
+                 simulation.running ? "Executando" : "Pausada",
                  circuit->source_on ? "ligada" : "desligada",
                  circuit->switch_closed ? "fechado" : "aberto",
-                 circuit_led_on(circuit) ? "aceso" : "apagado", status);
+                 simulation.led_on ? "aceso" : "apagado", status);
         SDL_SetWindowTitle(window, title);
         SDL_GetWindowSizeInPixels(window, &width, &height);
         glViewport(0, 0, width, height);
@@ -189,7 +235,7 @@ int main(void)
         if (circuit->source_on) component_face(&blocks[0], 0.25f, 0.55f, 0.85f);
         else component_face(&blocks[0], 0.15f, 0.25f, 0.35f);
         component_face(&blocks[1], 0.32f, 0.43f, 0.35f);
-        if (circuit_led_on(circuit)) component_face(&blocks[2], 1.0f, 0.85f, 0.2f);
+        if (simulation.led_on) component_face(&blocks[2], 1.0f, 0.85f, 0.2f);
         else component_face(&blocks[2], 0.3f, 0.27f, 0.15f);
         glColor3f(0.95f, 0.95f, 0.9f);
         glLineWidth(3.0f);
@@ -205,6 +251,16 @@ int main(void)
         line(blocks[2].x + .09f, blocks[2].y + .08f, blocks[2].x + .2f, blocks[2].y + .15f);
         line(blocks[2].x + .09f, blocks[2].y + .22f, blocks[2].x + .2f, blocks[2].y + .15f);
         line(blocks[2].x + .21f, blocks[2].y + .08f, blocks[2].x + .21f, blocks[2].y + .22f);
+        {
+            int terminal;
+            for (terminal = 0; terminal < 6; ++terminal) {
+                float x, y;
+                terminal_position(blocks, terminal, &x, &y);
+                if (terminal == selected_terminal) glColor3f(1.0f, 0.7f, 0.15f);
+                else glColor3f(0.9f, 0.9f, 0.9f);
+                rectangle(x - .025f, y - .025f, .05f, .05f);
+            }
+        }
         SDL_GL_SwapWindow(window);
     }
     SDL_GL_DestroyContext(context);
