@@ -17,7 +17,7 @@ A DLL SDL3 deve estar no PATH ou junto do executável. Pressione `S` para salvar
 
 Use `Ctrl+Z` e `Ctrl+Y` para desfazer e refazer mudanças de posição, estados e carregamento. O histórico mantém até 32 etapas na sessão e não é salvo no arquivo.
 
-Pressione `Espaço` para pausar ou retomar a simulação. Ao pausar, o LED mantém o último resultado mesmo que o circuito seja editado; ao retomar, o resultado é atualizado. O estado de execução não é salvo.
+Pressione `Espaço` para pausar ou retomar a simulação. Ao pausar, o LED mantém o último resultado mesmo que o circuito seja editado; `N` executa um passo e, ao retomar, o resultado volta a ser atualizado. O estado de execução não é salvo. Pressione `D` para listar na barra de título os estados observados da montagem (fonte, interruptor e ligações); quando a simulação está pausada, eles podem ser diferentes do resultado congelado do LED. Essa inspeção não identifica falhas elétricas além do modelo simplificado.
 
 Clique em dois terminais brancos para conectar ou desconectar o par; o primeiro fica amarelo. Os três pares possíveis são fonte–interruptor, interruptor–LED e retorno entre LED e fonte. Clique novamente no terminal ou pressione `Esc` para cancelar; pares diferentes dos previstos são rejeitados. As teclas `1`, `2` e `3` também alternam essas ligações. O LED só acende com todas conectadas. Essas alterações podem ser desfeitas e são salvas no projeto. Ligações arbitrárias ainda não são suportadas.
 
