@@ -13,6 +13,11 @@ static void rectangle(float x, float y, float w, float h)
     glEnd();
 }
 
+static int inside(float x, float y, float left, float bottom, float width, float height)
+{
+    return x >= left && x <= left + width && y >= bottom && y <= bottom + height;
+}
+
 int main(void)
 {
     SDL_Window *window;
@@ -49,8 +54,20 @@ int main(void)
                 else if (event.key.key == SDLK_I) circuit.switch_closed = !circuit.switch_closed;
                 else if (event.key.key == SDLK_F) circuit.source_on = !circuit.source_on;
             }
+            else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) {
+                int logical_width, logical_height;
+                SDL_GetWindowSize(window, &logical_width, &logical_height);
+                if (logical_width > 0 && logical_height > 0) {
+                    float x = 2.0f * event.button.x / logical_width - 1.0f;
+                    float y = 1.0f - 2.0f * event.button.y / logical_height;
+                    if (inside(x, y, -0.7f, -0.15f, 0.3f, 0.3f))
+                        circuit.source_on = !circuit.source_on;
+                    else if (inside(x, y, -0.15f, -0.12f, 0.3f, 0.24f))
+                        circuit.switch_closed = !circuit.switch_closed;
+                }
+            }
         }
-        snprintf(title, sizeof(title), "Fonte: %s | Interruptor: %s | LED: %s | F / I / Esc",
+        snprintf(title, sizeof(title), "Fonte: %s | Interruptor: %s | LED: %s | Clique ou F / I | Esc",
                  circuit.source_on ? "ligada" : "desligada",
                  circuit.switch_closed ? "fechado" : "aberto",
                  circuit_led_on(&circuit) ? "aceso" : "apagado");
@@ -61,7 +78,8 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT);
         glColor3f(0.35f, 0.4f, 0.45f);
         rectangle(-0.75f, -0.025f, 1.5f, 0.05f);
-        glColor3f(0.25f, 0.55f, 0.85f);
+        if (circuit.source_on) glColor3f(0.25f, 0.55f, 0.85f);
+        else glColor3f(0.15f, 0.25f, 0.35f);
         rectangle(-0.7f, -0.15f, 0.3f, 0.3f);
         glColor3f(circuit.switch_closed ? 0.3f : 0.55f, 0.55f, 0.35f);
         rectangle(-0.15f, -0.12f, 0.3f, 0.24f);
