@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.6.0
+
+- Desfazer e refazer ações de componentes e carregamento, com histórico limitado em memória.
+
 ## 0.5.0
 
 - Salvar e carregar posições e estados em arquivo local versionado; validação impede carregamento parcial.
