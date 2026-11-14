@@ -38,6 +38,7 @@ int main(void)
                        {0.4f, -0.15f, 0.3f, 0.3f}};
     int dragging = -1;
     float drag_x = 0, drag_y = 0;
+    float zoom = 1.0f, pan_x = 0.0f, pan_y = 0.0f;
     int running = 1;
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -68,14 +69,25 @@ int main(void)
                 if (event.key.key == SDLK_ESCAPE) running = 0;
                 else if (event.key.key == SDLK_I) circuit.switch_closed = !circuit.switch_closed;
                 else if (event.key.key == SDLK_F) circuit.source_on = !circuit.source_on;
+                else if (event.key.key == SDLK_LEFT) pan_x += 0.1f;
+                else if (event.key.key == SDLK_RIGHT) pan_x -= 0.1f;
+                else if (event.key.key == SDLK_UP) pan_y -= 0.1f;
+                else if (event.key.key == SDLK_DOWN) pan_y += 0.1f;
+                else if (event.key.key == SDLK_HOME) { zoom = 1.0f; pan_x = 0.0f; pan_y = 0.0f; }
+            }
+            else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+                if (event.wheel.y > 0) zoom *= 1.1f;
+                else if (event.wheel.y < 0) zoom /= 1.1f;
+                if (zoom < 0.4f) zoom = 0.4f;
+                if (zoom > 3.0f) zoom = 3.0f;
             }
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
                      (event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_RIGHT)) {
                 int logical_width, logical_height;
                 SDL_GetWindowSize(window, &logical_width, &logical_height);
                 if (logical_width > 0 && logical_height > 0) {
-                    float x = 2.0f * event.button.x / logical_width - 1.0f;
-                    float y = 1.0f - 2.0f * event.button.y / logical_height;
+                    float x = (2.0f * event.button.x / logical_width - 1.0f - pan_x) / zoom;
+                    float y = (1.0f - 2.0f * event.button.y / logical_height - pan_y) / zoom;
                     int i;
                     for (i = 2; i >= 0; --i) {
                         Block *b = &blocks[i];
@@ -96,8 +108,8 @@ int main(void)
                 int logical_width, logical_height;
                 SDL_GetWindowSize(window, &logical_width, &logical_height);
                 if (logical_width > 0 && logical_height > 0) {
-                    blocks[dragging].x = 2.0f * event.motion.x / logical_width - 1.0f - drag_x;
-                    blocks[dragging].y = 1.0f - 2.0f * event.motion.y / logical_height - drag_y;
+                    blocks[dragging].x = (2.0f * event.motion.x / logical_width - 1.0f - pan_x) / zoom - drag_x;
+                    blocks[dragging].y = (1.0f - 2.0f * event.motion.y / logical_height - pan_y) / zoom - drag_y;
                 }
             }
         }
@@ -110,6 +122,10 @@ int main(void)
         glViewport(0, 0, width, height);
         glClearColor(0.08f, 0.11f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        glTranslatef(pan_x, pan_y, 0.0f);
+        glScalef(zoom, zoom, 1.0f);
         glColor3f(0.7f, 0.7f, 0.7f);
         glLineWidth(3.0f);
         line(blocks[0].x + blocks[0].w, blocks[0].y + blocks[0].h / 2,

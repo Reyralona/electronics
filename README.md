@@ -6,7 +6,7 @@ A visão, o escopo proposto e as orientações de trabalho estão em [prompt.md]
 
 O primeiro incremento é um circuito fixo de fonte, interruptor e LED em console. Use `i` para alternar o interruptor, `f` para alternar a fonte e `q` para sair. É um modelo booleano didático, sem cálculo elétrico ou edição de conexões; não representa precisão de SPICE.
 
-Há também uma janela experimental SDL3/OpenGL: os três blocos representam fonte, interruptor e LED, nessa ordem. Clique com o botão esquerdo na fonte ou interruptor para alterná-los, ou use `F` e `I`. Arraste componentes com o botão direito; `Esc` fecha. A barra de título mostra os estados. Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
+Há também uma janela experimental SDL3/OpenGL: os três blocos representam fonte, interruptor e LED, nessa ordem. Clique com o botão esquerdo na fonte ou interruptor para alterná-los, ou use `F` e `I`. Arraste componentes com o botão direito. A roda do mouse ajusta o zoom, as setas deslocam a vista e `Home` a restaura; `Esc` fecha. A barra de título mostra os estados. Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
 
 ```powershell
 ./build.ps1
