@@ -1,0 +1,9 @@
+Circuito de referencia: 5 volts em resistor de 1 kilo-ohm
+V1 1 0 5
+R1 1 0 1000
+.control
+op
+print v(1) @r1[i]
+quit
+.endc
+.end
