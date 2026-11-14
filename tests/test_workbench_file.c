@@ -23,7 +23,7 @@ int main(void)
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==2 && loaded.wires[0].b.pin==99);
     {
-        const char *invalid[]={"workbench 10\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
+        const char *invalid[]={"workbench 11\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
         unsigned int i;
         for(i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i) {
             file=tmpfile(); assert(file); fputs(invalid[i],file); rewind(file);
@@ -115,6 +115,31 @@ int main(void)
         assert(workbench_read(file,&loaded)); fclose(file);
         assert(bench_find_contact(&loaded,1,0,&contact) && contact.pin==0);
         assert(bench_find_contact(&loaded,1,1,&contact) && contact.pin==35);
+    }
+    {
+        WorkbenchSettings custom=workbench_settings_default(), restored=workbench_settings_default();
+        custom.show_grid=0; custom.show_handles=0; custom.round_wires=0; custom.show_current=1;
+        custom.wire_color=5; custom.probe_pin=1; custom.probe_current=1; custom.transient_step=2e-5; custom.transient_stop=.002;
+        file=tmpfile(); assert(file); assert(workbench_write_project(file,&source,&custom)); rewind(file);
+        assert(workbench_read_project(file,&loaded,&restored)); fclose(file);
+        assert(!restored.show_grid && !restored.show_handles && !restored.round_wires && restored.show_current);
+        assert(restored.wire_color==5 && restored.probe_pin==1 && restored.probe_current==1);
+        assert(restored.transient_step==2e-5 && restored.transient_stop==.002);
+        file=tmpfile(); assert(file); fputs("workbench 9\n0 0\n",file); rewind(file);
+        assert(workbench_read_project(file,&loaded,&restored)); fclose(file);
+        assert(restored.show_grid && restored.transient_step==1e-5 && restored.transient_stop==.005);
+        restored.wire_color=4;
+        file=tmpfile(); assert(file); fputs("workbench 10\n0 0\nsettings 1 1 1 0 2 0 0 1e-9 1\n",file); rewind(file);
+        assert(!workbench_read_project(file,&loaded,&restored)); fclose(file);
+        assert(restored.wire_color==4 && loaded.part_count==0);
+        file=tmpfile(); assert(file); fputs("workbench 10\n0 0\nsettings 1 1 1 0 2 0 0 nan .005\n",file); rewind(file);
+        assert(!workbench_read_project(file,&loaded,&restored)); fclose(file);
+        custom.transient_step=1; custom.transient_stop=.001;
+        file=tmpfile(); assert(file); assert(!workbench_write_project(file,&source,&custom)); fclose(file);
+        assert(workbench_save_project("build/test-settings.elec",&source,&restored));
+        restored.wire_color=0;
+        assert(workbench_load_project("build/test-settings.elec",&loaded,&restored));
+        assert(restored.wire_color==4); assert(remove("build/test-settings.elec")==0);
     }
     return 0;
 }

@@ -350,6 +350,10 @@ int main(int argc, char **argv) {
             else if(selftest_phase==52) queued=test_key(window,SDLK_F1);
             else if(selftest_phase==53) queued=test_click(window,505,220);
             else if(selftest_phase==54) queued=test_key(window,SDLK_T);
+            else if(selftest_phase==55) queued=test_key(window,SDLK_S);
+            else if(selftest_phase==56) queued=test_key(window,SDLK_F1);
+            else if(selftest_phase==57) queued=test_click(window,900,370);
+            else if(selftest_phase==58) queued=test_key(window,SDLK_L);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -429,11 +433,18 @@ int main(int argc, char **argv) {
                     if(bench_set_value(&bench,selected,bench.parts[selected].value*scale)) { bench_history_record(history,&before); status="Valor alterado; pressione P para recalcular."; }
                     else status="Valor nao editavel ou fora do limite.";
                 }
-                else if(e.key.key==SDLK_S) { status=workbench_save("bancada.elec",&bench)?"Salvo em bancada.elec.":"Falha ao salvar."; }
+                else if(e.key.key==SDLK_S) {
+                    WorkbenchSettings saved={show_grid,show_handles,round_wires,show_current,wire_color,probe_pin,probe_current,transient_step,transient_stop};
+                    status=workbench_save_project(selftest?"build/gui-settings-test.elec":"bancada.elec",&bench,&saved)?"Salvo em bancada.elec.":"Falha ao salvar.";
+                }
                 else if(e.key.key==SDLK_L) {
-                    Workbench before=bench;
-                    if(workbench_load("bancada.elec",&bench)) { bench_history_record(history,&before); selected=-1; selected_wire=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada carregada."; }
-                    else status="Falha ao carregar; bancada preservada.";
+                    Workbench before=bench; WorkbenchSettings saved;
+                    if(workbench_load_project(selftest?"build/gui-settings-test.elec":"bancada.elec",&bench,&saved)) {
+                        bench_history_record(history,&before); selected=-1; selected_wire=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0;
+                        show_grid=saved.show_grid; show_handles=saved.show_handles; round_wires=saved.round_wires; show_current=saved.show_current; wire_color=saved.wire_color;
+                        probe_pin=saved.probe_pin; probe_current=saved.probe_current; transient_step=saved.transient_step; transient_stop=saved.transient_stop;
+                        dc_valid=0; dc_wire_valid=0; trace_valid=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada e configuracoes carregadas.";
+                    } else status="Falha ao carregar; bancada preservada.";
                 }
                 else if(e.key.key==SDLK_DELETE && selected>=0) { bench_history_record(history,&bench); bench_remove(&bench,selected); selected=-1; selected_wire=-1; pending.component=-1; memset(leds,0,sizeof(leds)); status="Componente e seus fios removidos."; }
                 else if(e.key.key==SDLK_DELETE && selected_wire>=0 && selected_wire<bench.wire_count) { bench_history_record(history,&bench); memmove(&bench.wires[selected_wire],&bench.wires[selected_wire+1],(size_t)(bench.wire_count-selected_wire-1)*sizeof(Wire)); --bench.wire_count; selected_wire=-1; status="Fio removido."; }
@@ -567,8 +578,12 @@ int main(int argc, char **argv) {
             else if(selftest_phase==52) valid=settings==0 && probe_current==1;
             else if(selftest_phase==53) valid=selected_wire==0;
             else if(selftest_phase==54) valid=dc_job.transient==3;
+            else if(selftest_phase==55) valid=strcmp(status,"Salvo em bancada.elec.")==0;
+            else if(selftest_phase==56) valid=settings==1;
+            else if(selftest_phase==57) valid=probe_current==0;
+            else if(selftest_phase==58) valid=probe_current==1 && probe_pin==1 && transient_step==2e-5 && wire_color==1;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==55) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==59) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -714,6 +729,7 @@ int main(int argc, char **argv) {
         }
     }
     spice_job_join(&dc_job);
+    if(selftest) remove("build/gui-settings-test.elec");
     free(history);
     if(font) glDeleteLists(font,128);
     SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return exit_code;

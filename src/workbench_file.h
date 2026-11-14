@@ -3,6 +3,16 @@
 #include <stdio.h>
 #include "workbench.h"
 
+typedef struct {
+    int show_grid, show_handles, round_wires, show_current, wire_color, probe_pin, probe_current;
+    double transient_step, transient_stop;
+} WorkbenchSettings;
+WorkbenchSettings workbench_settings_default(void);
+int workbench_read_project(FILE *file, Workbench *destination, WorkbenchSettings *settings);
+int workbench_write_project(FILE *file, const Workbench *bench, const WorkbenchSettings *settings);
+int workbench_save_project(const char *path, const Workbench *bench, const WorkbenchSettings *settings);
+int workbench_load_project(const char *path, Workbench *bench, WorkbenchSettings *settings);
+
 /* Parsing is transactional: on failure the destination remains unchanged. */
 int workbench_read(FILE *file, Workbench *destination);
 int workbench_write(FILE *file, const Workbench *bench);
