@@ -19,6 +19,15 @@ int main(void)
     fputs("workbench 1\n1 1\n0 0 0 1\n0 0 99 0 0\n",file); rewind(file);
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==2 && loaded.wires[0].b.pin==99);
+    {
+        const char *invalid[]={"workbench 9\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
+        unsigned int i;
+        for(i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i) {
+            file=tmpfile(); assert(file); fputs(invalid[i],file); rewind(file);
+            assert(!workbench_read(file,&loaded)); fclose(file);
+            assert(loaded.part_count==2 && loaded.wires[0].b.pin==99);
+        }
+    }
     assert(workbench_save("build/test-bench.elec",&source));
     loaded.part_count=0; assert(workbench_load("build/test-bench.elec",&loaded));
     assert(loaded.part_count==2 && loaded.wires[0].knee_count==1);

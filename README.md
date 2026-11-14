@@ -15,6 +15,8 @@ Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
 ./build/bancada.exe
 ```
 
+Se `bancada.exe` estiver aberto, `./build.ps1 -OutputName bancada-next` compila uma cópia sem fechar a janela existente.
+
 Escolha **Fonte**, **Interruptor**, **LED** ou **Breadboard** na biblioteca e clique na bancada para posicionar. Arraste um componente com o botão esquerdo para movê-lo. Clique em dois terminais ou furos para conectar um fio; clique no mesmo par para removê-lo. Dois cliques na fonte ou no interruptor alternam seu estado. `Espaço` pausa/retoma, `N` avança um passo quando pausado e `Delete` remove o componente selecionado e seus fios.
 
 Pressione `S` para salvar componentes, estados, fios e joelhos em `bancada.elec` na pasta de execução; salvar novamente substitui esse arquivo. `L` carrega a bancada; arquivos inválidos preservam a montagem aberta. O formato da bancada é independente do protótipo antigo. Ao carregar, o estado do LED é recalculado mesmo se a simulação estiver pausada.

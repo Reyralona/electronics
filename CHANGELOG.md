@@ -1,6 +1,6 @@
 # Histórico de versões
 
-## Em desenvolvimento
+## 0.15.0
 
 - Persistência da bancada com componentes, fios e joelhos, em formato versionado separado.
 
