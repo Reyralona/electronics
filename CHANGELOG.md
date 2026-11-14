@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.7.0
+
+- Grade e símbolos visuais identificam fonte, interruptor e LED; interruptor também indica estado pela posição.
+
 ## 0.6.0
 
 - Desfazer e refazer ações de componentes e carregamento, com histórico limitado em memória.
