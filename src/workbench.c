@@ -65,7 +65,15 @@ void bench_pin_position(const Part *p,int pin,float *x,float *y)
         else if(group<36) { int extra=(group-20)%8; *x=p->x+(extra<4?-119.0f+extra*14.0f:77.0f+(extra-4)*14.0f); *y=p->y+(group<28?-39.0f:11.0f)+row*7.0f; }
         else if(pin<300) { int extra=(group-36)%12; *x=p->x+(extra<6?-203.0f+extra*14.0f:133.0f+(extra-6)*14.0f); *y=p->y+(group<48?-39.0f:11.0f)+row*7.0f; }
         else { int rail=(pin-300)/30, column=(pin-300)%30; *x=p->x-203.0f+column*14.0f; *y=p->y+(rail==0?-98.0f:rail==1?-82.0f:rail==2?78.0f:94.0f); }
-    } else { *x=p->x+(pin?49.0f:-49.0f); *y=p->y; }
+    } else {
+        float distance=pin?49.0f:-49.0f;
+        switch(p->rotation) {
+        case 1: *x=p->x; *y=p->y+distance; break;
+        case 2: *x=p->x-distance; *y=p->y; break;
+        case 3: *x=p->x; *y=p->y-distance; break;
+        default: *x=p->x+distance; *y=p->y; break;
+        }
+    }
 }
 
 int bench_find_contact(const Workbench *b,int component,int pin,Pin *contact)
@@ -112,8 +120,15 @@ int bench_add(Workbench *b, PartType type, float x, float y)
     if (b->part_count >= WORKBENCH_MAX_COMPONENTS || bench_pin_count(type) == 0) return -1;
     id = b->part_count++;
     b->parts[id] = (Part){type, x, y, type == PART_SOURCE,
-        type==PART_SOURCE?5.0:type==PART_RESISTOR?1000.0:type==PART_CAPACITOR?1e-6:type==PART_INDUCTOR?.01:0.0};
+        type==PART_SOURCE?5.0:type==PART_RESISTOR?1000.0:type==PART_CAPACITOR?1e-6:type==PART_INDUCTOR?.01:0.0,0};
     return id;
+}
+
+int bench_rotate_part(Workbench *b,int component)
+{
+    if(!b || component<0 || component>=b->part_count || b->parts[component].type==PART_BREADBOARD) return 0;
+    b->parts[component].rotation=(b->parts[component].rotation+1)%4;
+    return 1;
 }
 
 int bench_set_value(Workbench *b, int component, double value)

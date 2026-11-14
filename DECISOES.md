@@ -30,7 +30,9 @@ Com a visualização de corrente ativada, cada fio é representado por uma fonte
 
 O indutor experimental tem valor fixo de 10 mH e corrente inicial zero no transitório. Um circuito RL de 1 kΩ é exportado pelo modelo e comparado com a resposta analítica em `tools/test-workbench-ngspice.ps1`. O formato de bancada passou à versão 3 para registrá-lo; a leitura de versões 1 e 2 é mantida. O teste transitório ainda é externo à interface.
 
-O encaixe experimental alinha o terminal mais próximo a um furo e reconhece como contato cada terminal geometricamente coincidente. A conectividade é compartilhada pelo modelo discreto e pelo tradutor SPICE e pode ser reconstruída após salvar ou desfazer. Mover a peça ou a placa desfaz o contato. Ainda não há rotação, colisão, controle de ocupação nem suporte para placas sobrepostas; a escolha de contatos em placas sobrepostas é apenas a primeira encontrada.
+O encaixe experimental alinha o terminal mais próximo a um furo e reconhece como contato cada terminal geometricamente coincidente. A conectividade é compartilhada pelo modelo discreto e pelo tradutor SPICE e pode ser reconstruída após salvar ou desfazer. Mover a peça ou a placa desfaz o contato. Ainda não há rotação da placa, colisão, controle de ocupação nem suporte para placas sobrepostas; a escolha de contatos em placas sobrepostas é apenas a primeira encontrada.
+
+Componentes de dois terminais podem ser girados em incrementos de 90°. A geometria dos terminais e fios acompanha a rotação; o encaixe é recalculado e a alteração integra o histórico. O formato 8 registra a orientação; versões anteriores usam orientação zero. O espaçamento fixo das pernas não garante que ambos os terminais encaixem após girar; apenas contatos efetivamente alinhados são conectados.
 
 A breadboard foi ampliada de 100 para 180 furos (36 grupos independentes de cinco). Os 100 índices e posições originais foram preservados, e os novos grupos ficam nas extremidades. O formato de bancada 5 distingue projetos com novos furos; formatos 1 a 4 permanecem legíveis. As pontas dos fios são desenhadas sobre a placa com trecho metálico, sem mudar a conectividade elétrica.
 

@@ -7,7 +7,7 @@
 #define BREADBOARD_PINS 420
 
 typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR } PartType;
-typedef struct { PartType type; float x, y; int on; double value; } Part;
+typedef struct { PartType type; float x, y; int on; double value; int rotation; } Part;
 typedef struct { int component, pin; } Pin;
 typedef struct { float x, y; } WirePoint;
 #define WIRE_MAX_KNEES 16
@@ -23,6 +23,7 @@ int bench_add(Workbench *bench, PartType type, float x, float y);
 int bench_pin_count(PartType type);
 int bench_board_group_first(int pin);
 int bench_set_value(Workbench *bench, int component, double value);
+int bench_rotate_part(Workbench *bench, int component);
 int bench_parse_value(const char *text, double *value);
 void bench_pin_position(const Part *part, int pin, float *x, float *y);
 int bench_find_contact(const Workbench *bench, int component, int pin, Pin *contact);

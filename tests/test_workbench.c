@@ -97,6 +97,16 @@ int main(void)
         assert(bench_snap_to_breadboard(&b2,1));
         assert(bench_find_contact(&b2,1,0,&contact) && contact.component==0 && contact.pin==0);
         assert(bench_find_contact(&b2,1,1,&contact) && contact.component==0 && contact.pin==35);
+        {
+            float x,y;
+            assert(bench_rotate_part(&b2,1));
+            bench_pin_position(&b2.parts[1],0,&x,&y);
+            assert(x==b2.parts[1].x && y==b2.parts[1].y-49);
+            assert(!bench_find_contact(&b2,1,0,&contact));
+            assert(bench_rotate_part(&b2,1)); assert(bench_rotate_part(&b2,1)); assert(bench_rotate_part(&b2,1));
+            assert(bench_find_contact(&b2,1,0,&contact) && contact.pin==0);
+            assert(!bench_rotate_part(&b2,0));
+        }
         assert(bench_toggle_wire(&b2,(Pin){2,0},(Pin){0,4})==1);
         assert(bench_toggle_wire(&b2,(Pin){2,1},(Pin){0,39})==1);
         bench_simulate(&b2,led2); assert(led2[1]);

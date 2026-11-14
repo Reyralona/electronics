@@ -42,6 +42,7 @@ int main(void)
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==4);
     assert(bench_add(&source,PART_INDUCTOR,500,100)==4);
+    assert(bench_rotate_part(&source,4));
     assert(bench_set_value(&source,2,2200));
     assert(bench_set_value(&source,3,2.2e-6));
     assert(!bench_set_value(&source,1,1));
@@ -49,7 +50,7 @@ int main(void)
     assert(!bench_boolean_supported(&source));
     file=tmpfile(); assert(file); assert(workbench_write(file,&source)); rewind(file);
     assert(workbench_read(file,&loaded)); fclose(file);
-    assert(loaded.part_count==5 && loaded.parts[4].type==PART_INDUCTOR);
+    assert(loaded.part_count==5 && loaded.parts[4].type==PART_INDUCTOR && loaded.parts[4].rotation==1);
     assert(loaded.parts[2].value==2200 && loaded.parts[3].value==2.2e-6);
     file=tmpfile(); assert(file); fputs("workbench 2\n1 0\n6 0 0 0\n",file); rewind(file);
     assert(!workbench_read(file,&loaded)); fclose(file);
@@ -86,6 +87,13 @@ int main(void)
     file=tmpfile(); assert(file); fputs("workbench 3\n2 0\n0 0 0 1\n4 0 0 0\n",file); rewind(file);
     assert(workbench_read(file,&loaded)); fclose(file);
     assert(loaded.parts[0].value==5 && loaded.parts[1].value==1000);
+    assert(loaded.parts[0].rotation==0 && loaded.parts[1].rotation==0);
+    file=tmpfile(); assert(file); fputs("workbench 7\n1 0\n0 0 0 1 5\n",file); rewind(file);
+    assert(workbench_read(file,&loaded)); fclose(file);
+    assert(loaded.part_count==1 && loaded.parts[0].rotation==0);
+    file=tmpfile(); assert(file); fputs("workbench 8\n1 0\n3 0 0 0 0 1\n",file); rewind(file);
+    assert(!workbench_read(file,&loaded)); fclose(file);
+    assert(loaded.part_count==1 && loaded.parts[0].rotation==0);
     {
         Workbench snapped={0}; Pin contact;
         assert(bench_add(&snapped,PART_BREADBOARD,500,400)==0);
