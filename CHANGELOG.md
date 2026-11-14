@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.3.0
+
+- Componentes podem ser reposicionados arrastando com o botão direito; as ligações acompanham os componentes.
+
 ## 0.2.0
 
 - Fonte e interruptor podem ser alternados por clique ou teclado; a fonte mostra seu estado visualmente.

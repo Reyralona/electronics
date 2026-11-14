@@ -6,14 +6,14 @@ A visão, o escopo proposto e as orientações de trabalho estão em [prompt.md]
 
 O primeiro incremento é um circuito fixo de fonte, interruptor e LED em console. Use `i` para alternar o interruptor, `f` para alternar a fonte e `q` para sair. É um modelo booleano didático, sem cálculo elétrico ou edição de conexões; não representa precisão de SPICE.
 
-Há também uma janela experimental SDL3/OpenGL: os três blocos representam fonte, interruptor e LED, nessa ordem. Clique na fonte ou interruptor para alterná-los, ou use `F` e `I`; `Esc` fecha. A barra de título mostra os estados. Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
+Há também uma janela experimental SDL3/OpenGL: os três blocos representam fonte, interruptor e LED, nessa ordem. Clique com o botão esquerdo na fonte ou interruptor para alterná-los, ou use `F` e `I`. Arraste componentes com o botão direito; `Esc` fecha. A barra de título mostra os estados. Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
 
 ```powershell
 ./build.ps1
 ./build/window.exe
 ```
 
-A DLL SDL3 deve estar no PATH ou junto do executável. A janela é uma prova de integração, ainda sem edição de circuitos, texto na cena ou apresentação 2.5D.
+A DLL SDL3 deve estar no PATH ou junto do executável. As posições não são salvas; as ligações e a topologia são fixas. A janela ainda não tem texto na cena nem apresentação 2.5D.
 
 A política de branches, versões e recuperação está em [VERSIONAMENTO.md](VERSIONAMENTO.md); o histórico está em [CHANGELOG.md](CHANGELOG.md).
 
