@@ -5,7 +5,7 @@
 #define WORKBENCH_MAX_WIRES 128
 #define WORKBENCH_MAX_PINS 100
 
-typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD } PartType;
+typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR } PartType;
 typedef struct { PartType type; float x, y; int on; } Part;
 typedef struct { int component, pin; } Pin;
 typedef struct { float x, y; } WirePoint;

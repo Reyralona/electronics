@@ -26,7 +26,7 @@ int workbench_read(FILE *f, Workbench *destination)
     if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || version!=1 || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
     for(i=0;i<parts;++i) {
         int type,on; float x,y;
-        if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
+        if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || type>PART_BREADBOARD || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
         b.parts[i].on=on;
     }
     for(i=0;i<wires;++i) {
