@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include "workbench.h"
+#include "workbench_file.h"
 
 static void rect(float x, float y, float w, float h) {
     glBegin(GL_QUADS); glVertex2f(x,y); glVertex2f(x+w,y); glVertex2f(x+w,y+h); glVertex2f(x,y+h); glEnd();
@@ -99,6 +100,11 @@ int main(int argc, char **argv) {
                 if(e.key.key==SDLK_ESCAPE) { pending.component=-1; route_count=0; placing=-1; dragging=-1; drag_wire=-1; status="Selecao cancelada."; }
                 else if(e.key.key==SDLK_SPACE) { sim_running=!sim_running; status=sim_running?"Simulacao executando.":"Simulacao pausada."; }
                 else if(e.key.key==SDLK_N && !sim_running) { bench_simulate(&bench,leds); status="Um passo executado."; }
+                else if(e.key.key==SDLK_S) { status=workbench_save("bancada.elec",&bench)?"Salvo em bancada.elec.":"Falha ao salvar."; }
+                else if(e.key.key==SDLK_L) {
+                    if(workbench_load("bancada.elec",&bench)) { selected=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada carregada."; }
+                    else status="Falha ao carregar; bancada preservada.";
+                }
                 else if(e.key.key==SDLK_DELETE && selected>=0) { bench_remove(&bench,selected); selected=-1; pending.component=-1; memset(leds,0,sizeof(leds)); status="Componente e seus fios removidos."; }
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_LEFT) {
                 int w,h,hit=-1,hitpin=-1; float x,y; SDL_GetWindowSize(window,&w,&h); if(w<=0||h<=0) continue;
