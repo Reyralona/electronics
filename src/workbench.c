@@ -1,5 +1,32 @@
 #include "workbench.h"
 #include <string.h>
+#include <math.h>
+
+int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, WirePoint output[WIRE_PATH_CAPACITY])
+{
+    int i, count=0;
+    output[count++]=start;
+    for(i=0;i<wire->knee_count && i<WIRE_MAX_KNEES;++i) {
+        WirePoint previous=i?wire->knees[i-1]:start;
+        WirePoint corner=wire->knees[i];
+        WirePoint next=i+1<wire->knee_count?wire->knees[i+1]:end;
+        float before=hypotf(previous.x-corner.x,previous.y-corner.y);
+        float after=hypotf(next.x-corner.x,next.y-corner.y);
+        float r=fminf(radius,fminf(before*.45f,after*.45f));
+        if(r<=0 || before<.001f || after<.001f) output[count++]=corner;
+        else {
+            int step;
+            WirePoint a={corner.x+(previous.x-corner.x)*r/before,corner.y+(previous.y-corner.y)*r/before};
+            WirePoint b={corner.x+(next.x-corner.x)*r/after,corner.y+(next.y-corner.y)*r/after};
+            for(step=0;step<=8;++step) {
+                float t=step/8.0f, u=1-t;
+                output[count++]=(WirePoint){u*u*a.x+2*u*t*corner.x+t*t*b.x,u*u*a.y+2*u*t*corner.y+t*t*b.y};
+            }
+        }
+    }
+    output[count++]=end;
+    return count;
+}
 
 int bench_pin_count(PartType type)
 {

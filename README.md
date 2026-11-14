@@ -6,7 +6,7 @@ A visão, o escopo proposto e as orientações de trabalho estão em [prompt.md]
 
 ## Bancada de montagem experimental
 
-Na branch de roteamento, clique em um terminal, depois em pontos vazios para acrescentar até 16 joelhos, e termine em outro terminal. Arraste os pequenos quadrados dos joelhos para ajustar o trajeto. Os segmentos ainda são retos; arredondamento e persistência estão pendentes. `bancada.exe --capture` gera `build/bancada-capture.bmp` com uma cena reproduzível para revisão visual.
+Clique em um terminal, depois em pontos vazios para acrescentar até 16 joelhos, e termine em outro terminal. Arraste os pequenos quadrados dos joelhos para ajustar o trajeto; dois cliques removem um joelho. Os cantos são arredondados com raio limitado pelo espaço disponível. `F1` abre configurações de grade, pontos de controle e curvas. A persistência da bancada permanece pendente. `bancada.exe --capture` gera `build/bancada-capture.bmp` com uma cena reproduzível para revisão visual; `--capture-settings` inclui o painel aberto.
 
 Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
 

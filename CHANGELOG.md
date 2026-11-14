@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.14.0
+
+- Fios com joelhos arrastáveis, remoção por duplo clique, curvas arredondadas e sombreamento.
+- Painel de configurações de grade, pontos de controle e arredondamento.
+- Capturas reproduzíveis para revisão visual e testes de geometria dos fios.
 ## 0.13.0
 
 - Breadboard instanciável com 100 furos e 20 grupos independentes de cinco contatos; fios podem ser ligados aos furos.
