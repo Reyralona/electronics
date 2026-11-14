@@ -57,5 +57,15 @@ int main(void)
     file=tmpfile(); assert(file); fputs("workbench 3\n2 0\n0 0 0 1\n4 0 0 0\n",file); rewind(file);
     assert(workbench_read(file,&loaded)); fclose(file);
     assert(loaded.parts[0].value==5 && loaded.parts[1].value==1000);
+    {
+        Workbench snapped={0}; Pin contact;
+        assert(bench_add(&snapped,PART_BREADBOARD,500,400)==0);
+        assert(bench_add(&snapped,PART_RESISTOR,488,363)==1);
+        assert(bench_snap_to_breadboard(&snapped,1));
+        file=tmpfile(); assert(file); assert(workbench_write(file,&snapped)); rewind(file);
+        assert(workbench_read(file,&loaded)); fclose(file);
+        assert(bench_find_contact(&loaded,1,0,&contact) && contact.pin==0);
+        assert(bench_find_contact(&loaded,1,1,&contact) && contact.pin==35);
+    }
     return 0;
 }

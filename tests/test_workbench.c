@@ -65,5 +65,21 @@ int main(void)
         assert(bench_toggle_wire(&bread, opposite, anode));
         bench_simulate(&bread, led); assert(!led[1]);
     }
+    {
+        Workbench b2={0}; Pin contact; int led2[WORKBENCH_MAX_COMPONENTS];
+        assert(bench_add(&b2,PART_BREADBOARD,500,400)==0);
+        assert(bench_add(&b2,PART_LED,488,363)==1);
+        assert(bench_add(&b2,PART_SOURCE,200,200)==2);
+        assert(bench_snap_to_breadboard(&b2,1));
+        assert(bench_find_contact(&b2,1,0,&contact) && contact.component==0 && contact.pin==0);
+        assert(bench_find_contact(&b2,1,1,&contact) && contact.component==0 && contact.pin==35);
+        assert(bench_toggle_wire(&b2,(Pin){2,0},(Pin){0,4})==1);
+        assert(bench_toggle_wire(&b2,(Pin){2,1},(Pin){0,39})==1);
+        bench_simulate(&b2,led2); assert(led2[1]);
+        b2.parts[1].x+=1;
+        bench_simulate(&b2,led2); assert(!led2[1]);
+        b2.parts[1].x-=1; b2.parts[0].y+=1;
+        bench_simulate(&b2,led2); assert(!led2[1]);
+    }
     return 0;
 }

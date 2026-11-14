@@ -61,5 +61,16 @@ int main(void)
         f=fopen("build/netlist-rl.cir","w"); assert(f);
         assert(netlist_write_transient(f,&rc,(Pin){2,0},.0000001,.00005)==NETLIST_OK); fclose(f);
     }
+    {
+        Workbench snapped={0};
+        assert(bench_add(&snapped,PART_SOURCE,200,200)==0);
+        assert(bench_add(&snapped,PART_BREADBOARD,500,400)==1);
+        assert(bench_add(&snapped,PART_RESISTOR,488,363)==2);
+        assert(bench_snap_to_breadboard(&snapped,2));
+        assert(bench_toggle_wire(&snapped,(Pin){0,0},(Pin){1,4})==1);
+        assert(bench_toggle_wire(&snapped,(Pin){0,1},(Pin){1,39})==1);
+        f=fopen("build/netlist-snap.cir","w"); assert(f);
+        assert(netlist_write_dc(f,&snapped)==NETLIST_OK); fclose(f);
+    }
     return 0;
 }

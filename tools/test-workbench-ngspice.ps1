@@ -12,6 +12,12 @@ $text = $output -join "`n"
 if ($text -match '(?im)^\s*error\b' -or $text -match '(?i)couldn.t be loaded') { throw "Erro do ngspice: $text" }
 if ($text -notmatch 'v\(\d+\)\s*=\s*5\.000000e\+00' -or $text -notmatch '@vsource\[i\]\s*=\s*-5\.00000e-03') { throw "Resultado inesperado: $text" }
 Write-Output 'Bancada -> netlist -> ngspice: 5 V e 5 mA verificados.'
+$snapped = & (Join-Path $resolvedRoot 'bin/ngspice_con.exe') -b 'build/netlist-snap.cir' 2>&1
+if ($LASTEXITCODE -ne 0) { throw "Falha ngspice (encaixe): $snapped" }
+$snappedText = $snapped -join "`n"
+if ($snappedText -match '(?im)^\s*error\b' -or $snappedText -match '(?i)couldn.t be loaded') { throw "Erro do ngspice: $snappedText" }
+if ($snappedText -notmatch '@vsource\[i\]\s*=\s*-5\.00000e-03') { throw "Resultado de encaixe inesperado: $snappedText" }
+Write-Output 'Resistor encaixado na breadboard: 5 mA verificados.'
 $adjustable = & (Join-Path $resolvedRoot 'bin/ngspice_con.exe') -b 'build/netlist-adjustable.cir' 2>&1
 if ($LASTEXITCODE -ne 0) { throw "Falha ngspice (valores ajustados): $adjustable" }
 $adjustableText = $adjustable -join "`n"

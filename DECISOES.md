@@ -30,4 +30,6 @@ Com a visualização de corrente ativada, cada fio é representado por uma fonte
 
 O indutor experimental tem valor fixo de 10 mH e corrente inicial zero no transitório. Um circuito RL de 1 kΩ é exportado pelo modelo e comparado com a resposta analítica em `tools/test-workbench-ngspice.ps1`. O formato de bancada passou à versão 3 para registrá-lo; a leitura de versões 1 e 2 é mantida. O teste transitório ainda é externo à interface.
 
+O encaixe experimental alinha o terminal mais próximo a um furo e reconhece como contato cada terminal geometricamente coincidente. A conectividade é compartilhada pelo modelo discreto e pelo tradutor SPICE e pode ser reconstruída após salvar ou desfazer. Mover a peça ou a placa desfaz o contato. Ainda não há rotação, colisão, controle de ocupação nem suporte para placas sobrepostas; a escolha de contatos em placas sobrepostas é apenas a primeira encontrada.
+
 Na branch experimental, fonte, resistor, capacitor e indutor têm valores editáveis em unidades SI, com limites de 10⁻¹² a 10¹²; os padrões são 5 V, 1 kΩ, 1 µF e 10 mH. O formato de bancada 4 os armazena em precisão dupla; versões 1 a 3 recebem os padrões. Testes incluem ida e volta, migração e simulação de 10 V em 2 kΩ. O limite numérico não substitui limites físicos por componente.

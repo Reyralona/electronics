@@ -51,6 +51,45 @@ int bench_pin_count(PartType type)
     return type == PART_BREADBOARD ? 100 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ? 2 : 0);
 }
 
+void bench_pin_position(const Part *p,int pin,float *x,float *y)
+{
+    if(p->type==PART_BREADBOARD) {
+        int group=pin/5,row=pin%5;
+        *x=p->x-63.0f+(group%10)*14.0f;
+        *y=p->y+(group<10?-39.0f:11.0f)+row*7.0f;
+    } else { *x=p->x+(pin?49.0f:-49.0f); *y=p->y; }
+}
+
+int bench_find_contact(const Workbench *b,int component,int pin,Pin *contact)
+{
+    int board,hole; float x,y;
+    if(!b || !contact || component<0 || component>=b->part_count || b->parts[component].type==PART_BREADBOARD || pin<0 || pin>=bench_pin_count(b->parts[component].type)) return 0;
+    bench_pin_position(&b->parts[component],pin,&x,&y);
+    for(board=0;board<b->part_count;++board) if(b->parts[board].type==PART_BREADBOARD) {
+        for(hole=0;hole<100;++hole) { float hx,hy; bench_pin_position(&b->parts[board],hole,&hx,&hy);
+            if(fabsf(x-hx)<.01f && fabsf(y-hy)<.01f) { *contact=(Pin){board,hole}; return 1; }
+        }
+    }
+    return 0;
+}
+
+int bench_snap_to_breadboard(Workbench *b,int component)
+{
+    int board,hole,pin,found=0; float best=64.0f,dx=0,dy=0;
+    if(!b || component<0 || component>=b->part_count || b->parts[component].type==PART_BREADBOARD) return 0;
+    for(pin=0;pin<bench_pin_count(b->parts[component].type);++pin) {
+        float x,y; bench_pin_position(&b->parts[component],pin,&x,&y);
+        for(board=0;board<b->part_count;++board) if(b->parts[board].type==PART_BREADBOARD) {
+            for(hole=0;hole<100;++hole) { float hx,hy,distance; bench_pin_position(&b->parts[board],hole,&hx,&hy);
+                distance=(hx-x)*(hx-x)+(hy-y)*(hy-y);
+                if(distance<best) { best=distance; dx=hx-x; dy=hy-y; found=1; }
+            }
+        }
+    }
+    if(found) { b->parts[component].x+=dx; b->parts[component].y+=dy; }
+    return found;
+}
+
 static int pin_valid(const Workbench *b, Pin p)
 {
     return p.component >= 0 && p.component < b->part_count && p.pin >= 0 &&
@@ -146,6 +185,11 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
             int group, hole;
             for (group = 0; group < 20; ++group)
                 for (hole = 1; hole < 5; ++hole) join(parent, base + group * 5, base + group * 5 + hole);
+        }
+    }
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type!=PART_BREADBOARD) {
+        int pin; for(pin=0;pin<bench_pin_count(b->parts[i].type);++pin) { Pin contact;
+            if(bench_find_contact(b,i,pin,&contact)) join(parent,i*WORKBENCH_MAX_PINS+pin,contact.component*WORKBENCH_MAX_PINS+contact.pin);
         }
     }
     for (i = 0; i < b->part_count; ++i) {

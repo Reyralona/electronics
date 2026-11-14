@@ -85,11 +85,7 @@ static int test_pan(SDL_Window *window)
     return SDL_PushEvent(&event);
 }
 static void pin_xy(const Part *p,int pin,float *x,float *y) {
-    if(p->type==PART_BREADBOARD) {
-        int group=pin/5, row=pin%5;
-        *x=p->x-63.0f+(group%10)*14.0f;
-        *y=p->y+(group<10?-39.0f:11.0f)+row*7.0f;
-    } else { *x=p->x+(pin ? 52.0f : -52.0f); *y=p->y; }
+    bench_pin_position(p,pin,x,y);
 }
 static void part_draw(const Part *p,int selected,int led) {
     float x=p->x,y=p->y;
@@ -150,7 +146,7 @@ int main(int argc, char **argv) {
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -159,6 +155,7 @@ int main(int argc, char **argv) {
         bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1});
         bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){772,300}; bench.wires[1].knees[1]=(WirePoint){412,300};
         if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); bench_add(&bench,PART_INDUCTOR,970,520); }
+        if(strcmp(argv[1],"--capture-snap")==0) { int part=bench_add(&bench,PART_RESISTOR,538,393); bench_snap_to_breadboard(&bench,part); bench_view_zoom_at(&view,1.8f,550,430); }
         if(strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0) {
             bench_add(&bench,PART_RESISTOR,530,220);
             selected=3;
@@ -190,7 +187,7 @@ int main(int argc, char **argv) {
             int queued=1;
             if(selftest_phase==0) queued=test_click(window,50,150) && test_click(window,400,250);
             else if(selftest_phase==1) queued=test_click(window,50,438) && test_click(window,600,250);
-            else if(selftest_phase==2) queued=test_click(window,348,250) && test_click(window,450,180) && test_click(window,548,250);
+            else if(selftest_phase==2) queued=test_click(window,351,250) && test_click(window,450,180) && test_click(window,551,250);
             else if(selftest_phase==3) queued=test_key(window,SDLK_Z);
             else if(selftest_phase==4) queued=test_key(window,SDLK_Y);
             else if(selftest_phase==5) queued=test_click(window,450,180) && test_drag_finish(window,460,190);
@@ -199,14 +196,18 @@ int main(int argc, char **argv) {
             else if(selftest_phase==8) queued=test_click_count(window,460,190,2);
             else if(selftest_phase==9) queued=test_key(window,SDLK_Z);
             else if(selftest_phase==10) queued=test_wheel(window,400,250,1);
-            else if(selftest_phase==11) queued=test_click(window,337.6f,250);
-            else if(selftest_phase==12) queued=test_click(window,577.6f,250);
+            else if(selftest_phase==11) queued=test_click(window,341.2f,250);
+            else if(selftest_phase==12) queued=test_click(window,581.2f,250);
             else if(selftest_phase==13) queued=test_key(window,SDLK_Z);
             else if(selftest_phase==14) queued=test_key(window,SDLK_HOME);
             else if(selftest_phase==15) queued=test_pan(window);
-            else if(selftest_phase==16) queued=test_click(window,448,290);
+            else if(selftest_phase==16) queued=test_click(window,451,290);
             else if(selftest_phase==17) queued=test_key(window,SDLK_ESCAPE);
             else if(selftest_phase==18) queued=test_key(window,SDLK_HOME);
+            else if(selftest_phase==19) queued=test_click(window,50,366) && test_click(window,850,430);
+            else if(selftest_phase==20) queued=test_click(window,50,438) && test_click(window,838,393);
+            else if(selftest_phase==21) queued=test_key(window,SDLK_Z);
+            else if(selftest_phase==22) queued=test_key(window,SDLK_Y);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -302,15 +303,15 @@ int main(int argc, char **argv) {
                         continue;
                     }
                 }
-                if(placing>=0) { Workbench before=bench; if(bench_add(&bench,(PartType)placing,x,y)>=0) { bench_history_record(history,&before); status="Componente adicionado. Selecione terminais para ligar."; placing=-1; } else status="Limite de componentes atingido."; continue; }
-                for(i=bench.part_count-1;i>=0;--i) { int p; float radius=bench.parts[i].type==PART_BREADBOARD?4.0f:12.0f; for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float px,py; pin_xy(&bench.parts[i],p,&px,&py); if((x-px)*(x-px)+(y-py)*(y-py)<=radius*radius) { hit=i; hitpin=p; break; } } if(hit>=0) break; }
+                if(placing>=0) { Workbench before=bench; int added=bench_add(&bench,(PartType)placing,x,y); if(added>=0) { int snapped=bench_snap_to_breadboard(&bench,added); bench_history_record(history,&before); status=snapped?"Componente encaixado na breadboard.":"Componente adicionado. Selecione terminais para ligar."; placing=-1; } else status="Limite de componentes atingido."; continue; }
+                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=bench.part_count-1;i>=0;--i) { int p,board=bench.parts[i].type==PART_BREADBOARD; float radius=board?4.0f:12.0f; if(board!=pass) continue; for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float px,py; pin_xy(&bench.parts[i],p,&px,&py); if((x-px)*(x-px)+(y-py)*(y-py)<=radius*radius) { hit=i; hitpin=p; break; } } if(hit>=0) break; } }
                 if(hitpin>=0) { Pin clicked={hit,hitpin}; if(pending.component<0) { pending=clicked; route_count=0; status="Clique para criar joelhos; termine em outro terminal."; } else if(pending.component==hit && pending.pin==hitpin) { pending.component=-1; route_count=0; status="Conexao cancelada."; } else { Workbench before=bench; int result=bench_toggle_wire(&bench,pending,clicked); if(result==1) { Wire *wire=&bench.wires[bench.wire_count-1]; wire->knee_count=route_count; memcpy(wire->knees,route,(size_t)route_count*sizeof(WirePoint)); } if(result) bench_history_record(history,&before); status=result==1?"Fio conectado.":result==2?"Fio removido.":"Nao foi possivel conectar."; pending.component=-1; route_count=0; } continue; }
                 if(pending.component>=0) { if(route_count<WIRE_MAX_KNEES) { route[route_count++]=(WirePoint){x,y}; status="Joelho adicionado; termine em um terminal."; } else status="Limite de 16 joelhos por fio."; continue; }
-                for(i=bench.part_count-1;i>=0;--i) { float hw=bench.parts[i].type==PART_BREADBOARD?87.0f:44.0f; float hh=bench.parts[i].type==PART_BREADBOARD?58.0f:30.0f; if(fabsf(x-bench.parts[i].x)<hw && fabsf(y-bench.parts[i].y)<hh) { hit=i; break; } }
+                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=bench.part_count-1;i>=0;--i) { int board=bench.parts[i].type==PART_BREADBOARD; float hw=board?87.0f:44.0f, hh=board?58.0f:30.0f; if(board!=pass) continue; if(fabsf(x-bench.parts[i].x)<hw && fabsf(y-bench.parts[i].y)<hh) { hit=i; break; } } }
                 selected=hit;
                 if(hit>=0) { if(e.button.clicks>=2 && (bench.parts[hit].type==PART_SOURCE || bench.parts[hit].type==PART_SWITCH)) { bench_history_record(history,&bench); bench.parts[hit].on=!bench.parts[hit].on; status="Estado alterado."; } else { dragging=hit; move_recorded=0; offset_x=x-bench.parts[hit].x; offset_y=y-bench.parts[hit].y; status="Arraste para mover; dois cliques alternam fonte ou chave."; } }
                 else { pending.component=-1; status="Bancada livre."; }
-            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { dragging=-1; drag_wire=-1; }
+            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { if(dragging>=0 && move_recorded && bench_snap_to_breadboard(&bench,dragging)) status="Componente encaixado na breadboard."; dragging=-1; drag_wire=-1; }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; WirePoint *point=&bench.wires[drag_wire].knees[drag_knee]; bench_view_to_world(&view,x,y,&x,&y); if(point->x!=x || point->y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } *point=(WirePoint){x,y}; } } }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; bench_view_to_world(&view,x,y,&x,&y); x-=offset_x; y-=offset_y; if(bench.parts[dragging].x!=x || bench.parts[dragging].y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } bench.parts[dragging].x=x; bench.parts[dragging].y=y; } } }
         }
@@ -335,8 +336,11 @@ int main(int argc, char **argv) {
             else if(selftest_phase==16) valid=pending.component==0 && pending.pin==0;
             else if(selftest_phase==17) valid=pending.component<0;
             else if(selftest_phase==18) valid=view.zoom==1 && view.pan_x==0 && view.pan_y==0;
+            else if(selftest_phase==19) valid=bench.part_count==3 && bench.parts[2].type==PART_BREADBOARD;
+            else if(selftest_phase==20 || selftest_phase==22) { Pin a,b; valid=bench.part_count==4 && bench.parts[3].type==PART_RESISTOR && bench_find_contact(&bench,3,0,&a) && bench_find_contact(&bench,3,1,&b) && a.component==2 && b.component==2; }
+            else if(selftest_phase==21) valid=bench.part_count==3;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==19) { if(!exit_code) puts("Autoteste de eventos, historico e navegacao passou."); running=0; }
+            if(++selftest_phase==23) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao e encaixe passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -391,7 +395,7 @@ int main(int argc, char **argv) {
         if(pending.component>=0) { float x,y; int k; pin_xy(&bench.parts[pending.component],pending.pin,&x,&y); color(.9f,.55f,.15f); for(k=0;k<route_count;++k) { line(x,y,route[k].x,route[k].y); x=route[k].x; y=route[k].y; } }
         if(show_handles) for(i=0;i<bench.wire_count;++i) { int k; for(k=0;k<bench.wires[i].knee_count;++k) { WirePoint p=bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
         glLineWidth(1);
-        for(i=0;i<bench.part_count;++i) { int p; part_draw(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; int board=bench.parts[i].type==PART_BREADBOARD; pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,board?3.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,board?3.0f:5.0f); } else if(!board) { color(.93f,.95f,.96f); circle(x,y,5); } } }
+        { int pass; for(pass=0;pass<2;++pass) for(i=0;i<bench.part_count;++i) { int p,board=bench.parts[i].type==PART_BREADBOARD; if(board!=(pass==0)) continue; part_draw(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; Pin contact; int snapped=!board && bench_find_contact(&bench,i,p,&contact); pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,board?3.0f:snapped?5.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,board?3.0f:snapped?3.0f:5.0f); } else if(snapped) { color(.18f,.78f,.46f); circle(x,y,3.0f); } else if(!board) { color(.93f,.95f,.96f); circle(x,y,5); } } } }
         glPopMatrix(); glDisable(GL_SCISSOR_TEST);
         if(selected>=0) {
             Part *part=&bench.parts[selected]; char reading[100];

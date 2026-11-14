@@ -31,6 +31,11 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         default: return NETLIST_UNSUPPORTED;
         }
     }
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type!=PART_BREADBOARD) {
+        int pin; for(pin=0;pin<bench_pin_count(b->parts[i].type);++pin) { Pin contact;
+            if(bench_find_contact(b,i,pin,&contact)) unite(parents,i*WORKBENCH_MAX_PINS+pin,pin_index(contact));
+        }
+    }
     if(source<0) return NETLIST_INVALID;
     ground=find_root(parents,source*WORKBENCH_MAX_PINS+1);
     positive=find_root(parents,source*WORKBENCH_MAX_PINS);
