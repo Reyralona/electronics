@@ -14,6 +14,12 @@ int main(void)
     circuit.disconnected_wires = 1;
     simulation_update(&simulation, &circuit);
     assert(simulation.led_on);
+    simulation_step(&simulation, &circuit);
+    assert(!simulation.led_on && !simulation.running);
+    circuit.disconnected_wires = 0;
+    simulation_step(&simulation, &circuit);
+    assert(simulation.led_on);
+    circuit.disconnected_wires = 1;
     simulation.running = 1;
     simulation_update(&simulation, &circuit);
     assert(!simulation.led_on);

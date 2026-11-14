@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.10.0
+
+- Avanço de um passo com a simulação pausada e inspeção dos estados observados da montagem.
+
 ## 0.9.0
 
 - Terminais visíveis permitem conectar ou desconectar os três pares previstos com o mouse; pares não suportados são rejeitados.

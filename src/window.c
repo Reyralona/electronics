@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include "project.h"
@@ -56,6 +57,7 @@ int main(void)
     History history = {0};
     Simulation simulation = {1, 0};
     const char *status = "S salvar | L carregar";
+    char diagnostic[120];
     int dragging = -1;
     int drag_recorded = 0;
     int selected_terminal = -1;
@@ -84,7 +86,7 @@ int main(void)
     while (running) {
         SDL_Event event;
         int width, height;
-        char title[160];
+        char title[256];
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) running = 0;
             else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
@@ -93,6 +95,19 @@ int main(void)
                 else if (event.key.key == SDLK_SPACE) {
                     simulation.running = !simulation.running;
                     status = simulation.running ? "Simulacao em execucao" : "Simulacao pausada";
+                }
+                else if (event.key.key == SDLK_N && !simulation.running) {
+                    simulation_step(&simulation, circuit);
+                    status = "Um passo executado";
+                }
+                else if (event.key.key == SDLK_D) {
+                    unsigned int flags = circuit_observed_obstacles(circuit);
+                    strcpy(diagnostic, "Montagem:");
+                    if (flags & CIRCUIT_SOURCE_OFF) strcat(diagnostic, " fonte desligada;");
+                    if (flags & CIRCUIT_SWITCH_OPEN) strcat(diagnostic, " interruptor aberto;");
+                    if (flags & CIRCUIT_WIRE_OPEN) strcat(diagnostic, " ligacao ausente;");
+                    if (!flags) strcat(diagnostic, " caminho completo.");
+                    status = diagnostic;
                 }
                 else if ((event.key.mod & SDL_KMOD_CTRL) && event.key.key == SDLK_Z) {
                     dragging = -1;
