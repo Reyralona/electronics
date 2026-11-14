@@ -13,7 +13,7 @@ Há também uma janela experimental SDL3/OpenGL: os três blocos representam fon
 ./build/window.exe
 ```
 
-A DLL SDL3 deve estar no PATH ou junto do executável. Pressione `S` para salvar posições e estados em `circuito.elec` na pasta em que o programa foi iniciado; salvar novamente substitui esse arquivo. `L` carrega esse arquivo e informa o resultado no título. O formato é versionado e arquivos inválidos não alteram o circuito aberto. Os pontos possíveis de ligação são fixos; a vista de zoom não é salva. A janela ainda não tem texto na cena nem apresentação 2.5D.
+A DLL SDL3 deve estar no PATH ou junto do executável. Pressione `S` para salvar posições e estados em `circuito.elec` na pasta em que o programa foi iniciado; salvar novamente substitui esse arquivo. `L` carrega esse arquivo e informa o resultado no título. O formato é versionado e arquivos inválidos não alteram o circuito aberto. Os pontos possíveis de ligação são fixos; a vista de zoom não é salva. A interface de texto é básica e a apresentação 2.5D ainda está em desenvolvimento.
 
 Use `Ctrl+Z` e `Ctrl+Y` para desfazer e refazer mudanças de posição, estados e carregamento. O histórico mantém até 32 etapas na sessão e não é salvo no arquivo.
 

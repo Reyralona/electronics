@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <windows.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include "project.h"
@@ -45,10 +46,42 @@ static void terminal_position(const Block *blocks, int terminal, float *x, float
     else { *x = b->x + (terminal == 0 || terminal == 2 ? b->w : 0); *y = b->y + b->h / 2; }
 }
 
+static GLuint create_text_font(void)
+{
+    HDC dc = wglGetCurrentDC();
+    HFONT font;
+    HGDIOBJ previous;
+    GLuint base = glGenLists(128);
+    if (!dc || !base) return 0;
+    font = CreateFontA(-16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                       ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                       ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
+    if (!font) { glDeleteLists(base, 128); return 0; }
+    previous = SelectObject(dc, font);
+    if (!previous || previous == HGDI_ERROR || !wglUseFontBitmapsA(dc, 0, 128, base)) {
+        if (previous && previous != HGDI_ERROR) SelectObject(dc, previous);
+        DeleteObject(font);
+        glDeleteLists(base, 128);
+        return 0;
+    }
+    SelectObject(dc, previous);
+    DeleteObject(font);
+    return base;
+}
+
+static void draw_text(GLuint font, float x, float y, const char *text)
+{
+    if (!font) return;
+    glRasterPos2f(x, y);
+    glListBase(font);
+    glCallLists((GLsizei)strlen(text), GL_UNSIGNED_BYTE, text);
+}
+
 int main(void)
 {
     SDL_Window *window;
     SDL_GLContext context;
+    GLuint font;
     Project project = {{1, 0, 0}, {{-0.7f, -0.15f, 0.3f, 0.3f},
                                  {-0.15f, -0.12f, 0.3f, 0.24f},
                                  {0.4f, -0.15f, 0.3f, 0.3f}}};
@@ -83,6 +116,7 @@ int main(void)
         return 1;
     }
     SDL_GL_SetSwapInterval(1);
+    font = create_text_font();
     while (running) {
         SDL_Event event;
         int width, height;
@@ -276,8 +310,14 @@ int main(void)
                 rectangle(x - .025f, y - .025f, .05f, .05f);
             }
         }
+        glLoadIdentity();
+        glColor3f(0.96f, 0.96f, 0.96f);
+        draw_text(font, -0.97f, 0.92f, title);
+        draw_text(font, -0.97f, -0.88f, "Clique: alternar ou selecionar terminais | Botao direito: mover");
+        draw_text(font, -0.97f, -0.96f, "Espaco: pausar | N: passo | D: inspecionar | S/L: salvar/abrir");
         SDL_GL_SwapWindow(window);
     }
+    if (font) glDeleteLists(font, 128);
     SDL_GL_DestroyContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
