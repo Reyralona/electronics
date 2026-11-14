@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $toolchain = 'C:\msys64\ucrt64\bin'
 if (Test-Path (Join-Path $toolchain 'gcc.exe')) { $env:Path = "$toolchain;$env:Path" }
 New-Item -ItemType Directory -Force build | Out-Null
-& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/workbench.c src/workbench_file.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
+& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/workbench.c src/workbench_file.c src/netlist.c src/spice_process.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench.c src/workbench.c -o build/test_workbench.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -16,6 +16,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_netlist.c src/netlist.c src/workbench.c -o build/test_netlist.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_netlist.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_process.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_spice_process.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_spice_process.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($Legacy) {
     & gcc -std=c11 -Wall -Wextra -Werror src/window.c src/circuit.c src/project.c src/history.c src/simulation.c -o build/window.exe -lSDL3 -lopengl32 -lgdi32

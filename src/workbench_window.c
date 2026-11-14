@@ -6,6 +6,7 @@
 #include <SDL3/SDL_opengl.h>
 #include "workbench.h"
 #include "workbench_file.h"
+#include "spice_process.h"
 
 static void rect(float x, float y, float w, float h) {
     glBegin(GL_QUADS); glVertex2f(x,y); glVertex2f(x+w,y); glVertex2f(x+w,y+h); glVertex2f(x,y+h); glEnd();
@@ -84,8 +85,9 @@ int main(int argc, char **argv) {
     WirePoint route[WIRE_MAX_KNEES]; int route_count=0, drag_wire=-1, drag_knee=-1;
     int settings=0, show_grid=1, show_handles=1, round_wires=1;
     int leds[WORKBENCH_MAX_COMPONENTS]={0}; float offset_x=0,offset_y=0;
+    Workbench dc_snapshot={0}; int dc_valid=0; double dc_current=0; char dc_status[128];
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -94,6 +96,13 @@ int main(int argc, char **argv) {
         bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1});
         bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){772,300}; bench.wires[1].knees[1]=(WirePoint){412,300};
         if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); }
+        if(strcmp(argv[1],"--capture-dc")==0) {
+            bench_add(&bench,PART_RESISTOR,530,220);
+            bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0});
+            bench_toggle_wire(&bench,(Pin){0,0},(Pin){3,0});
+            bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){308,150}; bench.wires[1].knees[1]=(WirePoint){478,150};
+            bench_toggle_wire(&bench,(Pin){3,1},(Pin){1,0});
+        }
     }
     if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); return 1; }
     window=SDL_CreateWindow("Bancada experimental",1280,720,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
@@ -101,6 +110,11 @@ int main(int argc, char **argv) {
     context=SDL_GL_CreateContext(window);
     if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); return 1; }
     font=make_font(); SDL_GL_SetSwapInterval(1);
+    if(capture && strcmp(argv[1],"--capture-dc")==0) {
+        dc_valid=spice_dc_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_status,sizeof(dc_status));
+        if(dc_valid) dc_snapshot=bench;
+        status=dc_status;
+    }
     while(running) {
         SDL_Event e; int width,height,i;
         while(SDL_PollEvent(&e)) {
@@ -110,6 +124,11 @@ int main(int argc, char **argv) {
                 if(e.key.key==SDLK_ESCAPE) { pending.component=-1; route_count=0; placing=-1; dragging=-1; drag_wire=-1; status="Selecao cancelada."; }
                 else if(e.key.key==SDLK_SPACE) { sim_running=!sim_running; status=sim_running?"Simulacao executando.":"Simulacao pausada."; }
                 else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
+                else if(e.key.key==SDLK_P) {
+                    dc_valid=spice_dc_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_status,sizeof(dc_status));
+                    if(dc_valid) dc_snapshot=bench;
+                    status=dc_status;
+                }
                 else if(e.key.key==SDLK_S) { status=workbench_save("bancada.elec",&bench)?"Salvo em bancada.elec.":"Falha ao salvar."; }
                 else if(e.key.key==SDLK_L) {
                     if(workbench_load("bancada.elec",&bench)) { selected=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada carregada."; }
@@ -154,6 +173,7 @@ int main(int argc, char **argv) {
             else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { bench.wires[drag_wire].knees[drag_knee]=(WirePoint){e.motion.x*1280.0f/w,e.motion.y*720.0f/h}; } }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { bench.parts[dragging].x=e.motion.x*1280.0f/w-offset_x; bench.parts[dragging].y=e.motion.y*720.0f/h-offset_y; } }
         }
+        if(dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem alterada; pressione P para recalcular."; }
         if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
         else if(sim_running) bench_simulate(&bench,leds);
         SDL_GetWindowSizeInPixels(window,&width,&height); glViewport(0,0,width,height);
@@ -163,7 +183,7 @@ int main(int argc, char **argv) {
         text(font,830,42,"Configuracoes [F1]");
         if(!bench_boolean_supported(&bench)) color(.66f,.36f,.12f);
         else color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f);
-        text(font,1030,42,!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
+        text(font,1030,42,dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
         color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,"COMPONENTES");
         for(i=0;i<6;++i) { float y=140+i*84; color(placing==i?.79f:.92f,placing==i?.9f:.94f,.96f); rect(14,y,192,70); color(.16f,.22f,.26f); text(font,76,y+39,i==0?"Fonte":i==1?"Interruptor":i==2?"LED":i==3?"Breadboard":i==4?"Resistor":"Capacitor"); color(i==0?.2f:i==1?.38f:.84f,i==0?.54f:.42f,i==2?.28f:.6f); circle(42,y+35,13); }
         color(.85f,.88f,.89f); glLineWidth(1); if(show_grid) { for(i=240;i<1280;i+=24) line((float)i,69,(float)i,659); for(i=92;i<660;i+=24) line(220,(float)i,1280,(float)i); }
@@ -184,7 +204,7 @@ int main(int argc, char **argv) {
         if(show_handles) for(i=0;i<bench.wire_count;++i) { int k; for(k=0;k<bench.wires[i].knee_count;++k) { WirePoint p=bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
         glLineWidth(1);
         for(i=0;i<bench.part_count;++i) { int p; part_draw(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; int board=bench.parts[i].type==PART_BREADBOARD; pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,board?3.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,board?3.0f:5.0f); } else if(!board) { color(.93f,.95f,.96f); circle(x,y,5); } } }
-        color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status); text(font,238,709,"Clique nos terminais para ligar | Duplo clique: alternar | Espaco: pausa | N: passo | Delete: excluir");
+        color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status); text(font,238,709,"Terminais: fios | Duplo clique: alternar | P: analisar DC | Espaco/N: pausa/passo | Delete: excluir");
         if(settings) {
             color(.62f,.68f,.72f); rect(846,90,400,246);
             color(.98f,.98f,.99f); rect(840,84,400,246);
