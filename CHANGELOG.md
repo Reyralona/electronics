@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.9.0
+
+- Terminais visíveis permitem conectar ou desconectar os três pares previstos com o mouse; pares não suportados são rejeitados.
+- Espaço pausa ou retoma a simulação, mantendo o último estado observado enquanto pausada.
+
 ## 0.8.0
 
 - Três ligações fixas podem ser conectadas ou desconectadas com as teclas 1, 2 e 3; o LED depende do circuito completo. O formato 2 salva essas ligações e continua lendo projetos do formato 1.
