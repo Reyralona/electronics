@@ -23,6 +23,11 @@ if ($LASTEXITCODE -ne 0) { throw "Falha ngspice (grupos adicionais): $extended" 
 $extendedText = $extended -join "`n"
 if ($extendedText -match '(?im)^\s*error\b' -or $extendedText -match '(?i)couldn.t be loaded' -or $extendedText -notmatch '@vsource\[i\]\s*=\s*-5\.00000e-03') { throw "Resultado dos grupos adicionais inesperado: $extendedText" }
 Write-Output 'Grupos adicionais da breadboard: 5 mA verificados.'
+$rail = & (Join-Path $resolvedRoot 'bin/ngspice_con.exe') -b 'build/netlist-rail.cir' 2>&1
+if ($LASTEXITCODE -ne 0) { throw "Falha ngspice (trilho): $rail" }
+$railText = $rail -join "`n"
+if ($railText -match '(?im)^\s*error\b' -or $railText -match '(?i)couldn.t be loaded' -or $railText -notmatch '@vsource\[i\]\s*=\s*-5\.00000e-03') { throw "Resultado do trilho inesperado: $railText" }
+Write-Output 'Trilho de alimentação: 5 mA verificados.'
 $adjustable = & (Join-Path $resolvedRoot 'bin/ngspice_con.exe') -b 'build/netlist-adjustable.cir' 2>&1
 if ($LASTEXITCODE -ne 0) { throw "Falha ngspice (valores ajustados): $adjustable" }
 $adjustableText = $adjustable -join "`n"

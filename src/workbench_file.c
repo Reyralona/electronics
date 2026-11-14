@@ -6,7 +6,7 @@
 int workbench_write(FILE *f, const Workbench *b)
 {
     int i, k;
-    if (fprintf(f,"workbench 5\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
+    if (fprintf(f,"workbench 7\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
     for (i=0;i<b->part_count;++i) {
         const Part *p=&b->parts[i];
         if (fprintf(f,"%d %.9g %.9g %d %.17g\n",(int)p->type,p->x,p->y,p->on,p->value)<0) return 0;
@@ -23,7 +23,7 @@ int workbench_write(FILE *f, const Workbench *b)
 int workbench_read(FILE *f, Workbench *destination)
 {
     Workbench b={0}; char magic[32], extra; int version, parts, wires, i, k;
-    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>5) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
+    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>7) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
     for(i=0;i<parts;++i) {
         int type,on; float x,y;
         if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || (version==1 && type>PART_BREADBOARD) || (version==2 && type>PART_CAPACITOR) || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
@@ -37,7 +37,7 @@ int workbench_read(FILE *f, Workbench *destination)
     }
     for(i=0;i<wires;++i) {
         Pin a,c; int knees;
-        if(fscanf(f,"%d %d %d %d %d",&a.component,&a.pin,&c.component,&c.pin,&knees)!=5 || knees<0 || knees>WIRE_MAX_KNEES || (version<5 && (a.pin>=100 || c.pin>=100)) || bench_toggle_wire(&b,a,c)!=1) return 0;
+        if(fscanf(f,"%d %d %d %d %d",&a.component,&a.pin,&c.component,&c.pin,&knees)!=5 || knees<0 || knees>WIRE_MAX_KNEES || (version<5 && (a.pin>=100 || c.pin>=100)) || (version==5 && (a.pin>=180 || c.pin>=180)) || (version==6 && (a.pin>=300 || c.pin>=300)) || bench_toggle_wire(&b,a,c)!=1) return 0;
         b.wires[i].knee_count=knees;
         for(k=0;k<knees;++k) {
             WirePoint *p=&b.wires[i].knees[k];

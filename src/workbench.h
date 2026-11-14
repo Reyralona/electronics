@@ -3,8 +3,8 @@
 
 #define WORKBENCH_MAX_COMPONENTS 64
 #define WORKBENCH_MAX_WIRES 128
-#define WORKBENCH_MAX_PINS 180
-#define BREADBOARD_PINS 180
+#define WORKBENCH_MAX_PINS 420
+#define BREADBOARD_PINS 420
 
 typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR } PartType;
 typedef struct { PartType type; float x, y; int on; double value; } Part;
@@ -21,6 +21,7 @@ typedef struct {
 
 int bench_add(Workbench *bench, PartType type, float x, float y);
 int bench_pin_count(PartType type);
+int bench_board_group_first(int pin);
 int bench_set_value(Workbench *bench, int component, double value);
 int bench_parse_value(const char *text, double *value);
 void bench_pin_position(const Part *part, int pin, float *x, float *y);

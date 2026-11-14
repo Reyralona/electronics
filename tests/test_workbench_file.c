@@ -66,6 +66,22 @@ int main(void)
         fputs("workbench 4\n2 1\n0 0 0 1 5\n3 0 0 0 0\n0 0 1 179 0\n",file); rewind(file);
         assert(!workbench_read(file,&loaded)); fclose(file);
         assert(loaded.wires[0].b.pin==179);
+        assert(bench_toggle_wire(&extended,(Pin){0,1},(Pin){1,299})==1);
+        file=tmpfile(); assert(file); assert(workbench_write(file,&extended)); rewind(file);
+        assert(workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.wire_count==2 && loaded.wires[1].b.pin==299);
+        file=tmpfile(); assert(file);
+        fputs("workbench 5\n2 1\n0 0 0 1 5\n3 0 0 0 0\n0 0 1 299 0\n",file); rewind(file);
+        assert(!workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.wire_count==2 && loaded.wires[1].b.pin==299);
+        assert(bench_toggle_wire(&extended,(Pin){0,1},(Pin){1,419})==1);
+        file=tmpfile(); assert(file); assert(workbench_write(file,&extended)); rewind(file);
+        assert(workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.wires[2].b.pin==419);
+        file=tmpfile(); assert(file);
+        fputs("workbench 6\n2 1\n0 0 0 1 5\n3 0 0 0 0\n0 0 1 419 0\n",file); rewind(file);
+        assert(!workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.wires[2].b.pin==419);
     }
     file=tmpfile(); assert(file); fputs("workbench 3\n2 0\n0 0 0 1\n4 0 0 0\n",file); rewind(file);
     assert(workbench_read(file,&loaded)); fclose(file);
