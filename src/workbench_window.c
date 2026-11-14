@@ -7,6 +7,7 @@
 #include "workbench.h"
 #include "workbench_file.h"
 #include "spice_process.h"
+#include "spice_job.h"
 
 static void rect(float x, float y, float w, float h) {
     glBegin(GL_QUADS); glVertex2f(x,y); glVertex2f(x+w,y); glVertex2f(x+w,y+h); glVertex2f(x,y+h); glEnd();
@@ -86,6 +87,7 @@ int main(int argc, char **argv) {
     int settings=0, show_grid=1, show_handles=1, round_wires=1;
     int leds[WORKBENCH_MAX_COMPONENTS]={0}; float offset_x=0,offset_y=0;
     Workbench dc_snapshot={0}; int dc_valid=0; double dc_current=0; char dc_status[128];
+    SpiceJob dc_job={0};
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
     int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
@@ -125,9 +127,9 @@ int main(int argc, char **argv) {
                 else if(e.key.key==SDLK_SPACE) { sim_running=!sim_running; status=sim_running?"Simulacao executando.":"Simulacao pausada."; }
                 else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
                 else if(e.key.key==SDLK_P) {
-                    dc_valid=spice_dc_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_status,sizeof(dc_status));
-                    if(dc_valid) dc_snapshot=bench;
-                    status=dc_status;
+                    if(dc_job.thread) status="Analise em andamento.";
+                    else if(spice_job_start(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe")) { dc_valid=0; status="Analisando ponto DC..."; }
+                    else status="Falha ao iniciar tarefa de analise.";
                 }
                 else if(e.key.key==SDLK_S) { status=workbench_save("bancada.elec",&bench)?"Salvo em bancada.elec.":"Falha ao salvar."; }
                 else if(e.key.key==SDLK_L) {
@@ -172,6 +174,10 @@ int main(int argc, char **argv) {
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { dragging=-1; drag_wire=-1; }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { bench.wires[drag_wire].knees[drag_knee]=(WirePoint){e.motion.x*1280.0f/w,e.motion.y*720.0f/h}; } }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { bench.parts[dragging].x=e.motion.x*1280.0f/w-offset_x; bench.parts[dragging].y=e.motion.y*720.0f/h-offset_y; } }
+        }
+        if(spice_job_poll(&dc_job)) {
+            if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
+            else { dc_valid=dc_job.success; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
         }
         if(dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem alterada; pressione P para recalcular."; }
         if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
@@ -228,6 +234,7 @@ int main(int argc, char **argv) {
             free(pixels); free(flipped); running=0;
         }
     }
+    spice_job_join(&dc_job);
     if(font) glDeleteLists(font,128);
     SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return 0;
 }

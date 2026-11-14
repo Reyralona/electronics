@@ -1,0 +1,34 @@
+#include <assert.h>
+#include <math.h>
+#include <string.h>
+#include "spice_job.h"
+
+static void finish(SpiceJob *job)
+{
+    Uint64 deadline=SDL_GetTicks()+12000;
+    while(!spice_job_poll(job)) { assert(SDL_GetTicks()<deadline); SDL_Delay(1); }
+}
+int main(int argc,char **argv)
+{
+    Workbench bench={0}; SpiceJob job={0};
+    assert(SDL_Init(0));
+    assert(bench_add(&bench,PART_SOURCE,0,0)==0);
+    assert(bench_add(&bench,PART_RESISTOR,0,0)==1);
+    assert(bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0})==1);
+    assert(bench_toggle_wire(&bench,(Pin){0,1},(Pin){1,1})==1);
+    assert(spice_job_start(&job,&bench,"build/missing-ngspice.exe"));
+    assert(!spice_job_start(&job,&bench,"build/missing-ngspice.exe"));
+    bench.parts[0].on=0;
+    finish(&job);
+    assert(!job.success && job.snapshot.parts[0].on==1);
+    assert(strstr(job.message,"nao encontrado"));
+    if(argc>1) {
+        bench.parts[0].on=1;
+        assert(spice_job_start(&job,&bench,argv[1]));
+        finish(&job);
+        assert(job.success && fabs(job.current+.005)<1e-7);
+    }
+    spice_job_join(&job);
+    SDL_Quit();
+    return 0;
+}
