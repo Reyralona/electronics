@@ -195,5 +195,29 @@ int main(int argc, char **argv)
         k=0; for(j=1;j<inverted.count;++j) if(fabs(inverted.samples[j].time-1.75e-6)<fabs(inverted.samples[k].time-1.75e-6)) k=j;
         assert(inverted.samples[k].value>4.9);
     }
+    if(argc>1) {
+        Workbench circuit={0}; SpiceTrace trace={0}; int i,high=0,low=0;
+        assert(bench_add(&circuit,PART_CLOCK,0,0)==0);
+        assert(bench_add(&circuit,PART_NOT,0,0)==1);
+        assert(bench_add(&circuit,PART_RESISTOR,0,0)==2);
+        assert(bench_add(&circuit,PART_LED,0,0)==3);
+        assert(bench_add(&circuit,PART_RESISTOR,0,0)==4);
+        assert(bench_add(&circuit,PART_LED,0,0)==5);
+        assert(bench_toggle_wire(&circuit,(Pin){0,0},(Pin){1,0})==1);
+        assert(bench_toggle_wire(&circuit,(Pin){0,0},(Pin){2,0})==1);
+        assert(bench_toggle_wire(&circuit,(Pin){2,1},(Pin){3,0})==1);
+        assert(bench_toggle_wire(&circuit,(Pin){3,1},(Pin){0,1})==1);
+        assert(bench_toggle_wire(&circuit,(Pin){1,1},(Pin){4,0})==1);
+        assert(bench_toggle_wire(&circuit,(Pin){4,1},(Pin){5,0})==1);
+        assert(bench_toggle_wire(&circuit,(Pin){5,1},(Pin){0,1})==1);
+        assert(spice_transient_analyze(&circuit,argv[1],(Pin){0,0},1e-5,.002,&trace,message,sizeof(message)));
+        for(i=1;i<trace.count;++i) {
+            if(fabs(trace.samples[i].time-.00025)<fabs(trace.samples[high].time-.00025)) high=i;
+            if(fabs(trace.samples[i].time-.00075)<fabs(trace.samples[low].time-.00075)) low=i;
+        }
+        assert(trace.samples[high].value>4.9 && trace.samples[low].value<.01);
+        assert((trace.leds_on[high] & (UINT64_C(1)<<3)) && !(trace.leds_on[high] & (UINT64_C(1)<<5)));
+        assert(!(trace.leds_on[low] & (UINT64_C(1)<<3)) && (trace.leds_on[low] & (UINT64_C(1)<<5)));
+    }
     return 0;
 }

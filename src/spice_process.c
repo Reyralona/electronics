@@ -8,14 +8,15 @@
 
 static int analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],double *wire_currents,SpiceTrace *trace,int trace_current,Pin probe,double step,double stop,char *message,size_t capacity)
 {
-    char dir[MAX_PATH], input[MAX_PATH]="", output[MAX_PATH]="", exe[MAX_PATH], command[3*MAX_PATH+32], buffer[262144];
+    char dir[MAX_PATH], input[MAX_PATH]="", output[MAX_PATH]="", exe[MAX_PATH], command[3*MAX_PATH+32], *buffer=NULL; size_t buffer_capacity=trace?16*1024*1024:32768;
     DWORD length,exit_code=1; FILE *file=NULL; HANDLE log=INVALID_HANDLE_VALUE; STARTUPINFOA si={0}; PROCESS_INFORMATION pi={0};
     SECURITY_ATTRIBUTES security={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE}; NetlistResult result; int ok=0;
     if(!bench || !executable || !message || !capacity || (!trace && (!current || !led_currents))) return 0;
     if(trace && (!isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || stop/step>500.0*(1.0+1e-12))) { snprintf(message,capacity,"Intervalo transitorio invalido."); return 0; }
     snprintf(message,capacity,"Falha ao preparar analise.");
+    buffer=malloc(buffer_capacity); if(!buffer) return 0;
     length=GetFullPathNameA(executable,MAX_PATH,exe,NULL);
-    if(!length || length>=MAX_PATH || GetFileAttributesA(exe)==INVALID_FILE_ATTRIBUTES) { snprintf(message,capacity,"ngspice nao encontrado."); return 0; }
+    if(!length || length>=MAX_PATH || GetFileAttributesA(exe)==INVALID_FILE_ATTRIBUTES) { snprintf(message,capacity,"ngspice nao encontrado."); goto cleanup; }
     length=GetTempPathA(MAX_PATH,dir);
     if(!length || length>=MAX_PATH || !GetTempFileNameA(dir,"nci",0,input) || !GetTempFileNameA(dir,"nco",0,output)) goto cleanup;
     file=fopen(input,"w"); if(!file) goto cleanup;
@@ -33,21 +34,33 @@ static int analyze(const Workbench *bench,const char *executable,double *current
     CloseHandle(log); log=INVALID_HANDLE_VALUE;
     if(exit_code!=0) { snprintf(message,capacity,"ngspice falhou."); goto cleanup; }
     file=fopen(output,"r"); if(!file) goto cleanup;
-    length=(DWORD)fread(buffer,1,sizeof(buffer)-1,file); buffer[length]='\0';
+    length=(DWORD)fread(buffer,1,buffer_capacity-1,file); buffer[length]='\0';
     if(!feof(file) || ferror(file) || strstr(buffer,"Error:") || strstr(buffer,"error:") || strstr(buffer,"Warning:") || strstr(buffer,"warning:") || strstr(buffer,"couldn't be loaded") || strstr(buffer,"singular matrix") || strstr(buffer,"convergence failed")) { snprintf(message,capacity,"Resultado SPICE invalido ou incompleto."); goto cleanup; }
     if(trace) {
-        SpiceTrace local={0}; char *line=buffer; double previous=-1;
+        SpiceTrace local={0}; char *line=buffer; double previous=-1; int led_indices[WORKBENCH_MAX_COMPONENTS],led_count=0,section=0,section_count=0,i;
+        for(i=0;i<bench->part_count;++i) if(bench->parts[i].type==PART_LED) led_indices[led_count++]=i;
         while(*line) {
-            char *next=strchr(line,'\n'); int index,consumed=0; double time,voltage;
+            char *next=strchr(line,'\n'); int index,consumed=0; double time,value;
             if(next) *next='\0';
-            if(sscanf(line," %d %lf %lf %n",&index,&time,&voltage,&consumed)==3 && consumed>0 && line[consumed]=='\0') {
-                if(index!=local.count || !isfinite(time) || !isfinite(voltage) || time<0 || time<previous || local.count>=SPICE_TRANSIENT_MAX_SAMPLES) { snprintf(message,capacity,"Amostras transitorias invalidas."); goto cleanup; }
-                local.samples[local.count++]=(SpiceSample){time,voltage}; previous=time;
+            if(sscanf(line," %d %lf %lf %n",&index,&time,&value,&consumed)==3 && consumed>0 && line[consumed]=='\0') {
+                if(index==0 && section_count>0) {
+                    if(section>0 && section_count!=local.count) { snprintf(message,capacity,"Correntes transitorias incompletas."); goto cleanup; }
+                    ++section; section_count=0;
+                }
+                if(index!=section_count || !isfinite(time) || !isfinite(value) || time<0 || index>=SPICE_TRANSIENT_MAX_SAMPLES || section>led_count) { snprintf(message,capacity,"Amostras transitorias invalidas."); goto cleanup; }
+                if(section==0) {
+                    if(time<previous) { snprintf(message,capacity,"Tempos transitorios invalidos."); goto cleanup; }
+                    local.samples[local.count++]=(SpiceSample){time,value}; previous=time;
+                } else {
+                    if(index>=local.count || time!=local.samples[index].time) { snprintf(message,capacity,"Correntes transitorias dessincronizadas."); goto cleanup; }
+                    if(value>=1e-6) local.leds_on[index]|=UINT64_C(1)<<led_indices[section-1];
+                }
+                ++section_count;
             }
             if(!next) break;
             line=next+1;
         }
-        if(local.count<2 || previous<stop*(1-1e-6)) { snprintf(message,capacity,"Amostras transitorias incompletas."); goto cleanup; }
+        if(local.count<2 || previous<stop*(1-1e-6) || section!=led_count || section_count!=local.count) { snprintf(message,capacity,"Amostras transitorias incompletas."); goto cleanup; }
         *trace=local; snprintf(message,capacity,"Transitorio calculado: %d amostras.",local.count); ok=1; goto cleanup;
     }
     {
@@ -84,6 +97,7 @@ cleanup:
     if(pi.hProcess) CloseHandle(pi.hProcess);
     if(input[0]) DeleteFileA(input);
     if(output[0]) DeleteFileA(output);
+    free(buffer);
     return ok;
 }
 

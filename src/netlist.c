@@ -118,12 +118,14 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
             else return NETLIST_UNSUPPORTED;
         }
         if(transient==3) snprintf(vector,sizeof(vector),"@vwire%d[i]",probe.component);
-        if(fprintf(out,".control\n")<0) return NETLIST_IO_ERROR;
-        if(transient>=2 && fprintf(out,"save %s\n",vector)<0) return NETLIST_IO_ERROR;
-        if(fprintf(out,"tran %.17g %.17g uic\n",step,stop)<0) return NETLIST_IO_ERROR;
+        if(fprintf(out,".control\nsave all")<0) return NETLIST_IO_ERROR;
+        if(transient>=2 && fprintf(out," %s",vector)<0) return NETLIST_IO_ERROR;
+        for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_LED && fprintf(out," @d%d[id]",i)<0) return NETLIST_IO_ERROR;
+        if(fprintf(out,"\ntran %.17g %.17g uic\n",step,stop)<0) return NETLIST_IO_ERROR;
         if(transient>=2) { if(fprintf(out,"print %s\n",vector)<0) return NETLIST_IO_ERROR; }
         else if(node==ground) { if(fprintf(out,"print time*0\n")<0) return NETLIST_IO_ERROR; }
         else if(fprintf(out,"print v(%d)\n",node+1)<0) return NETLIST_IO_ERROR;
+        for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_LED && fprintf(out,"print @d%d[id]\n",i)<0) return NETLIST_IO_ERROR;
         if(fprintf(out,"quit\n.endc\n.end\n")<0) return NETLIST_IO_ERROR;
     } else {
         if(fprintf(out,".control\nop\nprint v(%d) @vsource[i]\n",positive==ground?0:positive+1)<0) return NETLIST_IO_ERROR;

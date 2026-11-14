@@ -272,7 +272,7 @@ int main(int argc, char **argv) {
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -344,6 +344,14 @@ int main(int argc, char **argv) {
             if(strcmp(argv[1],"--capture-play")==0) { trace_play_start_index=0; trace_play_started=SDL_GetTicks()-2000; sim_running=1; status="Reproducao da curva: intervalo completo em 5 s reais."; }
         }
         else { fprintf(stderr,"Captura transitoria: %s\n",dc_status); return 1; }
+    }
+    if(capture && (strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0)) {
+        bench=(Workbench){0}; bench_add(&bench,PART_CLOCK,400,250); bench_add(&bench,PART_RESISTOR,600,250); bench_add(&bench,PART_LED,800,250);
+        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){351,150}; bench.wires[0].knees[1]=(WirePoint){551,150};
+        bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1}); bench.wires[2].knee_count=2; bench.wires[2].knees[0]=(WirePoint){849,370}; bench.wires[2].knees[1]=(WirePoint){449,370};
+        trace_valid=spice_transient_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){0,0},1e-5,.002,&trace,dc_status,sizeof(dc_status));
+        if(!trace_valid) { fprintf(stderr,"Captura LED: %s\n",dc_status); return 1; }
+        trace_snapshot=bench; trace_index=trace_nearest(&trace,strcmp(argv[1],"--capture-led-on")==0?.125:.375); sim_running=0; status="LED acompanha corrente transitoria calculada.";
     }
     while(running) {
         SDL_Event e; int width,height,i;
@@ -419,6 +427,9 @@ int main(int argc, char **argv) {
             else if(selftest_phase==67) queued=test_key(window,SDLK_SPACE);
             else if(selftest_phase==68) { trace_play_started=SDL_GetTicks()-6000; queued=test_key(window,SDLK_UNKNOWN); }
             else if(selftest_phase==69) queued=test_key(window,SDLK_UNKNOWN);
+            else if(selftest_phase==70) { bench_add(&bench,PART_LED,1200,500); trace_snapshot=bench; trace_valid=1; trace_index=0; trace.leds_on[0]=UINT64_C(1)<<7; trace.leds_on[1]=0; sim_running=0; queued=test_key(window,SDLK_UNKNOWN); }
+            else if(selftest_phase==71) { trace_index=1; queued=test_key(window,SDLK_UNKNOWN); }
+            else if(selftest_phase==72) queued=test_key(window,SDLK_UNKNOWN);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -669,8 +680,11 @@ int main(int argc, char **argv) {
             else if(selftest_phase==66) valid=trace_valid && !sim_running;
             else if(selftest_phase==67 || selftest_phase==68) valid=trace_valid && sim_running;
             else if(selftest_phase==69) valid=trace_valid && !sim_running && trace_index==trace.count-1;
+            else if(selftest_phase==70) valid=bench.part_count==8 && bench.parts[7].type==PART_LED;
+            else if(selftest_phase==71) valid=leds[7]==1;
+            else if(selftest_phase==72) valid=leds[7]==0;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==70) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==73) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -688,7 +702,8 @@ int main(int argc, char **argv) {
             else { trace_index=index; if(finished) { sim_running=0; status="Fim da curva; Espaco reinicia, B volta."; } }
         }
         if(dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem alterada; pressione P para recalcular."; }
-        if(dc_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && dc_led_currents[i]>=1e-6; }
+        if(trace_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && ((trace.leds_on[trace_index]>>i)&1); }
+        else if(dc_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && dc_led_currents[i]>=1e-6; }
         else if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
         else if(sim_running) bench_simulate(&bench,leds);
         SDL_GetWindowSizeInPixels(window,&width,&height); glViewport(0,0,width,height);
