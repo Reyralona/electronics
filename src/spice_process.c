@@ -12,7 +12,7 @@ static int analyze(const Workbench *bench,const char *executable,double *current
     DWORD length,exit_code=1; FILE *file=NULL; HANDLE log=INVALID_HANDLE_VALUE; STARTUPINFOA si={0}; PROCESS_INFORMATION pi={0};
     SECURITY_ATTRIBUTES security={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE}; NetlistResult result; int ok=0;
     if(!bench || !executable || !message || !capacity || (!trace && (!current || !led_currents))) return 0;
-    if(trace && (!isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || stop/step>500)) { snprintf(message,capacity,"Intervalo transitorio invalido."); return 0; }
+    if(trace && (!isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || stop/step>500.0*(1.0+1e-12))) { snprintf(message,capacity,"Intervalo transitorio invalido."); return 0; }
     snprintf(message,capacity,"Falha ao preparar analise.");
     length=GetFullPathNameA(executable,MAX_PATH,exe,NULL);
     if(!length || length>=MAX_PATH || GetFileAttributesA(exe)==INVALID_FILE_ATTRIBUTES) { snprintf(message,capacity,"ngspice nao encontrado."); return 0; }

@@ -80,6 +80,13 @@ static int test_key(SDL_Window *window,SDL_Keycode key)
     event.key.key=key; event.key.mod=SDL_KMOD_CTRL;
     return SDL_PushEvent(&event);
 }
+static int test_replace_text(SDL_Window *window,const char *value)
+{
+    SDL_Event event={0}; int i;
+    for(i=0;i<32;++i) if(!test_key(window,SDLK_BACKSPACE)) return 0;
+    event.type=SDL_EVENT_TEXT_INPUT; event.text.windowID=SDL_GetWindowID(window); event.text.text=value;
+    return SDL_PushEvent(&event) && test_key(window,SDLK_RETURN);
+}
 static int test_wheel(SDL_Window *window,float x,float y,float amount)
 {
     SDL_Event event={0};
@@ -186,7 +193,8 @@ int main(int argc, char **argv) {
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
     double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
     SpiceJob dc_job={0}; SpiceTrace trace={0}; Workbench trace_snapshot={0};
-    int trace_valid=0, trace_index=0; char trace_status[128];
+    int trace_valid=0, trace_index=0, trace_pin=0, probe_pin=0; char trace_status[128];
+    double transient_step=1e-5, transient_stop=.005;
     BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
     BenchView view={1,0,0}; int panning=0;
     int editing=-1; char edit_text[64]={0};
@@ -273,6 +281,17 @@ int main(int argc, char **argv) {
             else if(selftest_phase==30) queued=test_key(window,SDLK_F1);
             else if(selftest_phase==31) queued=test_key(window,SDLK_Z);
             else if(selftest_phase==32) queued=test_key(window,SDLK_Y);
+            else if(selftest_phase==33) queued=test_key(window,SDLK_F1);
+            else if(selftest_phase==34) queued=test_click(window,900,405);
+            else if(selftest_phase==35) queued=test_click(window,900,445);
+            else if(selftest_phase==36) queued=test_key(window,SDLK_RETURN);
+            else if(selftest_phase==37) queued=test_click(window,900,485);
+            else if(selftest_phase==38) queued=test_key(window,SDLK_ESCAPE);
+            else if(selftest_phase==39) queued=test_click(window,900,445);
+            else if(selftest_phase==40) queued=test_replace_text(window,"2e-5");
+            else if(selftest_phase==41) queued=test_click(window,900,445);
+            else if(selftest_phase==42) queued=test_replace_text(window,"1e-9");
+            else if(selftest_phase==43) queued=test_key(window,SDLK_ESCAPE);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -288,7 +307,14 @@ int main(int argc, char **argv) {
                 else if(e.key.key==SDLK_RETURN || e.key.key==SDLK_KP_ENTER) {
                     double value;
                     Workbench before=bench;
-                    if(bench_parse_value(edit_text,&value) && bench_set_value(&bench,editing,value)) { if(before.parts[editing].value!=value) bench_history_record(history,&before); editing=-1; SDL_StopTextInput(window); status="Valor alterado; pressione P para recalcular."; }
+                    if(editing>=WORKBENCH_MAX_COMPONENTS) {
+                        double step=transient_step,stop=transient_stop;
+                        int parsed=bench_parse_value(edit_text,&value);
+                        if(parsed && editing==WORKBENCH_MAX_COMPONENTS) step=value;
+                        else if(parsed) stop=value;
+                        if(parsed && step<=stop && stop/step<=500.0*(1.0+1e-12)) { transient_step=step; transient_stop=stop; editing=-1; SDL_StopTextInput(window); status="Parametro transitorio atualizado."; }
+                        else status="Use tempos positivos: passo <= duracao e duracao/passo <= 500.";
+                    } else if(bench_parse_value(edit_text,&value) && bench_set_value(&bench,editing,value)) { if(before.parts[editing].value!=value) bench_history_record(history,&before); editing=-1; SDL_StopTextInput(window); status="Valor alterado; pressione P para recalcular."; }
                     else status="Valor invalido. Use um numero positivo entre 1e-12 e 1e12.";
                 }
             }
@@ -311,12 +337,12 @@ int main(int argc, char **argv) {
                 }
                 else if(e.key.key==SDLK_T && selected>=0 && bench.parts[selected].type!=PART_BREADBOARD) {
                     if(dc_job.thread) status="Analise em andamento.";
-                    else if(spice_job_start_transient(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){selected,0},1e-5,.005)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando transitorio do terminal 1..."; }
+                    else if(spice_job_start_transient(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){selected,probe_pin},transient_step,transient_stop)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando transitorio do terminal selecionado..."; }
                     else status="Falha ao iniciar tarefa de analise.";
                 }
                 else if(e.key.key==SDLK_N && !sim_running && trace_valid) {
                     if(trace_index+1<trace.count) ++trace_index;
-                    snprintf(trace_status,sizeof(trace_status),"Transitorio terminal 1: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].voltage,trace_index+1,trace.count); status=trace_status;
+                    snprintf(trace_status,sizeof(trace_status),"Transitorio terminal %d: t=%.6g s; V=%.6g V (%d/%d).",trace_pin+1,trace.samples[trace_index].time,trace.samples[trace_index].voltage,trace_index+1,trace.count); status=trace_status;
                 }
                 else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
                 else if(e.key.key==SDLK_P) {
@@ -365,6 +391,13 @@ int main(int argc, char **argv) {
                         else if(y>=160 && y<200) show_handles=!show_handles;
                         else if(y>=200 && y<240) round_wires=!round_wires;
                         else if(y>=240 && y<280) { show_current=!show_current; if(show_current && !dc_wire_valid) status="Pressione P para medir as correntes dos fios."; }
+                        else if(y>=390 && y<425) probe_pin=1-probe_pin;
+                        else if(y>=430 && y<465) {
+                            if(SDL_StartTextInput(window)) { editing=WORKBENCH_MAX_COMPONENTS; snprintf(edit_text,sizeof(edit_text),"%.9g",transient_step); }
+                        }
+                        else if(y>=470 && y<505) {
+                            if(SDL_StartTextInput(window)) { editing=WORKBENCH_MAX_COMPONENTS+1; snprintf(edit_text,sizeof(edit_text),"%.9g",transient_stop); }
+                        }
                         else if(y>=320 && y<352 && x>=860 && x<1160) {
                             int chosen=(int)((x-860)/50);
                             if(chosen>=0 && chosen<WIRE_COLOR_COUNT) {
@@ -438,14 +471,25 @@ int main(int argc, char **argv) {
             else if(selftest_phase==30) valid=settings==0;
             else if(selftest_phase==31) valid=bench.wires[0].color==0;
             else if(selftest_phase==32) valid=bench.wires[0].color==1;
+            else if(selftest_phase==33) valid=settings==1;
+            else if(selftest_phase==34) valid=probe_pin==1;
+            else if(selftest_phase==35) valid=editing==WORKBENCH_MAX_COMPONENTS;
+            else if(selftest_phase==36) valid=editing<0 && transient_step==1e-5;
+            else if(selftest_phase==37) valid=editing==WORKBENCH_MAX_COMPONENTS+1;
+            else if(selftest_phase==38) valid=editing<0 && transient_stop==.005;
+            else if(selftest_phase==39) valid=editing==WORKBENCH_MAX_COMPONENTS;
+            else if(selftest_phase==40) valid=editing<0 && transient_step==2e-5;
+            else if(selftest_phase==41) valid=editing==WORKBENCH_MAX_COMPONENTS;
+            else if(selftest_phase==42) valid=editing==WORKBENCH_MAX_COMPONENTS && transient_step==2e-5;
+            else if(selftest_phase==43) valid=editing<0 && transient_step==2e-5;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==33) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==44) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
             else if(dc_job.transient) {
-                trace_valid=dc_job.success; trace_index=0; trace_snapshot=dc_job.snapshot;
-                if(trace_valid) { trace=dc_job.trace; sim_running=0; snprintf(trace_status,sizeof(trace_status),"Transitorio terminal 1: t=%.6g s; V=%.6g V (1/%d). N avanca.",trace.samples[0].time,trace.samples[0].voltage,trace.count); status=trace_status; }
+                trace_valid=dc_job.success; trace_index=0; trace_pin=dc_job.probe.pin; trace_snapshot=dc_job.snapshot;
+                if(trace_valid) { trace=dc_job.trace; sim_running=0; snprintf(trace_status,sizeof(trace_status),"Transitorio terminal %d: t=%.6g s; V=%.6g V (1/%d). N avanca.",trace_pin+1,trace.samples[0].time,trace.samples[0].voltage,trace.count); status=trace_status; }
                 else { memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
             }
             else { dc_valid=dc_job.success; dc_wire_valid=dc_job.success && dc_job.measures_wires; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); if(dc_wire_valid) memcpy(dc_wire_currents,dc_job.wire_currents,sizeof(dc_wire_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
@@ -528,11 +572,11 @@ int main(int argc, char **argv) {
                 text(font,850,137,reading);
             }
         }
-        color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status); text(font,238,709,"Terminais: fios | Duplo clique: alternar | P: analisar DC | Espaco/N: pausa/passo | Delete: excluir");
+        color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status); text(font,238,709,"Terminais: fios | Duplo clique: alternar | P: DC | T: transitorio | Espaco/N: pausa/passo | Delete: excluir");
         if(settings) {
             int swatch;
-            color(.62f,.68f,.72f); rect(846,90,400,352);
-            color(.98f,.98f,.99f); rect(840,84,400,352);
+            color(.62f,.68f,.72f); rect(846,90,400,496);
+            color(.98f,.98f,.99f); rect(840,84,400,496);
             color(.14f,.22f,.28f); text(font,860,112,"CONFIGURACOES DE VISUALIZACAO");
             text(font,860,148,show_grid?"[x] Grade":"[ ] Grade");
             text(font,860,188,show_handles?"[x] Pontos de controle dos fios":"[ ] Pontos de controle dos fios");
@@ -545,13 +589,18 @@ int main(int argc, char **argv) {
                 if(swatch==wire_color) { color(1,.8f,.15f); glLineWidth(2); glBegin(GL_LINE_LOOP); glVertex2f(sx-3,317); glVertex2f(sx+35,317); glVertex2f(sx+35,349); glVertex2f(sx-3,349); glEnd(); glLineWidth(1); }
             }
             color(.14f,.22f,.28f); text(font,1170,340,wire_color_names[wire_color]);
-            text(font,860,385,"P calcula correntes; velocidade visual ilustrativa");
-            text(font,860,420,"F1 fecha este painel");
+            { char setting[100];
+                snprintf(setting,sizeof(setting),"Terminal de sondagem: %d (clique)",probe_pin+1); text(font,860,415,setting);
+                snprintf(setting,sizeof(setting),"Passo solicitado: %.6g s (clique)",transient_step); text(font,860,455,setting);
+                snprintf(setting,sizeof(setting),"Duracao: %.6g s (clique)",transient_stop); text(font,860,495,setting);
+            }
+            text(font,860,535,"T: transitorio | N: amostra seguinte");
+            text(font,860,565,"F1 fecha este painel");
         }
         if(editing>=0) {
             char reading[110];
             color(.62f,.68f,.72f); rect(446,268,400,146); color(.98f,.98f,.99f); rect(440,262,400,146);
-            color(.14f,.22f,.28f); text(font,460,294,"VALOR EM UNIDADES SI");
+            color(.14f,.22f,.28f); text(font,460,294,editing>=WORKBENCH_MAX_COMPONENTS?"TEMPO EM SEGUNDOS":"VALOR EM UNIDADES SI");
             snprintf(reading,sizeof(reading),"> %s_",edit_text); text(font,460,336,reading);
             text(font,460,380,"Enter confirma | Esc cancela");
         }

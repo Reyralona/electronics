@@ -81,7 +81,10 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
     if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2)\n")<0) return NETLIST_IO_ERROR;
     if(transient) {
         int node=find_root(parents,pin_index(probe));
-        if(fprintf(out,".control\ntran %.17g %.17g uic\nprint v(%d)\nquit\n.endc\n.end\n",step,stop,node==ground?0:node+1)<0) return NETLIST_IO_ERROR;
+        if(fprintf(out,".control\ntran %.17g %.17g uic\n",step,stop)<0) return NETLIST_IO_ERROR;
+        if(node==ground) { if(fprintf(out,"print time*0\n")<0) return NETLIST_IO_ERROR; }
+        else if(fprintf(out,"print v(%d)\n",node+1)<0) return NETLIST_IO_ERROR;
+        if(fprintf(out,"quit\n.endc\n.end\n")<0) return NETLIST_IO_ERROR;
     } else {
         if(fprintf(out,".control\nop\nprint v(%d) @vsource[i]\n",positive==ground?0:positive+1)<0) return NETLIST_IO_ERROR;
         for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_LED)

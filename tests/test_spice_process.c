@@ -74,6 +74,16 @@ int main(int argc, char **argv)
         i=trace.count;
         assert(!spice_transient_analyze(&rc,argv[1],(Pin){2,0},0,.005,&trace,message,sizeof(message)));
         assert(trace.count==i);
+        assert(spice_transient_analyze(&rc,argv[1],(Pin){2,1},2e-5,.005,&trace,message,sizeof(message)));
+        for(i=0;i<trace.count;++i) assert(fabs(trace.samples[i].voltage)<1e-12);
+        bench_remove(&rc,2);
+        assert(bench_add(&rc,PART_INDUCTOR,0,0)==2);
+        assert(bench_toggle_wire(&rc,(Pin){1,1},(Pin){2,0})==1);
+        assert(bench_toggle_wire(&rc,(Pin){2,1},(Pin){0,1})==1);
+        assert(spice_transient_analyze(&rc,argv[1],(Pin){2,0},1e-7,5e-5,&trace,message,sizeof(message)));
+        nearest=0;
+        for(i=1;i<trace.count;++i) if(fabs(trace.samples[i].time-1e-5)<fabs(trace.samples[nearest].time-1e-5)) nearest=i;
+        assert(fabs(trace.samples[nearest].voltage-5*exp(-trace.samples[nearest].time/1e-5))<.01);
     }
     return 0;
 }
