@@ -31,7 +31,9 @@ int main(int argc, char **argv)
     init_fn init; circ_fn circ; command_fn command; vector_fn vector;
     pvector_info result;
     double voltage, current;
+    double time_values[2048]; int time_count, index, best;
     char *netlist[]={"Shared reference", "V1 1 0 5", "R1 1 0 1000", ".end", NULL};
+    char *rc_netlist[]={"Shared RC reference", "V1 1 0 5", "R1 1 2 1000", "C1 2 0 1u IC=0", ".end", NULL};
     if(argc!=2) { fprintf(stderr,"Usage: ngspice_shared_probe <dll path>\n"); return 2; }
     module=LoadLibraryA(argv[1]);
     if(!module) { fprintf(stderr,"Cannot load ngspice DLL (Windows error %lu)\n",GetLastError()); return 1; }
@@ -50,5 +52,20 @@ int main(int argc, char **argv)
     current=result->v_realdata[0];
     printf("voltage=%.9g current=%.9g\n",voltage,current);
     if(fabs(voltage-5.0)>1e-8 || fabs(current+0.005)>1e-8) return 1;
+    if(circ(rc_netlist)!=0 || error_seen || command("tran 10u 5m uic")!=0 || error_seen) return 1;
+    result=vector("time");
+    if(!result || !result->v_realdata || result->v_length<2 || result->v_length>2048) return 1;
+    time_count=result->v_length;
+    memcpy(time_values,result->v_realdata,(size_t)time_count*sizeof(double));
+    best=0;
+    for(index=1;index<time_count;++index) {
+        if(time_values[index]<time_values[index-1]) return 1;
+        if(fabs(time_values[index]-.001)<fabs(time_values[best]-.001)) best=index;
+    }
+    result=vector("v(2)");
+    if(!result || !result->v_realdata || result->v_length!=time_count) return 1;
+    voltage=result->v_realdata[best];
+    printf("RC time=%.9g voltage=%.9g\n",time_values[best],voltage);
+    if(fabs(time_values[best]-.001)>0.000011 || fabs(voltage-5.0*(1.0-exp(-time_values[best]/.001)))>.01) return 1;
     return 0;
 }
