@@ -59,7 +59,7 @@ static int analyze(const Workbench *bench,const char *executable,double *current
             local_wires[i]=wire;
         }
         if(wire_currents) memcpy(wire_currents,local_wires,sizeof(local_wires));
-        *current=value; memcpy(led_currents,local_leds,sizeof(local_leds)); snprintf(message,capacity,"Corrente da fonte: %.6g A (convencao SPICE).",value); ok=1;
+        *current=value; memcpy(led_currents,local_leds,sizeof(local_leds)); snprintf(message,capacity,"Corrente da primeira fonte: %.6g A (convencao SPICE).",value); ok=1;
     }
 cleanup:
     if(file) fclose(file);

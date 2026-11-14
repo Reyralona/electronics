@@ -76,3 +76,11 @@ foreach ($row in $rows) {
 $expected = 5 * [Math]::Exp(-$bestTime / 0.00001)
 if ($bestDistance -gt 0.00000011 -or [Math]::Abs($bestVoltage - $expected) -gt 0.01) { throw "Resposta RL inesperada: t=$bestTime V=$bestVoltage" }
 Write-Output "RL da bancada: $bestVoltage V em $bestTime s verificados."
+
+foreach ($name in @('two-sources', 'two-sources-wires')) {
+    $result = & (Join-Path $resolvedRoot 'bin/ngspice_con.exe') -b "build/netlist-$name.cir" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Falha ngspice ($name): $result" }
+    $value = $result -join "`n"
+    if ($value -match '(?i)error|warning|singular matrix|couldn.t be loaded' -or $value -notmatch '@vsource\[i\]\s*=\s*-1\.00000e-02') { throw "Resultado inesperado ($name): $value" }
+    Write-Output "Duas fontes em serie ($name): 10 mA verificados."
+}

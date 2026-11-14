@@ -37,10 +37,27 @@ int main(void)
     f=fopen("build/netlist-led-reverse.cir","w"); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_OK); fclose(f);
     bench_remove(&b,3);
     assert(bench_add(&b,PART_SOURCE,0,0)==3);
-    f=tmpfile(); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_UNSUPPORTED); fclose(f);
+    f=tmpfile(); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_OK); fclose(f);
     bench_remove(&b,3);
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){0,1})==1);
     f=tmpfile(); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_INVALID); fclose(f);
+    {
+        Workbench series={0};
+        assert(bench_add(&series,PART_SOURCE,0,0)==0);
+        assert(bench_add(&series,PART_SOURCE,0,0)==1);
+        assert(bench_add(&series,PART_RESISTOR,0,0)==2);
+        assert(bench_toggle_wire(&series,(Pin){0,0},(Pin){1,1})==1);
+        assert(bench_toggle_wire(&series,(Pin){1,0},(Pin){2,0})==1);
+        assert(bench_toggle_wire(&series,(Pin){2,1},(Pin){0,1})==1);
+        f=fopen("build/netlist-two-sources.cir","w"); assert(f);
+        assert(netlist_write_dc(f,&series)==NETLIST_OK); fclose(f);
+        f=fopen("build/netlist-two-sources-wires.cir","w"); assert(f);
+        assert(netlist_write_dc_instrumented(f,&series)==NETLIST_OK); fclose(f);
+        assert(bench_toggle_wire(&series,(Pin){1,0},(Pin){1,1})==1);
+        f=tmpfile(); assert(f);
+        assert(netlist_write_dc(f,&series)==NETLIST_INVALID);
+        assert(netlist_write_dc_instrumented(f,&series)==NETLIST_INVALID); fclose(f);
+    }
     {
         Workbench rc={0};
         assert(bench_add(&rc,PART_SOURCE,0,0)==0);

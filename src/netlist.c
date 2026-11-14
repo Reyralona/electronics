@@ -24,7 +24,7 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         if((type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR) &&
            (!isfinite(b->parts[i].value) || b->parts[i].value<1e-12 || b->parts[i].value>1e12)) return NETLIST_INVALID;
         switch(b->parts[i].type) {
-        case PART_SOURCE: if(source>=0) return NETLIST_UNSUPPORTED; source=i; break;
+        case PART_SOURCE: if(source<0) source=i; break;
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
         case PART_BREADBOARD: for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+bench_board_group_first(j),base+j); break;
         case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: break;
@@ -40,6 +40,8 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
     ground=find_root(parents,source*WORKBENCH_MAX_PINS+1);
     positive=find_root(parents,source*WORKBENCH_MAX_PINS);
     if(ground==positive) return NETLIST_INVALID;
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_SOURCE &&
+        find_root(parents,i*WORKBENCH_MAX_PINS)==find_root(parents,i*WORKBENCH_MAX_PINS+1)) return NETLIST_INVALID;
     if(measure_wires) {
         int paths[PIN_TOTAL];
         for(i=0;i<PIN_TOTAL;++i) paths[i]=find_root(parents,i);
@@ -48,9 +50,14 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
             if(find_root(paths,a)==find_root(paths,c)) return NETLIST_AMBIGUOUS_WIRES;
             unite(paths,a,c);
         }
-        if(find_root(paths,ground)==find_root(paths,positive)) return NETLIST_INVALID;
+        for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_SOURCE &&
+            find_root(paths,i*WORKBENCH_MAX_PINS)==find_root(paths,i*WORKBENCH_MAX_PINS+1)) return NETLIST_INVALID;
     }
     if(fprintf(out,"Electronics experimental %s\nVsource %d 0 %.17g\n",transient?"transient":"DC",positive==ground?0:positive+1,b->parts[source].on?b->parts[source].value:0.0)<0) return NETLIST_IO_ERROR;
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_SOURCE && i!=source) {
+        int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
+        if(fprintf(out,"Vsource%d %d %d %.17g\n",i,a==ground?0:a+1,c==ground?0:c+1,b->parts[i].on?b->parts[i].value:0.0)<0) return NETLIST_IO_ERROR;
+    }
     if(measure_wires) for(i=0;i<b->wire_count;++i) {
         int a=find_root(parents,pin_index(b->wires[i].a)),c=find_root(parents,pin_index(b->wires[i].b));
         if(fprintf(out,"Vwire%d %d %d 0\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
