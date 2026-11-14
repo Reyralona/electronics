@@ -43,6 +43,22 @@ static void wire_contact_tip(WirePoint hole,WirePoint next,int wire_color)
     color(.98f,.8f,.43f); circle(hole.x,hole.y,2.5f);
     glLineWidth(1);
 }
+static void wire_direction_marker(const WirePoint *path,int count,int reverse)
+{
+    float total=0,position; int i;
+    for(i=1;i<count;++i) total+=hypotf(path[i].x-path[i-1].x,path[i].y-path[i-1].y);
+    position=total*.5f;
+    for(i=1;i<count;++i) {
+        float dx=path[i].x-path[i-1].x,dy=path[i].y-path[i-1].y,len=hypotf(dx,dy);
+        if(len>0 && position<=len) {
+            float x=path[i-1].x+dx*position/len,y=path[i-1].y+dy*position/len,ux=dx/len,uy=dy/len;
+            if(reverse) { ux=-ux; uy=-uy; }
+            color(1,.91f,.35f); glBegin(GL_TRIANGLES);
+            glVertex2f(x+ux*7,y+uy*7); glVertex2f(x-ux*5-uy*4,y-uy*5+ux*4); glVertex2f(x-ux*5+uy*4,y-uy*5-ux*4); glEnd(); return;
+        }
+        position-=len;
+    }
+}
 static void circle(float x,float y,float radius) {
     int i; glBegin(GL_TRIANGLE_FAN); glVertex2f(x,y);
     for(i=0;i<=32;++i) { float a=(float)i*6.2831853f/32; glVertex2f(x+cosf(a)*radius,y+sinf(a)*radius); } glEnd();
@@ -349,7 +365,8 @@ int main(int argc, char **argv) {
         bench=(Workbench){0}; bench_add(&bench,PART_CLOCK,400,250); bench_add(&bench,PART_RESISTOR,600,250); bench_add(&bench,PART_LED,800,250);
         bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){351,150}; bench.wires[0].knees[1]=(WirePoint){551,150};
         bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1}); bench.wires[2].knee_count=2; bench.wires[2].knees[0]=(WirePoint){849,370}; bench.wires[2].knees[1]=(WirePoint){449,370};
-        trace_valid=spice_transient_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){0,0},1e-5,.002,&trace,dc_status,sizeof(dc_status));
+        show_current=1;
+        trace_valid=spice_transient_instrumented(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",1,(Pin){0,0},1e-5,.002,&trace,dc_status,sizeof(dc_status));
         if(!trace_valid) { fprintf(stderr,"Captura LED: %s\n",dc_status); return 1; }
         trace_snapshot=bench; trace_index=trace_nearest(&trace,strcmp(argv[1],"--capture-led-on")==0?.125:.375); sim_running=0; status="LED acompanha corrente transitoria calculada.";
     }
@@ -493,7 +510,7 @@ int main(int argc, char **argv) {
                     else if(!probe_current && probe_pin>=bench_pin_count(bench.parts[selected].type)) status="Terminal indisponivel para este componente.";
                     else if(probe_current && is_gate(bench.parts[selected].type)) status="Corrente interna da porta nao disponivel.";
                     else if(probe_current && bench.parts[selected].type==PART_SWITCH) status="Corrente transitoria indisponivel para interruptor ideal.";
-                    else if(probe_current?spice_job_start_transient_current(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",selected,transient_step,transient_stop):spice_job_start_transient(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){selected,probe_pin},transient_step,transient_stop)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando transitorio selecionado..."; }
+                    else if(show_current?spice_job_start_transient_instrumented(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",probe_current?2:1,(Pin){selected,probe_current?0:probe_pin},transient_step,transient_stop):probe_current?spice_job_start_transient_current(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",selected,transient_step,transient_stop):spice_job_start_transient(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){selected,probe_pin},transient_step,transient_stop)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando transitorio selecionado..."; }
                     else status="Falha ao iniciar tarefa de analise.";
                 }
                 else if((e.key.key==SDLK_N || e.key.key==SDLK_B) && !sim_running && trace_valid) {
@@ -554,7 +571,7 @@ int main(int argc, char **argv) {
                         if(y>=120 && y<160) show_grid=!show_grid;
                         else if(y>=160 && y<200) show_handles=!show_handles;
                         else if(y>=200 && y<240) round_wires=!round_wires;
-                        else if(y>=240 && y<280) { show_current=!show_current; if(show_current && !dc_wire_valid) status="Pressione P para medir as correntes dos fios."; }
+                        else if(y>=240 && y<280) { show_current=!show_current; if(show_current && trace_valid && !trace.measures_wires) status="Pressione T para medir correntes transitorias dos fios."; else if(show_current && !dc_wire_valid && !trace_valid) status="Pressione P ou T para medir correntes dos fios."; }
                         else if(y>=354 && y<390) probe_current=!probe_current;
                         else if(y>=390 && y<425) probe_pin=(probe_pin+1)%3;
                         else if(y>=430 && y<465) {
@@ -737,9 +754,14 @@ int main(int argc, char **argv) {
                 else { color(wire_palette[w->color][0]*.65f+.25f,wire_palette[w->color][1]*.65f+.25f,wire_palette[w->color][2]*.65f+.25f); glLineWidth(2); }
                 glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x+offset,path[k].y+offset); glEnd();
             }
-            if(show_current && trace_valid && trace_current==2 && i==trace_wire && fabs(trace.samples[trace_index].value)>1e-6) {
-                color(1.0f,.36f,.04f); glLineWidth(3);
-                glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
+            if(show_current && trace_valid && trace.measures_wires) {
+                uint64_t bit=UINT64_C(1)<<(i%64);
+                int forward=(trace.wires_forward[trace_index][i/64]&bit)!=0, reverse=(trace.wires_reverse[trace_index][i/64]&bit)!=0;
+                if(forward || reverse) {
+                    color(1.0f,.36f,.04f); glLineWidth(3);
+                    glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
+                    wire_direction_marker(path,count,reverse);
+                }
             }
             if(show_current && dc_valid && dc_wire_valid && fabs(dc_wire_currents[i])>1e-6) {
                 float total=0, position; int segment;

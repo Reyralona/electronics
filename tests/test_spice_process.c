@@ -218,6 +218,20 @@ int main(int argc, char **argv)
         assert(trace.samples[high].value>4.9 && trace.samples[low].value<.01);
         assert((trace.leds_on[high] & (UINT64_C(1)<<3)) && !(trace.leds_on[high] & (UINT64_C(1)<<5)));
         assert(!(trace.leds_on[low] & (UINT64_C(1)<<3)) && (trace.leds_on[low] & (UINT64_C(1)<<5)));
+        assert(bench_toggle_wire(&circuit,(Pin){0,0},(Pin){2,0})==2);
+        assert(bench_toggle_wire(&circuit,(Pin){2,0},(Pin){0,0})==1);
+        assert(spice_transient_instrumented(&circuit,argv[1],1,(Pin){0,0},1e-5,.002,&trace,message,sizeof(message)));
+        assert(trace.measures_wires);
+        high=low=0;
+        for(i=1;i<trace.count;++i) {
+            if(fabs(trace.samples[i].time-.00025)<fabs(trace.samples[high].time-.00025)) high=i;
+            if(fabs(trace.samples[i].time-.00075)<fabs(trace.samples[low].time-.00075)) low=i;
+        }
+        /* Last wire was inserted with its endpoints reversed. */
+        assert(trace.wires_reverse[high][0] & (UINT64_C(1)<<6));
+        assert(!(trace.wires_reverse[low][0] & (UINT64_C(1)<<6)));
+        assert(trace.leds_on[high] & (UINT64_C(1)<<3));
+        assert(trace.leds_on[low] & (UINT64_C(1)<<5));
     }
     return 0;
 }

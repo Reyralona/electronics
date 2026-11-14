@@ -47,6 +47,9 @@ int main(int argc,char **argv)
         assert(spice_job_start_transient_wire(&job,&bench,argv[1],0,1e-5,.005));
         finish(&job);
         assert(job.success && job.transient==3 && job.trace.samples[0].value>0.004);
+        assert(spice_job_start_transient_instrumented(&job,&bench,argv[1],1,(Pin){2,0},1e-5,.005));
+        finish(&job);
+        assert(job.success && job.trace.measures_wires && (job.trace.wires_forward[0][0]&1));
 
     }
     spice_job_join(&job);

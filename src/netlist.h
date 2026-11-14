@@ -11,4 +11,5 @@ NetlistResult netlist_write_dc_instrumented(FILE *out, const Workbench *bench);
 NetlistResult netlist_write_transient(FILE *out, const Workbench *bench, Pin probe, double step_seconds, double stop_seconds);
 NetlistResult netlist_write_transient_current(FILE *out, const Workbench *bench, int component, double step_seconds, double stop_seconds);
 NetlistResult netlist_write_transient_wire(FILE *out, const Workbench *bench, int wire, double step_seconds, double stop_seconds);
+NetlistResult netlist_write_transient_instrumented(FILE *out, const Workbench *bench, int mode, Pin probe, double step_seconds, double stop_seconds);
 #endif

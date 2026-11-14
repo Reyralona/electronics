@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],double *wire_currents,SpiceTrace *trace,int trace_current,Pin probe,double step,double stop,char *message,size_t capacity)
+static int analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],double *wire_currents,SpiceTrace *trace,int trace_current,int instrument,Pin probe,double step,double stop,char *message,size_t capacity)
 {
     char dir[MAX_PATH], input[MAX_PATH]="", output[MAX_PATH]="", exe[MAX_PATH], command[3*MAX_PATH+32], *buffer=NULL; size_t buffer_capacity=trace?16*1024*1024:32768;
     DWORD length,exit_code=1; FILE *file=NULL; HANDLE log=INVALID_HANDLE_VALUE; STARTUPINFOA si={0}; PROCESS_INFORMATION pi={0};
@@ -20,7 +20,7 @@ static int analyze(const Workbench *bench,const char *executable,double *current
     length=GetTempPathA(MAX_PATH,dir);
     if(!length || length>=MAX_PATH || !GetTempFileNameA(dir,"nci",0,input) || !GetTempFileNameA(dir,"nco",0,output)) goto cleanup;
     file=fopen(input,"w"); if(!file) goto cleanup;
-    result=trace?(trace_current==2?netlist_write_transient_wire(file,bench,probe.component,step,stop):trace_current==1?netlist_write_transient_current(file,bench,probe.component,step,stop):netlist_write_transient(file,bench,probe,step,stop)):wire_currents?netlist_write_dc_instrumented(file,bench):netlist_write_dc(file,bench);
+    result=trace?(instrument?netlist_write_transient_instrumented(file,bench,trace_current+1,probe,step,stop):trace_current==1?netlist_write_transient_current(file,bench,probe.component,step,stop):netlist_write_transient(file,bench,probe,step,stop)):wire_currents?netlist_write_dc_instrumented(file,bench):netlist_write_dc(file,bench);
     if(fclose(file)!=0) result=NETLIST_IO_ERROR;
     file=NULL;
     if(result!=NETLIST_OK) { snprintf(message,capacity,result==NETLIST_AMBIGUOUS_WIRES?"Corrente ambigua em fios ideais paralelos.":"Montagem invalida ou nao suportada."); goto cleanup; }
@@ -47,21 +47,25 @@ static int analyze(const Workbench *bench,const char *executable,double *current
                     if(section>0 && section_count!=local.count) { snprintf(message,capacity,"Correntes transitorias incompletas."); goto cleanup; }
                     ++section; section_count=0;
                 }
-                if(index!=section_count || !isfinite(time) || !isfinite(value) || time<0 || index>=SPICE_TRANSIENT_MAX_SAMPLES || section>led_count) { snprintf(message,capacity,"Amostras transitorias invalidas."); goto cleanup; }
+                if(index!=section_count || !isfinite(time) || !isfinite(value) || time<0 || index>=SPICE_TRANSIENT_MAX_SAMPLES || section>led_count+(instrument?bench->wire_count:0)) { snprintf(message,capacity,"Amostras transitorias invalidas."); goto cleanup; }
                 if(section==0) {
                     if(time<previous) { snprintf(message,capacity,"Tempos transitorios invalidos."); goto cleanup; }
                     local.samples[local.count++]=(SpiceSample){time,value}; previous=time;
                 } else {
                     if(index>=local.count || time!=local.samples[index].time) { snprintf(message,capacity,"Correntes transitorias dessincronizadas."); goto cleanup; }
-                    if(value>=1e-6) local.leds_on[index]|=UINT64_C(1)<<led_indices[section-1];
+                    if(section<=led_count) { if(value>=1e-6) local.leds_on[index]|=UINT64_C(1)<<led_indices[section-1]; }
+                    else { int wire=section-led_count-1; uint64_t bit=UINT64_C(1)<<(wire%64);
+                        if(value>=1e-6) local.wires_forward[index][wire/64]|=bit;
+                        else if(value<=-1e-6) local.wires_reverse[index][wire/64]|=bit;
+                    }
                 }
                 ++section_count;
             }
             if(!next) break;
             line=next+1;
         }
-        if(local.count<2 || previous<stop*(1-1e-6) || section!=led_count || section_count!=local.count) { snprintf(message,capacity,"Amostras transitorias incompletas."); goto cleanup; }
-        *trace=local; snprintf(message,capacity,"Transitorio calculado: %d amostras.",local.count); ok=1; goto cleanup;
+        if(local.count<2 || previous<stop*(1-1e-6) || section!=led_count+(instrument?bench->wire_count:0) || section_count!=local.count) { snprintf(message,capacity,"Amostras transitorias incompletas."); goto cleanup; }
+        local.measures_wires=instrument; *trace=local; snprintf(message,capacity,"Transitorio calculado: %d amostras.",local.count); ok=1; goto cleanup;
     }
     {
         char *start=strstr(buffer,"@vsource[i] ="), *end;
@@ -103,29 +107,35 @@ cleanup:
 
 int spice_dc_analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],char *message,size_t capacity)
 {
-    return analyze(bench,executable,current,led_currents,NULL,NULL,0,(Pin){0,0},0,0,message,capacity);
+    return analyze(bench,executable,current,led_currents,NULL,NULL,0,0,(Pin){0,0},0,0,message,capacity);
 }
 
 int spice_dc_analyze_wires(const Workbench *bench,const char *executable,double *current,double component_currents[WORKBENCH_MAX_COMPONENTS],double wire_currents[WORKBENCH_MAX_WIRES],char *message,size_t capacity)
 {
     if(!wire_currents) return 0;
-    return analyze(bench,executable,current,component_currents,wire_currents,NULL,0,(Pin){0,0},0,0,message,capacity);
+    return analyze(bench,executable,current,component_currents,wire_currents,NULL,0,0,(Pin){0,0},0,0,message,capacity);
 }
 
 int spice_transient_analyze(const Workbench *bench,const char *executable,Pin probe,double step,double stop,SpiceTrace *trace,char *message,size_t capacity)
 {
     if(!trace) return 0;
-    return analyze(bench,executable,NULL,NULL,NULL,trace,0,probe,step,stop,message,capacity);
+    return analyze(bench,executable,NULL,NULL,NULL,trace,0,0,probe,step,stop,message,capacity);
 }
 
 int spice_transient_current(const Workbench *bench,const char *executable,int component,double step,double stop,SpiceTrace *trace,char *message,size_t capacity)
 {
     if(!trace) return 0;
-    return analyze(bench,executable,NULL,NULL,NULL,trace,1,(Pin){component,0},step,stop,message,capacity);
+    return analyze(bench,executable,NULL,NULL,NULL,trace,1,0,(Pin){component,0},step,stop,message,capacity);
 }
 
 int spice_transient_wire(const Workbench *bench,const char *executable,int wire,double step,double stop,SpiceTrace *trace,char *message,size_t capacity)
 {
     if(!trace) return 0;
-    return analyze(bench,executable,NULL,NULL,NULL,trace,2,(Pin){wire,0},step,stop,message,capacity);
+    return analyze(bench,executable,NULL,NULL,NULL,trace,2,1,(Pin){wire,0},step,stop,message,capacity);
+}
+
+int spice_transient_instrumented(const Workbench *bench,const char *executable,int mode,Pin probe,double step,double stop,SpiceTrace *trace,char *message,size_t capacity)
+{
+    if(!trace || mode<1 || mode>3) return 0;
+    return analyze(bench,executable,NULL,NULL,NULL,trace,mode-1,1,probe,step,stop,message,capacity);
 }
