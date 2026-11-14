@@ -23,12 +23,12 @@ static const char *wire_color_names[WIRE_COLOR_COUNT]={"Azul","Vermelho","Preto"
 static int is_gate(PartType type) { return (type>=PART_AND && type<=PART_NOT) || type==PART_DFF; }
 static PartType palette_part(int page,int item)
 {
-    static const PartType digital[]={PART_AND,PART_NAND,PART_OR,PART_XOR,PART_NOT,PART_CLOCK,PART_DFF};
+    static const PartType digital[]={PART_AND,PART_NAND,PART_OR,PART_XOR,PART_NOT,PART_CLOCK,PART_DFF,PART_74HC00};
     return page?digital[item]:(PartType)item;
 }
 static const char *part_name(PartType type)
 {
-    static const char *names[]={"Fonte","Interruptor","LED","Breadboard","Resistor","Capacitor","Indutor","Porta AND","Porta NAND","Porta OR","Porta XOR","Porta NOT","Clock","Bloco DFF"};
+    static const char *names[]={"Fonte","Interruptor","LED","Breadboard","Resistor","Capacitor","Indutor","Porta AND","Porta NAND","Porta OR","Porta XOR","Porta NOT","Clock","Bloco DFF","CI 74HC00"};
     return names[type];
 }
 static void wire_contact_tip(WirePoint hole,WirePoint next,int wire_color)
@@ -227,6 +227,12 @@ static void part_draw(const Part *p,int selected,int led) {
         color(.25f,.43f,.51f); rect(x-31,y-26,62,44);
         color(.85f,.95f,.92f); line(x-23,y+8,x-13,y+8); line(x-13,y+8,x-13,y-8); line(x-13,y-8,x-2,y-8); line(x-2,y-8,x-2,y+8); line(x-2,y+8,x+9,y+8); line(x+9,y+8,x+9,y-8); line(x+9,y-8,x+20,y-8);
         color(p->on?.25f:.55f,p->on?.9f:.55f,.34f); circle(x+23,y-17,3);
+    } else if(p->type==PART_74HC00) {
+        int leg;
+        color(.72f,.74f,.76f); for(leg=0;leg<7;++leg) { rect(x-44+leg*14,y-17,4,9); rect(x-44+leg*14,y+8,4,9); }
+        color(.14f,.16f,.18f); rect(x-49,y-13,98,28);
+        color(.24f,.27f,.30f); rect(x-49,y-16,98,26);
+        color(.72f,.76f,.78f); circle(x-40,y-8,3);
     } else if(is_gate(p->type)) {
         if(p->type!=PART_NOT) { color(.68f,.71f,.73f); rect(x-51,y-17,26,4); rect(x-51,y+13,26,4); }
         color(.16f,.19f,.22f); rect(x-30,y-24,62,50);
@@ -297,7 +303,7 @@ int main(int argc, char **argv) {
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0 || strcmp(argv[1],"--capture-dff")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0 || strcmp(argv[1],"--capture-dff")==0 || strcmp(argv[1],"--capture-ci")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -342,6 +348,10 @@ int main(int argc, char **argv) {
         bench=(Workbench){0}; palette_page=1;
         bench_add(&bench,PART_CLOCK,400,250); bench_add(&bench,PART_NOT,650,250);
         bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); selected=0;
+    }
+    if(capture && strcmp(argv[1],"--capture-ci")==0) {
+        bench=(Workbench){0}; palette_page=1; bench_add(&bench,PART_BREADBOARD,650,380); bench_add(&bench,PART_74HC00,650,380);
+        bench_snap_to_breadboard(&bench,1); selected=1; bench_view_zoom_at(&view,1.3f,650,380);
     }
     if(!history) { fprintf(stderr,"Memoria insuficiente para historico.\n"); return 1; }
     if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); free(history); return 1; }
@@ -467,6 +477,7 @@ int main(int argc, char **argv) {
             else if(selftest_phase==71) { trace_index=1; queued=test_key(window,SDLK_UNKNOWN); }
             else if(selftest_phase==72) queued=test_key(window,SDLK_UNKNOWN);
             else if(selftest_phase==73) queued=test_click(window,50,600) && test_click(window,750,550);
+            else if(selftest_phase==74) queued=test_click(window,50,670) && test_click(window,750,450);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -528,7 +539,7 @@ int main(int argc, char **argv) {
                 else if(e.key.key==SDLK_T && selected>=0 && bench.parts[selected].type!=PART_BREADBOARD) {
                     if(dc_job.thread) status="Analise em andamento.";
                     else if(!probe_current && probe_pin>=bench_pin_count(bench.parts[selected].type)) status="Terminal indisponivel para este componente.";
-                    else if(probe_current && is_gate(bench.parts[selected].type)) status="Corrente interna da porta nao disponivel.";
+                    else if(probe_current && (is_gate(bench.parts[selected].type) || bench.parts[selected].type==PART_74HC00)) status="Corrente interna da porta nao disponivel.";
                     else if(probe_current && bench.parts[selected].type==PART_SWITCH) status="Corrente transitoria indisponivel para interruptor ideal.";
                     else if(show_current?spice_job_start_transient_instrumented(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",probe_current?2:1,(Pin){selected,probe_current?0:probe_pin},transient_step,transient_stop):probe_current?spice_job_start_transient_current(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",selected,transient_step,transient_stop):spice_job_start_transient(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){selected,probe_pin},transient_step,transient_stop)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando transitorio selecionado..."; }
                     else status="Falha ao iniciar tarefa de analise.";
@@ -593,7 +604,7 @@ int main(int argc, char **argv) {
                         else if(y>=200 && y<240) round_wires=!round_wires;
                         else if(y>=240 && y<280) { show_current=!show_current; if(show_current && trace_valid && !trace.measures_wires) status="Pressione T para medir correntes transitorias dos fios."; else if(show_current && !dc_wire_valid && !trace_valid) status="Pressione P ou T para medir correntes dos fios."; }
                         else if(y>=354 && y<390) probe_current=!probe_current;
-                        else if(y>=390 && y<425) probe_pin=(probe_pin+1)%3;
+                        else if(y>=390 && y<425) probe_pin=(probe_pin+1)%((selected>=0 && bench.parts[selected].type==PART_74HC00)?14:3);
                         else if(y>=430 && y<465) {
                             if(SDL_StartTextInput(window)) { editing=WORKBENCH_MAX_COMPONENTS; snprintf(edit_text,sizeof(edit_text),"%.9g",transient_step); }
                         }
@@ -619,7 +630,7 @@ int main(int argc, char **argv) {
                     continue;
                 }
                 if(x<220 && y>=80 && y<125) { palette_page=1-palette_page; placing=-1; continue; }
-                if(x<220 && y>=140 && y<716) { int item=(int)((y-140)/72); if(item<(palette_page?7:8)) { placing=palette_part(palette_page,item); pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
+                if(x<220 && y>=140 && y<716) { int item=(int)((y-140)/72); if(item<(palette_page?8:8)) { placing=palette_part(palette_page,item); pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
                 if(x<220||y<70||y>660) continue;
                 bench_view_to_world(&view,x,y,&x,&y);
                 if(pending.component<0 && placing<0 && show_handles) {
@@ -635,10 +646,10 @@ int main(int argc, char **argv) {
                     }
                 }
                 if(placing>=0) { Workbench before=bench; int added=bench_add(&bench,(PartType)placing,x,y); if(added>=0) { int snapped=bench_snap_to_breadboard(&bench,added); bench_history_record(history,&before); selected_wire=-1; status=snapped?"Componente encaixado na breadboard.":"Componente adicionado. Selecione terminais para ligar."; placing=-1; } else status="Limite de componentes atingido."; continue; }
-                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=bench.part_count-1;i>=0;--i) { int p,board=bench.parts[i].type==PART_BREADBOARD; float radius=board?4.0f:12.0f; if(board!=pass) continue; for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float px,py; pin_xy(&bench.parts[i],p,&px,&py); if((x-px)*(x-px)+(y-py)*(y-py)<=radius*radius) { hit=i; hitpin=p; break; } } if(hit>=0) break; } }
+                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=bench.part_count-1;i>=0;--i) { int p,board=bench.parts[i].type==PART_BREADBOARD; float radius=board?4.0f:bench.parts[i].type==PART_74HC00?5.0f:12.0f; if(board!=pass) continue; for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float px,py; pin_xy(&bench.parts[i],p,&px,&py); if((x-px)*(x-px)+(y-py)*(y-py)<=radius*radius) { hit=i; hitpin=p; break; } } if(hit>=0) break; } }
                 if(hitpin>=0) { Pin clicked={hit,hitpin}; selected_wire=-1; if(pending.component<0) { pending=clicked; route_count=0; status="Clique para criar joelhos; termine em outro terminal."; } else if(pending.component==hit && pending.pin==hitpin) { pending.component=-1; route_count=0; status="Conexao cancelada."; } else { Workbench before=bench; int result=bench_toggle_wire(&bench,pending,clicked); if(result==1) { Wire *wire=&bench.wires[bench.wire_count-1]; wire->knee_count=route_count; wire->color=wire_color; memcpy(wire->knees,route,(size_t)route_count*sizeof(WirePoint)); } if(result) bench_history_record(history,&before); status=result==1?"Fio conectado.":result==2?"Fio removido.":"Nao foi possivel conectar."; pending.component=-1; route_count=0; } continue; }
                 if(pending.component>=0) { if(route_count<WIRE_MAX_KNEES) { route[route_count++]=(WirePoint){x,y}; status="Joelho adicionado; termine em um terminal."; } else status="Limite de 16 joelhos por fio."; continue; }
-                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=bench.part_count-1;i>=0;--i) { int board=bench.parts[i].type==PART_BREADBOARD, vertical=bench.parts[i].rotation%2; float hw=board?227.0f:vertical?30.0f:44.0f, hh=board?112.0f:vertical?44.0f:30.0f; if(board!=pass) continue; if(fabsf(x-bench.parts[i].x)<hw && fabsf(y-bench.parts[i].y)<hh) { hit=i; break; } } }
+                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=bench.part_count-1;i>=0;--i) { int board=bench.parts[i].type==PART_BREADBOARD, vertical=bench.parts[i].rotation%2; float hw=board?227.0f:bench.parts[i].type==PART_74HC00?(vertical?20.0f:50.0f):vertical?30.0f:44.0f, hh=board?112.0f:bench.parts[i].type==PART_74HC00?(vertical?50.0f:20.0f):vertical?44.0f:30.0f; if(board!=pass) continue; if(fabsf(x-bench.parts[i].x)<hw && fabsf(y-bench.parts[i].y)<hh) { hit=i; break; } } }
                 selected=hit; selected_wire=-1;
                 if(hit<0 || bench.parts[hit].type==PART_BREADBOARD) { selected_wire=hit_wire(&bench,x,y,7.0f/view.zoom,round_wires); if(selected_wire>=0) { selected=-1; wire_color=bench.wires[selected_wire].color; status="Fio selecionado; F1 abre as cores."; continue; } }
                 if(hit>=0) { if(e.button.clicks>=2 && (bench.parts[hit].type==PART_SOURCE || bench.parts[hit].type==PART_SWITCH || bench.parts[hit].type==PART_CLOCK)) { bench_history_record(history,&bench); bench.parts[hit].on=!bench.parts[hit].on; status="Estado alterado."; } else { dragging=hit; move_recorded=0; offset_x=x-bench.parts[hit].x; offset_y=y-bench.parts[hit].y; status="Arraste para mover; dois cliques alternam fonte ou chave."; } }
@@ -721,8 +732,9 @@ int main(int argc, char **argv) {
             else if(selftest_phase==71) valid=leds[7]==1;
             else if(selftest_phase==72) valid=leds[7]==0;
             else if(selftest_phase==73) valid=bench.part_count==9 && bench.parts[8].type==PART_DFF;
+            else if(selftest_phase==74) valid=bench.part_count==10 && bench.parts[9].type==PART_74HC00;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==74) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==75) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -753,7 +765,7 @@ int main(int argc, char **argv) {
         else color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f);
         text(font,1030,42,trace_valid?(sim_running?"REPRODUCAO":"TRANSITORIO PAUSADO"):dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
         color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,palette_page?"PORTAS [TAB]":"COMPONENTES [TAB]");
-        for(i=0;i<(palette_page?7:8);++i) { float y=140+i*72; PartType type=palette_part(palette_page,i); color(placing==(int)type?.79f:.92f,placing==(int)type?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,part_name(type)); color(type==PART_SOURCE?.2f:type==PART_SWITCH?.38f:.84f,type==PART_SOURCE?.54f:.42f,type==PART_LED?.28f:.6f); circle(42,y+31,13); }
+        for(i=0;i<(palette_page?8:8);++i) { float y=140+i*72; PartType type=palette_part(palette_page,i); color(placing==(int)type?.79f:.92f,placing==(int)type?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,part_name(type)); color(type==PART_SOURCE?.2f:type==PART_SWITCH?.38f:.84f,type==PART_SOURCE?.54f:.42f,type==PART_LED?.28f:.6f); circle(42,y+31,13); }
         glEnable(GL_SCISSOR_TEST);
         glScissor((int)(width*220.0/1280), (int)(height*60.0/720), (int)(width*1060.0/1280), (int)(height*590.0/720));
         glPushMatrix(); glTranslatef(220+view.pan_x,70+view.pan_y,0); glScalef(view.zoom,view.zoom,1); glTranslatef(-220,-70,0);
@@ -804,7 +816,7 @@ int main(int argc, char **argv) {
         if(pending.component>=0) { float x,y; int k; pin_xy(&bench.parts[pending.component],pending.pin,&x,&y); color(.9f,.55f,.15f); for(k=0;k<route_count;++k) { line(x,y,route[k].x,route[k].y); x=route[k].x; y=route[k].y; } }
         if(show_handles) for(i=0;i<bench.wire_count;++i) { int k; for(k=0;k<bench.wires[i].knee_count;++k) { WirePoint p=bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
         glLineWidth(1);
-        for(i=0;i<bench.part_count;++i) if(bench.parts[i].type!=PART_BREADBOARD) { int p; part_draw_oriented(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; Pin contact; int snapped=bench_find_contact(&bench,i,p,&contact); pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,snapped?5.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,snapped?3.0f:5.0f); } else if(snapped) { color(.18f,.78f,.46f); circle(x,y,3.0f); } else { color(.93f,.95f,.96f); circle(x,y,5); } } }
+        for(i=0;i<bench.part_count;++i) if(bench.parts[i].type!=PART_BREADBOARD) { int p; part_draw_oriented(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; Pin contact; int snapped=bench_find_contact(&bench,i,p,&contact); pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,bench.parts[i].type==PART_74HC00?4.0f:snapped?5.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,bench.parts[i].type==PART_74HC00?2.5f:snapped?3.0f:5.0f); } else if(snapped) { color(.18f,.78f,.46f); circle(x,y,bench.parts[i].type==PART_74HC00?2.5f:3.0f); } else { color(.93f,.95f,.96f); circle(x,y,bench.parts[i].type==PART_74HC00?2.5f:5.0f); } } }
         for(i=0;i<bench.wire_count;++i) {
             const Wire *wire=&bench.wires[i]; WirePoint start,end,path[WIRE_PATH_CAPACITY]; int count,k;
             pin_xy(&bench.parts[wire->a.component],wire->a.pin,&start.x,&start.y);
@@ -815,10 +827,15 @@ int main(int argc, char **argv) {
             if(bench.parts[wire->b.component].type==PART_BREADBOARD)
                 for(k=count-2;k>=0;--k) if(hypotf(path[k].x-end.x,path[k].y-end.y)>.01f) { wire_contact_tip(end,path[k],wire->color); break; }
         }
+        for(i=0;i<bench.part_count;++i) if(bench.parts[i].type==PART_74HC00) { color(.85f,.88f,.9f); text(font,bench.parts[i].x-32,bench.parts[i].y+5,"74HC00"); }
         for(i=0;i<bench.part_count;++i) if(is_gate(bench.parts[i].type)) { color(.13f,.22f,.27f); text(font,bench.parts[i].x-25,bench.parts[i].y+45,part_name(bench.parts[i].type)+6); }
         if(selected>=0 && (is_gate(bench.parts[selected].type) || bench.parts[selected].type==PART_CLOCK)) {
             int terminal; color(.10f,.25f,.36f);
             for(terminal=0;terminal<bench_pin_count(bench.parts[selected].type);++terminal) { float x,y; char label[2]={bench.parts[selected].type==PART_DFF?"DCQ"[terminal]:(char)('1'+terminal),0}; pin_xy(&bench.parts[selected],terminal,&x,&y); text(font,x+8,y-8,label); }
+        }
+        if(selected>=0 && bench.parts[selected].type==PART_74HC00) {
+            static const int labels[]={0,6,7,13}; int n; color(.1f,.25f,.36f);
+            for(n=0;n<4;++n) { float x,y; char label[16]; pin_xy(&bench.parts[selected],labels[n],&x,&y); snprintf(label,sizeof(label),"%d",labels[n]+1); text(font,x-5,y+(labels[n]<7?-7:18),label); }
         }
         if(trace_valid && trace_current==2 && trace_wire>=0 && trace_wire<bench.wire_count) {
             Wire *wire=&bench.wires[trace_wire]; float ax,ay,bx,by;
@@ -831,7 +848,7 @@ int main(int argc, char **argv) {
             const char *unit=part->type==PART_SOURCE?"V":part->type==PART_RESISTOR?"ohm":part->type==PART_CAPACITOR?"F":part->type==PART_INDUCTOR?"H":part->type==PART_CLOCK?"Hz":NULL;
             color(.97f,.98f,.98f); rect(840,80,420,dc_valid?70:38); color(.14f,.22f,.28f);
             if(unit) { snprintf(reading,sizeof(reading),"Valor: %.5g %s   [ E / + / - ]",part->value,unit); text(font,850,105,reading); }
-            else text(font,850,105,part->type==PART_LED?"LED generico":is_gate(part->type)?part_name(part->type):"Componente selecionado");
+            else text(font,850,105,part->type==PART_LED?"LED generico":(is_gate(part->type) || part->type==PART_74HC00)?part_name(part->type):"Componente selecionado");
             if(dc_valid && (part->type==PART_LED || part->type==PART_RESISTOR)) {
                 snprintf(reading,sizeof(reading),"Corrente: %.5g mA (pino 1 -> 2)",dc_led_currents[selected]*1000.0);
                 text(font,850,137,reading);
@@ -892,3 +909,4 @@ int main(int argc, char **argv) {
     if(font) glDeleteLists(font,128);
     SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return exit_code;
 }
+

@@ -6,7 +6,7 @@
 #define WORKBENCH_MAX_PINS 420
 #define BREADBOARD_PINS 420
 
-typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR, PART_AND, PART_NAND, PART_OR, PART_XOR, PART_NOT, PART_CLOCK, PART_DFF } PartType;
+typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR, PART_AND, PART_NAND, PART_OR, PART_XOR, PART_NOT, PART_CLOCK, PART_DFF, PART_74HC00 } PartType;
 typedef struct { PartType type; float x, y; int on; double value; int rotation; int board_layout; } Part;
 typedef struct { int component, pin; } Pin;
 typedef struct { float x, y; } WirePoint;

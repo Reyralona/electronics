@@ -26,3 +26,13 @@ Usar XSPICE como candidato inicial para portas mistas, com pontes explícitas e 
 **Hipótese e recomendação:** usar uma abstração didática com D, clock e Q, condição inicial zero e set/reset não expostos; isso permite validar memória básica usando o mesmo motor das portas. Uma alternativa construída com portas pode ser adicionada depois para comparação, mas requer testes próprios de realimentação e inicialização.
 
 **Pendente:** pinagem e alimentação de um CI comercial, saída complementar, set/reset, tempos de setup/hold e comportamento físico não são representados por essa abstração.
+
+## CI NAND de 14 pinos: comparação (14/11/2026)
+
+**Fatos:** a [folha de dados oficial SN74HC00](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf) informa quatro portas NAND, GND no pino 7, VCC no pino 14 e faixa de operação de 2 a 6 V. A [página do fabricante](https://www.ti.com/product/SN74HC00) oferece um modelo comportamental PSpice, cujo arquivo contém aviso de direitos reservados.
+
+**Comparação:** o modelo do fabricante tem maior detalhamento, mas a compatibilidade com ngspice e o direito de redistribuição ainda não foram estabelecidos. Um modelo próprio simplificado pode explicitar alimentação e caminho de corrente, mas precisa limitar seu uso e não representa toda a folha de dados. As portas didáticas existentes não têm pinos de alimentação e não servem como modelo fiel do CI.
+
+**Recomendação e pendências:** avaliar um modelo próprio didático de quatro saídas push-pull para alimentação próxima de 5 V, estados indeterminados em alta impedância e corrente passando pelos trilhos; verificar tabela, desligamento, carga e curtos. Limites de temporização, alimentação variável, consumo interno e efeitos elétricos reais continuam pendentes.
+
+**Implementação atual:** o CI didático de 14 pinos usa quatro pares de chaves de saída de 50 Ω alimentadas pelos próprios trilhos do componente; os testes verificam as quatro portas, corrente de alimentação, saída desabilitada sem alimentação, entrada intermediária e encaixe em 14 contatos. É uma aproximação original, com funcionamento limitado a 4,5?5,5 V, não o modelo PSpice do fabricante nem uma caracterização completa.

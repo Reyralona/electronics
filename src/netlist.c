@@ -9,7 +9,7 @@ static int valid_pin(const Workbench *b,Pin p) { return p.component>=0 && p.comp
 
 static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,int measure_wires,Pin probe,double step,double stop)
 {
-    int parents[PIN_TOTAL],i,j,source=-1,ground,positive,gate_count=0;
+    int parents[PIN_TOTAL],i,j,source=-1,ground,positive,gate_count=0,chip_count=0;
     if(!out || !b || b->part_count<0 || b->part_count>WORKBENCH_MAX_COMPONENTS || b->wire_count<0 || b->wire_count>WORKBENCH_MAX_WIRES) return NETLIST_INVALID;
     if(transient && ((transient==3?(probe.component<0 || probe.component>=b->wire_count):!valid_pin(b,probe)) || !isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || step>stop)) return NETLIST_INVALID;
     for(i=0;i<PIN_TOTAL;++i) parents[i]=i;
@@ -28,6 +28,7 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
         case PART_BREADBOARD: for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+bench_board_group_first(j),base+j); break;
         case PART_AND: case PART_NAND: case PART_OR: case PART_XOR: case PART_NOT: case PART_DFF: ++gate_count; break;
+        case PART_74HC00: ++chip_count; break;
         case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: case PART_CLOCK: break;
         default: return NETLIST_UNSUPPORTED;
         }
@@ -105,6 +106,21 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         }
         if(fprintf(out,"Adac%d [dout%d] [%d] gate_dac\n",i,i,output_node==ground?0:output_node+1)<0) return NETLIST_IO_ERROR;
     }
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_74HC00) {
+        static const int pins[4][3]={{0,1,2},{3,4,5},{8,9,7},{11,12,10}};
+        int rail=find_root(parents,i*WORKBENCH_MAX_PINS+13), ref=find_root(parents,i*WORKBENCH_MAX_PINS+6),g;
+        rail=rail==ground?0:rail+1; ref=ref==ground?0:ref+1;
+        if(fprintf(out,"Bchip%d_sup chip%d_sup 0 V=V(%d,%d)\n",i,i,rail,ref)<0) return NETLIST_IO_ERROR;
+        for(g=0;g<4;++g) {
+            int a=find_root(parents,i*WORKBENCH_MAX_PINS+pins[g][0]),c=find_root(parents,i*WORKBENCH_MAX_PINS+pins[g][1]),y=find_root(parents,i*WORKBENCH_MAX_PINS+pins[g][2]);
+            a=a==ground?0:a+1; c=c==ground?0:c+1; y=y==ground?0:y+1;
+            if(fprintf(out,"Bchip%d_a%d chip%d_a%d 0 V=V(%d,%d)\nBchip%d_b%d chip%d_b%d 0 V=V(%d,%d)\n",i,g,i,g,a,ref,i,g,i,g,c,ref)<0) return NETLIST_IO_ERROR;
+            if(fprintf(out,"Bchip%d_hi%d chip%d_hi%d 0 V=((V(chip%d_sup)>=4.5)&&(V(chip%d_sup)<=5.5)&&((V(chip%d_a%d)<=1.5)||(V(chip%d_b%d)<=1.5)))?1:0\n",i,g,i,g,i,i,i,g,i,g)<0) return NETLIST_IO_ERROR;
+            if(fprintf(out,"Bchip%d_lo%d chip%d_lo%d 0 V=((V(chip%d_sup)>=4.5)&&(V(chip%d_sup)<=5.5)&&(V(chip%d_a%d)>=3.5)&&(V(chip%d_b%d)>=3.5))?1:0\n",i,g,i,g,i,i,i,g,i,g)<0) return NETLIST_IO_ERROR;
+            if(fprintf(out,"Schip%d_hi%d %d %d chip%d_hi%d 0 chip_switch\nSchip%d_lo%d %d %d chip%d_lo%d 0 chip_switch\n",i,g,rail,y,i,g,i,g,y,ref,i,g)<0) return NETLIST_IO_ERROR;
+        }
+    }
+    if(chip_count && fprintf(out,".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=0)\n")<0) return NETLIST_IO_ERROR;
     if(gate_count && fprintf(out,".model gate_adc adc_bridge(in_low=1.5 in_high=3.5)\n.model gate_and d_and(rise_delay=1n fall_delay=1n)\n.model gate_nand d_nand(rise_delay=1n fall_delay=1n)\n.model gate_or d_or(rise_delay=1n fall_delay=1n)\n.model gate_xor d_xor(rise_delay=1n fall_delay=1n)\n.model gate_not d_inverter(rise_delay=1n fall_delay=1n)\n.model gate_dff d_dff(ic=0 clk_delay=1n rise_delay=1n fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n")<0) return NETLIST_IO_ERROR;
     if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2)\n")<0) return NETLIST_IO_ERROR;
     if(transient) {
