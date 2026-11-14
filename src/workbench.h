@@ -7,12 +7,13 @@
 #define BREADBOARD_PINS 420
 
 typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR } PartType;
-typedef struct { PartType type; float x, y; int on; double value; int rotation; } Part;
+typedef struct { PartType type; float x, y; int on; double value; int rotation; int board_layout; } Part;
 typedef struct { int component, pin; } Pin;
 typedef struct { float x, y; } WirePoint;
 #define WIRE_MAX_KNEES 16
 #define WIRE_PATH_CAPACITY (WIRE_MAX_KNEES * 9 + 2)
-typedef struct { Pin a, b; WirePoint knees[WIRE_MAX_KNEES]; int knee_count; } Wire;
+#define WIRE_COLOR_COUNT 6
+typedef struct { Pin a, b; WirePoint knees[WIRE_MAX_KNEES]; int knee_count; int color; } Wire;
 typedef struct {
     Part parts[WORKBENCH_MAX_COMPONENTS];
     Wire wires[WORKBENCH_MAX_WIRES];

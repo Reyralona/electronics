@@ -92,7 +92,7 @@ int main(void)
     {
         Workbench b2={0}; Pin contact; int led2[WORKBENCH_MAX_COMPONENTS];
         assert(bench_add(&b2,PART_BREADBOARD,500,400)==0);
-        assert(bench_add(&b2,PART_LED,488,363)==1);
+        assert(bench_add(&b2,PART_LED,488,347)==1);
         assert(bench_add(&b2,PART_SOURCE,200,200)==2);
         assert(bench_snap_to_breadboard(&b2,1));
         assert(bench_find_contact(&b2,1,0,&contact) && contact.component==0 && contact.pin==0);

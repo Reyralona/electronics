@@ -6,14 +6,14 @@
 int workbench_write(FILE *f, const Workbench *b)
 {
     int i, k;
-    if (fprintf(f,"workbench 8\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
+    if (fprintf(f,"workbench 9\n%d %d\n",b->part_count,b->wire_count)<0) return 0;
     for (i=0;i<b->part_count;++i) {
         const Part *p=&b->parts[i];
-        if (fprintf(f,"%d %.9g %.9g %d %.17g %d\n",(int)p->type,p->x,p->y,p->on,p->value,p->rotation)<0) return 0;
+        if (fprintf(f,"%d %.9g %.9g %d %.17g %d %d\n",(int)p->type,p->x,p->y,p->on,p->value,p->rotation,p->board_layout)<0) return 0;
     }
     for (i=0;i<b->wire_count;++i) {
         const Wire *w=&b->wires[i];
-        if (fprintf(f,"%d %d %d %d %d",w->a.component,w->a.pin,w->b.component,w->b.pin,w->knee_count)<0) return 0;
+        if (fprintf(f,"%d %d %d %d %d %d",w->a.component,w->a.pin,w->b.component,w->b.pin,w->knee_count,w->color)<0) return 0;
         for(k=0;k<w->knee_count;++k) if(fprintf(f," %.9g %.9g",w->knees[k].x,w->knees[k].y)<0) return 0;
         if(fputc('\n',f)==EOF) return 0;
     }
@@ -23,11 +23,12 @@ int workbench_write(FILE *f, const Workbench *b)
 int workbench_read(FILE *f, Workbench *destination)
 {
     Workbench b={0}; char magic[32], extra; int version, parts, wires, i, k;
-    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>8) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
+    if(fscanf(f,"%31s %d %d %d",magic,&version,&parts,&wires)!=4 || strcmp(magic,"workbench") || (version<1 || version>9) || parts<0 || parts>WORKBENCH_MAX_COMPONENTS || wires<0 || wires>WORKBENCH_MAX_WIRES) return 0;
     for(i=0;i<parts;++i) {
         int type,on; float x,y;
         if(fscanf(f,"%d %f %f %d",&type,&x,&y,&on)!=4 || (version==1 && type>PART_BREADBOARD) || (version==2 && type>PART_CAPACITOR) || !isfinite(x) || !isfinite(y) || fabsf(x)>100000 || fabsf(y)>100000 || (on!=0 && on!=1) || bench_add(&b,(PartType)type,x,y)<0) return 0;
         b.parts[i].on=on;
+        if(version<9 && type==PART_BREADBOARD) b.parts[i].board_layout=0;
         if(version>=4) {
             double value;
             if(fscanf(f,"%lf",&value)!=1 || !isfinite(value)) return 0;
@@ -39,11 +40,17 @@ int workbench_read(FILE *f, Workbench *destination)
             if(fscanf(f,"%d",&rotation)!=1 || rotation<0 || rotation>3 || (type==PART_BREADBOARD && rotation!=0)) return 0;
             b.parts[i].rotation=rotation;
         }
+        if(version>=9) {
+            int layout;
+            if(fscanf(f,"%d",&layout)!=1 || layout<0 || layout>1 || (type!=PART_BREADBOARD && layout!=0)) return 0;
+            b.parts[i].board_layout=layout;
+        }
     }
     for(i=0;i<wires;++i) {
         Pin a,c; int knees;
         if(fscanf(f,"%d %d %d %d %d",&a.component,&a.pin,&c.component,&c.pin,&knees)!=5 || knees<0 || knees>WIRE_MAX_KNEES || (version<5 && (a.pin>=100 || c.pin>=100)) || (version==5 && (a.pin>=180 || c.pin>=180)) || (version==6 && (a.pin>=300 || c.pin>=300)) || bench_toggle_wire(&b,a,c)!=1) return 0;
         b.wires[i].knee_count=knees;
+        if(version>=9 && (fscanf(f,"%d",&b.wires[i].color)!=1 || b.wires[i].color<0 || b.wires[i].color>=WIRE_COLOR_COUNT)) return 0;
         for(k=0;k<knees;++k) {
             WirePoint *p=&b.wires[i].knees[k];
             if(fscanf(f,"%f %f",&p->x,&p->y)!=2 || !isfinite(p->x) || !isfinite(p->y) || fabsf(p->x)>100000 || fabsf(p->y)>100000) return 0;

@@ -65,7 +65,7 @@ int main(void)
         Workbench snapped={0};
         assert(bench_add(&snapped,PART_SOURCE,200,200)==0);
         assert(bench_add(&snapped,PART_BREADBOARD,500,400)==1);
-        assert(bench_add(&snapped,PART_RESISTOR,488,363)==2);
+        assert(bench_add(&snapped,PART_RESISTOR,488,347)==2);
         assert(bench_snap_to_breadboard(&snapped,2));
         assert(bench_toggle_wire(&snapped,(Pin){0,0},(Pin){1,4})==1);
         assert(bench_toggle_wire(&snapped,(Pin){0,1},(Pin){1,39})==1);

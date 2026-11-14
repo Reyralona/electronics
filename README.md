@@ -6,7 +6,9 @@ A visão, o escopo proposto e as orientações de trabalho estão em [prompt.md]
 
 ## Bancada de montagem experimental
 
-Clique em um terminal, depois em pontos vazios para acrescentar até 16 joelhos, e termine em outro terminal. Arraste os pequenos quadrados dos joelhos para ajustar o trajeto; dois cliques removem um joelho. Os cantos são arredondados com raio limitado pelo espaço disponível. `F1` abre configurações de grade, pontos de controle e curvas. A persistência da bancada permanece pendente. `bancada.exe --capture` gera `build/bancada-capture.bmp` com uma cena reproduzível para revisão visual; `--capture-settings` inclui o painel aberto.
+Clique em um terminal, depois em pontos vazios para acrescentar até 16 joelhos, e termine em outro terminal. Arraste os pequenos quadrados dos joelhos para ajustar o trajeto; dois cliques removem um joelho. Os cantos são arredondados com raio limitado pelo espaço disponível. `F1` abre configurações de grade, pontos de controle e curvas. `bancada.exe --capture` gera `build/bancada-capture.bmp` com uma cena reproduzível para revisão visual; `--capture-settings` inclui o painel aberto.
+
+Em `F1`, escolha uma das seis cores para os próximos fios. Para mudar um fio existente, clique no seu traçado, abra `F1` e selecione a cor; a alteração pode ser desfeita e é salva no projeto. Clique numa área vazia para deixar de selecionar o fio. A cor é apenas visual e não altera a simulação.
 
 Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
 
@@ -34,6 +36,8 @@ Para visualizar corrente nos fios, abra `F1`, ative **Visualizar corrente nos fi
 Sem uma análise DC válida, a simulação antiga é discreta: o LED acende quando seu terminal esquerdo alcança o positivo de uma fonte ligada e o direito alcança o negativo por fios e interruptores fechados. Se houver resistor, capacitor ou indutor, a interface indica **cálculo indisponível** e mostra o LED em cinza até uma análise DC bem-sucedida. A breadboard tem 420 furos: 30 colunas de cinco contatos em cada lado e quatro trilhos de alimentação, cada um com 30 contatos conectados entre si. Os dois lados e os quatro trilhos são independentes. As pontas metálicas dos fios são mostradas sobre os furos. Ao soltar uma peça próxima de um furo, seus terminais são alinhados à placa quando possível; terminais encaixados aparecem em verde e entram na conectividade. Mover a peça ou a placa rompe o contato. O encaixe é uma aproximação geométrica: a placa ainda não gira e não há verificação física de ocupação dos furos; placas sobrepostas não são suportadas. Fontes em curto não acendem LEDs no modelo discreto. A análise SPICE usa parâmetros genéricos e não deve ser usada para dimensionar uma montagem física. O desenho usa formas originais provisórias, ainda não modelos finais. Os projetos antigos não são alterados.
 
 Na bancada experimental, `Ctrl+Z` desfaz e `Ctrl+Y` refaz até 24 alterações por sessão. O histórico inclui componentes, fios, joelhos, valores, estados e carregamento; não é salvo no projeto. A roda do mouse ajusta o zoom ao redor do cursor; arraste com o botão central para deslocar a vista e use `Home` para restaurá-la. A posição e o zoom da vista ainda não são salvos.
+
+As placas recém-criadas têm furos mais espaçados. Placas carregadas de projetos anteriores mantêm a geometria original para preservar os contatos já montados.
 
 Para incluir um teste automatizado dos eventos de janela (componentes, fios, joelhos, desfazer/refazer, zoom e deslocamento), execute `./build.ps1 -OutputName bancada-next -GuiTests`. Esse teste requer uma sessão gráfica Windows com OpenGL; não substitui uma avaliação manual completa da interface.
 
