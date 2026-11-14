@@ -1,0 +1,25 @@
+XSPICE AND mixed-signal reference
+* Four input combinations; the output drives a resistor and a generic LED.
+V1 in1 0 PWL(0 0 1m 0 1.000001m 5 2m 5 2.000001m 0 3m 0 3.000001m 5 4m 5 4.000001m 2.5 5m 2.5)
+V2 in2 0 PWL(0 0 2m 0 2.000001m 5 5m 5)
+Aadc [in1 in2] [d1 d2] adc_model
+.model adc_model adc_bridge(in_low=1.5 in_high=3.5)
+Agate [d1 d2] dout and_model
+.model and_model d_and(rise_delay=1n fall_delay=1n)
+Adac [dout] [out] dac_model
+.model dac_model dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)
+Rload out led 1k
+Dled led 0 LED_GENERIC
+.model LED_GENERIC D(IS=1e-18 N=2)
+.control
+save all @dled[id]
+tran 10u 5m
+meas tran case00 find v(out) at=0.5m
+meas tran case10 find v(out) at=1.5m
+meas tran case01 find v(out) at=2.5m
+meas tran case11 find v(out) at=3.5m
+meas tran undefined find v(out) at=4.5m
+meas tran led_current find @dled[id] at=3.5m
+quit
+.endc
+.end
