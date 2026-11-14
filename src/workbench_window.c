@@ -72,6 +72,12 @@ static void part_draw(const Part *p,int selected,int led) {
         color(.16f,.19f,.25f); rect(x-18,y-23,36,46);
         color(.25f,.31f,.42f); rect(x-18,y-26,36,44);
         color(.55f,.62f,.7f); rect(x+9,y-22,4,34);
+    } else if(p->type==PART_INDUCTOR) {
+        int coil;
+        color(.25f,.2f,.16f); rect(x-31,y-13,62,26);
+        color(.66f,.36f,.18f); rect(x-29,y-15,58,23);
+        color(.94f,.65f,.35f);
+        for(coil=0;coil<6;++coil) rect(x-26+coil*9,y-14,3,21);
     } else {
         color(.75f,.75f,.72f); rect(x-31,y+7,62,10);
         if(led<0) color(.48f,.48f,.48f); else color(led?1.0f:.6f,led?.28f:.12f,led?.24f:.14f); circle(x,y-3,22);
@@ -99,7 +105,7 @@ int main(int argc, char **argv) {
         bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){308,130}; bench.wires[0].knees[1]=(WirePoint){668,130};
         bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1});
         bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){772,300}; bench.wires[1].knees[1]=(WirePoint){412,300};
-        if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); }
+        if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); bench_add(&bench,PART_INDUCTOR,970,520); }
         if(strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0) {
             bench_add(&bench,PART_RESISTOR,530,220);
             selected=3;
@@ -155,7 +161,7 @@ int main(int argc, char **argv) {
                     }
                     continue;
                 }
-                if(x<220 && y>=140 && y<644) { int item=(int)((y-140)/84); if(item<6) { placing=item; pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
+                if(x<220 && y>=140 && y<644) { int item=(int)((y-140)/72); if(item<7) { placing=item; pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
                 if(x<220||y<70||y>660) continue;
                 if(pending.component<0 && placing<0 && show_handles) {
                     int k;
@@ -198,7 +204,7 @@ int main(int argc, char **argv) {
         else color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f);
         text(font,1030,42,dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
         color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,"COMPONENTES");
-        for(i=0;i<6;++i) { float y=140+i*84; color(placing==i?.79f:.92f,placing==i?.9f:.94f,.96f); rect(14,y,192,70); color(.16f,.22f,.26f); text(font,76,y+39,i==0?"Fonte":i==1?"Interruptor":i==2?"LED":i==3?"Breadboard":i==4?"Resistor":"Capacitor"); color(i==0?.2f:i==1?.38f:.84f,i==0?.54f:.42f,i==2?.28f:.6f); circle(42,y+35,13); }
+        for(i=0;i<7;++i) { float y=140+i*72; color(placing==i?.79f:.92f,placing==i?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,i==0?"Fonte":i==1?"Interruptor":i==2?"LED":i==3?"Breadboard":i==4?"Resistor":i==5?"Capacitor":"Indutor"); color(i==0?.2f:i==1?.38f:.84f,i==0?.54f:.42f,i==2?.28f:.6f); circle(42,y+31,13); }
         color(.85f,.88f,.89f); glLineWidth(1); if(show_grid) { for(i=240;i<1280;i+=24) line((float)i,69,(float)i,659); for(i=92;i<660;i+=24) line(220,(float)i,1280,(float)i); }
         color(.25f,.45f,.57f); glLineWidth(3);
         for(i=0;i<bench.wire_count;++i) {

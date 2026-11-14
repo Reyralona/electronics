@@ -51,6 +51,12 @@ int main(void)
         f=tmpfile(); assert(f);
         assert(netlist_write_transient(f,&rc,(Pin){2,0},0,.005)==NETLIST_INVALID);
         assert(netlist_write_transient(f,&rc,(Pin){2,99},.00001,.005)==NETLIST_INVALID); fclose(f);
+        bench_remove(&rc,2);
+        assert(bench_add(&rc,PART_INDUCTOR,0,0)==2);
+        assert(bench_toggle_wire(&rc,(Pin){1,1},(Pin){2,0})==1);
+        assert(bench_toggle_wire(&rc,(Pin){2,1},(Pin){0,1})==1);
+        f=fopen("build/netlist-rl.cir","w"); assert(f);
+        assert(netlist_write_transient(f,&rc,(Pin){2,0},.0000001,.00005)==NETLIST_OK); fclose(f);
     }
     return 0;
 }

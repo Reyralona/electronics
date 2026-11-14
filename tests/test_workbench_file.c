@@ -41,5 +41,13 @@ int main(void)
     file=tmpfile(); assert(file); fputs("workbench 1\n1 0\n4 0 0 0\n",file); rewind(file);
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==4);
+    assert(bench_add(&source,PART_INDUCTOR,500,100)==4);
+    assert(!bench_boolean_supported(&source));
+    file=tmpfile(); assert(file); assert(workbench_write(file,&source)); rewind(file);
+    assert(workbench_read(file,&loaded)); fclose(file);
+    assert(loaded.part_count==5 && loaded.parts[4].type==PART_INDUCTOR);
+    file=tmpfile(); assert(file); fputs("workbench 2\n1 0\n6 0 0 0\n",file); rewind(file);
+    assert(!workbench_read(file,&loaded)); fclose(file);
+    assert(loaded.part_count==5);
     return 0;
 }

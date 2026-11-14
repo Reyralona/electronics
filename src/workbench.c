@@ -30,7 +30,7 @@ int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, Wi
 
 int bench_pin_count(PartType type)
 {
-    return type == PART_BREADBOARD ? 100 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR ? 2 : 0);
+    return type == PART_BREADBOARD ? 100 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ? 2 : 0);
 }
 
 static int pin_valid(const Workbench *b, Pin p)
@@ -97,7 +97,7 @@ int bench_boolean_supported(const Workbench *b)
 {
     int i;
     for(i=0;i<b->part_count;++i)
-        if(b->parts[i].type==PART_RESISTOR || b->parts[i].type==PART_CAPACITOR) return 0;
+        if(b->parts[i].type==PART_RESISTOR || b->parts[i].type==PART_CAPACITOR || b->parts[i].type==PART_INDUCTOR) return 0;
     return 1;
 }
 
