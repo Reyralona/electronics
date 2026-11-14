@@ -3,7 +3,7 @@
 
 int main(void)
 {
-    Circuit circuit = {1, 0};
+    Circuit circuit = {1, 0, 0};
     int command;
 
     puts("Circuito didatico fixo: fonte -> interruptor -> LED -> fonte");

@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.8.0
+
+- Três ligações fixas podem ser conectadas ou desconectadas com as teclas 1, 2 e 3; o LED depende do circuito completo. O formato 2 salva essas ligações e continua lendo projetos do formato 1.
+
 ## 0.7.0
 
 - Grade e símbolos visuais identificam fonte, interruptor e LED; interruptor também indica estado pela posição.
