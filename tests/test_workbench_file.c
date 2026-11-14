@@ -23,7 +23,7 @@ int main(void)
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==2 && loaded.wires[0].b.pin==99);
     {
-        const char *invalid[]={"workbench 12\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
+        const char *invalid[]={"workbench 13\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
         unsigned int i;
         for(i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i) {
             file=tmpfile(); assert(file); fputs(invalid[i],file); rewind(file);
@@ -154,6 +154,17 @@ int main(void)
         assert(loaded.parts[0].type==PART_AND && loaded.parts[0].rotation==1);
         file=tmpfile(); assert(file); fputs("workbench 10\n1 0\n7 100 100 0 0 0 0\nsettings 1 1 1 0 0 0 0 1e-5 .005\n",file); rewind(file);
         assert(!workbench_read(file,&loaded)); fclose(file);
+    }
+    {
+        Workbench gates={0}; int kind;
+        for(kind=PART_NAND;kind<=PART_NOT;++kind) assert(bench_add(&gates,(PartType)kind,100+(kind-PART_NAND)*100,100)>=0);
+        assert(bench_pin_count(PART_NOT)==2 && bench_pin_count(PART_XOR)==3);
+        file=tmpfile(); assert(file); assert(workbench_write(file,&gates)); rewind(file);
+        assert(workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.part_count==4 && loaded.parts[0].type==PART_NAND && loaded.parts[3].type==PART_NOT);
+        file=tmpfile(); assert(file); fputs("workbench 11\n1 0\n8 100 100 0 0 0 0\nsettings 1 1 1 0 0 0 0 1e-5 .005\n",file); rewind(file);
+        assert(!workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.part_count==4 && loaded.parts[0].type==PART_NAND);
     }
     return 0;
 }

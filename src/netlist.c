@@ -27,7 +27,7 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         case PART_SOURCE: if(source<0) source=i; break;
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
         case PART_BREADBOARD: for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+bench_board_group_first(j),base+j); break;
-        case PART_AND: ++gate_count; break;
+        case PART_AND: case PART_NAND: case PART_OR: case PART_XOR: case PART_NOT: ++gate_count; break;
         case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: break;
         default: return NETLIST_UNSUPPORTED;
         }
@@ -79,11 +79,19 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
         if(fprintf(out,"L%d %d %d %.17g IC=0\n",i,a==ground?0:a+1,c==ground?0:c+1,b->parts[i].value)<0) return NETLIST_IO_ERROR;
     }
-    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_AND) {
-        int a=find_root(parents,i*WORKBENCH_MAX_PINS), c=find_root(parents,i*WORKBENCH_MAX_PINS+1), output_node=find_root(parents,i*WORKBENCH_MAX_PINS+2);
-        if(fprintf(out,"Aadc%d [%d %d] [din%d_0 din%d_1] gate_adc\nAgate%d [din%d_0 din%d_1] dout%d gate_and\nAdac%d [dout%d] [%d] gate_dac\n",i,a==ground?0:a+1,c==ground?0:c+1,i,i,i,i,i,i,i,i,output_node==ground?0:output_node+1)<0) return NETLIST_IO_ERROR;
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type>=PART_AND && b->parts[i].type<=PART_NOT) {
+        PartType type=b->parts[i].type;
+        int a=find_root(parents,i*WORKBENCH_MAX_PINS), c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
+        int output_node=type==PART_NOT?c:find_root(parents,i*WORKBENCH_MAX_PINS+2);
+        const char *model=type==PART_AND?"gate_and":type==PART_NAND?"gate_nand":type==PART_OR?"gate_or":type==PART_XOR?"gate_xor":"gate_not";
+        if(type==PART_NOT) {
+            if(fprintf(out,"Aadc%d [%d] [din%d_0] gate_adc\nAgate%d din%d_0 dout%d %s\n",i,a==ground?0:a+1,i,i,i,i,model)<0) return NETLIST_IO_ERROR;
+        } else {
+            if(fprintf(out,"Aadc%d [%d %d] [din%d_0 din%d_1] gate_adc\nAgate%d [din%d_0 din%d_1] dout%d %s\n",i,a==ground?0:a+1,c==ground?0:c+1,i,i,i,i,i,i,model)<0) return NETLIST_IO_ERROR;
+        }
+        if(fprintf(out,"Adac%d [dout%d] [%d] gate_dac\n",i,i,output_node==ground?0:output_node+1)<0) return NETLIST_IO_ERROR;
     }
-    if(gate_count && fprintf(out,".model gate_adc adc_bridge(in_low=1.5 in_high=3.5)\n.model gate_and d_and(rise_delay=1n fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n")<0) return NETLIST_IO_ERROR;
+    if(gate_count && fprintf(out,".model gate_adc adc_bridge(in_low=1.5 in_high=3.5)\n.model gate_and d_and(rise_delay=1n fall_delay=1n)\n.model gate_nand d_nand(rise_delay=1n fall_delay=1n)\n.model gate_or d_or(rise_delay=1n fall_delay=1n)\n.model gate_xor d_xor(rise_delay=1n fall_delay=1n)\n.model gate_not d_inverter(rise_delay=1n fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n")<0) return NETLIST_IO_ERROR;
     if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2)\n")<0) return NETLIST_IO_ERROR;
     if(transient) {
         int node=transient==3?0:find_root(parents,pin_index(probe)); char vector[40]={0};

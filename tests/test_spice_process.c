@@ -121,25 +121,45 @@ int main(int argc, char **argv)
         assert(trace.count==i);
     }
     if(argc>1) {
-        int bits;
-        for(bits=0;bits<4;++bits) {
-            Workbench logic={0}; SpiceTrace measured={0}; int i;
-            assert(bench_add(&logic,PART_SOURCE,0,0)==0);
-            assert(bench_add(&logic,PART_AND,0,0)==1);
-            assert(bench_add(&logic,PART_RESISTOR,0,0)==2);
-            assert(bench_add(&logic,PART_LED,0,0)==3);
-            assert(bench_toggle_wire(&logic,(Pin){0,(bits&1)?0:1},(Pin){1,0})==1);
-            assert(bench_toggle_wire(&logic,(Pin){0,(bits&2)?0:1},(Pin){1,1})==1);
-            assert(bench_toggle_wire(&logic,(Pin){1,2},(Pin){2,0})==1);
-            assert(bench_toggle_wire(&logic,(Pin){2,1},(Pin){3,0})==1);
-            assert(bench_toggle_wire(&logic,(Pin){3,1},(Pin){0,1})==1);
-            assert(spice_transient_analyze(&logic,argv[1],(Pin){1,2},1e-5,.001,&measured,message,sizeof(message)));
-            i=measured.count-1;
-            if(bits==3) assert(measured.samples[i].value>4.9);
-            else assert(fabs(measured.samples[i].value)<.01);
-            assert(spice_dc_analyze(&logic,argv[1],&current,led,message,sizeof(message)));
-            if(bits==3) assert(led[3]>.003 && led[3]<.004);
-            else assert(fabs(led[3])<1e-8);
+        PartType type;
+        for(type=PART_AND;type<=PART_NOT;type++) {
+            int bits;
+            for(bits=0;bits<(type==PART_NOT?2:4);++bits) {
+                Workbench logic={0}; SpiceTrace measured={0}; int i,high,output=type==PART_NOT?1:2;
+                high=type==PART_AND?bits==3:type==PART_NAND?bits!=3:type==PART_OR?bits!=0:type==PART_XOR?(bits==1 || bits==2):bits==0;
+                assert(bench_add(&logic,PART_SOURCE,0,0)==0);
+                assert(bench_add(&logic,type,0,0)==1);
+                assert(bench_add(&logic,PART_RESISTOR,0,0)==2);
+                assert(bench_add(&logic,PART_LED,0,0)==3);
+                assert(bench_toggle_wire(&logic,(Pin){0,(bits&1)?0:1},(Pin){1,0})==1);
+                if(type!=PART_NOT) assert(bench_toggle_wire(&logic,(Pin){0,(bits&2)?0:1},(Pin){1,1})==1);
+                assert(bench_toggle_wire(&logic,(Pin){1,output},(Pin){2,0})==1);
+                assert(bench_toggle_wire(&logic,(Pin){2,1},(Pin){3,0})==1);
+                assert(bench_toggle_wire(&logic,(Pin){3,1},(Pin){0,1})==1);
+                assert(spice_transient_analyze(&logic,argv[1],(Pin){1,output},1e-5,.001,&measured,message,sizeof(message)));
+                i=measured.count-1;
+                if(high) assert(measured.samples[i].value>4.9); else assert(fabs(measured.samples[i].value)<.01);
+                assert(spice_dc_analyze(&logic,argv[1],&current,led,message,sizeof(message)));
+                if(high) assert(led[3]>.003 && led[3]<.004); else assert(fabs(led[3])<1e-8);
+            }
+        }
+        {
+            Workbench cascade={0}; SpiceTrace measured={0};
+            assert(bench_add(&cascade,PART_SOURCE,0,0)==0);
+            assert(bench_add(&cascade,PART_AND,0,0)==1);
+            assert(bench_add(&cascade,PART_NOT,0,0)==2);
+            assert(bench_add(&cascade,PART_RESISTOR,0,0)==3);
+            assert(bench_add(&cascade,PART_LED,0,0)==4);
+            assert(bench_toggle_wire(&cascade,(Pin){0,0},(Pin){1,0})==1);
+            assert(bench_toggle_wire(&cascade,(Pin){0,1},(Pin){1,1})==1);
+            assert(bench_toggle_wire(&cascade,(Pin){1,2},(Pin){2,0})==1);
+            assert(bench_toggle_wire(&cascade,(Pin){2,1},(Pin){3,0})==1);
+            assert(bench_toggle_wire(&cascade,(Pin){3,1},(Pin){4,0})==1);
+            assert(bench_toggle_wire(&cascade,(Pin){4,1},(Pin){0,1})==1);
+            assert(spice_transient_analyze(&cascade,argv[1],(Pin){2,1},1e-5,.001,&measured,message,sizeof(message)));
+            assert(measured.samples[measured.count-1].value>4.9);
+            assert(spice_dc_analyze(&cascade,argv[1],&current,led,message,sizeof(message)));
+            assert(led[4]>.003 && led[4]<.004);
         }
     }
     return 0;

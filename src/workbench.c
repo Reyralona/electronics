@@ -48,7 +48,7 @@ int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, Wi
 
 int bench_pin_count(PartType type)
 {
-    return type == PART_BREADBOARD ? BREADBOARD_PINS : type == PART_AND ? 3 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ? 2 : 0);
+    return type == PART_BREADBOARD ? BREADBOARD_PINS : (type >= PART_AND && type <= PART_XOR) ? 3 : type == PART_NOT ? 2 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ? 2 : 0);
 }
 
 int bench_board_group_first(int pin)
@@ -65,7 +65,7 @@ void bench_pin_position(const Part *p,int pin,float *x,float *y)
         else if(group<36) { int extra=(group-20)%8; *x=p->x+(extra<4?-119.0f+extra*14.0f:77.0f+(extra-4)*14.0f); *y=p->y+(p->board_layout?(group<28?-55.0f:15.0f):(group<28?-39.0f:11.0f))+row*(p->board_layout?10.0f:7.0f); }
         else if(pin<300) { int extra=(group-36)%12; *x=p->x+(extra<6?-203.0f+extra*14.0f:133.0f+(extra-6)*14.0f); *y=p->y+(p->board_layout?(group<48?-55.0f:15.0f):(group<48?-39.0f:11.0f))+row*(p->board_layout?10.0f:7.0f); }
         else { int rail=(pin-300)/30, column=(pin-300)%30; *x=p->x-203.0f+column*14.0f; *y=p->y+(rail==0?-98.0f:rail==1?-82.0f:rail==2?78.0f:94.0f); }
-    } else if(p->type==PART_AND) {
+    } else if(p->type>=PART_AND && p->type<=PART_XOR) {
         float dx=pin==2?49.0f:-49.0f,dy=pin==0?-15.0f:pin==1?15.0f:0.0f;
         switch(p->rotation) {
         case 1: *x=p->x-dy; *y=p->y+dx; break;
@@ -196,7 +196,7 @@ int bench_boolean_supported(const Workbench *b)
 {
     int i;
     for(i=0;i<b->part_count;++i)
-        if(b->parts[i].type==PART_RESISTOR || b->parts[i].type==PART_CAPACITOR || b->parts[i].type==PART_INDUCTOR || b->parts[i].type==PART_AND) return 0;
+        if(b->parts[i].type==PART_RESISTOR || b->parts[i].type==PART_CAPACITOR || b->parts[i].type==PART_INDUCTOR || (b->parts[i].type>=PART_AND && b->parts[i].type<=PART_NOT)) return 0;
     return 1;
 }
 

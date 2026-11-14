@@ -55,3 +55,5 @@ A corrente transitória de um fio selecionado usa um sensor ideal de 0 V no netl
 O formato de projeto 10 armazena configurações visuais, cor padrão dos fios e parâmetros de sondagem. Arquivos anteriores recebem padrões; configurações inválidas rejeitam o arquivo inteiro sem alterar a bancada ou as opções atuais. Desfazer/refazer continua cobrindo somente a montagem, não alterações de configuração.
 
 A primeira porta AND didática usa três terminais (duas entradas e saída) e modelos XSPICE com pontes ADC/DAC fixas de 0/5 V; a saída indefinida é 2,5 V. Não há pinos de alimentação nem modelo de CI comercial. Testes da bancada verificam as quatro entradas em DC e transiente com resistor e LED. O formato 11 registra o novo tipo sem reinterpretar arquivos antigos.
+
+As portas didáticas NAND, OR, XOR e NOT usam a mesma interface ADC/DAC fixa da AND e modelos digitais XSPICE. Todas as tabelas de verdade foram exercitadas na bancada em DC e transiente com carga LED; AND seguida de NOT também foi testada. O formato 12 distingue os novos tipos, e Tab alterna as páginas da biblioteca. Alimentação, conflitos de saída e CIs reais permanecem pendentes.
