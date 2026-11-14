@@ -39,7 +39,11 @@ int main(int argc,char **argv)
         assert(spice_job_start_transient(&job,&bench,argv[1],(Pin){2,0},1e-5,.005));
         finish(&job);
         assert(job.success && job.transient && job.trace.count>2);
-        assert(job.trace.samples[job.trace.count-1].voltage>4.9);
+        assert(job.trace.samples[job.trace.count-1].value>4.9);
+        assert(spice_job_start_transient_current(&job,&bench,argv[1],1,1e-5,.005));
+        finish(&job);
+        assert(job.success && job.transient==2 && job.trace.samples[0].value>0.004);
+        assert(job.trace.samples[job.trace.count-1].value<0.0001);
 
     }
     spice_job_join(&job);

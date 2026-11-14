@@ -18,6 +18,7 @@ typedef struct {
 int spice_job_start(SpiceJob *job, const Workbench *bench, const char *executable);
 int spice_job_start_wires(SpiceJob *job, const Workbench *bench, const char *executable);
 int spice_job_start_transient(SpiceJob *job, const Workbench *bench, const char *executable, Pin probe, double step, double stop);
+int spice_job_start_transient_current(SpiceJob *job, const Workbench *bench, const char *executable, int component, double step, double stop);
 /* Returns 1 after a finished job is joined; 0 otherwise. */
 int spice_job_poll(SpiceJob *job);
 void spice_job_join(SpiceJob *job);
