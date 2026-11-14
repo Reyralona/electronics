@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
-#include "circuit.h"
-
-typedef struct { float x, y, w, h; } Block;
+#include "project.h"
 
 static void rectangle(float x, float y, float w, float h)
 {
@@ -32,10 +30,12 @@ int main(void)
 {
     SDL_Window *window;
     SDL_GLContext context;
-    Circuit circuit = {1, 0};
-    Block blocks[3] = {{-0.7f, -0.15f, 0.3f, 0.3f},
-                       {-0.15f, -0.12f, 0.3f, 0.24f},
-                       {0.4f, -0.15f, 0.3f, 0.3f}};
+    Project project = {{1, 0}, {{-0.7f, -0.15f, 0.3f, 0.3f},
+                                 {-0.15f, -0.12f, 0.3f, 0.24f},
+                                 {0.4f, -0.15f, 0.3f, 0.3f}}};
+    Circuit *circuit = &project.circuit;
+    Block *blocks = project.blocks;
+    const char *status = "S salvar | L carregar";
     int dragging = -1;
     float drag_x = 0, drag_y = 0;
     float zoom = 1.0f, pan_x = 0.0f, pan_y = 0.0f;
@@ -67,8 +67,10 @@ int main(void)
             if (event.type == SDL_EVENT_QUIT) running = 0;
             else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {
                 if (event.key.key == SDLK_ESCAPE) running = 0;
-                else if (event.key.key == SDLK_I) circuit.switch_closed = !circuit.switch_closed;
-                else if (event.key.key == SDLK_F) circuit.source_on = !circuit.source_on;
+                else if (event.key.key == SDLK_I) circuit->switch_closed = !circuit->switch_closed;
+                else if (event.key.key == SDLK_F) circuit->source_on = !circuit->source_on;
+                else if (event.key.key == SDLK_S) status = project_save("circuito.elec", &project) ? "Salvo: circuito.elec" : "Erro ao salvar";
+                else if (event.key.key == SDLK_L) status = project_load("circuito.elec", &project) ? "Carregado: circuito.elec" : "Erro ao carregar";
                 else if (event.key.key == SDLK_LEFT) pan_x += 0.1f;
                 else if (event.key.key == SDLK_RIGHT) pan_x -= 0.1f;
                 else if (event.key.key == SDLK_UP) pan_y -= 0.1f;
@@ -96,8 +98,8 @@ int main(void)
                             dragging = i;
                             drag_x = x - b->x;
                             drag_y = y - b->y;
-                        } else if (i == 0) circuit.source_on = !circuit.source_on;
-                        else if (i == 1) circuit.switch_closed = !circuit.switch_closed;
+                        } else if (i == 0) circuit->source_on = !circuit->source_on;
+                        else if (i == 1) circuit->switch_closed = !circuit->switch_closed;
                         break;
                     }
                 }
@@ -113,10 +115,10 @@ int main(void)
                 }
             }
         }
-        snprintf(title, sizeof(title), "Fonte: %s | Interruptor: %s | LED: %s | Clique ou F / I | Esc",
-                 circuit.source_on ? "ligada" : "desligada",
-                 circuit.switch_closed ? "fechado" : "aberto",
-                 circuit_led_on(&circuit) ? "aceso" : "apagado");
+        snprintf(title, sizeof(title), "Fonte: %s | Interruptor: %s | LED: %s | %s",
+                 circuit->source_on ? "ligada" : "desligada",
+                 circuit->switch_closed ? "fechado" : "aberto",
+                 circuit_led_on(circuit) ? "aceso" : "apagado", status);
         SDL_SetWindowTitle(window, title);
         SDL_GetWindowSizeInPixels(window, &width, &height);
         glViewport(0, 0, width, height);
@@ -137,12 +139,12 @@ int main(void)
         line(blocks[2].x + blocks[2].w / 2, -0.7f, blocks[0].x + blocks[0].w / 2, -0.7f);
         line(blocks[0].x + blocks[0].w / 2, -0.7f,
              blocks[0].x + blocks[0].w / 2, blocks[0].y);
-        if (circuit.source_on) glColor3f(0.25f, 0.55f, 0.85f);
+        if (circuit->source_on) glColor3f(0.25f, 0.55f, 0.85f);
         else glColor3f(0.15f, 0.25f, 0.35f);
         rectangle(blocks[0].x, blocks[0].y, blocks[0].w, blocks[0].h);
-        glColor3f(circuit.switch_closed ? 0.3f : 0.55f, 0.55f, 0.35f);
+        glColor3f(circuit->switch_closed ? 0.3f : 0.55f, 0.55f, 0.35f);
         rectangle(blocks[1].x, blocks[1].y, blocks[1].w, blocks[1].h);
-        if (circuit_led_on(&circuit)) glColor3f(1.0f, 0.85f, 0.2f);
+        if (circuit_led_on(circuit)) glColor3f(1.0f, 0.85f, 0.2f);
         else glColor3f(0.3f, 0.27f, 0.15f);
         rectangle(blocks[2].x, blocks[2].y, blocks[2].w, blocks[2].h);
         SDL_GL_SwapWindow(window);
