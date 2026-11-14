@@ -33,6 +33,8 @@ Sem uma análise DC válida, a simulação antiga é discreta: o LED acende quan
 
 Na bancada experimental, `Ctrl+Z` desfaz e `Ctrl+Y` refaz até 24 alterações por sessão. O histórico inclui componentes, fios, joelhos, valores, estados e carregamento; não é salvo no projeto. A bancada ainda não possui zoom.
 
+Para incluir um teste automatizado dos eventos de janela (adição de componentes, criação de fio, movimento e remoção de joelho e desfazer/refazer), execute `./build.ps1 -OutputName bancada-next -GuiTests`. Esse teste requer uma sessão gráfica Windows com OpenGL; não substitui uma avaliação manual completa da interface.
+
 ## Protótipo anterior
 
 O primeiro incremento é um circuito fixo de fonte, interruptor e LED em console. Use `i` para alternar o interruptor, `f` para alternar a fonte e `q` para sair. É um modelo booleano didático, sem cálculo elétrico ou edição de conexões; não representa precisão de SPICE.

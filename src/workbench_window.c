@@ -36,6 +36,34 @@ static void text(GLuint font,float x,float y,const char *str) {
     if(!font) return;
     glRasterPos2f(x,y); glListBase(font); glCallLists((GLsizei)strlen(str),GL_UNSIGNED_BYTE,str);
 }
+
+static int test_click_count(SDL_Window *window,float x,float y,int clicks)
+{
+    SDL_Event event={0};
+    event.type=SDL_EVENT_MOUSE_BUTTON_DOWN;
+    event.button.windowID=SDL_GetWindowID(window);
+    event.button.button=SDL_BUTTON_LEFT;
+    event.button.clicks=(Uint8)clicks;
+    event.button.x=x; event.button.y=y;
+    return SDL_PushEvent(&event);
+}
+static int test_click(SDL_Window *window,float x,float y) { return test_click_count(window,x,y,1); }
+static int test_drag_finish(SDL_Window *window,float x,float y)
+{
+    SDL_Event event={0};
+    event.type=SDL_EVENT_MOUSE_MOTION; event.motion.windowID=SDL_GetWindowID(window); event.motion.x=x; event.motion.y=y;
+    if(!SDL_PushEvent(&event)) return 0;
+    SDL_zero(event); event.type=SDL_EVENT_MOUSE_BUTTON_UP; event.button.windowID=SDL_GetWindowID(window); event.button.button=SDL_BUTTON_LEFT;
+    return SDL_PushEvent(&event);
+}
+static int test_key(SDL_Window *window,SDL_Keycode key)
+{
+    SDL_Event event={0};
+    event.type=SDL_EVENT_KEY_DOWN;
+    event.key.windowID=SDL_GetWindowID(window);
+    event.key.key=key; event.key.mod=SDL_KMOD_CTRL;
+    return SDL_PushEvent(&event);
+}
 static void pin_xy(const Part *p,int pin,float *x,float *y) {
     if(p->type==PART_BREADBOARD) {
         int group=pin/5, row=pin%5;
@@ -99,6 +127,7 @@ int main(int argc, char **argv) {
     SpiceJob dc_job={0};
     BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
     int editing=-1; char edit_text[64]={0};
+    int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
     int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
@@ -135,6 +164,20 @@ int main(int argc, char **argv) {
     }
     while(running) {
         SDL_Event e; int width,height,i;
+        if(selftest) {
+            int queued=1;
+            if(selftest_phase==0) queued=test_click(window,50,150) && test_click(window,400,250);
+            else if(selftest_phase==1) queued=test_click(window,50,438) && test_click(window,600,250);
+            else if(selftest_phase==2) queued=test_click(window,348,250) && test_click(window,450,180) && test_click(window,548,250);
+            else if(selftest_phase==3) queued=test_key(window,SDLK_Z);
+            else if(selftest_phase==4) queued=test_key(window,SDLK_Y);
+            else if(selftest_phase==5) queued=test_click(window,450,180) && test_drag_finish(window,460,190);
+            else if(selftest_phase==6) queued=test_key(window,SDLK_Z);
+            else if(selftest_phase==7) queued=test_key(window,SDLK_Y);
+            else if(selftest_phase==8) queued=test_click_count(window,460,190,2);
+            else if(selftest_phase==9) queued=test_key(window,SDLK_Z);
+            if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
+        }
         while(SDL_PollEvent(&e)) {
             if(e.type==SDL_EVENT_QUIT) running=0;
             else if(editing>=0 && e.type==SDL_EVENT_TEXT_INPUT) {
@@ -227,6 +270,21 @@ int main(int argc, char **argv) {
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { dragging=-1; drag_wire=-1; }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; WirePoint *point=&bench.wires[drag_wire].knees[drag_knee]; if(point->x!=x || point->y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } *point=(WirePoint){x,y}; } } }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { float x=e.motion.x*1280.0f/w-offset_x,y=e.motion.y*720.0f/h-offset_y; if(bench.parts[dragging].x!=x || bench.parts[dragging].y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } bench.parts[dragging].x=x; bench.parts[dragging].y=y; } } }
+        }
+        if(selftest) {
+            int valid=1;
+            if(selftest_phase==0) valid=bench.part_count==1 && bench.parts[0].type==PART_SOURCE;
+            else if(selftest_phase==1) valid=bench.part_count==2 && bench.parts[1].type==PART_RESISTOR;
+            else if(selftest_phase==2) valid=bench.wire_count==1 && bench.wires[0].knee_count==1 && bench.wires[0].knees[0].x==450;
+            else if(selftest_phase==3) valid=bench.wire_count==0;
+            else if(selftest_phase==4) valid=bench.wire_count==1 && bench.wires[0].knee_count==1 && bench.wires[0].knees[0].y==180;
+            else if(selftest_phase==5) valid=bench.wires[0].knees[0].x==460 && bench.wires[0].knees[0].y==190;
+            else if(selftest_phase==6) valid=bench.wires[0].knees[0].x==450 && bench.wires[0].knees[0].y==180;
+            else if(selftest_phase==7) valid=bench.wires[0].knees[0].x==460 && bench.wires[0].knees[0].y==190;
+            else if(selftest_phase==8) valid=bench.wires[0].knee_count==0;
+            else if(selftest_phase==9) valid=bench.wires[0].knee_count==1 && bench.wires[0].knees[0].x==460;
+            if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
+            if(++selftest_phase==10) { if(!exit_code) puts("Autoteste de eventos e historico passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -325,5 +383,5 @@ int main(int argc, char **argv) {
     spice_job_join(&dc_job);
     free(history);
     if(font) glDeleteLists(font,128);
-    SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return 0;
+    SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return exit_code;
 }

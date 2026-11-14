@@ -1,4 +1,4 @@
-param([switch]$Legacy, [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$OutputName = 'bancada')
+param([switch]$Legacy, [switch]$GuiTests, [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$OutputName = 'bancada')
 $ErrorActionPreference = 'Stop'
 $toolchain = 'C:\msys64\ucrt64\bin'
 if (Test-Path (Join-Path $toolchain 'gcc.exe')) { $env:Path = "$toolchain;$env:Path" }
@@ -49,4 +49,12 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_simulation.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($GuiTests) {
+    $guiTest = Start-Process -FilePath (Resolve-Path "build/$OutputName.exe") -ArgumentList '--self-test-history' -WindowStyle Hidden -PassThru -RedirectStandardOutput 'build/gui-test.out' -RedirectStandardError 'build/gui-test.err'
+    $null = $guiTest.Handle
+    if (!$guiTest.WaitForExit(10000)) { Stop-Process -Id $guiTest.Id; throw 'Teste gráfico excedeu dez segundos.' }
+    $guiTest.Refresh()
+    Get-Content 'build/gui-test.out'
+    if ($guiTest.ExitCode -ne 0) { Get-Content 'build/gui-test.err'; throw "Teste gráfico falhou: $($guiTest.ExitCode)" }
+}
 Write-Output "Compilação e testes concluídos. Execute .\build\$OutputName.exe nesta sessão."
