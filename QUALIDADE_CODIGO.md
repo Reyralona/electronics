@@ -39,6 +39,11 @@ Nada abaixo pede para reescrever o projeto. São refatorações incrementais sob
 
 ## 3. Problemas, por prioridade
 
+### P0. O runtime ngspice só funciona com o MSYS2 no PATH (causa do "cálculo indisponível" relatado)
+Verificado em 14/11/2026: `ngspice_con.exe` depende de `libgcc_s_seh-1.dll`, `libgomp-1.dll`, `libstdc++-6.dll` e `libwinpthread-1.dll`. Nenhuma delas é extraída por `tools/setup-ngspice.ps1`; todas existem só em `C:\msys64\ucrt64\bin`. O `build.ps1` coloca esse diretório no PATH, então os testes passam. Ao abrir o `bancada.exe` fora dessa sessão, `P` e `T` resultam em "ngspice falhou", e a montagem fica em "CÁLCULO INDISPONÍVEL". O `bancada.exe` também depende de `SDL3.dll`, que não está no PATH do sistema.
+Correção local já aplicada (fora do git): as quatro DLLs foram copiadas para `build/spice-local/ucrt64/bin` e `SDL3.dll` para `build/`. Com o PATH limpo, DC e transitório funcionam.
+*Correção durável a fazer:* `setup-ngspice.ps1` deve extrair também o pacote de runtime do GCC (`mingw-w64-ucrt-x86_64-gcc-libs` e `-libwinpthread`), e `build.ps1` deve copiar `SDL3.dll` para `build/`. Adicionar um teste que rode o ngspice com PATH mínimo. A mensagem "ngspice falhou" deve incluir o código de saída (por exemplo, `0xC0000135` significa DLL ausente).
+
 ### P1. `workbench_window.c` é um monólito (bloqueia todo o resto)
 Renderização, entrada, máquina de estados da simulação, regras de exibição de LED, mais de 20 modos `--capture-*` e um autoteste de GUI com mais de 70 fases vivem dentro de `main()`. Consequências:
 - Uma regra como "o estado da simulação é válido?" está espalhada (ex.: linhas 572, 764–781, 790). É daí que nascem inconsistências de UI.
