@@ -23,7 +23,7 @@ int main(void)
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==2 && loaded.wires[0].b.pin==99);
     {
-        const char *invalid[]={"workbench 13\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
+        const char *invalid[]={"workbench 14\n0 0\n", "workbench 1\n65 0\n", "workbench 1\n1 0\n0 nan 0 1\n", "workbench 1\n0 0\nextra", "workbench 1\n2 2\n0 0 0 1\n2 0 0 0\n0 0 1 0 0\n1 0 0 0 0\n"};
         unsigned int i;
         for(i=0;i<sizeof(invalid)/sizeof(invalid[0]);++i) {
             file=tmpfile(); assert(file); fputs(invalid[i],file); rewind(file);
@@ -165,6 +165,15 @@ int main(void)
         file=tmpfile(); assert(file); fputs("workbench 11\n1 0\n8 100 100 0 0 0 0\nsettings 1 1 1 0 0 0 0 1e-5 .005\n",file); rewind(file);
         assert(!workbench_read(file,&loaded)); fclose(file);
         assert(loaded.part_count==4 && loaded.parts[0].type==PART_NAND);
+    }
+    {
+        Workbench clock={0}; assert(bench_add(&clock,PART_CLOCK,100,100)==0);
+        assert(clock.parts[0].on && clock.parts[0].value==1000 && bench_set_value(&clock,0,1000000));
+        file=tmpfile(); assert(file); assert(workbench_write(file,&clock)); rewind(file);
+        assert(workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.parts[0].type==PART_CLOCK && loaded.parts[0].value==1000000 && loaded.parts[0].on);
+        file=tmpfile(); assert(file); fputs("workbench 12\n1 0\n12 100 100 1 1000 0 0\nsettings 1 1 1 0 0 0 0 1e-5 .005\n",file); rewind(file);
+        assert(!workbench_read(file,&loaded)); fclose(file);
     }
     return 0;
 }

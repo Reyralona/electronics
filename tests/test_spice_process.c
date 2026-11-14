@@ -162,5 +162,38 @@ int main(int argc, char **argv)
             assert(led[4]>.003 && led[4]<.004);
         }
     }
+    if(argc>1) {
+        Workbench clock={0}; SpiceTrace pulse={0}, inverted={0}; int k,j;
+        double times[]={.00025,.00075,.00125,.00175}, expected[]={5,0,5,0};
+        assert(bench_add(&clock,PART_SOURCE,0,0)==0);
+        assert(bench_add(&clock,PART_CLOCK,0,0)==1);
+        assert(bench_add(&clock,PART_NOT,0,0)==2);
+        assert(bench_toggle_wire(&clock,(Pin){0,1},(Pin){1,1})==1);
+        assert(bench_toggle_wire(&clock,(Pin){1,0},(Pin){2,0})==1);
+        assert(spice_transient_analyze(&clock,argv[1],(Pin){1,0},1e-5,.002,&pulse,message,sizeof(message)));
+        assert(spice_transient_analyze(&clock,argv[1],(Pin){2,1},1e-5,.002,&inverted,message,sizeof(message)));
+        for(k=0;k<4;++k) {
+            int a=0,b=0;
+            for(j=1;j<pulse.count;++j) if(fabs(pulse.samples[j].time-times[k])<fabs(pulse.samples[a].time-times[k])) a=j;
+            for(j=1;j<inverted.count;++j) if(fabs(inverted.samples[j].time-times[k])<fabs(inverted.samples[b].time-times[k])) b=j;
+            assert(fabs(pulse.samples[a].time-times[k])<1e-5 && fabs(pulse.samples[a].value-expected[k])<.01);
+            assert(fabs(inverted.samples[b].value-(5-expected[k]))<.01);
+        }
+        clock.parts[1].on=0;
+        assert(spice_transient_analyze(&clock,argv[1],(Pin){1,0},1e-5,.002,&pulse,message,sizeof(message)));
+        for(j=0;j<pulse.count;++j) assert(fabs(pulse.samples[j].value)<1e-9);
+        clock.parts[1].on=1; assert(bench_set_value(&clock,1,2000));
+        assert(spice_transient_analyze(&clock,argv[1],(Pin){1,0},1e-5,.002,&pulse,message,sizeof(message)));
+        k=0; for(j=1;j<pulse.count;++j) if(fabs(pulse.samples[j].time-.00075)<fabs(pulse.samples[k].time-.00075)) k=j;
+        assert(pulse.samples[k].value>4.9);
+        bench_remove(&clock,0);
+        assert(bench_set_value(&clock,0,1000000));
+        assert(spice_transient_analyze(&clock,argv[1],(Pin){0,0},1e-8,2e-6,&pulse,message,sizeof(message)));
+        k=0; for(j=1;j<pulse.count;++j) if(fabs(pulse.samples[j].time-1.25e-6)<fabs(pulse.samples[k].time-1.25e-6)) k=j;
+        assert(fabs(pulse.samples[k].time-1.25e-6)<1e-8 && pulse.samples[k].value>4.9);
+        assert(spice_transient_analyze(&clock,argv[1],(Pin){1,1},1e-8,2e-6,&inverted,message,sizeof(message)));
+        k=0; for(j=1;j<inverted.count;++j) if(fabs(inverted.samples[j].time-1.75e-6)<fabs(inverted.samples[k].time-1.75e-6)) k=j;
+        assert(inverted.samples[k].value>4.9);
+    }
     return 0;
 }

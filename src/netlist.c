@@ -21,14 +21,14 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
     for(i=0;i<b->part_count;++i) {
         int base=i*WORKBENCH_MAX_PINS;
         PartType type=b->parts[i].type;
-        if((type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR) &&
+        if((type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR || type==PART_CLOCK) &&
            (!isfinite(b->parts[i].value) || b->parts[i].value<1e-12 || b->parts[i].value>1e12)) return NETLIST_INVALID;
         switch(b->parts[i].type) {
         case PART_SOURCE: if(source<0) source=i; break;
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
         case PART_BREADBOARD: for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+bench_board_group_first(j),base+j); break;
         case PART_AND: case PART_NAND: case PART_OR: case PART_XOR: case PART_NOT: ++gate_count; break;
-        case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: break;
+        case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: case PART_CLOCK: break;
         default: return NETLIST_UNSUPPORTED;
         }
     }
@@ -37,11 +37,12 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
             if(bench_find_contact(b,i,pin,&contact)) unite(parents,i*WORKBENCH_MAX_PINS+pin,pin_index(contact));
         }
     }
+    if(source<0) for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_CLOCK) { source=i; break; }
     if(source<0) return NETLIST_INVALID;
     ground=find_root(parents,source*WORKBENCH_MAX_PINS+1);
     positive=find_root(parents,source*WORKBENCH_MAX_PINS);
     if(ground==positive) return NETLIST_INVALID;
-    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_SOURCE &&
+    for(i=0;i<b->part_count;++i) if((b->parts[i].type==PART_SOURCE || b->parts[i].type==PART_CLOCK) &&
         find_root(parents,i*WORKBENCH_MAX_PINS)==find_root(parents,i*WORKBENCH_MAX_PINS+1)) return NETLIST_INVALID;
     if(measure_wires) {
         int paths[PIN_TOTAL];
@@ -51,13 +52,24 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
             if(find_root(paths,a)==find_root(paths,c)) return NETLIST_AMBIGUOUS_WIRES;
             unite(paths,a,c);
         }
-        for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_SOURCE &&
+        for(i=0;i<b->part_count;++i) if((b->parts[i].type==PART_SOURCE || b->parts[i].type==PART_CLOCK) &&
             find_root(paths,i*WORKBENCH_MAX_PINS)==find_root(paths,i*WORKBENCH_MAX_PINS+1)) return NETLIST_INVALID;
     }
-    if(fprintf(out,"Electronics experimental %s\nVsource %d 0 %.17g\n",transient?"transient":"DC",positive==ground?0:positive+1,b->parts[source].on?b->parts[source].value:0.0)<0) return NETLIST_IO_ERROR;
+    if(fprintf(out,"Electronics experimental %s\n",transient?"transient":"DC")<0) return NETLIST_IO_ERROR;
+    if(b->parts[source].type==PART_CLOCK && b->parts[source].on) {
+        double period=1.0/b->parts[source].value;
+        if(fprintf(out,"Vsource %d 0 PULSE(0 5 0 %.17g %.17g %.17g %.17g)\n",positive+1,period*.001,period*.001,period*.499,period)<0) return NETLIST_IO_ERROR;
+    } else if(fprintf(out,"Vsource %d 0 %.17g\n",positive+1,b->parts[source].type==PART_CLOCK?0.0:b->parts[source].on?b->parts[source].value:0.0)<0) return NETLIST_IO_ERROR;
     for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_SOURCE && i!=source) {
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
         if(fprintf(out,"Vsource%d %d %d %.17g\n",i,a==ground?0:a+1,c==ground?0:c+1,b->parts[i].on?b->parts[i].value:0.0)<0) return NETLIST_IO_ERROR;
+    }
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_CLOCK && i!=source) {
+        int a=find_root(parents,i*WORKBENCH_MAX_PINS), c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
+        double period=1.0/b->parts[i].value, edge=period*.001, width=period*.499;
+        if(b->parts[i].on) {
+            if(fprintf(out,"Vclock%d %d %d PULSE(0 5 0 %.17g %.17g %.17g %.17g)\n",i,a==ground?0:a+1,c==ground?0:c+1,edge,edge,width,period)<0) return NETLIST_IO_ERROR;
+        } else if(fprintf(out,"Vclock%d %d %d 0\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
     }
     if(measure_wires) for(i=0;i<b->wire_count;++i) {
         int a=find_root(parents,pin_index(b->wires[i].a)),c=find_root(parents,pin_index(b->wires[i].b));
@@ -98,6 +110,7 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         if(transient==2) {
             PartType type=b->parts[probe.component].type; int component=probe.component;
             if(type==PART_SOURCE) { if(component==source) snprintf(vector,sizeof(vector),"@vsource[i]"); else snprintf(vector,sizeof(vector),"@vsource%d[i]",component); }
+            else if(type==PART_CLOCK) { if(component==source) snprintf(vector,sizeof(vector),"@vsource[i]"); else snprintf(vector,sizeof(vector),"@vclock%d[i]",component); }
             else if(type==PART_RESISTOR) snprintf(vector,sizeof(vector),"@r%d[i]",component);
             else if(type==PART_CAPACITOR) snprintf(vector,sizeof(vector),"@c%d[i]",component);
             else if(type==PART_INDUCTOR) snprintf(vector,sizeof(vector),"@l%d[i]",component);
