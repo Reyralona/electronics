@@ -6,6 +6,7 @@
 #include <SDL3/SDL_opengl.h>
 #include "workbench.h"
 #include "workbench_file.h"
+#include "workbench_examples.h"
 #include "spice_process.h"
 #include "spice_job.h"
 #include "spice_trace.h"
@@ -289,7 +290,7 @@ int main(int argc, char **argv) {
     Pin pending={-1,-1}; int selected=-1, placing=-1, dragging=-1, running=1, sim_running=1;
     WirePoint route[WIRE_MAX_KNEES]; int route_count=0, drag_wire=-1, drag_knee=-1;
     int settings=0, show_grid=1, show_handles=1, round_wires=1, show_current=0, dc_wire_valid=0;
-    int wire_color=0, selected_wire=-1, palette_page=0;
+    int wire_color=0, selected_wire=-1, palette_page=0, example_index=-1;
     int leds[WORKBENCH_MAX_COMPONENTS]={0}; float offset_x=0,offset_y=0;
     Workbench dc_snapshot={0}; int dc_valid=0; double dc_current=0; char dc_status[128];
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
@@ -303,7 +304,7 @@ int main(int argc, char **argv) {
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0 || strcmp(argv[1],"--capture-dff")==0 || strcmp(argv[1],"--capture-ci")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0 || strcmp(argv[1],"--capture-dff")==0 || strcmp(argv[1],"--capture-ci")==0 || strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -352,6 +353,11 @@ int main(int argc, char **argv) {
     if(capture && strcmp(argv[1],"--capture-ci")==0) {
         bench=(Workbench){0}; palette_page=1; bench_add(&bench,PART_BREADBOARD,650,380); bench_add(&bench,PART_74HC00,650,380);
         bench_snap_to_breadboard(&bench,1); selected=1; bench_view_zoom_at(&view,1.3f,650,380);
+    }
+    if(capture && (strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0)) {
+        int which=strcmp(argv[1],"--capture-example1")==0;
+        if(!workbench_example_create(which,&bench,&selected)) { fprintf(stderr,"Falha no exemplo de captura.\n"); return 1; }
+        probe_pin=which?2:0; status=workbench_example_name(which);
     }
     if(!history) { fprintf(stderr,"Memoria insuficiente para historico.\n"); return 1; }
     if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); free(history); return 1; }
@@ -478,6 +484,9 @@ int main(int argc, char **argv) {
             else if(selftest_phase==72) queued=test_key(window,SDLK_UNKNOWN);
             else if(selftest_phase==73) queued=test_click(window,50,600) && test_click(window,750,550);
             else if(selftest_phase==74) queued=test_click(window,50,670) && test_click(window,750,450);
+            else if(selftest_phase==75) queued=test_key(window,SDLK_F2);
+            else if(selftest_phase==76) queued=test_key(window,SDLK_F2);
+            else if(selftest_phase==77) queued=test_key(window,SDLK_Z);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -506,6 +515,17 @@ int main(int argc, char **argv) {
             }
             else if(editing>=0 && (e.type==SDL_EVENT_MOUSE_BUTTON_DOWN || e.type==SDL_EVENT_MOUSE_MOTION)) { continue; }
             else if(e.type==SDL_EVENT_KEY_DOWN && !e.key.repeat) {
+                if(e.key.key==SDLK_F2) {
+                    Workbench example={0}; int choice=(example_index+1)%WORKBENCH_EXAMPLE_COUNT, example_selected;
+                    if(workbench_example_create(choice,&example,&example_selected)) {
+                        bench_history_record(history,&bench); bench=example; example_index=choice; selected=example_selected; selected_wire=-1;
+                        dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; placing=-1; settings=0; view=(BenchView){1,0,0};
+                        trace_valid=0; dc_valid=0; dc_wire_valid=0; memset(leds,0,sizeof(leds));
+                        probe_pin=choice==1?2:0; probe_current=0; transient_step=1e-5; transient_stop=.005;
+                        status=workbench_example_name(choice);
+                    } else status="Falha ao preparar exemplo.";
+                    continue;
+                }
                 if(e.key.key==SDLK_TAB) { palette_page=1-palette_page; placing=-1; status=palette_page?"Biblioteca de portas logicas.":"Biblioteca de componentes."; continue; }
                 if(e.key.key==SDLK_F1) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
                 if(e.key.key==SDLK_HOME) { view=(BenchView){1,0,0}; status="Vista restaurada."; continue; }
@@ -596,7 +616,8 @@ int main(int argc, char **argv) {
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_LEFT) {
                 int w,h,hit=-1,hitpin=-1; float x,y; SDL_GetWindowSize(window,&w,&h); if(w<=0||h<=0) continue;
                 x=e.button.x*1280.0f/w; y=e.button.y*720.0f/h;
-                if(x>=830 && x<1010 && y<68) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
+                if(x>=700 && x<850 && y<68) { SDL_Event shortcut={0}; shortcut.type=SDL_EVENT_KEY_DOWN; shortcut.key.key=SDLK_F2; SDL_PushEvent(&shortcut); continue; }
+                if(x>=880 && x<1030 && y<68) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
                 if(settings) {
                     if(x>850 && x<1240) {
                         if(y>=120 && y<160) show_grid=!show_grid;
@@ -733,8 +754,11 @@ int main(int argc, char **argv) {
             else if(selftest_phase==72) valid=leds[7]==0;
             else if(selftest_phase==73) valid=bench.part_count==9 && bench.parts[8].type==PART_DFF;
             else if(selftest_phase==74) valid=bench.part_count==10 && bench.parts[9].type==PART_74HC00;
+            else if(selftest_phase==75) valid=bench.part_count==4 && bench.parts[1].type==PART_BREADBOARD;
+            else if(selftest_phase==76) valid=bench.part_count==5 && bench.parts[2].type==PART_DFF && probe_pin==2;
+            else if(selftest_phase==77) valid=bench.part_count==4 && bench.parts[1].type==PART_BREADBOARD;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==75) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==78) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -760,7 +784,7 @@ int main(int argc, char **argv) {
         glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,1280,720,0,-1,1); glMatrixMode(GL_MODELVIEW); glLoadIdentity();
         glClearColor(.92f,.94f,.95f,1); glClear(GL_COLOR_BUFFER_BIT);
         color(.97f,.98f,.98f); rect(0,0,1280,68); color(.11f,.2f,.27f); text(font,24,42,"ELECTRONICS  /  BANCADA EXPERIMENTAL");
-        text(font,830,42,"Configuracoes [F1]");
+        text(font,700,42,"Exemplos [F2]"); text(font,880,42,"Configuracoes [F1]");
         if(!bench_boolean_supported(&bench)) color(.66f,.36f,.12f);
         else color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f);
         text(font,1030,42,trace_valid?(sim_running?"REPRODUCAO":"TRANSITORIO PAUSADO"):dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
