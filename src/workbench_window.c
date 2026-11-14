@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
         if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); }
         if(strcmp(argv[1],"--capture-dc")==0) {
             bench_add(&bench,PART_RESISTOR,530,220);
+            selected=3;
             bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0});
             bench_toggle_wire(&bench,(Pin){0,0},(Pin){3,0});
             bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){308,150}; bench.wires[1].knees[1]=(WirePoint){478,150};
@@ -212,6 +213,11 @@ int main(int argc, char **argv) {
         if(show_handles) for(i=0;i<bench.wire_count;++i) { int k; for(k=0;k<bench.wires[i].knee_count;++k) { WirePoint p=bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
         glLineWidth(1);
         for(i=0;i<bench.part_count;++i) { int p; part_draw(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; int board=bench.parts[i].type==PART_BREADBOARD; pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,board?3.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,board?3.0f:5.0f); } else if(!board) { color(.93f,.95f,.96f); circle(x,y,5); } } }
+        if(dc_valid && selected>=0 && (bench.parts[selected].type==PART_LED || bench.parts[selected].type==PART_RESISTOR)) {
+            char reading[100];
+            snprintf(reading,sizeof(reading),"Corrente: %.5g mA (esq -> dir)",dc_led_currents[selected]*1000.0);
+            color(.97f,.98f,.98f); rect(840,80,420,38); color(.14f,.22f,.28f); text(font,850,105,reading);
+        }
         color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status); text(font,238,709,"Terminais: fios | Duplo clique: alternar | P: analisar DC | Espaco/N: pausa/passo | Delete: excluir");
         if(settings) {
             color(.62f,.68f,.72f); rect(846,90,400,246);

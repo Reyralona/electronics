@@ -15,6 +15,17 @@ int main(int argc, char **argv)
     if(argc>1) {
         assert(spice_dc_analyze(&b,argv[1],&current,led,message,sizeof(message)));
         assert(fabs(current+.005)<1e-7);
+        assert(fabs(led[1]-.005)<1e-7);
+        assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,0})==2);
+        assert(bench_toggle_wire(&b,(Pin){0,1},(Pin){1,1})==2);
+        assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,1})==1);
+        assert(bench_toggle_wire(&b,(Pin){0,1},(Pin){1,0})==1);
+        assert(spice_dc_analyze(&b,argv[1],&current,led,message,sizeof(message)));
+        assert(fabs(led[1]+.005)<1e-7);
+        assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,1})==2);
+        assert(bench_toggle_wire(&b,(Pin){0,1},(Pin){1,0})==2);
+        assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,0})==1);
+        assert(bench_toggle_wire(&b,(Pin){0,1},(Pin){1,1})==1);
         assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){0,1})==1);
         assert(!spice_dc_analyze(&b,argv[1],&current,led,message,sizeof(message)));
         assert(fabs(current+.005)<1e-7);
@@ -25,6 +36,7 @@ int main(int argc, char **argv)
         assert(bench_toggle_wire(&b,(Pin){2,1},(Pin){0,1})==1);
         assert(spice_dc_analyze(&b,argv[1],&current,led,message,sizeof(message)));
         assert(led[2]>.003 && led[2]<.004);
+        assert(led[1]>.003 && led[1]<.004);
         assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){2,0})==2);
         assert(bench_toggle_wire(&b,(Pin){2,1},(Pin){0,1})==2);
         assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){2,1})==1);

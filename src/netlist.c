@@ -53,6 +53,8 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,Pi
         if(fprintf(out,".control\nop\nprint v(%d) @vsource[i]\n",positive==ground?0:positive+1)<0) return NETLIST_IO_ERROR;
         for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_LED)
             if(fprintf(out,"print @d%d[id]\n",i)<0) return NETLIST_IO_ERROR;
+        for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_RESISTOR)
+            if(fprintf(out,"print @r%d[i]\n",i)<0) return NETLIST_IO_ERROR;
         if(fprintf(out,"quit\n.endc\n.end\n")<0) return NETLIST_IO_ERROR;
     }
     if(ferror(out)) return NETLIST_IO_ERROR;

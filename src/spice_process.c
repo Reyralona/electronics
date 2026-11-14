@@ -40,11 +40,11 @@ int spice_dc_analyze(const Workbench *bench,const char *executable,double *curre
         if(!start) { snprintf(message,capacity,"Corrente da fonte indisponivel."); goto cleanup; }
         value=strtod(start+strlen("@vsource[i] ="),&end);
         if(end==start+strlen("@vsource[i] =") || !isfinite(value)) goto cleanup;
-        for(i=0;i<bench->part_count;++i) if(bench->parts[i].type==PART_LED) {
+        for(i=0;i<bench->part_count;++i) if(bench->parts[i].type==PART_LED || bench->parts[i].type==PART_RESISTOR) {
             char key[32]; double led;
-            snprintf(key,sizeof(key),"@d%d[id] =",i);
+            snprintf(key,sizeof(key),bench->parts[i].type==PART_LED?"@d%d[id] =":"@r%d[i] =",i);
             start=strstr(buffer,key);
-            if(!start) { snprintf(message,capacity,"Corrente de LED indisponivel."); goto cleanup; }
+            if(!start) { snprintf(message,capacity,"Corrente de componente indisponivel."); goto cleanup; }
             led=strtod(start+strlen(key),&end);
             if(end==start+strlen(key) || !isfinite(led)) { snprintf(message,capacity,"Resultado de LED invalido."); goto cleanup; }
             local_leds[i]=led;
