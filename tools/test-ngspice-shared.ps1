@@ -9,4 +9,4 @@ $env:SPICE_LIB_DIR = (Join-Path $resolvedRoot 'share/ngspice').Replace('\','/')
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/spice-shared-probe.exe $dll
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-Write-Output 'Interface compartilhada: referências DC e transiente RC validadas.'
+Write-Output 'Interface compartilhada: DC, transiente RC, pausa, retomada e ponto interno validados.'

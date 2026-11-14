@@ -67,5 +67,32 @@ int main(int argc, char **argv)
     voltage=result->v_realdata[best];
     printf("RC time=%.9g voltage=%.9g\n",time_values[best],voltage);
     if(fabs(time_values[best]-.001)>0.000011 || fabs(voltage-5.0*(1.0-exp(-time_values[best]/.001)))>.01) return 1;
+    /* Verify breakpoints retain transient state across resume, not a fresh run. */
+    if(circ(rc_netlist)!=0 || error_seen) return 1;
+    if(command("stop when time = 1m")!=0 || command("stop when time = 2m")!=0 || error_seen) return 1;
+    if(command("tran 10u 5m uic")!=0 || error_seen) return 1;
+    result=vector("time");
+    if(!result || !result->v_realdata || result->v_length<1) return 1;
+    current=result->v_realdata[result->v_length-1];
+    result=vector("v(2)");
+    if(!result || !result->v_realdata || result->v_length<1) return 1;
+    voltage=result->v_realdata[result->v_length-1];
+    printf("breakpoint time=%.9g voltage=%.9g\n",current,voltage);
+    if(fabs(current-.001)>1e-9 || fabs(voltage-5*(1-exp(-current/.001)))>.01) return 1;
+    if(command("resume")!=0 || error_seen) return 1;
+    result=vector("time");
+    if(!result || !result->v_realdata || result->v_length<1) return 1;
+    current=result->v_realdata[result->v_length-1];
+    result=vector("v(2)");
+    if(!result || !result->v_realdata || result->v_length<1) return 1;
+    voltage=result->v_realdata[result->v_length-1];
+    printf("resumed time=%.9g voltage=%.9g\n",current,voltage);
+    if(fabs(current-.002)>1e-9 || fabs(voltage-5*(1-exp(-current/.001)))>.01) return 1;
+    if(command("step 1")!=0 || error_seen) return 1;
+    result=vector("time");
+    if(!result || !result->v_realdata || result->v_length<1) return 1;
+    voltage=result->v_realdata[result->v_length-1];
+    printf("one solver point: %.9g\n",voltage);
+    if(voltage<=current || voltage>=.005) return 1;
     return 0;
 }
