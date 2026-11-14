@@ -17,6 +17,17 @@ int main(void)
     n=fread(text,1,sizeof(text)-1,f); text[n]='\0'; fclose(f);
     assert(strstr(text,"Vsource") && strstr(text,"R1 ") && strstr(text," 1000"));
     assert(bench_add(&b,PART_LED,0,0)==3);
+    assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){0,1})==2);
+    assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){3,0})==1);
+    assert(bench_toggle_wire(&b,(Pin){3,1},(Pin){0,1})==1);
+    f=fopen("build/netlist-led-forward.cir","w"); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_OK); fclose(f);
+    assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){3,0})==2);
+    assert(bench_toggle_wire(&b,(Pin){3,1},(Pin){0,1})==2);
+    assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){3,1})==1);
+    assert(bench_toggle_wire(&b,(Pin){3,0},(Pin){0,1})==1);
+    f=fopen("build/netlist-led-reverse.cir","w"); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_OK); fclose(f);
+    bench_remove(&b,3);
+    assert(bench_add(&b,PART_SOURCE,0,0)==3);
     f=tmpfile(); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_UNSUPPORTED); fclose(f);
     bench_remove(&b,3);
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){0,1})==1);

@@ -22,7 +22,7 @@ NetlistResult netlist_write_dc(FILE *out,const Workbench *b)
         case PART_SOURCE: if(source>=0) return NETLIST_UNSUPPORTED; source=i; break;
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
         case PART_BREADBOARD: for(j=0;j<100;++j) unite(parents,base+(j/5)*5,base+j); break;
-        case PART_RESISTOR: break;
+        case PART_RESISTOR: case PART_LED: break;
         default: return NETLIST_UNSUPPORTED;
         }
     }
@@ -35,6 +35,11 @@ NetlistResult netlist_write_dc(FILE *out,const Workbench *b)
         int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
         if(fprintf(out,"R%d %d %d 1000\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
     }
+    for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_LED) {
+        int a=find_root(parents,i*WORKBENCH_MAX_PINS),c=find_root(parents,i*WORKBENCH_MAX_PINS+1);
+        if(fprintf(out,"D%d %d %d LED_GENERIC\n",i,a==ground?0:a+1,c==ground?0:c+1)<0) return NETLIST_IO_ERROR;
+    }
+    if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2)\n")<0) return NETLIST_IO_ERROR;
     if(fprintf(out,".control\nop\nprint v(%d) @vsource[i]\nquit\n.endc\n.end\n",positive==ground?0:positive+1)<0 || ferror(out)) return NETLIST_IO_ERROR;
     return NETLIST_OK;
 }

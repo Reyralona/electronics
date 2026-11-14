@@ -12,3 +12,13 @@ $text = $output -join "`n"
 if ($text -match '(?im)^\s*error\b' -or $text -match '(?i)couldn.t be loaded') { throw "Erro do ngspice: $text" }
 if ($text -notmatch 'v\(\d+\)\s*=\s*5\.000000e\+00' -or $text -notmatch '@vsource\[i\]\s*=\s*-5\.00000e-03') { throw "Resultado inesperado: $text" }
 Write-Output 'Bancada -> netlist -> ngspice: 5 V e 5 mA verificados.'
+foreach ($case in @(@{ Name = 'forward'; Min = 0.002; Max = 0.004 }, @{ Name = 'reverse'; Min = 0; Max = 1e-8 })) {
+    $result = & (Join-Path $resolvedRoot 'bin/ngspice_con.exe') -b "build/netlist-led-$($case.Name).cir" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Falha ngspice ($($case.Name)): $result" }
+    $value = ($result -join "`n")
+    if ($value -match '(?im)^\s*error\b' -or $value -match '(?i)couldn.t be loaded') { throw "Erro do ngspice: $value" }
+    if ($value -notmatch '@vsource\[i\]\s*=\s*([-+0-9.eE]+)') { throw "Corrente ausente: $value" }
+    $current = [Math]::Abs([double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture))
+    if ($current -lt $case.Min -or $current -gt $case.Max) { throw "Corrente fora do intervalo em $($case.Name): $current" }
+    Write-Output "LED $($case.Name): $current A verificados."
+}
