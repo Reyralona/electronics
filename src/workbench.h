@@ -3,7 +3,8 @@
 
 #define WORKBENCH_MAX_COMPONENTS 64
 #define WORKBENCH_MAX_WIRES 128
-#define WORKBENCH_MAX_PINS 100
+#define WORKBENCH_MAX_PINS 180
+#define BREADBOARD_PINS 180
 
 typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR } PartType;
 typedef struct { PartType type; float x, y; int on; double value; } Part;

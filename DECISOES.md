@@ -32,4 +32,6 @@ O indutor experimental tem valor fixo de 10 mH e corrente inicial zero no transi
 
 O encaixe experimental alinha o terminal mais próximo a um furo e reconhece como contato cada terminal geometricamente coincidente. A conectividade é compartilhada pelo modelo discreto e pelo tradutor SPICE e pode ser reconstruída após salvar ou desfazer. Mover a peça ou a placa desfaz o contato. Ainda não há rotação, colisão, controle de ocupação nem suporte para placas sobrepostas; a escolha de contatos em placas sobrepostas é apenas a primeira encontrada.
 
+A breadboard foi ampliada de 100 para 180 furos (36 grupos independentes de cinco). Os 100 índices e posições originais foram preservados, e os novos grupos ficam nas extremidades. O formato de bancada 5 distingue projetos com novos furos; formatos 1 a 4 permanecem legíveis. As pontas dos fios são desenhadas sobre a placa com trecho metálico, sem mudar a conectividade elétrica.
+
 Na branch experimental, fonte, resistor, capacitor e indutor têm valores editáveis em unidades SI, com limites de 10⁻¹² a 10¹²; os padrões são 5 V, 1 kΩ, 1 µF e 10 mH. O formato de bancada 4 os armazena em precisão dupla; versões 1 a 3 recebem os padrões. Testes incluem ida e volta, migração e simulação de 10 V em 2 kΩ. O limite numérico não substitui limites físicos por componente.

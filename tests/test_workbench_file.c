@@ -54,6 +54,19 @@ int main(void)
     file=tmpfile(); assert(file); fputs("workbench 2\n1 0\n6 0 0 0\n",file); rewind(file);
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==5);
+    {
+        Workbench extended={0};
+        assert(bench_add(&extended,PART_SOURCE,0,0)==0);
+        assert(bench_add(&extended,PART_BREADBOARD,0,0)==1);
+        assert(bench_toggle_wire(&extended,(Pin){0,0},(Pin){1,179})==1);
+        file=tmpfile(); assert(file); assert(workbench_write(file,&extended)); rewind(file);
+        assert(workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.wire_count==1 && loaded.wires[0].b.pin==179);
+        file=tmpfile(); assert(file);
+        fputs("workbench 4\n2 1\n0 0 0 1 5\n3 0 0 0 0\n0 0 1 179 0\n",file); rewind(file);
+        assert(!workbench_read(file,&loaded)); fclose(file);
+        assert(loaded.wires[0].b.pin==179);
+    }
     file=tmpfile(); assert(file); fputs("workbench 3\n2 0\n0 0 0 1\n4 0 0 0\n",file); rewind(file);
     assert(workbench_read(file,&loaded)); fclose(file);
     assert(loaded.parts[0].value==5 && loaded.parts[1].value==1000);

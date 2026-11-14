@@ -26,7 +26,7 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
         switch(b->parts[i].type) {
         case PART_SOURCE: if(source>=0) return NETLIST_UNSUPPORTED; source=i; break;
         case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
-        case PART_BREADBOARD: for(j=0;j<100;++j) unite(parents,base+(j/5)*5,base+j); break;
+        case PART_BREADBOARD: for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+(j/5)*5,base+j); break;
         case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: break;
         default: return NETLIST_UNSUPPORTED;
         }

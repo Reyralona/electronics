@@ -71,6 +71,13 @@ int main(void)
         assert(bench_toggle_wire(&snapped,(Pin){0,1},(Pin){1,39})==1);
         f=fopen("build/netlist-snap.cir","w"); assert(f);
         assert(netlist_write_dc(f,&snapped)==NETLIST_OK); fclose(f);
+        assert(bench_toggle_wire(&snapped,(Pin){0,0},(Pin){1,4})==2);
+        assert(bench_toggle_wire(&snapped,(Pin){0,1},(Pin){1,39})==2);
+        assert(bench_toggle_wire(&snapped,(Pin){0,0},(Pin){1,100})==1);
+        assert(bench_toggle_wire(&snapped,(Pin){1,104},(Pin){1,4})==1);
+        assert(bench_toggle_wire(&snapped,(Pin){0,1},(Pin){1,39})==1);
+        f=fopen("build/netlist-extended-board.cir","w"); assert(f);
+        assert(netlist_write_dc(f,&snapped)==NETLIST_OK); fclose(f);
     }
     return 0;
 }

@@ -48,15 +48,15 @@ int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, Wi
 
 int bench_pin_count(PartType type)
 {
-    return type == PART_BREADBOARD ? 100 : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ? 2 : 0);
+    return type == PART_BREADBOARD ? BREADBOARD_PINS : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ? 2 : 0);
 }
 
 void bench_pin_position(const Part *p,int pin,float *x,float *y)
 {
     if(p->type==PART_BREADBOARD) {
         int group=pin/5,row=pin%5;
-        *x=p->x-63.0f+(group%10)*14.0f;
-        *y=p->y+(group<10?-39.0f:11.0f)+row*7.0f;
+        if(group<20) { *x=p->x-63.0f+(group%10)*14.0f; *y=p->y+(group<10?-39.0f:11.0f)+row*7.0f; }
+        else { int extra=(group-20)%8; *x=p->x+(extra<4?-119.0f+extra*14.0f:77.0f+(extra-4)*14.0f); *y=p->y+(group<28?-39.0f:11.0f)+row*7.0f; }
     } else { *x=p->x+(pin?49.0f:-49.0f); *y=p->y; }
 }
 
@@ -66,7 +66,7 @@ int bench_find_contact(const Workbench *b,int component,int pin,Pin *contact)
     if(!b || !contact || component<0 || component>=b->part_count || b->parts[component].type==PART_BREADBOARD || pin<0 || pin>=bench_pin_count(b->parts[component].type)) return 0;
     bench_pin_position(&b->parts[component],pin,&x,&y);
     for(board=0;board<b->part_count;++board) if(b->parts[board].type==PART_BREADBOARD) {
-        for(hole=0;hole<100;++hole) { float hx,hy; bench_pin_position(&b->parts[board],hole,&hx,&hy);
+        for(hole=0;hole<BREADBOARD_PINS;++hole) { float hx,hy; bench_pin_position(&b->parts[board],hole,&hx,&hy);
             if(fabsf(x-hx)<.01f && fabsf(y-hy)<.01f) { *contact=(Pin){board,hole}; return 1; }
         }
     }
@@ -80,7 +80,7 @@ int bench_snap_to_breadboard(Workbench *b,int component)
     for(pin=0;pin<bench_pin_count(b->parts[component].type);++pin) {
         float x,y; bench_pin_position(&b->parts[component],pin,&x,&y);
         for(board=0;board<b->part_count;++board) if(b->parts[board].type==PART_BREADBOARD) {
-            for(hole=0;hole<100;++hole) { float hx,hy,distance; bench_pin_position(&b->parts[board],hole,&hx,&hy);
+            for(hole=0;hole<BREADBOARD_PINS;++hole) { float hx,hy,distance; bench_pin_position(&b->parts[board],hole,&hx,&hy);
                 distance=(hx-x)*(hx-x)+(hy-y)*(hy-y);
                 if(distance<best) { best=distance; dx=hx-x; dy=hy-y; found=1; }
             }
@@ -183,7 +183,7 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
         if (b->parts[i].type == PART_SWITCH && b->parts[i].on) join(parent, base, base + 1);
         if (b->parts[i].type == PART_BREADBOARD) {
             int group, hole;
-            for (group = 0; group < 20; ++group)
+            for (group = 0; group < BREADBOARD_PINS/5; ++group)
                 for (hole = 1; hole < 5; ++hole) join(parent, base + group * 5, base + group * 5 + hole);
         }
     }

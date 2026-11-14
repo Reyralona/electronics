@@ -53,7 +53,7 @@ int main(void)
         assert(bench_add(&bread, PART_SOURCE, 0, 0) == 0);
         assert(bench_add(&bread, PART_LED, 0, 0) == 1);
         assert(bench_add(&bread, PART_BREADBOARD, 0, 0) == 2);
-        assert(bench_pin_count(PART_BREADBOARD) == 100);
+        assert(bench_pin_count(PART_BREADBOARD) == 180);
         assert(bench_toggle_wire(&bread, positive, hole0));
         assert(bench_toggle_wire(&bread, hole4, anode));
         assert(bench_toggle_wire(&bread, cathode, negative));
@@ -63,6 +63,14 @@ int main(void)
         bench_simulate(&bread, led); assert(!led[1]);
         assert(bench_toggle_wire(&bread, other, anode) == 2);
         assert(bench_toggle_wire(&bread, opposite, anode));
+        bench_simulate(&bread, led); assert(!led[1]);
+        assert(bench_toggle_wire(&bread, opposite, anode)==2);
+        assert(bench_toggle_wire(&bread, positive, hole0)==2);
+        assert(bench_toggle_wire(&bread, positive, (Pin){2,100})==1);
+        assert(bench_toggle_wire(&bread, (Pin){2,104}, anode)==1);
+        bench_simulate(&bread, led); assert(led[1]);
+        assert(bench_toggle_wire(&bread, (Pin){2,104}, anode)==2);
+        assert(bench_toggle_wire(&bread, (Pin){2,105}, anode)==1);
         bench_simulate(&bread, led); assert(!led[1]);
     }
     {
