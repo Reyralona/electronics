@@ -27,6 +27,14 @@ static void line(float x1, float y1, float x2, float y2)
     glEnd();
 }
 
+static void component_face(const Block *block, float r, float g, float b)
+{
+    glColor3f(0.025f, 0.035f, 0.045f);
+    rectangle(block->x + 0.015f, block->y - 0.025f, block->w, block->h);
+    glColor3f(r, g, b);
+    rectangle(block->x, block->y, block->w, block->h);
+}
+
 int main(void)
 {
     SDL_Window *window;
@@ -149,6 +157,16 @@ int main(void)
         glLoadIdentity();
         glTranslatef(pan_x, pan_y, 0.0f);
         glScalef(zoom, zoom, 1.0f);
+        {
+            int grid;
+            glColor3f(0.13f, 0.17f, 0.21f);
+            glLineWidth(1.0f);
+            for (grid = -25; grid <= 25; ++grid) {
+                float position = grid * 0.2f;
+                line(position, -5.0f, position, 5.0f);
+                line(-5.0f, position, 5.0f, position);
+            }
+        }
         glColor3f(0.7f, 0.7f, 0.7f);
         glLineWidth(3.0f);
         line(blocks[0].x + blocks[0].w, blocks[0].y + blocks[0].h / 2,
@@ -160,14 +178,25 @@ int main(void)
         line(blocks[2].x + blocks[2].w / 2, -0.7f, blocks[0].x + blocks[0].w / 2, -0.7f);
         line(blocks[0].x + blocks[0].w / 2, -0.7f,
              blocks[0].x + blocks[0].w / 2, blocks[0].y);
-        if (circuit->source_on) glColor3f(0.25f, 0.55f, 0.85f);
-        else glColor3f(0.15f, 0.25f, 0.35f);
-        rectangle(blocks[0].x, blocks[0].y, blocks[0].w, blocks[0].h);
-        glColor3f(circuit->switch_closed ? 0.3f : 0.55f, 0.55f, 0.35f);
-        rectangle(blocks[1].x, blocks[1].y, blocks[1].w, blocks[1].h);
-        if (circuit_led_on(circuit)) glColor3f(1.0f, 0.85f, 0.2f);
-        else glColor3f(0.3f, 0.27f, 0.15f);
-        rectangle(blocks[2].x, blocks[2].y, blocks[2].w, blocks[2].h);
+        if (circuit->source_on) component_face(&blocks[0], 0.25f, 0.55f, 0.85f);
+        else component_face(&blocks[0], 0.15f, 0.25f, 0.35f);
+        component_face(&blocks[1], 0.32f, 0.43f, 0.35f);
+        if (circuit_led_on(circuit)) component_face(&blocks[2], 1.0f, 0.85f, 0.2f);
+        else component_face(&blocks[2], 0.3f, 0.27f, 0.15f);
+        glColor3f(0.95f, 0.95f, 0.9f);
+        glLineWidth(3.0f);
+        /* Source: plus and minus. */
+        line(blocks[0].x + .06f, blocks[0].y + .20f, blocks[0].x + .12f, blocks[0].y + .20f);
+        line(blocks[0].x + .09f, blocks[0].y + .17f, blocks[0].x + .09f, blocks[0].y + .23f);
+        line(blocks[0].x + .18f, blocks[0].y + .10f, blocks[0].x + .24f, blocks[0].y + .10f);
+        /* Switch: lever is horizontal when closed. */
+        line(blocks[1].x + .06f, blocks[1].y + .08f, blocks[1].x + .23f,
+             blocks[1].y + (circuit->switch_closed ? .08f : .17f));
+        /* LED: diode symbol. */
+        line(blocks[2].x + .09f, blocks[2].y + .08f, blocks[2].x + .09f, blocks[2].y + .22f);
+        line(blocks[2].x + .09f, blocks[2].y + .08f, blocks[2].x + .2f, blocks[2].y + .15f);
+        line(blocks[2].x + .09f, blocks[2].y + .22f, blocks[2].x + .2f, blocks[2].y + .15f);
+        line(blocks[2].x + .21f, blocks[2].y + .08f, blocks[2].x + .21f, blocks[2].y + .22f);
         SDL_GL_SwapWindow(window);
     }
     SDL_GL_DestroyContext(context);
