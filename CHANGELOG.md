@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.16.0
+
+- Bancada com zoom, encaixe de componentes, rotação, breadboard ampliada com trilhos e fios coloridos.
+- Análise DC experimental com ngspice, inspeção de corrente e visualização em fios sem caminhos ideais ambíguos.
+- Sondagem transitória de tensão ou corrente, gráfico navegável e parâmetros configuráveis; não constitui simulação completa tick a tick.
+- Valores editáveis, desfazer/refazer e projeto versão 10 com configurações; leitura de formatos anteriores.
+- ngspice continua como dependência experimental de desenvolvimento, não distribuída com o aplicativo; modelos e catálogo ainda são incompletos.
+
 ## 0.15.0
 
 - Persistência da bancada com componentes, fios e joelhos, em formato versionado separado.
