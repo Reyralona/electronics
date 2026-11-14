@@ -96,8 +96,9 @@ int main(int argc, char **argv) {
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
     double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
     SpiceJob dc_job={0};
+    int editing=-1; char edit_text[64]={0};
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -106,7 +107,7 @@ int main(int argc, char **argv) {
         bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1});
         bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){772,300}; bench.wires[1].knees[1]=(WirePoint){412,300};
         if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); bench_add(&bench,PART_INDUCTOR,970,520); }
-        if(strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0) {
+        if(strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0) {
             bench_add(&bench,PART_RESISTOR,530,220);
             selected=3;
             bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0});
@@ -121,6 +122,7 @@ int main(int argc, char **argv) {
     context=SDL_GL_CreateContext(window);
     if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); return 1; }
     font=make_font(); SDL_GL_SetSwapInterval(1);
+    if(capture && strcmp(argv[1],"--capture-edit")==0) { editing=3; strcpy(edit_text,"2200"); }
     if(capture && (strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0)) {
         show_current=strcmp(argv[1],"--capture-current")==0;
         if(show_current) { dc_valid=spice_dc_analyze_wires(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_led_currents,dc_wire_currents,dc_status,sizeof(dc_status)); dc_wire_valid=dc_valid; }
@@ -132,6 +134,21 @@ int main(int argc, char **argv) {
         SDL_Event e; int width,height,i;
         while(SDL_PollEvent(&e)) {
             if(e.type==SDL_EVENT_QUIT) running=0;
+            else if(editing>=0 && e.type==SDL_EVENT_TEXT_INPUT) {
+                const char *p=e.text.text; size_t length=strlen(edit_text);
+                while(*p && length+1<sizeof(edit_text)) { if((unsigned char)*p>=32 && (unsigned char)*p<127) edit_text[length++]=*p; ++p; }
+                edit_text[length]='\0';
+            }
+            else if(editing>=0 && e.type==SDL_EVENT_KEY_DOWN) {
+                if(e.key.key==SDLK_ESCAPE) { editing=-1; SDL_StopTextInput(window); status="Edicao cancelada."; }
+                else if(e.key.key==SDLK_BACKSPACE) { size_t length=strlen(edit_text); if(length) edit_text[length-1]='\0'; }
+                else if(e.key.key==SDLK_RETURN || e.key.key==SDLK_KP_ENTER) {
+                    double value;
+                    if(bench_parse_value(edit_text,&value) && bench_set_value(&bench,editing,value)) { editing=-1; SDL_StopTextInput(window); status="Valor alterado; pressione P para recalcular."; }
+                    else status="Valor invalido. Use um numero positivo entre 1e-12 e 1e12.";
+                }
+            }
+            else if(editing>=0 && (e.type==SDL_EVENT_MOUSE_BUTTON_DOWN || e.type==SDL_EVENT_MOUSE_MOTION)) { continue; }
             else if(e.type==SDL_EVENT_KEY_DOWN && !e.key.repeat) {
                 if(e.key.key==SDLK_F1) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
                 if(e.key.key==SDLK_ESCAPE) { pending.component=-1; route_count=0; placing=-1; dragging=-1; drag_wire=-1; status="Selecao cancelada."; }
@@ -141,6 +158,13 @@ int main(int argc, char **argv) {
                     if(dc_job.thread) status="Analise em andamento.";
                     else if((show_current?spice_job_start_wires:spice_job_start)(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe")) { dc_valid=0; dc_wire_valid=0; status="Analisando ponto DC..."; }
                     else status="Falha ao iniciar tarefa de analise.";
+                }
+                else if(e.key.key==SDLK_E && selected>=0) {
+                    PartType type=bench.parts[selected].type;
+                    if(type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR) {
+                        if(SDL_StartTextInput(window)) { editing=selected; snprintf(edit_text,sizeof(edit_text),"%.9g",bench.parts[selected].value); status="Digite o valor em unidades SI; Enter confirma, Esc cancela."; }
+                        else status="Nao foi possivel iniciar edicao de texto.";
+                    } else status="Este componente nao possui valor editavel.";
                 }
                 else if(selected>=0 && (e.key.key==SDLK_EQUALS || e.key.key==SDLK_PLUS || e.key.key==SDLK_MINUS)) {
                     double scale=e.key.key==SDLK_MINUS?.5:2.0;
@@ -246,7 +270,7 @@ int main(int argc, char **argv) {
             Part *part=&bench.parts[selected]; char reading[100];
             const char *unit=part->type==PART_SOURCE?"V":part->type==PART_RESISTOR?"ohm":part->type==PART_CAPACITOR?"F":part->type==PART_INDUCTOR?"H":NULL;
             color(.97f,.98f,.98f); rect(840,80,420,dc_valid?70:38); color(.14f,.22f,.28f);
-            if(unit) { snprintf(reading,sizeof(reading),"Valor: %.5g %s   [ + / - ]",part->value,unit); text(font,850,105,reading); }
+            if(unit) { snprintf(reading,sizeof(reading),"Valor: %.5g %s   [ E / + / - ]",part->value,unit); text(font,850,105,reading); }
             else text(font,850,105,part->type==PART_LED?"LED generico":"Componente selecionado");
             if(dc_valid && (part->type==PART_LED || part->type==PART_RESISTOR)) {
                 snprintf(reading,sizeof(reading),"Corrente: %.5g mA (esq -> dir)",dc_led_currents[selected]*1000.0);
@@ -264,6 +288,13 @@ int main(int argc, char **argv) {
             text(font,860,268,show_current?"[x] Visualizar corrente nos fios":"[ ] Visualizar corrente nos fios");
             text(font,860,312,"P calcula correntes; velocidade visual ilustrativa");
             text(font,860,350,"F1 fecha este painel");
+        }
+        if(editing>=0) {
+            char reading[110];
+            color(.62f,.68f,.72f); rect(446,268,400,146); color(.98f,.98f,.99f); rect(440,262,400,146);
+            color(.14f,.22f,.28f); text(font,460,294,"VALOR EM UNIDADES SI");
+            snprintf(reading,sizeof(reading),"> %s_",edit_text); text(font,460,336,reading);
+            text(font,460,380,"Enter confirma | Esc cancela");
         }
         SDL_GL_SwapWindow(window);
         if(capture) {

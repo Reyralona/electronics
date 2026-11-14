@@ -5,6 +5,15 @@
 int main(void)
 {
     {
+        double value=42;
+        assert(bench_parse_value("2,2e-6",&value) && value>2.199e-6 && value<2.201e-6);
+        assert(!bench_parse_value("nan",&value) && value>0);
+        assert(!bench_parse_value("1e999",&value));
+        assert(!bench_parse_value("2.2foo",&value));
+        assert(!bench_parse_value("0",&value));
+        assert(!bench_parse_value(" 1",&value));
+    }
+    {
         Wire wire={0}; WirePoint points[WIRE_PATH_CAPACITY]; int count, i;
         wire.knee_count=2; wire.knees[0]=(WirePoint){100,0}; wire.knees[1]=(WirePoint){100,100};
         count=wire_path(&wire,(WirePoint){0,0},(WirePoint){200,100},20,points);

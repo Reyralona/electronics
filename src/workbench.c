@@ -1,6 +1,24 @@
 #include "workbench.h"
 #include <string.h>
 #include <math.h>
+#include <errno.h>
+#include <stdlib.h>
+
+int bench_parse_value(const char *text,double *value)
+{
+    char buffer[64], *end; size_t i,n; double parsed;
+    if(!text || !value) return 0;
+    n=strlen(text); if(!n || n>=sizeof(buffer)) return 0;
+    for(i=0;i<n;++i) {
+        char c=text[i];
+        if(c==',') c='.';
+        if(!((c>='0' && c<='9') || c=='.' || c=='e' || c=='E' || c=='+' || c=='-')) return 0;
+        buffer[i]=c;
+    }
+    buffer[n]='\0'; errno=0; parsed=strtod(buffer,&end);
+    if(errno==ERANGE || end==buffer || *end || !isfinite(parsed) || parsed<1e-12 || parsed>1e12) return 0;
+    *value=parsed; return 1;
+}
 
 int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, WirePoint output[WIRE_PATH_CAPACITY])
 {
