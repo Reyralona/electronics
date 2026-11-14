@@ -87,6 +87,7 @@ int main(int argc, char **argv) {
     int settings=0, show_grid=1, show_handles=1, round_wires=1;
     int leds[WORKBENCH_MAX_COMPONENTS]={0}; float offset_x=0,offset_y=0;
     Workbench dc_snapshot={0}; int dc_valid=0; double dc_current=0; char dc_status[128];
+    double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
     SpiceJob dc_job={0};
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
     int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0);
@@ -113,7 +114,7 @@ int main(int argc, char **argv) {
     if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); return 1; }
     font=make_font(); SDL_GL_SetSwapInterval(1);
     if(capture && strcmp(argv[1],"--capture-dc")==0) {
-        dc_valid=spice_dc_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_status,sizeof(dc_status));
+        dc_valid=spice_dc_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_led_currents,dc_status,sizeof(dc_status));
         if(dc_valid) dc_snapshot=bench;
         status=dc_status;
     }
@@ -177,10 +178,11 @@ int main(int argc, char **argv) {
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
-            else { dc_valid=dc_job.success; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
+            else { dc_valid=dc_job.success; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
         }
         if(dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem alterada; pressione P para recalcular."; }
-        if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
+        if(dc_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && dc_led_currents[i]>=1e-6; }
+        else if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
         else if(sim_running) bench_simulate(&bench,leds);
         SDL_GetWindowSizeInPixels(window,&width,&height); glViewport(0,0,width,height);
         glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,1280,720,0,-1,1); glMatrixMode(GL_MODELVIEW); glLoadIdentity();

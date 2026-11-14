@@ -5,7 +5,7 @@
 static int SDLCALL run_job(void *argument)
 {
     SpiceJob *job=argument;
-    job->success=spice_dc_analyze(&job->snapshot,job->executable,&job->current,job->message,sizeof(job->message));
+    job->success=spice_dc_analyze(&job->snapshot,job->executable,&job->current,job->led_currents,job->message,sizeof(job->message));
     SDL_SetAtomicInt(&job->done,1);
     return 0;
 }

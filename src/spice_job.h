@@ -8,6 +8,7 @@ typedef struct {
     Workbench snapshot;
     char executable[1024], message[128];
     double current;
+    double led_currents[WORKBENCH_MAX_COMPONENTS];
     int success;
 } SpiceJob;
 int spice_job_start(SpiceJob *job, const Workbench *bench, const char *executable);
