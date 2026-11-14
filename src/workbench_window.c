@@ -62,7 +62,7 @@ static void trace_draw(GLuint font,const SpiceTrace *trace,int selected,int pin,
     if(half_range<1e-20) half_range=1.0;
     color(.62f,.68f,.72f); rect(846,390,400,244);
     color(.98f,.98f,.99f); rect(840,384,400,244);
-    color(.14f,.22f,.28f); snprintf(label,sizeof(label),current?"CORRENTE - PINO 1 -> 2 (A)":"TENSAO - TERMINAL %d (V)",pin+1); text(font,856,410,label);
+    color(.14f,.22f,.28f); snprintf(label,sizeof(label),current==2?"CORRENTE FIO - A -> B (A)":current?"CORRENTE - PINO 1 -> 2 (A)":"TENSAO - TERMINAL %d (V)",pin+1); text(font,856,410,label);
     snprintf(label,sizeof(label),current?"%.4g A":"%.4g V",high); text(font,856,433,label);
     snprintf(label,sizeof(label),current?"%.3g A":"%.3g V",low); text(font,856,572,label);
     color(.72f,.77f,.79f); line(918,431,918,565); line(918,565,1220,565);
@@ -231,14 +231,14 @@ int main(int argc, char **argv) {
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
     double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
     SpiceJob dc_job={0}; SpiceTrace trace={0}; Workbench trace_snapshot={0};
-    int trace_valid=0, trace_index=0, trace_pin=0, probe_pin=0, show_trace=1, probe_current=0, trace_current=0; char trace_status[128];
+    int trace_valid=0, trace_index=0, trace_pin=0, probe_pin=0, show_trace=1, probe_current=0, trace_current=0, trace_wire=-1; char trace_status[128];
     double transient_step=1e-5, transient_stop=.005;
     BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
     BenchView view={1,0,0}; int panning=0;
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -282,11 +282,12 @@ int main(int argc, char **argv) {
         if(dc_valid) dc_snapshot=bench;
         status=dc_status;
     }
-    if(capture && (strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0)) {
+    if(capture && (strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0)) {
         bench=(Workbench){0}; bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_RESISTOR,550,220); bench_add(&bench,PART_CAPACITOR,720,220);
         bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1});
-        trace_current=strcmp(argv[1],"--capture-trace-current")==0;
-        trace_valid=trace_current?spice_transient_current(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",1,transient_step,transient_stop,&trace,dc_status,sizeof(dc_status)):spice_transient_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){2,0},transient_step,transient_stop,&trace,dc_status,sizeof(dc_status));
+        trace_current=strcmp(argv[1],"--capture-trace-wire")==0?2:strcmp(argv[1],"--capture-trace-current")==0;
+        if(trace_current==2) { trace_wire=0; show_current=1; bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){311,150}; bench.wires[0].knees[1]=(WirePoint){501,150}; }
+        trace_valid=trace_current==2?spice_transient_wire(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",0,transient_step,transient_stop,&trace,dc_status,sizeof(dc_status)):trace_current?spice_transient_current(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",1,transient_step,transient_stop,&trace,dc_status,sizeof(dc_status)):spice_transient_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){2,0},transient_step,transient_stop,&trace,dc_status,sizeof(dc_status));
         if(trace_valid) { trace_snapshot=bench; trace_index=trace.count/3; sim_running=0; status="Sondagem RC calculada."; }
         else { fprintf(stderr,"Captura transitoria: %s\n",dc_status); return 1; }
     }
@@ -347,6 +348,8 @@ int main(int argc, char **argv) {
             else if(selftest_phase==50) queued=test_key(window,SDLK_F1);
             else if(selftest_phase==51) queued=test_click(window,900,370);
             else if(selftest_phase==52) queued=test_key(window,SDLK_F1);
+            else if(selftest_phase==53) queued=test_click(window,505,220);
+            else if(selftest_phase==54) queued=test_key(window,SDLK_T);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -391,6 +394,11 @@ int main(int argc, char **argv) {
                     else status="Esta placa ainda nao gira.";
                 }
                 else if(e.key.key==SDLK_G && trace_valid) { show_trace=!show_trace; status=show_trace?"Grafico visivel.":"Grafico oculto; pressione G para mostrar."; }
+                else if(e.key.key==SDLK_T && selected_wire>=0 && selected_wire<bench.wire_count) {
+                    if(dc_job.thread) status="Analise em andamento.";
+                    else if(spice_job_start_transient_wire(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",selected_wire,transient_step,transient_stop)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando corrente transitoria do fio..."; }
+                    else status="Falha ao iniciar tarefa de analise.";
+                }
                 else if(e.key.key==SDLK_T && selected>=0 && bench.parts[selected].type!=PART_BREADBOARD) {
                     if(dc_job.thread) status="Analise em andamento.";
                     else if(probe_current && bench.parts[selected].type==PART_SWITCH) status="Corrente transitoria indisponivel para interruptor ideal.";
@@ -400,7 +408,7 @@ int main(int argc, char **argv) {
                 else if((e.key.key==SDLK_N || e.key.key==SDLK_B) && !sim_running && trace_valid) {
                     if(e.key.key==SDLK_N && trace_index+1<trace.count) ++trace_index;
                     if(e.key.key==SDLK_B && trace_index>0) --trace_index;
-                    snprintf(trace_status,sizeof(trace_status),trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].value,trace_index+1,trace.count); status=trace_status;
+                    snprintf(trace_status,sizeof(trace_status),trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).":trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].value,trace_index+1,trace.count); status=trace_status;
                 }
                 else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
                 else if(e.key.key==SDLK_P) {
@@ -471,7 +479,7 @@ int main(int argc, char **argv) {
                 if(trace_valid && show_trace && x>=840 && x<=1240 && y>=384 && y<=628) {
                     if(x>=918 && x<=1220 && y>=431 && y<=565) {
                         trace_index=trace_nearest(&trace,(x-918)/302.0); sim_running=0;
-                        snprintf(trace_status,sizeof(trace_status),trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].value,trace_index+1,trace.count); status=trace_status;
+                        snprintf(trace_status,sizeof(trace_status),trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).":trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].value,trace_index+1,trace.count); status=trace_status;
                     }
                     continue;
                 }
@@ -557,14 +565,16 @@ int main(int argc, char **argv) {
             else if(selftest_phase==50) valid=settings==1;
             else if(selftest_phase==51) valid=probe_current==1;
             else if(selftest_phase==52) valid=settings==0 && probe_current==1;
+            else if(selftest_phase==53) valid=selected_wire==0;
+            else if(selftest_phase==54) valid=dc_job.transient==3;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==53) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==55) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
             else if(dc_job.transient) {
-                trace_valid=dc_job.success; trace_index=0; trace_pin=dc_job.probe.pin; trace_current=dc_job.transient==2; trace_snapshot=dc_job.snapshot;
-                if(trace_valid) { trace=dc_job.trace; show_trace=1; sim_running=0; snprintf(trace_status,sizeof(trace_status),trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (1/%d).":"Tensao: t=%.6g s; V=%.6g V (1/%d).",trace.samples[0].time,trace.samples[0].value,trace.count); status=trace_status; }
+                trace_valid=dc_job.success; trace_index=0; trace_pin=dc_job.probe.pin; trace_current=dc_job.transient==3?2:dc_job.transient==2?1:0; trace_wire=trace_current==2?dc_job.probe.component:-1; trace_snapshot=dc_job.snapshot;
+                if(trace_valid) { trace=dc_job.trace; show_trace=1; sim_running=0; snprintf(trace_status,sizeof(trace_status),trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (1/%d).":trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (1/%d).":"Tensao: t=%.6g s; V=%.6g V (1/%d).",trace.samples[0].time,trace.samples[0].value,trace.count); status=trace_status; }
                 else { memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
             }
             else { dc_valid=dc_job.success; dc_wire_valid=dc_job.success && dc_job.measures_wires; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); if(dc_wire_valid) memcpy(dc_wire_currents,dc_job.wire_currents,sizeof(dc_wire_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
@@ -605,6 +615,10 @@ int main(int argc, char **argv) {
                 else { color(wire_palette[w->color][0]*.65f+.25f,wire_palette[w->color][1]*.65f+.25f,wire_palette[w->color][2]*.65f+.25f); glLineWidth(2); }
                 glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x+offset,path[k].y+offset); glEnd();
             }
+            if(show_current && trace_valid && trace_current==2 && i==trace_wire && fabs(trace.samples[trace_index].value)>1e-6) {
+                color(1.0f,.36f,.04f); glLineWidth(3);
+                glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
+            }
             if(show_current && dc_valid && dc_wire_valid && fabs(dc_wire_currents[i])>1e-6) {
                 float total=0, position; int segment;
                 color(1.0f,.36f,.04f); glLineWidth(3);
@@ -634,6 +648,11 @@ int main(int argc, char **argv) {
                 for(k=1;k<count;++k) if(hypotf(path[k].x-start.x,path[k].y-start.y)>.01f) { wire_contact_tip(start,path[k],wire->color); break; }
             if(bench.parts[wire->b.component].type==PART_BREADBOARD)
                 for(k=count-2;k>=0;--k) if(hypotf(path[k].x-end.x,path[k].y-end.y)>.01f) { wire_contact_tip(end,path[k],wire->color); break; }
+        }
+        if(trace_valid && trace_current==2 && trace_wire>=0 && trace_wire<bench.wire_count) {
+            Wire *wire=&bench.wires[trace_wire]; float ax,ay,bx,by;
+            pin_xy(&bench.parts[wire->a.component],wire->a.pin,&ax,&ay); pin_xy(&bench.parts[wire->b.component],wire->b.pin,&bx,&by);
+            color(.9f,.35f,.05f); circle(ax,ay,9); circle(bx,by,9); color(.12f,.16f,.19f); text(font,ax+10,ay-5,"A"); text(font,bx+10,by-5,"B");
         }
         glPopMatrix(); glDisable(GL_SCISSOR_TEST);
         if(selected>=0) {

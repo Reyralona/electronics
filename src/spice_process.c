@@ -19,7 +19,7 @@ static int analyze(const Workbench *bench,const char *executable,double *current
     length=GetTempPathA(MAX_PATH,dir);
     if(!length || length>=MAX_PATH || !GetTempFileNameA(dir,"nci",0,input) || !GetTempFileNameA(dir,"nco",0,output)) goto cleanup;
     file=fopen(input,"w"); if(!file) goto cleanup;
-    result=trace?(trace_current?netlist_write_transient_current(file,bench,probe.component,step,stop):netlist_write_transient(file,bench,probe,step,stop)):wire_currents?netlist_write_dc_instrumented(file,bench):netlist_write_dc(file,bench);
+    result=trace?(trace_current==2?netlist_write_transient_wire(file,bench,probe.component,step,stop):trace_current==1?netlist_write_transient_current(file,bench,probe.component,step,stop):netlist_write_transient(file,bench,probe,step,stop)):wire_currents?netlist_write_dc_instrumented(file,bench):netlist_write_dc(file,bench);
     if(fclose(file)!=0) result=NETLIST_IO_ERROR;
     file=NULL;
     if(result!=NETLIST_OK) { snprintf(message,capacity,result==NETLIST_AMBIGUOUS_WIRES?"Corrente ambigua em fios ideais paralelos.":"Montagem invalida ou nao suportada."); goto cleanup; }
@@ -108,4 +108,10 @@ int spice_transient_current(const Workbench *bench,const char *executable,int co
 {
     if(!trace) return 0;
     return analyze(bench,executable,NULL,NULL,NULL,trace,1,(Pin){component,0},step,stop,message,capacity);
+}
+
+int spice_transient_wire(const Workbench *bench,const char *executable,int wire,double step,double stop,SpiceTrace *trace,char *message,size_t capacity)
+{
+    if(!trace) return 0;
+    return analyze(bench,executable,NULL,NULL,NULL,trace,2,(Pin){wire,0},step,stop,message,capacity);
 }

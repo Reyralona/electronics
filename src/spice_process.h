@@ -9,4 +9,5 @@ typedef struct { double time, value; } SpiceSample;
 typedef struct { SpiceSample samples[SPICE_TRANSIENT_MAX_SAMPLES]; int count; } SpiceTrace;
 int spice_transient_analyze(const Workbench *bench, const char *executable, Pin probe, double step, double stop, SpiceTrace *trace, char *message, size_t capacity);
 int spice_transient_current(const Workbench *bench, const char *executable, int component, double step, double stop, SpiceTrace *trace, char *message, size_t capacity);
+int spice_transient_wire(const Workbench *bench, const char *executable, int wire, double step, double stop, SpiceTrace *trace, char *message, size_t capacity);
 #endif

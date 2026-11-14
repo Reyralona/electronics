@@ -30,6 +30,10 @@ int main(int argc, char **argv)
         assert(!spice_dc_analyze_wires(&b,argv[1],&current,led,wire,message,sizeof(message)));
         assert(strstr(message,"ambigua"));
         assert(fabs(wire[0]-.005)<1e-7);
+        { SpiceTrace ambiguous={0};
+          assert(!spice_transient_wire(&b,argv[1],0,1e-5,.005,&ambiguous,message,sizeof(message)));
+          assert(strstr(message,"ambigua"));
+        }
         bench_remove(&b,2);
         assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,0})==2);
         assert(bench_toggle_wire(&b,(Pin){0,1},(Pin){1,1})==2);
@@ -77,6 +81,15 @@ int main(int argc, char **argv)
         assert(fabs(trace.samples[nearest].value-5*(1-exp(-trace.samples[nearest].time/.001)))<.01);
         i=trace.count;
         assert(!spice_transient_analyze(&rc,argv[1],(Pin){2,0},0,.005,&trace,message,sizeof(message)));
+        assert(trace.count==i);
+        assert(spice_transient_wire(&rc,argv[1],0,1e-5,.005,&trace,message,sizeof(message)));
+        nearest=0;
+        for(i=1;i<trace.count;++i) if(fabs(trace.samples[i].time-.001)<fabs(trace.samples[nearest].time-.001)) nearest=i;
+        assert(fabs(trace.samples[nearest].value-.005*exp(-trace.samples[nearest].time/.001))<1e-5);
+        assert(spice_transient_wire(&rc,argv[1],2,1e-5,.005,&trace,message,sizeof(message)));
+        assert(trace.samples[0].value>0);
+        i=trace.count;
+        assert(!spice_transient_wire(&rc,argv[1],99,1e-5,.005,&trace,message,sizeof(message)));
         assert(trace.count==i);
         assert(spice_transient_current(&rc,argv[1],1,1e-5,.005,&trace,message,sizeof(message)));
         nearest=0;

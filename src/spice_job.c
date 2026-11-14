@@ -5,7 +5,8 @@
 static int SDLCALL run_job(void *argument)
 {
     SpiceJob *job=argument;
-    if(job->transient==2) job->success=spice_transient_current(&job->snapshot,job->executable,job->probe.component,job->step,job->stop,&job->trace,job->message,sizeof(job->message));
+    if(job->transient==3) job->success=spice_transient_wire(&job->snapshot,job->executable,job->probe.component,job->step,job->stop,&job->trace,job->message,sizeof(job->message));
+    else if(job->transient==2) job->success=spice_transient_current(&job->snapshot,job->executable,job->probe.component,job->step,job->stop,&job->trace,job->message,sizeof(job->message));
     else if(job->transient) job->success=spice_transient_analyze(&job->snapshot,job->executable,job->probe,job->step,job->stop,&job->trace,job->message,sizeof(job->message));
     else if(job->measures_wires) job->success=spice_dc_analyze_wires(&job->snapshot,job->executable,&job->current,job->led_currents,job->wire_currents,job->message,sizeof(job->message));
     else job->success=spice_dc_analyze(&job->snapshot,job->executable,&job->current,job->led_currents,job->message,sizeof(job->message));
@@ -34,6 +35,8 @@ int spice_job_start_wires(SpiceJob *job,const Workbench *bench,const char *execu
 int spice_job_start_transient(SpiceJob *job,const Workbench *bench,const char *executable,Pin probe,double step,double stop) { return start_job(job,bench,executable,0,1,probe,step,stop); }
 
 int spice_job_start_transient_current(SpiceJob *job,const Workbench *bench,const char *executable,int component,double step,double stop) { return start_job(job,bench,executable,0,2,(Pin){component,0},step,stop); }
+
+int spice_job_start_transient_wire(SpiceJob *job,const Workbench *bench,const char *executable,int wire,double step,double stop) { return start_job(job,bench,executable,0,3,(Pin){wire,0},step,stop); }
 
 void spice_job_join(SpiceJob *job)
 {
