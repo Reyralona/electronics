@@ -36,7 +36,7 @@ int bench_toggle_wire(Workbench *b, Pin a, Pin c)
         }
     }
     if (b->wire_count == WORKBENCH_MAX_WIRES) return 0;
-    b->wires[b->wire_count++] = (Wire){a, c};
+    b->wires[b->wire_count++] = (Wire){.a=a, .b=c};
     return 1;
 }
 

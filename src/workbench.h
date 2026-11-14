@@ -8,7 +8,9 @@
 typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD } PartType;
 typedef struct { PartType type; float x, y; int on; } Part;
 typedef struct { int component, pin; } Pin;
-typedef struct { Pin a, b; } Wire;
+typedef struct { float x, y; } WirePoint;
+#define WIRE_MAX_KNEES 16
+typedef struct { Pin a, b; WirePoint knees[WIRE_MAX_KNEES]; int knee_count; } Wire;
 typedef struct {
     Part parts[WORKBENCH_MAX_COMPONENTS];
     Wire wires[WORKBENCH_MAX_WIRES];
