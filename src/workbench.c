@@ -93,6 +93,14 @@ static int root(int *parent, int n)
 
 static void join(int *parent, int a, int b) { parent[root(parent, a)] = root(parent, b); }
 
+int bench_boolean_supported(const Workbench *b)
+{
+    int i;
+    for(i=0;i<b->part_count;++i)
+        if(b->parts[i].type==PART_RESISTOR || b->parts[i].type==PART_CAPACITOR) return 0;
+    return 1;
+}
+
 void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
 {
     int parent[WORKBENCH_MAX_COMPONENTS * WORKBENCH_MAX_PINS];

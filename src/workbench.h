@@ -24,5 +24,6 @@ int bench_pin_count(PartType type);
 int bench_toggle_wire(Workbench *bench, Pin a, Pin b);
 void bench_remove(Workbench *bench, int index);
 void bench_simulate(const Workbench *bench, int led_on[WORKBENCH_MAX_COMPONENTS]);
+int bench_boolean_supported(const Workbench *bench);
 int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, WirePoint output[WIRE_PATH_CAPACITY]);
 #endif

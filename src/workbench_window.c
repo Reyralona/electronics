@@ -61,10 +61,19 @@ static void part_draw(const Part *p,int selected,int led) {
         color(.77f,.79f,.79f); rect(x-31,y-17,62,30);
         color(.2f,.22f,.24f); circle(x-17,y,5); circle(x+17,y,5);
         glLineWidth(5); line(x-17,y,x+17,p->on?y:y-13); glLineWidth(1);
+    } else if(p->type==PART_RESISTOR) {
+        color(.73f,.60f,.40f); rect(x-31,y-13,62,26);
+        color(.89f,.78f,.56f); rect(x-29,y-15,58,23);
+        color(.4f,.21f,.12f); rect(x-17,y-15,5,23); color(.12f,.12f,.12f); rect(x-5,y-15,5,23);
+        color(.8f,.25f,.13f); rect(x+8,y-15,5,23); color(.7f,.58f,.2f); rect(x+20,y-15,4,23);
+    } else if(p->type==PART_CAPACITOR) {
+        color(.16f,.19f,.25f); rect(x-18,y-23,36,46);
+        color(.25f,.31f,.42f); rect(x-18,y-26,36,44);
+        color(.55f,.62f,.7f); rect(x+9,y-22,4,34);
     } else {
         color(.75f,.75f,.72f); rect(x-31,y+7,62,10);
-        color(led?1.0f:.6f,led?.28f:.12f,led?.24f:.14f); circle(x,y-3,22);
-        color(led?1.0f:.8f,led?.63f:.28f,led?.55f:.27f); circle(x-6,y-10,7);
+        if(led<0) color(.48f,.48f,.48f); else color(led?1.0f:.6f,led?.28f:.12f,led?.24f:.14f); circle(x,y-3,22);
+        if(led<0) color(.7f,.7f,.7f); else color(led?1.0f:.8f,led?.63f:.28f,led?.55f:.27f); circle(x-6,y-10,7);
     }
     if(selected) { color(.12f,.49f,.84f); glLineWidth(2); glBegin(GL_LINE_LOOP); glVertex2f(x-46,y-32); glVertex2f(x+46,y-32); glVertex2f(x+46,y+32); glVertex2f(x-46,y+32); glEnd(); glLineWidth(1); }
 }
@@ -76,7 +85,7 @@ int main(int argc, char **argv) {
     int settings=0, show_grid=1, show_handles=1, round_wires=1;
     int leds[WORKBENCH_MAX_COMPONENTS]={0}; float offset_x=0,offset_y=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -84,6 +93,7 @@ int main(int argc, char **argv) {
         bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){308,130}; bench.wires[0].knees[1]=(WirePoint){668,130};
         bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1});
         bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){772,300}; bench.wires[1].knees[1]=(WirePoint){412,300};
+        if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); }
     }
     if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); return 1; }
     window=SDL_CreateWindow("Bancada experimental",1280,720,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
@@ -99,7 +109,7 @@ int main(int argc, char **argv) {
                 if(e.key.key==SDLK_F1) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
                 if(e.key.key==SDLK_ESCAPE) { pending.component=-1; route_count=0; placing=-1; dragging=-1; drag_wire=-1; status="Selecao cancelada."; }
                 else if(e.key.key==SDLK_SPACE) { sim_running=!sim_running; status=sim_running?"Simulacao executando.":"Simulacao pausada."; }
-                else if(e.key.key==SDLK_N && !sim_running) { bench_simulate(&bench,leds); status="Um passo executado."; }
+                else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
                 else if(e.key.key==SDLK_S) { status=workbench_save("bancada.elec",&bench)?"Salvo em bancada.elec.":"Falha ao salvar."; }
                 else if(e.key.key==SDLK_L) {
                     if(workbench_load("bancada.elec",&bench)) { selected=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada carregada."; }
@@ -118,7 +128,7 @@ int main(int argc, char **argv) {
                     }
                     continue;
                 }
-                if(x<220 && y>=140 && y<476) { int item=(int)((y-140)/84); if(item<4) { placing=item; pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
+                if(x<220 && y>=140 && y<644) { int item=(int)((y-140)/84); if(item<6) { placing=item; pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
                 if(x<220||y<70||y>660) continue;
                 if(pending.component<0 && placing<0 && show_handles) {
                     int k;
@@ -144,15 +154,18 @@ int main(int argc, char **argv) {
             else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { bench.wires[drag_wire].knees[drag_knee]=(WirePoint){e.motion.x*1280.0f/w,e.motion.y*720.0f/h}; } }
             else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { bench.parts[dragging].x=e.motion.x*1280.0f/w-offset_x; bench.parts[dragging].y=e.motion.y*720.0f/h-offset_y; } }
         }
-        if(sim_running) bench_simulate(&bench,leds);
+        if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
+        else if(sim_running) bench_simulate(&bench,leds);
         SDL_GetWindowSizeInPixels(window,&width,&height); glViewport(0,0,width,height);
         glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,1280,720,0,-1,1); glMatrixMode(GL_MODELVIEW); glLoadIdentity();
         glClearColor(.92f,.94f,.95f,1); glClear(GL_COLOR_BUFFER_BIT);
         color(.97f,.98f,.98f); rect(0,0,1280,68); color(.11f,.2f,.27f); text(font,24,42,"ELECTRONICS  /  BANCADA EXPERIMENTAL");
         text(font,830,42,"Configuracoes [F1]");
-        color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f); text(font,1030,42,sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
+        if(!bench_boolean_supported(&bench)) color(.66f,.36f,.12f);
+        else color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f);
+        text(font,1030,42,!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
         color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,"COMPONENTES");
-        for(i=0;i<4;++i) { float y=140+i*84; color(placing==i?.79f:.92f,placing==i?.9f:.94f,.96f); rect(14,y,192,70); color(.16f,.22f,.26f); text(font,76,y+39,i==0?"Fonte":i==1?"Interruptor":i==2?"LED":"Breadboard"); color(i==0?.2f:i==1?.38f:.84f,i==0?.54f:.42f,i==2?.28f:.6f); circle(42,y+35,13); }
+        for(i=0;i<6;++i) { float y=140+i*84; color(placing==i?.79f:.92f,placing==i?.9f:.94f,.96f); rect(14,y,192,70); color(.16f,.22f,.26f); text(font,76,y+39,i==0?"Fonte":i==1?"Interruptor":i==2?"LED":i==3?"Breadboard":i==4?"Resistor":"Capacitor"); color(i==0?.2f:i==1?.38f:.84f,i==0?.54f:.42f,i==2?.28f:.6f); circle(42,y+35,13); }
         color(.85f,.88f,.89f); glLineWidth(1); if(show_grid) { for(i=240;i<1280;i+=24) line((float)i,69,(float)i,659); for(i=92;i<660;i+=24) line(220,(float)i,1280,(float)i); }
         color(.25f,.45f,.57f); glLineWidth(3);
         for(i=0;i<bench.wire_count;++i) {

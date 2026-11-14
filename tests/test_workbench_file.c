@@ -32,5 +32,14 @@ int main(void)
     loaded.part_count=0; assert(workbench_load("build/test-bench.elec",&loaded));
     assert(loaded.part_count==2 && loaded.wires[0].knee_count==1);
     assert(remove("build/test-bench.elec")==0);
+    assert(bench_add(&source,PART_RESISTOR,300,100)==2);
+    assert(bench_add(&source,PART_CAPACITOR,400,100)==3);
+    assert(!bench_boolean_supported(&source));
+    file=tmpfile(); assert(file); assert(workbench_write(file,&source)); rewind(file);
+    assert(workbench_read(file,&loaded)); fclose(file);
+    assert(loaded.part_count==4 && loaded.parts[2].type==PART_RESISTOR && loaded.parts[3].type==PART_CAPACITOR);
+    file=tmpfile(); assert(file); fputs("workbench 1\n1 0\n4 0 0 0\n",file); rewind(file);
+    assert(!workbench_read(file,&loaded)); fclose(file);
+    assert(loaded.part_count==4);
     return 0;
 }
