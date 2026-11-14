@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.12.0
+
+- Nova bancada experimental separada, com biblioteca, componentes posicionáveis e fios entre terminais selecionados.
+- Primeiro modelo discreto de conectividade para fonte, interruptor e LED; pausa e avanço por passo.
+- Protótipo anterior preservado, incluindo seu formato de projeto.
+
 ## 0.11.0
 
 - Instruções e estado aparecem na janela usando texto básico do Windows/OpenGL.

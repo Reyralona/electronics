@@ -4,12 +4,27 @@ Projeto de um aplicativo educacional nativo para Windows x64, principalmente em 
 
 A visão, o escopo proposto e as orientações de trabalho estão em [prompt.md](prompt.md). As decisões provisórias estão em [DECISOES.md](DECISOES.md).
 
-O primeiro incremento é um circuito fixo de fonte, interruptor e LED em console. Use `i` para alternar o interruptor, `f` para alternar a fonte e `q` para sair. É um modelo booleano didático, sem cálculo elétrico ou edição de conexões; não representa precisão de SPICE.
+## Bancada de montagem experimental
 
-Há também uma janela experimental SDL3/OpenGL: os três blocos representam fonte, interruptor e LED, nessa ordem, identificados por símbolos. Clique com o botão esquerdo na fonte ou interruptor para alterná-los, ou use `F` e `I`. Arraste componentes com o botão direito. A roda do mouse ajusta o zoom, as setas deslocam a vista e `Home` a restaura; `Esc` fecha. A barra de título mostra os estados. Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
+Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
 
 ```powershell
 ./build.ps1
+./build/bancada.exe
+```
+
+Escolha **Fonte**, **Interruptor** ou **LED** na biblioteca e clique na bancada para posicionar. Arraste um componente com o botão esquerdo para movê-lo. Clique em dois terminais para conectar um fio; clique no mesmo par para removê-lo. Dois cliques na fonte ou no interruptor alternam seu estado. `Espaço` pausa/retoma, `N` avança um passo quando pausado e `Delete` remove o componente selecionado e seus fios.
+
+O modelo é um primeiro experimento discreto: o LED acende quando seu terminal esquerdo alcança o positivo de uma fonte ligada e o direito alcança o negativo por fios e interruptores fechados. Fontes em curto não acendem LEDs nesse modelo. Não há cálculo de tensão ou corrente, resistência, diagnóstico de falhas, breadboard elétrica ou simulação de circuitos gerais; não use o resultado como orientação para uma montagem física. O desenho usa formas originais provisórias para estabelecer a linguagem visual, ainda não modelos finais. Esta bancada ainda não salva projetos, não tem desfazer/refazer, zoom nem roteamento de fios; os projetos antigos não são alterados.
+
+## Protótipo anterior
+
+O primeiro incremento é um circuito fixo de fonte, interruptor e LED em console. Use `i` para alternar o interruptor, `f` para alternar a fonte e `q` para sair. É um modelo booleano didático, sem cálculo elétrico ou edição de conexões; não representa precisão de SPICE.
+
+O protótipo anterior de circuito fixo permanece disponível para comparação. Para recompilá-lo, use:
+
+```powershell
+./build.ps1 -Legacy
 ./build/window.exe
 ```
 
