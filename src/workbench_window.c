@@ -8,6 +8,7 @@
 #include "workbench_file.h"
 #include "spice_process.h"
 #include "spice_job.h"
+#include "workbench_history.h"
 
 static void rect(float x, float y, float w, float h) {
     glBegin(GL_QUADS); glVertex2f(x,y); glVertex2f(x+w,y); glVertex2f(x+w,y+h); glVertex2f(x,y+h); glEnd();
@@ -96,6 +97,7 @@ int main(int argc, char **argv) {
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
     double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
     SpiceJob dc_job={0};
+    BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
     int editing=-1; char edit_text[64]={0};
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
     int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0);
@@ -116,11 +118,12 @@ int main(int argc, char **argv) {
             bench_toggle_wire(&bench,(Pin){3,1},(Pin){1,0});
         }
     }
-    if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); return 1; }
+    if(!history) { fprintf(stderr,"Memoria insuficiente para historico.\n"); return 1; }
+    if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); free(history); return 1; }
     window=SDL_CreateWindow("Bancada experimental",1280,720,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
-    if(!window) { fprintf(stderr,"Janela: %s\n",SDL_GetError()); SDL_Quit(); return 1; }
+    if(!window) { fprintf(stderr,"Janela: %s\n",SDL_GetError()); SDL_Quit(); free(history); return 1; }
     context=SDL_GL_CreateContext(window);
-    if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); return 1; }
+    if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); free(history); return 1; }
     font=make_font(); SDL_GL_SetSwapInterval(1);
     if(capture && strcmp(argv[1],"--capture-edit")==0) { editing=3; strcpy(edit_text,"2200"); }
     if(capture && (strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0)) {
@@ -144,13 +147,20 @@ int main(int argc, char **argv) {
                 else if(e.key.key==SDLK_BACKSPACE) { size_t length=strlen(edit_text); if(length) edit_text[length-1]='\0'; }
                 else if(e.key.key==SDLK_RETURN || e.key.key==SDLK_KP_ENTER) {
                     double value;
-                    if(bench_parse_value(edit_text,&value) && bench_set_value(&bench,editing,value)) { editing=-1; SDL_StopTextInput(window); status="Valor alterado; pressione P para recalcular."; }
+                    Workbench before=bench;
+                    if(bench_parse_value(edit_text,&value) && bench_set_value(&bench,editing,value)) { if(before.parts[editing].value!=value) bench_history_record(history,&before); editing=-1; SDL_StopTextInput(window); status="Valor alterado; pressione P para recalcular."; }
                     else status="Valor invalido. Use um numero positivo entre 1e-12 e 1e12.";
                 }
             }
             else if(editing>=0 && (e.type==SDL_EVENT_MOUSE_BUTTON_DOWN || e.type==SDL_EVENT_MOUSE_MOTION)) { continue; }
             else if(e.type==SDL_EVENT_KEY_DOWN && !e.key.repeat) {
                 if(e.key.key==SDLK_F1) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
+                if((e.key.mod & SDL_KMOD_CTRL) && (e.key.key==SDLK_Z || e.key.key==SDLK_Y)) {
+                    int changed=e.key.key==SDLK_Z?bench_history_undo(history,&bench):bench_history_redo(history,&bench);
+                    if(changed) { selected=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); status=e.key.key==SDLK_Z?"Acao desfeita.":"Acao refeita."; }
+                    else status="Nenhuma acao disponivel.";
+                    continue;
+                }
                 if(e.key.key==SDLK_ESCAPE) { pending.component=-1; route_count=0; placing=-1; dragging=-1; drag_wire=-1; status="Selecao cancelada."; }
                 else if(e.key.key==SDLK_SPACE) { sim_running=!sim_running; status=sim_running?"Simulacao executando.":"Simulacao pausada."; }
                 else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
@@ -168,14 +178,17 @@ int main(int argc, char **argv) {
                 }
                 else if(selected>=0 && (e.key.key==SDLK_EQUALS || e.key.key==SDLK_PLUS || e.key.key==SDLK_MINUS)) {
                     double scale=e.key.key==SDLK_MINUS?.5:2.0;
-                    status=bench_set_value(&bench,selected,bench.parts[selected].value*scale)?"Valor alterado; pressione P para recalcular.":"Valor nao editavel ou fora do limite.";
+                    Workbench before=bench;
+                    if(bench_set_value(&bench,selected,bench.parts[selected].value*scale)) { bench_history_record(history,&before); status="Valor alterado; pressione P para recalcular."; }
+                    else status="Valor nao editavel ou fora do limite.";
                 }
                 else if(e.key.key==SDLK_S) { status=workbench_save("bancada.elec",&bench)?"Salvo em bancada.elec.":"Falha ao salvar."; }
                 else if(e.key.key==SDLK_L) {
-                    if(workbench_load("bancada.elec",&bench)) { selected=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada carregada."; }
+                    Workbench before=bench;
+                    if(workbench_load("bancada.elec",&bench)) { bench_history_record(history,&before); selected=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada carregada."; }
                     else status="Falha ao carregar; bancada preservada.";
                 }
-                else if(e.key.key==SDLK_DELETE && selected>=0) { bench_remove(&bench,selected); selected=-1; pending.component=-1; memset(leds,0,sizeof(leds)); status="Componente e seus fios removidos."; }
+                else if(e.key.key==SDLK_DELETE && selected>=0) { bench_history_record(history,&bench); bench_remove(&bench,selected); selected=-1; pending.component=-1; memset(leds,0,sizeof(leds)); status="Componente e seus fios removidos."; }
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_LEFT) {
                 int w,h,hit=-1,hitpin=-1; float x,y; SDL_GetWindowSize(window,&w,&h); if(w<=0||h<=0) continue;
                 x=e.button.x*1280.0f/w; y=e.button.y*720.0f/h;
@@ -198,22 +211,22 @@ int main(int argc, char **argv) {
                         if(fabsf(x-point.x)<8 && fabsf(y-point.y)<8) { drag_wire=i; drag_knee=k; break; }
                     }
                     if(drag_wire>=0) {
-                        if(e.button.clicks>=2) { Wire *wire=&bench.wires[drag_wire]; memmove(&wire->knees[drag_knee],&wire->knees[drag_knee+1],(size_t)(wire->knee_count-drag_knee-1)*sizeof(WirePoint)); --wire->knee_count; drag_wire=-1; status="Joelho removido."; }
-                        else status="Arraste o joelho; duplo clique remove.";
+                        if(e.button.clicks>=2) { Wire *wire=&bench.wires[drag_wire]; bench_history_record(history,&bench); memmove(&wire->knees[drag_knee],&wire->knees[drag_knee+1],(size_t)(wire->knee_count-drag_knee-1)*sizeof(WirePoint)); --wire->knee_count; drag_wire=-1; status="Joelho removido."; }
+                        else { move_recorded=0; status="Arraste o joelho; duplo clique remove."; }
                         continue;
                     }
                 }
-                if(placing>=0) { if(bench_add(&bench,(PartType)placing,x,y)>=0) { status="Componente adicionado. Selecione terminais para ligar."; placing=-1; } else status="Limite de componentes atingido."; continue; }
+                if(placing>=0) { Workbench before=bench; if(bench_add(&bench,(PartType)placing,x,y)>=0) { bench_history_record(history,&before); status="Componente adicionado. Selecione terminais para ligar."; placing=-1; } else status="Limite de componentes atingido."; continue; }
                 for(i=bench.part_count-1;i>=0;--i) { int p; float radius=bench.parts[i].type==PART_BREADBOARD?4.0f:12.0f; for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float px,py; pin_xy(&bench.parts[i],p,&px,&py); if((x-px)*(x-px)+(y-py)*(y-py)<=radius*radius) { hit=i; hitpin=p; break; } } if(hit>=0) break; }
-                if(hitpin>=0) { Pin clicked={hit,hitpin}; if(pending.component<0) { pending=clicked; route_count=0; status="Clique para criar joelhos; termine em outro terminal."; } else if(pending.component==hit && pending.pin==hitpin) { pending.component=-1; route_count=0; status="Conexao cancelada."; } else { int result=bench_toggle_wire(&bench,pending,clicked); if(result==1) { Wire *wire=&bench.wires[bench.wire_count-1]; wire->knee_count=route_count; memcpy(wire->knees,route,(size_t)route_count*sizeof(WirePoint)); } status=result==1?"Fio conectado.":result==2?"Fio removido.":"Nao foi possivel conectar."; pending.component=-1; route_count=0; } continue; }
+                if(hitpin>=0) { Pin clicked={hit,hitpin}; if(pending.component<0) { pending=clicked; route_count=0; status="Clique para criar joelhos; termine em outro terminal."; } else if(pending.component==hit && pending.pin==hitpin) { pending.component=-1; route_count=0; status="Conexao cancelada."; } else { Workbench before=bench; int result=bench_toggle_wire(&bench,pending,clicked); if(result==1) { Wire *wire=&bench.wires[bench.wire_count-1]; wire->knee_count=route_count; memcpy(wire->knees,route,(size_t)route_count*sizeof(WirePoint)); } if(result) bench_history_record(history,&before); status=result==1?"Fio conectado.":result==2?"Fio removido.":"Nao foi possivel conectar."; pending.component=-1; route_count=0; } continue; }
                 if(pending.component>=0) { if(route_count<WIRE_MAX_KNEES) { route[route_count++]=(WirePoint){x,y}; status="Joelho adicionado; termine em um terminal."; } else status="Limite de 16 joelhos por fio."; continue; }
                 for(i=bench.part_count-1;i>=0;--i) { float hw=bench.parts[i].type==PART_BREADBOARD?87.0f:44.0f; float hh=bench.parts[i].type==PART_BREADBOARD?58.0f:30.0f; if(fabsf(x-bench.parts[i].x)<hw && fabsf(y-bench.parts[i].y)<hh) { hit=i; break; } }
                 selected=hit;
-                if(hit>=0) { if(e.button.clicks>=2 && (bench.parts[hit].type==PART_SOURCE || bench.parts[hit].type==PART_SWITCH)) { bench.parts[hit].on=!bench.parts[hit].on; status="Estado alterado."; } else { dragging=hit; offset_x=x-bench.parts[hit].x; offset_y=y-bench.parts[hit].y; status="Arraste para mover; dois cliques alternam fonte ou chave."; } }
+                if(hit>=0) { if(e.button.clicks>=2 && (bench.parts[hit].type==PART_SOURCE || bench.parts[hit].type==PART_SWITCH)) { bench_history_record(history,&bench); bench.parts[hit].on=!bench.parts[hit].on; status="Estado alterado."; } else { dragging=hit; move_recorded=0; offset_x=x-bench.parts[hit].x; offset_y=y-bench.parts[hit].y; status="Arraste para mover; dois cliques alternam fonte ou chave."; } }
                 else { pending.component=-1; status="Bancada livre."; }
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { dragging=-1; drag_wire=-1; }
-            else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { bench.wires[drag_wire].knees[drag_knee]=(WirePoint){e.motion.x*1280.0f/w,e.motion.y*720.0f/h}; } }
-            else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { bench.parts[dragging].x=e.motion.x*1280.0f/w-offset_x; bench.parts[dragging].y=e.motion.y*720.0f/h-offset_y; } }
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; WirePoint *point=&bench.wires[drag_wire].knees[drag_knee]; if(point->x!=x || point->y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } *point=(WirePoint){x,y}; } } }
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { float x=e.motion.x*1280.0f/w-offset_x,y=e.motion.y*720.0f/h-offset_y; if(bench.parts[dragging].x!=x || bench.parts[dragging].y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } bench.parts[dragging].x=x; bench.parts[dragging].y=y; } } }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
@@ -310,6 +323,7 @@ int main(int argc, char **argv) {
         }
     }
     spice_job_join(&dc_job);
+    free(history);
     if(font) glDeleteLists(font,128);
     SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return 0;
 }
