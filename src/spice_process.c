@@ -6,19 +6,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],double *wire_currents,char *message,size_t capacity)
+static int analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],double *wire_currents,SpiceTrace *trace,Pin probe,double step,double stop,char *message,size_t capacity)
 {
-    char dir[MAX_PATH], input[MAX_PATH]="", output[MAX_PATH]="", exe[MAX_PATH], command[3*MAX_PATH+32], buffer[32768];
+    char dir[MAX_PATH], input[MAX_PATH]="", output[MAX_PATH]="", exe[MAX_PATH], command[3*MAX_PATH+32], buffer[262144];
     DWORD length,exit_code=1; FILE *file=NULL; HANDLE log=INVALID_HANDLE_VALUE; STARTUPINFOA si={0}; PROCESS_INFORMATION pi={0};
     SECURITY_ATTRIBUTES security={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE}; NetlistResult result; int ok=0;
-    if(!bench || !executable || !current || !led_currents || !message || !capacity) return 0;
+    if(!bench || !executable || !message || !capacity || (!trace && (!current || !led_currents))) return 0;
+    if(trace && (!isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || stop/step>500)) { snprintf(message,capacity,"Intervalo transitorio invalido."); return 0; }
     snprintf(message,capacity,"Falha ao preparar analise.");
     length=GetFullPathNameA(executable,MAX_PATH,exe,NULL);
     if(!length || length>=MAX_PATH || GetFileAttributesA(exe)==INVALID_FILE_ATTRIBUTES) { snprintf(message,capacity,"ngspice nao encontrado."); return 0; }
     length=GetTempPathA(MAX_PATH,dir);
     if(!length || length>=MAX_PATH || !GetTempFileNameA(dir,"nci",0,input) || !GetTempFileNameA(dir,"nco",0,output)) goto cleanup;
     file=fopen(input,"w"); if(!file) goto cleanup;
-    result=wire_currents?netlist_write_dc_instrumented(file,bench):netlist_write_dc(file,bench);
+    result=trace?netlist_write_transient(file,bench,probe,step,stop):wire_currents?netlist_write_dc_instrumented(file,bench):netlist_write_dc(file,bench);
     if(fclose(file)!=0) result=NETLIST_IO_ERROR;
     file=NULL;
     if(result!=NETLIST_OK) { snprintf(message,capacity,result==NETLIST_AMBIGUOUS_WIRES?"Corrente ambigua em fios ideais paralelos.":"Montagem invalida ou nao suportada."); goto cleanup; }
@@ -34,6 +35,21 @@ static int analyze(const Workbench *bench,const char *executable,double *current
     file=fopen(output,"r"); if(!file) goto cleanup;
     length=(DWORD)fread(buffer,1,sizeof(buffer)-1,file); buffer[length]='\0';
     if(!feof(file) || ferror(file) || strstr(buffer,"Error:") || strstr(buffer,"error:") || strstr(buffer,"Warning:") || strstr(buffer,"warning:") || strstr(buffer,"couldn't be loaded") || strstr(buffer,"singular matrix") || strstr(buffer,"convergence failed")) { snprintf(message,capacity,"Resultado SPICE invalido ou incompleto."); goto cleanup; }
+    if(trace) {
+        SpiceTrace local={0}; char *line=buffer; double previous=-1;
+        while(*line) {
+            char *next=strchr(line,'\n'); int index,consumed=0; double time,voltage;
+            if(next) *next='\0';
+            if(sscanf(line," %d %lf %lf %n",&index,&time,&voltage,&consumed)==3 && consumed>0 && line[consumed]=='\0') {
+                if(index!=local.count || !isfinite(time) || !isfinite(voltage) || time<0 || time<previous || local.count>=SPICE_TRANSIENT_MAX_SAMPLES) { snprintf(message,capacity,"Amostras transitorias invalidas."); goto cleanup; }
+                local.samples[local.count++]=(SpiceSample){time,voltage}; previous=time;
+            }
+            if(!next) break;
+            line=next+1;
+        }
+        if(local.count<2 || previous<stop*(1-1e-6)) { snprintf(message,capacity,"Amostras transitorias incompletas."); goto cleanup; }
+        *trace=local; snprintf(message,capacity,"Transitorio calculado: %d amostras.",local.count); ok=1; goto cleanup;
+    }
     {
         char *start=strstr(buffer,"@vsource[i] ="), *end;
         double value, local_leds[WORKBENCH_MAX_COMPONENTS]={0}, local_wires[WORKBENCH_MAX_WIRES]={0}; int i;
@@ -73,11 +89,17 @@ cleanup:
 
 int spice_dc_analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],char *message,size_t capacity)
 {
-    return analyze(bench,executable,current,led_currents,NULL,message,capacity);
+    return analyze(bench,executable,current,led_currents,NULL,NULL,(Pin){0,0},0,0,message,capacity);
 }
 
 int spice_dc_analyze_wires(const Workbench *bench,const char *executable,double *current,double component_currents[WORKBENCH_MAX_COMPONENTS],double wire_currents[WORKBENCH_MAX_WIRES],char *message,size_t capacity)
 {
     if(!wire_currents) return 0;
-    return analyze(bench,executable,current,component_currents,wire_currents,message,capacity);
+    return analyze(bench,executable,current,component_currents,wire_currents,NULL,(Pin){0,0},0,0,message,capacity);
+}
+
+int spice_transient_analyze(const Workbench *bench,const char *executable,Pin probe,double step,double stop,SpiceTrace *trace,char *message,size_t capacity)
+{
+    if(!trace) return 0;
+    return analyze(bench,executable,NULL,NULL,NULL,trace,probe,step,stop,message,capacity);
 }

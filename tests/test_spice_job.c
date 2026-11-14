@@ -32,6 +32,15 @@ int main(int argc,char **argv)
         assert(job.success && job.measures_wires);
         assert(fabs(job.wire_currents[0]-.005)<1e-7);
         assert(fabs(job.wire_currents[1]+.005)<1e-7);
+        assert(bench_add(&bench,PART_CAPACITOR,0,0)==2);
+        assert(bench_toggle_wire(&bench,(Pin){0,1},(Pin){1,1})==2);
+        assert(bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0})==1);
+        assert(bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1})==1);
+        assert(spice_job_start_transient(&job,&bench,argv[1],(Pin){2,0},1e-5,.005));
+        finish(&job);
+        assert(job.success && job.transient && job.trace.count>2);
+        assert(job.trace.samples[job.trace.count-1].voltage>4.9);
+
     }
     spice_job_join(&job);
     SDL_Quit();

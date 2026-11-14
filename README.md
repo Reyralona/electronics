@@ -78,3 +78,5 @@ Para testar o modelo:
 gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_circuit.c src/circuit.c -o build/test_circuit.exe
 ./build/test_circuit.exe
 ```
+
+Selecione um componente de dois terminais e pressione `T` para calcular, em segundo plano, a tens?o do seu primeiro terminal em rela??o ao negativo da primeira fonte. O experimento usa 10 ?s como intervalo de sa?da solicitado, dura??o de 5 ms e condi??es iniciais nulas para capacitores e indutores. A bancada pausa ao concluir; `N` avan?a pelas amostras efetivamente calculadas pelo ngspice, cujos intervalos podem variar por causa do passo adaptativo. Alterar a montagem descarta a s?rie. Essa leitura ainda n?o controla a simula??o completa tick a tick, n?o mostra correntes transit?rias e n?o oferece configura??o dos tempos.

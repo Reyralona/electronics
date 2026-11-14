@@ -59,5 +59,21 @@ int main(int argc, char **argv)
         assert(spice_dc_analyze(&b,argv[1],&current,led,message,sizeof(message)));
         assert(fabs(led[2])<1e-8);
     }
+    if(argc>1) {
+        Workbench rc={0}; SpiceTrace trace={0}; int i, nearest=0;
+        assert(bench_add(&rc,PART_SOURCE,0,0)==0);
+        assert(bench_add(&rc,PART_RESISTOR,0,0)==1);
+        assert(bench_add(&rc,PART_CAPACITOR,0,0)==2);
+        assert(bench_toggle_wire(&rc,(Pin){0,0},(Pin){1,0})==1);
+        assert(bench_toggle_wire(&rc,(Pin){1,1},(Pin){2,0})==1);
+        assert(bench_toggle_wire(&rc,(Pin){2,1},(Pin){0,1})==1);
+        assert(spice_transient_analyze(&rc,argv[1],(Pin){2,0},1e-5,.005,&trace,message,sizeof(message)));
+        assert(trace.count>2);
+        for(i=1;i<trace.count;++i) if(fabs(trace.samples[i].time-.001)<fabs(trace.samples[nearest].time-.001)) nearest=i;
+        assert(fabs(trace.samples[nearest].voltage-5*(1-exp(-trace.samples[nearest].time/.001)))<.01);
+        i=trace.count;
+        assert(!spice_transient_analyze(&rc,argv[1],(Pin){2,0},0,.005,&trace,message,sizeof(message)));
+        assert(trace.count==i);
+    }
     return 0;
 }

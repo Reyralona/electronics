@@ -185,7 +185,8 @@ int main(int argc, char **argv) {
     Workbench dc_snapshot={0}; int dc_valid=0; double dc_current=0; char dc_status[128];
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
     double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
-    SpiceJob dc_job={0};
+    SpiceJob dc_job={0}; SpiceTrace trace={0}; Workbench trace_snapshot={0};
+    int trace_valid=0, trace_index=0; char trace_status[128];
     BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
     BenchView view={1,0,0}; int panning=0;
     int editing=-1; char edit_text[64]={0};
@@ -308,10 +309,19 @@ int main(int argc, char **argv) {
                     if(bench_rotate_part(&bench,selected)) { bench_snap_to_breadboard(&bench,selected); bench_history_record(history,&before); dragging=-1; pending.component=-1; route_count=0; status="Componente girado 90 graus."; }
                     else status="Esta placa ainda nao gira.";
                 }
+                else if(e.key.key==SDLK_T && selected>=0 && bench.parts[selected].type!=PART_BREADBOARD) {
+                    if(dc_job.thread) status="Analise em andamento.";
+                    else if(spice_job_start_transient(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",(Pin){selected,0},1e-5,.005)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando transitorio do terminal 1..."; }
+                    else status="Falha ao iniciar tarefa de analise.";
+                }
+                else if(e.key.key==SDLK_N && !sim_running && trace_valid) {
+                    if(trace_index+1<trace.count) ++trace_index;
+                    snprintf(trace_status,sizeof(trace_status),"Transitorio terminal 1: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].voltage,trace_index+1,trace.count); status=trace_status;
+                }
                 else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
                 else if(e.key.key==SDLK_P) {
                     if(dc_job.thread) status="Analise em andamento.";
-                    else if((show_current?spice_job_start_wires:spice_job_start)(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe")) { dc_valid=0; dc_wire_valid=0; status="Analisando ponto DC..."; }
+                    else if((show_current?spice_job_start_wires:spice_job_start)(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe")) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Analisando ponto DC..."; }
                     else status="Falha ao iniciar tarefa de analise.";
                 }
                 else if(e.key.key==SDLK_E && selected>=0) {
@@ -433,8 +443,14 @@ int main(int argc, char **argv) {
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
+            else if(dc_job.transient) {
+                trace_valid=dc_job.success; trace_index=0; trace_snapshot=dc_job.snapshot;
+                if(trace_valid) { trace=dc_job.trace; sim_running=0; snprintf(trace_status,sizeof(trace_status),"Transitorio terminal 1: t=%.6g s; V=%.6g V (1/%d). N avanca.",trace.samples[0].time,trace.samples[0].voltage,trace.count); status=trace_status; }
+                else { memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
+            }
             else { dc_valid=dc_job.success; dc_wire_valid=dc_job.success && dc_job.measures_wires; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); if(dc_wire_valid) memcpy(dc_wire_currents,dc_job.wire_currents,sizeof(dc_wire_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
         }
+        if(trace_valid && memcmp(&trace_snapshot,&bench,sizeof(bench))!=0) { trace_valid=0; status="Montagem alterada; transitorio descartado."; }
         if(dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem alterada; pressione P para recalcular."; }
         if(dc_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && dc_led_currents[i]>=1e-6; }
         else if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
@@ -446,7 +462,7 @@ int main(int argc, char **argv) {
         text(font,830,42,"Configuracoes [F1]");
         if(!bench_boolean_supported(&bench)) color(.66f,.36f,.12f);
         else color(sim_running?.16f:.65f,sim_running?.55f:.42f,.24f);
-        text(font,1030,42,dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
+        text(font,1030,42,trace_valid?"TRANSITORIO DISPONIVEL":dc_valid?"PONTO DC CALCULADO":!bench_boolean_supported(&bench)?"CALCULO INDISPONIVEL":sim_running?"SIMULACAO ATIVA":"SIMULACAO PAUSADA");
         color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,"COMPONENTES");
         for(i=0;i<7;++i) { float y=140+i*72; color(placing==i?.79f:.92f,placing==i?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,i==0?"Fonte":i==1?"Interruptor":i==2?"LED":i==3?"Breadboard":i==4?"Resistor":i==5?"Capacitor":"Indutor"); color(i==0?.2f:i==1?.38f:.84f,i==0?.54f:.42f,i==2?.28f:.6f); circle(42,y+31,13); }
         glEnable(GL_SCISSOR_TEST);
