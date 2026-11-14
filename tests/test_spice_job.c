@@ -27,6 +27,11 @@ int main(int argc,char **argv)
         assert(spice_job_start(&job,&bench,argv[1]));
         finish(&job);
         assert(job.success && fabs(job.current+.005)<1e-7);
+        assert(spice_job_start_wires(&job,&bench,argv[1]));
+        finish(&job);
+        assert(job.success && job.measures_wires);
+        assert(fabs(job.wire_currents[0]-.005)<1e-7);
+        assert(fabs(job.wire_currents[1]+.005)<1e-7);
     }
     spice_job_join(&job);
     SDL_Quit();

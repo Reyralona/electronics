@@ -9,9 +9,12 @@ typedef struct {
     char executable[1024], message[128];
     double current;
     double led_currents[WORKBENCH_MAX_COMPONENTS];
+    double wire_currents[WORKBENCH_MAX_WIRES];
+    int measures_wires;
     int success;
 } SpiceJob;
 int spice_job_start(SpiceJob *job, const Workbench *bench, const char *executable);
+int spice_job_start_wires(SpiceJob *job, const Workbench *bench, const char *executable);
 /* Returns 1 after a finished job is joined; 0 otherwise. */
 int spice_job_poll(SpiceJob *job);
 void spice_job_join(SpiceJob *job);

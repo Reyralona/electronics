@@ -25,6 +25,8 @@ Na branch experimental, `P` executa uma análise de ponto DC no ngspice isolado 
 
 Após calcular, selecione um resistor ou LED para inspecionar sua corrente individual no canto superior direito. O sinal positivo representa corrente do terminal esquerdo para o direito; o negativo indica o sentido oposto.
 
+Para visualizar corrente nos fios, abra `F1`, ative **Visualizar corrente nos fios** e pressione `P`. Os fios com corrente calculada acima de 1 µA recebem um realce e um marcador no sentido convencional; a velocidade do marcador é ilustrativa. O modelo usa sensores ideais de 0 V. Laços de fios ideais podem tornar a divisão de corrente indeterminada: nesses casos, a análise instrumentada é recusada e uma mensagem é exibida. Desative a opção para voltar à análise sem medição por fio.
+
 Sem uma análise DC válida, a simulação antiga é discreta: o LED acende quando seu terminal esquerdo alcança o positivo de uma fonte ligada e o direito alcança o negativo por fios e interruptores fechados. Se houver resistor ou capacitor, a interface indica **cálculo indisponível** e mostra o LED em cinza até uma análise DC bem-sucedida. A breadboard tem 100 furos, em dois lados separados; em cada lado, cada coluna de cinco furos forma um grupo conectado. Ela ainda não tem trilhos de alimentação nem encaixe físico de componentes: use fios para ligar terminais aos furos. Fontes em curto não acendem LEDs no modelo discreto. A análise SPICE usa parâmetros genéricos e não deve ser usada para dimensionar uma montagem física. O desenho usa formas originais provisórias, ainda não modelos finais. Esta bancada ainda não tem desfazer/refazer nem zoom; os projetos antigos não são alterados.
 
 ## Protótipo anterior

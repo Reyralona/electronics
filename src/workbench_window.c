@@ -84,13 +84,14 @@ int main(int argc, char **argv) {
     SDL_Window *window; SDL_GLContext context; GLuint font; Workbench bench={0};
     Pin pending={-1,-1}; int selected=-1, placing=-1, dragging=-1, running=1, sim_running=1;
     WirePoint route[WIRE_MAX_KNEES]; int route_count=0, drag_wire=-1, drag_knee=-1;
-    int settings=0, show_grid=1, show_handles=1, round_wires=1;
+    int settings=0, show_grid=1, show_handles=1, round_wires=1, show_current=0, dc_wire_valid=0;
     int leds[WORKBENCH_MAX_COMPONENTS]={0}; float offset_x=0,offset_y=0;
     Workbench dc_snapshot={0}; int dc_valid=0; double dc_current=0; char dc_status[128];
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
+    double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
     SpiceJob dc_job={0};
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -99,7 +100,7 @@ int main(int argc, char **argv) {
         bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1});
         bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){772,300}; bench.wires[1].knees[1]=(WirePoint){412,300};
         if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); }
-        if(strcmp(argv[1],"--capture-dc")==0) {
+        if(strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0) {
             bench_add(&bench,PART_RESISTOR,530,220);
             selected=3;
             bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0});
@@ -114,8 +115,10 @@ int main(int argc, char **argv) {
     context=SDL_GL_CreateContext(window);
     if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); return 1; }
     font=make_font(); SDL_GL_SetSwapInterval(1);
-    if(capture && strcmp(argv[1],"--capture-dc")==0) {
-        dc_valid=spice_dc_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_led_currents,dc_status,sizeof(dc_status));
+    if(capture && (strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0)) {
+        show_current=strcmp(argv[1],"--capture-current")==0;
+        if(show_current) { dc_valid=spice_dc_analyze_wires(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_led_currents,dc_wire_currents,dc_status,sizeof(dc_status)); dc_wire_valid=dc_valid; }
+        else dc_valid=spice_dc_analyze(&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe",&dc_current,dc_led_currents,dc_status,sizeof(dc_status));
         if(dc_valid) dc_snapshot=bench;
         status=dc_status;
     }
@@ -130,7 +133,7 @@ int main(int argc, char **argv) {
                 else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
                 else if(e.key.key==SDLK_P) {
                     if(dc_job.thread) status="Analise em andamento.";
-                    else if(spice_job_start(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe")) { dc_valid=0; status="Analisando ponto DC..."; }
+                    else if((show_current?spice_job_start_wires:spice_job_start)(&dc_job,&bench,"build/spice-local/ucrt64/bin/ngspice_con.exe")) { dc_valid=0; dc_wire_valid=0; status="Analisando ponto DC..."; }
                     else status="Falha ao iniciar tarefa de analise.";
                 }
                 else if(e.key.key==SDLK_S) { status=workbench_save("bancada.elec",&bench)?"Salvo em bancada.elec.":"Falha ao salvar."; }
@@ -148,6 +151,7 @@ int main(int argc, char **argv) {
                         if(y>=120 && y<160) show_grid=!show_grid;
                         else if(y>=160 && y<200) show_handles=!show_handles;
                         else if(y>=200 && y<240) round_wires=!round_wires;
+                        else if(y>=240 && y<280) { show_current=!show_current; if(show_current && !dc_wire_valid) status="Pressione P para medir as correntes dos fios."; }
                     }
                     continue;
                 }
@@ -179,7 +183,7 @@ int main(int argc, char **argv) {
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
-            else { dc_valid=dc_job.success; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
+            else { dc_valid=dc_job.success; dc_wire_valid=dc_job.success && dc_job.measures_wires; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); if(dc_wire_valid) memcpy(dc_wire_currents,dc_job.wire_currents,sizeof(dc_wire_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
         }
         if(dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem alterada; pressione P para recalcular."; }
         if(dc_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && dc_led_currents[i]>=1e-6; }
@@ -208,6 +212,21 @@ int main(int argc, char **argv) {
                 else { color(.38f,.65f,.73f); glLineWidth(2); }
                 glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x+offset,path[k].y+offset); glEnd();
             }
+            if(show_current && dc_valid && dc_wire_valid && fabs(dc_wire_currents[i])>1e-6) {
+                float total=0, position; int segment;
+                color(1.0f,.36f,.04f); glLineWidth(3);
+                glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
+                for(k=1;k<count;++k) total+=hypotf(path[k].x-path[k-1].x,path[k].y-path[k-1].y);
+                if(total>0) {
+                    position=sim_running?fmodf((float)SDL_GetTicks()*.08f,total):0.0f;
+                    if(dc_wire_currents[i]<0) position=total-position;
+                    for(segment=1;segment<count;++segment) {
+                        float dx=path[segment].x-path[segment-1].x,dy=path[segment].y-path[segment-1].y, length=hypotf(dx,dy);
+                        if(length>0 && position<=length) { color(1,.9f,.38f); circle(path[segment-1].x+dx*position/length,path[segment-1].y+dy*position/length,4); break; }
+                        position-=length;
+                    }
+                }
+            }
         }
         if(pending.component>=0) { float x,y; int k; pin_xy(&bench.parts[pending.component],pending.pin,&x,&y); color(.9f,.55f,.15f); for(k=0;k<route_count;++k) { line(x,y,route[k].x,route[k].y); x=route[k].x; y=route[k].y; } }
         if(show_handles) for(i=0;i<bench.wire_count;++i) { int k; for(k=0;k<bench.wires[i].knee_count;++k) { WirePoint p=bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
@@ -220,14 +239,15 @@ int main(int argc, char **argv) {
         }
         color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status); text(font,238,709,"Terminais: fios | Duplo clique: alternar | P: analisar DC | Espaco/N: pausa/passo | Delete: excluir");
         if(settings) {
-            color(.62f,.68f,.72f); rect(846,90,400,246);
-            color(.98f,.98f,.99f); rect(840,84,400,246);
+            color(.62f,.68f,.72f); rect(846,90,400,286);
+            color(.98f,.98f,.99f); rect(840,84,400,286);
             color(.14f,.22f,.28f); text(font,860,112,"CONFIGURACOES DE VISUALIZACAO");
             text(font,860,148,show_grid?"[x] Grade":"[ ] Grade");
             text(font,860,188,show_handles?"[x] Pontos de controle dos fios":"[ ] Pontos de controle dos fios");
             text(font,860,228,round_wires?"[x] Curvas arredondadas":"[ ] Curvas arredondadas");
-            text(font,860,272,"Corrente: calculo eletrico indisponivel");
-            text(font,860,310,"F1 fecha este painel");
+            text(font,860,268,show_current?"[x] Visualizar corrente nos fios":"[ ] Visualizar corrente nos fios");
+            text(font,860,312,"P calcula correntes; velocidade visual ilustrativa");
+            text(font,860,350,"F1 fecha este painel");
         }
         SDL_GL_SwapWindow(window);
         if(capture) {

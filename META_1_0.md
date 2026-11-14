@@ -13,4 +13,4 @@ Pedido de 14/11/2026: continuar até uma versão 1.0 com catálogo abrangente de
 
 Pesquisa inicial: a [interface C compartilhada do ngspice](https://ngspice.sourceforge.io/shared.html) permite controlar simulação e receber dados; [XSPICE](https://ngspice.sourceforge.io/xspice.html) integra modelos digitais e analógicos. São candidatos, não dependências já integradas. Licença, distribuição Windows e modelos específicos precisam de validação antes da escolha final. Consulta em 14/11/2026.
 
-Estado atual: bancada experimental de conectividade com quatro tipos de componentes. Não atende à meta 1.0. As tags 0.x representam incrementos, não conclusão do catálogo ou precisão elétrica.
+Estado atual na branch experimental: seis tipos de componentes, análise DC pontual pelo ngspice e visualização opcional de correntes em fios quando o modelo permite medi-las sem ambiguidade. O runtime ainda não é distribuído com o aplicativo e o motor transitório ainda não está ligado à interface. Não atende à meta 1.0. As tags 0.x representam incrementos, não conclusão do catálogo ou precisão elétrica.
