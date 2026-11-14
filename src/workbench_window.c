@@ -43,6 +43,12 @@ static void wire_contact_tip(WirePoint hole,WirePoint next,int wire_color)
     color(.98f,.8f,.43f); circle(hole.x,hole.y,2.5f);
     glLineWidth(1);
 }
+static void wire_current_style(int level)
+{
+    if(level==1) { color(.95f,.58f,.12f); glLineWidth(3); }
+    else if(level==2) { color(1.0f,.36f,.04f); glLineWidth(5); }
+    else { color(.95f,.16f,.03f); glLineWidth(7); }
+}
 static void wire_direction_marker(const WirePoint *path,int count,int reverse)
 {
     float total=0,position; int i;
@@ -758,14 +764,15 @@ int main(int argc, char **argv) {
                 uint64_t bit=UINT64_C(1)<<(i%64);
                 int forward=(trace.wires_forward[trace_index][i/64]&bit)!=0, reverse=(trace.wires_reverse[trace_index][i/64]&bit)!=0;
                 if(forward || reverse) {
-                    color(1.0f,.36f,.04f); glLineWidth(3);
+                    int level=(trace.wire_levels[trace_index][i/4]>>((i%4)*2))&3;
+                    wire_current_style(level);
                     glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
                     wire_direction_marker(path,count,reverse);
                 }
             }
-            if(show_current && dc_valid && dc_wire_valid && fabs(dc_wire_currents[i])>1e-6) {
+            if(show_current && dc_valid && dc_wire_valid && spice_wire_current_level(dc_wire_currents[i])>0) {
                 float total=0, position; int segment;
-                color(1.0f,.36f,.04f); glLineWidth(3);
+                wire_current_style(spice_wire_current_level(dc_wire_currents[i]));
                 glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
                 for(k=1;k<count;++k) total+=hypotf(path[k].x-path[k-1].x,path[k].y-path[k-1].y);
                 if(total>0) {
@@ -819,8 +826,8 @@ int main(int argc, char **argv) {
         color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status); text(font,238,709,"Terminais: fios | Duplo clique: alternar | P: DC | T: transitorio | Espaco/N: pausa/passo | Delete: excluir");
         if(settings) {
             int swatch;
-            color(.62f,.68f,.72f); rect(846,90,400,496);
-            color(.98f,.98f,.99f); rect(840,84,400,496);
+            color(.62f,.68f,.72f); rect(846,90,400,558);
+            color(.98f,.98f,.99f); rect(840,84,400,558);
             color(.14f,.22f,.28f); text(font,860,112,"CONFIGURACOES DE VISUALIZACAO");
             text(font,860,148,show_grid?"[x] Grade":"[ ] Grade");
             text(font,860,188,show_handles?"[x] Pontos de controle dos fios":"[ ] Pontos de controle dos fios");
@@ -840,7 +847,9 @@ int main(int argc, char **argv) {
                 snprintf(setting,sizeof(setting),"Duracao: %.6g s (clique)",transient_stop); text(font,860,495,setting);
             }
             text(font,860,535,"T: transitorio | Espaco: reproduzir | B/N: amostras");
-            text(font,860,565,"F1 fecha este painel");
+            text(font,860,565,"1-100 uA | 100 uA-10 mA | >=10 mA");
+            text(font,860,590,"Largura e cor indicam faixas de corrente");
+            text(font,860,625,"F1 fecha este painel");
         }
         if(editing>=0) {
             char reading[110];

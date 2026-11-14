@@ -6,6 +6,11 @@
 int main(int argc, char **argv)
 {
     Workbench b={0}; char message[128]; double current=42, led[WORKBENCH_MAX_COMPONENTS]={0}, wire[WORKBENCH_MAX_WIRES]={0};
+    assert(spice_wire_current_level(0)==0 && spice_wire_current_level(0.999e-6)==0);
+    assert(spice_wire_current_level(1e-6)==1 && spice_wire_current_level(-99e-6)==1);
+    assert(spice_wire_current_level(1e-4)==2 && spice_wire_current_level(-.009)==2);
+    assert(spice_wire_current_level(.01)==3 && spice_wire_current_level(-1)==3);
+    assert(spice_wire_current_level(NAN)==0);
     assert(bench_add(&b,PART_SOURCE,0,0)==0);
     assert(bench_add(&b,PART_RESISTOR,0,0)==1);
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,0})==1);
@@ -229,9 +234,25 @@ int main(int argc, char **argv)
         }
         /* Last wire was inserted with its endpoints reversed. */
         assert(trace.wires_reverse[high][0] & (UINT64_C(1)<<6));
+        assert(((trace.wire_levels[high][6/4]>>((6%4)*2))&3)==2);
+        assert(((trace.wire_levels[low][6/4]>>((6%4)*2))&3)==0);
         assert(!(trace.wires_reverse[low][0] & (UINT64_C(1)<<6)));
         assert(trace.leds_on[high] & (UINT64_C(1)<<3));
         assert(trace.leds_on[low] & (UINT64_C(1)<<5));
+    }
+    if(argc>1) {
+        Workbench branches={0}; SpiceTrace levels={0}; int i;
+        assert(bench_add(&branches,PART_SOURCE,0,0)==0);
+        for(i=0;i<3;++i) {
+            int r=bench_add(&branches,PART_RESISTOR,0,0); assert(r==i+1);
+            assert(bench_set_value(&branches,r,i==0?1000000:i==1?1000:100));
+            assert(bench_toggle_wire(&branches,(Pin){0,0},(Pin){r,0})==1);
+            assert(bench_toggle_wire(&branches,(Pin){r,1},(Pin){0,1})==1);
+        }
+        assert(spice_transient_instrumented(&branches,argv[1],1,(Pin){0,0},1e-5,.0001,&levels,message,sizeof(message)));
+        for(i=0;i<3;++i) { int wire=i*2; assert(((levels.wire_levels[0][wire/4]>>((wire%4)*2))&3)==i+1); }
+        assert(spice_dc_analyze_wires(&branches,argv[1],&current,led,wire,message,sizeof(message)));
+        for(i=0;i<3;++i) assert(spice_wire_current_level(wire[i*2])==i+1);
     }
     return 0;
 }

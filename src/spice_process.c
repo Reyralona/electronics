@@ -6,6 +6,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+int spice_wire_current_level(double amperes)
+{
+    double magnitude=fabs(amperes);
+    if(!isfinite(magnitude) || magnitude<1e-6) return 0;
+    if(magnitude<1e-4) return 1;
+    if(magnitude<1e-2) return 2;
+    return 3;
+}
+
 static int analyze(const Workbench *bench,const char *executable,double *current,double led_currents[WORKBENCH_MAX_COMPONENTS],double *wire_currents,SpiceTrace *trace,int trace_current,int instrument,Pin probe,double step,double stop,char *message,size_t capacity)
 {
     char dir[MAX_PATH], input[MAX_PATH]="", output[MAX_PATH]="", exe[MAX_PATH], command[3*MAX_PATH+32], *buffer=NULL; size_t buffer_capacity=trace?16*1024*1024:32768;
@@ -54,9 +63,10 @@ static int analyze(const Workbench *bench,const char *executable,double *current
                 } else {
                     if(index>=local.count || time!=local.samples[index].time) { snprintf(message,capacity,"Correntes transitorias dessincronizadas."); goto cleanup; }
                     if(section<=led_count) { if(value>=1e-6) local.leds_on[index]|=UINT64_C(1)<<led_indices[section-1]; }
-                    else { int wire=section-led_count-1; uint64_t bit=UINT64_C(1)<<(wire%64);
-                        if(value>=1e-6) local.wires_forward[index][wire/64]|=bit;
-                        else if(value<=-1e-6) local.wires_reverse[index][wire/64]|=bit;
+                    else { int wire=section-led_count-1, level=spice_wire_current_level(value); uint64_t bit=UINT64_C(1)<<(wire%64);
+                        if(level && value>0) local.wires_forward[index][wire/64]|=bit;
+                        else if(level && value<0) local.wires_reverse[index][wire/64]|=bit;
+                        local.wire_levels[index][wire/4]|=(unsigned char)(level<<((wire%4)*2));
                     }
                 }
                 ++section_count;
