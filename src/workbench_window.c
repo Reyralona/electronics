@@ -909,4 +909,3 @@ int main(int argc, char **argv) {
     if(font) glDeleteLists(font,128);
     SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return exit_code;
 }
-
