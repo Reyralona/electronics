@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.4.0
+
+- Zoom com a roda do mouse, deslocamento com setas e restauração da vista com Home.
+
 ## 0.3.0
 
 - Componentes podem ser reposicionados arrastando com o botão direito; as ligações acompanham os componentes.
