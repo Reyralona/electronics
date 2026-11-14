@@ -1,9 +1,15 @@
 #include "workbench.h"
 #include <string.h>
 
+int bench_pin_count(PartType type)
+{
+    return type == PART_BREADBOARD ? 100 : (type >= PART_SOURCE && type <= PART_LED ? 2 : 0);
+}
+
 static int pin_valid(const Workbench *b, Pin p)
 {
-    return p.component >= 0 && p.component < b->part_count && p.pin >= 0 && p.pin < 2;
+    return p.component >= 0 && p.component < b->part_count && p.pin >= 0 &&
+           p.pin < bench_pin_count(b->parts[p.component].type);
 }
 
 static int same_pin(Pin a, Pin b) { return a.component == b.component && a.pin == b.pin; }
@@ -11,7 +17,7 @@ static int same_pin(Pin a, Pin b) { return a.component == b.component && a.pin =
 int bench_add(Workbench *b, PartType type, float x, float y)
 {
     int id;
-    if (b->part_count >= WORKBENCH_MAX_COMPONENTS || type < PART_SOURCE || type > PART_LED) return -1;
+    if (b->part_count >= WORKBENCH_MAX_COMPONENTS || bench_pin_count(type) == 0) return -1;
     id = b->part_count++;
     b->parts[id] = (Part){type, x, y, type == PART_SOURCE};
     return id;
@@ -62,23 +68,30 @@ static void join(int *parent, int a, int b) { parent[root(parent, a)] = root(par
 
 void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
 {
-    int parent[WORKBENCH_MAX_COMPONENTS * 2];
+    int parent[WORKBENCH_MAX_COMPONENTS * WORKBENCH_MAX_PINS];
     int i, j;
     memset(led_on, 0, sizeof(int) * WORKBENCH_MAX_COMPONENTS);
-    for (i = 0; i < WORKBENCH_MAX_COMPONENTS * 2; ++i) parent[i] = i;
+    for (i = 0; i < WORKBENCH_MAX_COMPONENTS * WORKBENCH_MAX_PINS; ++i) parent[i] = i;
     for (i = 0; i < b->wire_count; ++i)
-        join(parent, b->wires[i].a.component * 2 + b->wires[i].a.pin,
-             b->wires[i].b.component * 2 + b->wires[i].b.pin);
-    for (i = 0; i < b->part_count; ++i)
-        if (b->parts[i].type == PART_SWITCH && b->parts[i].on) join(parent, i * 2, i * 2 + 1);
+        join(parent, b->wires[i].a.component * WORKBENCH_MAX_PINS + b->wires[i].a.pin,
+             b->wires[i].b.component * WORKBENCH_MAX_PINS + b->wires[i].b.pin);
+    for (i = 0; i < b->part_count; ++i) {
+        int base = i * WORKBENCH_MAX_PINS;
+        if (b->parts[i].type == PART_SWITCH && b->parts[i].on) join(parent, base, base + 1);
+        if (b->parts[i].type == PART_BREADBOARD) {
+            int group, hole;
+            for (group = 0; group < 20; ++group)
+                for (hole = 1; hole < 5; ++hole) join(parent, base + group * 5, base + group * 5 + hole);
+        }
+    }
     for (i = 0; i < b->part_count; ++i) {
         if (b->parts[i].type != PART_LED) continue;
         for (j = 0; j < b->part_count; ++j) {
             int positive, negative;
             if (b->parts[j].type != PART_SOURCE || !b->parts[j].on) continue;
-            positive = root(parent, j * 2);
-            negative = root(parent, j * 2 + 1);
-            if (positive != negative && root(parent, i * 2) == positive && root(parent, i * 2 + 1) == negative)
+            positive = root(parent, j * WORKBENCH_MAX_PINS);
+            negative = root(parent, j * WORKBENCH_MAX_PINS + 1);
+            if (positive != negative && root(parent, i * WORKBENCH_MAX_PINS) == positive && root(parent, i * WORKBENCH_MAX_PINS + 1) == negative)
                 led_on[i] = 1;
         }
     }
