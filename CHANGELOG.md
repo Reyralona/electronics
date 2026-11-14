@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.15.0
+
+- Persistência da bancada com componentes, fios e joelhos, em formato versionado separado.
+
 ## 0.14.0
 
 - Fios com joelhos arrastáveis, remoção por duplo clique, curvas arredondadas e sombreamento.
