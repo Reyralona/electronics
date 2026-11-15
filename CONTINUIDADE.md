@@ -136,3 +136,21 @@ Proxima prioridade: registro de componentes e IDs estaveis, seguindo a arquitetu
 sem ampliar catalogo com switches espalhados. Ao tocar o ciclo de tarefas, consolidar causas de
 falha/estado ocupado e cancelamento. Capacidades dinamicas e backend de passo real permanecem
 obrigatorios para a 1.0. A meta continua ativa e nao atendida.
+
+## Pedido prioritario do usuario e 0.18.0
+Usuario pediu slots, biblioteca organizada com thumbnails, selecao por area/copiar/colar/excluir
+e packing de selecoes em componentes pequenos reutilizaveis com entradas/saidas.
+Confirmacao explicita: save states = slots de montagem/configuracoes, sem instante eletrico.
+Slots F3 (9), Ctrl+S/L, miniaturas nativas e selecao por retangulo implementados.
+workbench_selection.c e puro, copia partes e fios internos; colagem tem verificacao previa de
+capacidade e numericos. app_editing.c organiza comandos e slots. Clipboard e apenas local ao app.
+Testes cobrem conexoes/remapeamento, joelhos, mover, exclusao, falha atomica por capacidade,
+slots validos/corrompidos e restauracao de configuracoes. ./build.ps1 -GuiTests passou com 88 fases,
+incluindo retangulo por mouse, copiar/colar/excluir/undo e escolha de slot.
+Capturas --capture-projects e --capture-selection revisadas; screenshots em build/*-preview.bmp.
+
+PROXIMO OBRIGATORIO: packing com portas e instancias reutilizaveis, persistido no projeto/biblioteca.
+Nao tratar clipboard como conclusao desse pedido. Prioridade do usuario precede a ordem anterior
+que colocava registro de componentes antes de features. Preservar independencia do modelo/solver.
+Pesquisa oficial iniciada: manual ngspice 46, secao 2.6, confirma expansao de subcircuitos.
+Comparar encapsulamento no modelo (expandido para solver) com emissao .SUBCKT antes de implementar.

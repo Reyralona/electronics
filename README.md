@@ -122,3 +122,23 @@ Desfazer/refazer e carregar criam novas revisoes: resultados de tarefas anterior
 mesmo quando o conteudo e restaurado. As revisoes sao apenas de runtime e nao mudam o formato salvo.
 A verificacao de mudancas nao percorre mais a montagem inteira por quadro. Testes de revisoes e
 transicoes integram ./build.ps1; o modelo continua sem dependencia de janela ou renderer.
+
+
+### Slots e edicao de conjuntos (0.18.0)
+
+F3 abre nove slots de montagem e configuracoes. Clique num slot (ou pressione 1-9), depois
+Salvar/Carregar; Ctrl+S e Ctrl+L operam o slot escolhido. Os arquivos ficam em saves/slot-N.elec,
+relativos a pasta de execucao. S/L continuam usando bancada.elec. Carregar valida o arquivo antes
+de substituir a montagem; a gravacao usa arquivo temporario e substituicao atomica ja existentes.
+Estes slots nao guardam o estado interno do ngspice nem o instante de uma simulacao em andamento.
+
+Arraste numa area vazia, ou Shift+arraste sobre a bancada, para selecionar por retangulo.
+Entram os componentes cujos centros estao dentro da area. Ctrl+A seleciona tudo; Ctrl+C copia,
+Ctrl+X recorta, Ctrl+V cola perto do mouse e Delete remove. A copia inclui somente fios cujas duas
+pontas estao na selecao, preservando cores e joelhos. Arrastar um componente selecionado move o
+conjunto e os joelhos dos fios internos. Desfazer/refazer agrupa cada operacao. Os limites atuais
+continuam 64 componentes/128 fios; colagem que nao cabe falha sem alterar a montagem.
+
+A biblioteca possui abas Basicos/Digital e miniaturas desenhadas a partir das pecas reais.
+Packing em componente reutilizavel com portas ainda esta em implementacao; copiar um conjunto
+nao e apresentado como encapsulamento eletrico.

@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.18.0
+
+- Nove save states de montagem/configuracoes em F3; Ctrl+S salva e Ctrl+L carrega o slot escolhido.
+- Biblioteca em abas com miniaturas dos componentes, desenhadas com o renderer nativo.
+- Selecao por area/Shift+arraste, Ctrl+A/C/X/V, mover conjunto e exclusao com historico.
+- Fios internos, cores e joelhos preservados na copia; falhas de colagem nao alteram a montagem.
+- Testes de selecao/clipboard/slots e 88 fases GUI passaram; capturas revisadas.
+- Packing reutilizavel com portas continua pendente e prioritario.
+
 ## 0.17.5
 
 - Revisoes monotonas substituem comparacoes integrais da montagem no ciclo de simulacao.
