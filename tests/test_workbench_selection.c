@@ -35,5 +35,24 @@ int main(void)
     assert(memcmp(&before, &bench, sizeof(bench)) == 0);
     assert(!bench_selection_copy(&bench, &selection, &clipboard));
     assert(clipboard.valid && clipboard.bench.part_count == 2);
+    {
+        Workbench target = {0};
+        BenchSelection selected = {0};
+        BenchClipboard empty = {.valid = 1};
+        bench_add(&target, PART_RESISTOR, 100, 200);
+        selected.parts[0] = 1;
+        uint64_t revision = target.revision;
+        assert(!bench_selection_paste(&target, &selected, &empty, 0, 0));
+        assert(target.revision == revision && target.part_count == 1 && selected.parts[0]);
+        BenchClipboard copied = {0};
+        assert(bench_selection_copy(&target, &selected, &copied));
+        assert(bench_set_scale(&target, 0, .25f));
+        assert(bench_part_scale(&copied.bench.parts[0]) == 1);
+        assert(bench_selection_paste(&target, &selected, &copied, 300, 400));
+        assert(target.part_count == 2 && target.parts[1].x == 300 && selected.parts[1]);
+        assert(bench_set_scale(&target, 1, .5f));
+        assert(bench_part_scale(&copied.bench.parts[0]) == 1);
+        bench_snapshot_clear(&copied.bench);
+    }
     return 0;
 }

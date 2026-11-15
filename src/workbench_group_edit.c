@@ -25,8 +25,9 @@ int bench_group_extract(const Workbench *parent, int group, Workbench *draft)
             copy.bench.parts[next++].edit_origin = i + 1;
         }
     memset(copy.bench.groups, 0, sizeof(copy.bench.groups));
-    bench_replace(draft, &copy.bench);
-    return 1;
+    int published = bench_replace(draft, &copy.bench);
+    bench_snapshot_clear(&copy.bench);
+    return published;
 }
 
 static int valid_draft(const Workbench *parent, int group, const Workbench *draft)
@@ -112,12 +113,18 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
                  "Modelo invalido, nome invalido ou bloco aninhado. Abra os blocos internos antes de aplicar.");
         return 0;
     }
-    Workbench packed = *draft, result = {0};
+    Workbench packed = {0}, result = {0};
+    int published = 0;
+    if (!bench_snapshot_clone(&packed, draft))
+    {
+        snprintf(message, capacity, "Nao foi possivel copiar o rascunho; bancada preservada.");
+        goto cleanup;
+    }
     BenchSelection all = {0};
     for (int i = 0; i < draft->part_count; ++i)
         all.parts[i] = 1;
     if (!bench_pack_selection(&packed, &all, message, capacity))
-        return 0;
+        goto cleanup;
     int map[WORKBENCH_MAX_COMPONENTS];
     memcpy(result.groups, parent->groups, sizeof(result.groups));
     for (int i = 0; i < parent->part_count; ++i)
@@ -133,7 +140,7 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
     if (offset + packed.part_count > WORKBENCH_MAX_COMPONENTS)
     {
         snprintf(message, capacity, "Nao cabe na bancada: limite atual de 64 pecas internas.");
-        return 0;
+        goto cleanup;
     }
     for (int i = 0; i < packed.part_count; ++i)
     {
@@ -147,14 +154,14 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
     if (!copy_external_wires(parent, group, map, &result))
     {
         snprintf(message, capacity, "Uma porta conectada foi removida ou faltam fios livres; bancada preservada.");
-        return 0;
+        goto cleanup;
     }
     for (int i = 0; i < packed.wire_count; ++i)
     {
         if (result.wire_count == WORKBENCH_MAX_WIRES)
         {
             snprintf(message, capacity, "Nao cabe na bancada: limite atual de 128 fios.");
-            return 0;
+            goto cleanup;
         }
         Wire wire = packed.wires[i];
         wire.a.component += offset;
@@ -162,7 +169,15 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
         result.wires[result.wire_count++] = wire;
     }
     memcpy(result.groups[group - 1].name, name, strlen(name) + 1);
-    bench_replace(parent, &result);
+    published = bench_replace(parent, &result);
+    if (!published)
+    {
+        snprintf(message, capacity, "Nao foi possivel publicar o modelo; bancada preservada.");
+        goto cleanup;
+    }
     snprintf(message, capacity, "Modelo aplicado nesta instancia. Ctrl+Z desfaz.");
-    return 1;
+cleanup:
+    bench_snapshot_clear(&packed);
+    bench_snapshot_clear(&result);
+    return published;
 }

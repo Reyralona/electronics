@@ -346,3 +346,21 @@ test_app_commands, test_app_simulation, test_workbench_revision e test_spice_job
 Ainda faltam snapshots locais de comandos/input, packing/clipboard, arquivos/exemplos e seu
 tratamento transacional de falha. NAO anexar caminhos dinamicos antes de completar essa auditoria.
 Dobra de terminais ainda indisponivel; versao publica continua 0.24.0. Branch mantida ativa.
+
+
+## Packing/clipboard e publicacao transacional - feature/flexible-terminals
+bench_replace agora retorna sucesso/falha; modelo preserva revisao quando publicacao falha.
+Colagem prepara Workbench e selecao temporarios e publica ambos somente apos sucesso; clipboard
+vazio com valid=1 e rejeitado. bench_selection_copy transfere snapshot ao substituir clipboard.
+Compactacao, extracao e aplicar interior usam clone/clear de temporarios; erros limpam estados.
+Parser de arquivos e construtor de exemplos limpam rascunhos em todos os caminhos e so publicam
+settings/selecao quando bancada foi publicada. Formato continua 19, nenhuma geometria dinamica
+anexada ao Workbench ainda. Suite completa incluindo parser/exemplos e 146 fases GUI passou:
+./build.ps1 -OutputName bancada-next -GuiTests.
+Restantes identificados: 14 copias locais em app_editor/app_editing/app_packing/app_input/
+app_commands, mais temporarios de carga/modelos. Tambem preparar clone/clear/move de Part nos
+subconjuntos (selection e group_apply) e remocao de pecas: Workbench clone sozinho NAO torna
+segura uma atribuicao de Part quando terminais possuirem memoria. Copias de Part somente para
+render/hit testing podem ser views emprestadas, nunca destruidas como proprietarias.
+Ainda tratar falha dos chamadores de bench_history_record/bench_replace antes de adicionar
+alocacao ao modelo. Dobra continua pendente; executavel canonico/sessao do usuario preservados.

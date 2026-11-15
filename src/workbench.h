@@ -77,7 +77,7 @@ typedef struct
     uint64_t revision;
 } Workbench;
 
-void bench_replace(Workbench *bench, const Workbench *replacement);
+int bench_replace(Workbench *bench, const Workbench *replacement);
 /* Snapshots preserve revision; publishing an edit uses bench_replace instead.
  * Destinations must be zero-initialized or previously initialized snapshots. */
 int bench_snapshot_clone(Workbench *destination, const Workbench *source);

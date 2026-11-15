@@ -145,9 +145,15 @@ int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char
         snprintf(message, capacity, "Nao ha espaco para outro bloco na capacidade atual da montagem.");
         return 0;
     }
-    Workbench packed = *bench;
+    Workbench packed = {0};
+    if (!bench_snapshot_clone(&packed, bench))
+    {
+        snprintf(message, capacity, "Nao foi possivel copiar a montagem para compactar.");
+        return 0;
+    }
     if (!freeze_boundary_contacts(&packed, selection))
     {
+        bench_snapshot_clear(&packed);
         snprintf(message, capacity, "Nao cabe: contatos de fronteira precisam de fios adicionais (limite atual 128).");
         return 0;
     }
@@ -167,7 +173,13 @@ int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char
         if (selection->parts[i])
             packed.parts[i].group = slot + 1;
     packed.groups[slot] = group;
-    bench_replace(bench, &packed);
+    int published = bench_replace(bench, &packed);
+    bench_snapshot_clear(&packed);
+    if (!published)
+    {
+        snprintf(message, capacity, "Nao foi possivel publicar o bloco; montagem anterior preservada.");
+        return 0;
+    }
     snprintf(message, capacity, "Bloco criado com %d terminais. Ctrl+Shift+G desempacota na bancada.",
              bench_group_ports(bench, slot + 1));
     return slot + 1;

@@ -73,12 +73,12 @@ int bench_selection_copy(const Workbench *bench, const BenchSelection *selection
         wire.b.component = map[wire.b.component];
         copy.wires[copy.wire_count++] = wire;
     }
-    clipboard->bench = copy;
+    bench_snapshot_move(&clipboard->bench, &copy);
     clipboard->valid = 1;
     return 1;
 }
 
-int bench_selection_paste(Workbench *bench, BenchSelection *selection, const BenchClipboard *clipboard, float x,
+static int paste_into(Workbench *bench, BenchSelection *selection, const BenchClipboard *clipboard, float x,
                           float y)
 {
     if (!clipboard->valid || !isfinite(x) || !isfinite(y))
@@ -148,6 +148,26 @@ int bench_selection_paste(Workbench *bench, BenchSelection *selection, const Ben
     }
     ++bench->revision;
     return 1;
+}
+
+int bench_selection_paste(Workbench *bench, BenchSelection *selection, const BenchClipboard *clipboard, float x,
+                          float y)
+{
+    if (!bench || !selection || !clipboard || !clipboard->valid || clipboard->bench.part_count < 1 ||
+        clipboard->bench.part_count > WORKBENCH_MAX_COMPONENTS || clipboard->bench.wire_count < 0 ||
+        clipboard->bench.wire_count > WORKBENCH_MAX_WIRES)
+        return 0;
+    Workbench candidate = {0};
+    BenchSelection candidate_selection = *selection;
+    if (!bench_snapshot_clone(&candidate, bench))
+        return 0;
+    int success = paste_into(&candidate, &candidate_selection, clipboard, x, y);
+    if (success)
+        success = bench_replace(bench, &candidate);
+    if (success)
+        *selection = candidate_selection;
+    bench_snapshot_clear(&candidate);
+    return success;
 }
 
 void bench_selection_delete(Workbench *bench, BenchSelection *selection)

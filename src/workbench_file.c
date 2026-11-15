@@ -61,25 +61,26 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
 int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *settings)
 {
     Workbench b = {0};
+    int published = 0;
     WorkbenchSettings saved = workbench_settings_default();
     char magic[32], extra;
     int version, parts, wires, i, k;
     if (!f || !destination || !settings)
-        return 0;
+        goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
         (version < 1 || version > 19) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
-        return 0;
+        goto cleanup;
     for (i = 0; i < parts; ++i)
     {
         int code, on;
         float x, y;
         if (fscanf(f, "%d %f %f %d", &code, &x, &y, &on) != 4)
-            return 0;
+            goto cleanup;
         const ComponentInfo *info = component_from_legacy(code, version);
         if (!info || !isfinite(x) || !isfinite(y) || fabsf(x) > 100000 || fabsf(y) > 100000 || (on != 0 && on != 1) ||
             bench_add(&b, info->type, x, y) < 0)
-            return 0;
+            goto cleanup;
         PartType type = info->type;
         b.parts[i].on = on;
         if (version < 9 && type == PART_BREADBOARD)
@@ -88,35 +89,35 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         {
             double value;
             if (fscanf(f, "%lf", &value) != 1 || !isfinite(value))
-                return 0;
+                goto cleanup;
             if (info->primary)
             {
                 if (!bench_set_value(&b, i, value))
-                    return 0;
+                    goto cleanup;
             }
             else if (value != 0)
-                return 0;
+                goto cleanup;
         }
         if (version >= 8)
         {
             int rotation;
             if (fscanf(f, "%d", &rotation) != 1 || rotation < 0 || rotation > 3 ||
                 (!(info->flags & COMPONENT_ROTATES) && rotation != 0))
-                return 0;
+                goto cleanup;
             b.parts[i].rotation = rotation;
         }
         if (version >= 9)
         {
             int layout;
             if (fscanf(f, "%d", &layout) != 1 || layout < 0 || layout > 1 || (type != PART_BREADBOARD && layout != 0))
-                return 0;
+                goto cleanup;
             b.parts[i].board_layout = layout;
         }
         if (version >= 19)
         {
             float scale;
             if (fscanf(f, "%f", &scale) != 1 || !bench_set_scale(&b, i, scale))
-                return 0;
+                goto cleanup;
         }
     }
     for (i = 0; i < wires; ++i)
@@ -127,21 +128,21 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
             knees > WIRE_MAX_KNEES || (version < 5 && (a.pin >= 100 || c.pin >= 100)) ||
             (version == 5 && (a.pin >= 180 || c.pin >= 180)) || (version == 6 && (a.pin >= 300 || c.pin >= 300)) ||
             bench_toggle_wire(&b, a, c) != 1)
-            return 0;
+            goto cleanup;
         b.wires[i].knee_count = knees;
         if (version >= 9 &&
             (fscanf(f, "%d", &b.wires[i].color) != 1 || b.wires[i].color < 0 || b.wires[i].color >= WIRE_COLOR_COUNT))
-            return 0;
+            goto cleanup;
         for (k = 0; k < knees; ++k)
         {
             WirePoint *p = &b.wires[i].knees[k];
             if (fscanf(f, "%f %f", &p->x, &p->y) != 2 || !isfinite(p->x) || !isfinite(p->y) || fabsf(p->x) > 100000 ||
                 fabsf(p->y) > 100000)
-                return 0;
+                goto cleanup;
         }
     }
     if (version >= 16 && !bench_groups_read(f, &b, version))
-        return 0;
+        goto cleanup;
     if (version >= 10)
     {
         char tag[32];
@@ -149,20 +150,23 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
                    &saved.round_wires, &saved.show_current, &saved.wire_color, &saved.probe_pin, &saved.probe_current,
                    &saved.transient_step, &saved.transient_stop) != 10 ||
             strcmp(tag, "settings") || !settings_valid(&saved))
-            return 0;
+            goto cleanup;
     }
     if (version >= 18)
     {
         char tag[32];
         if (fscanf(f, "%31s %lf %d %d", tag, &saved.grid_spacing, &saved.snap_grid, &saved.snap_board) != 4 ||
             strcmp(tag, "grid") || !settings_valid(&saved))
-            return 0;
+            goto cleanup;
     }
     if (fscanf(f, " %c", &extra) != EOF || ferror(f))
-        return 0;
-    bench_replace(destination, &b);
-    *settings = saved;
-    return 1;
+        goto cleanup;
+    published = bench_replace(destination, &b);
+    if (published)
+        *settings = saved;
+cleanup:
+    bench_snapshot_clear(&b);
+    return published;
 }
 
 int workbench_save_project(const char *path, const Workbench *bench, const WorkbenchSettings *settings)

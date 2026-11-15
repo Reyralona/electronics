@@ -16,27 +16,29 @@ const char *workbench_example_name(int index)
 }
 int workbench_example_create(int index,Workbench *destination,int *selected)
 {
-    Workbench b={0}; int selection;
-    if(!destination || !selected || index<0 || index>=WORKBENCH_EXAMPLE_COUNT) return 0;
+    Workbench b={0};
+    int selection = 0;
+    int published = 0;
+    if(!destination || !selected || index<0 || index>=WORKBENCH_EXAMPLE_COUNT) goto cleanup;
     if(index==0) {
         WirePoint supply[]={{291,150},{587,150}}, return_path[]={{1019,570},{389,570}}, signal[]={{780,300},{921,300}};
         if(bench_add(&b,PART_SOURCE,340,210)!=0 || bench_add(&b,PART_BREADBOARD,650,400)!=1 ||
-           bench_add(&b,PART_RESISTOR,638,347)!=2 || !bench_snap_to_breadboard(&b,2) || bench_add(&b,PART_LED,970,250)!=3) return 0;
+           bench_add(&b,PART_RESISTOR,638,347)!=2 || !bench_snap_to_breadboard(&b,2) || bench_add(&b,PART_LED,970,250)!=3) goto cleanup;
         if(!connect(&b,(Pin){0,0},(Pin){1,4},1,supply,2) ||
            !connect(&b,(Pin){1,39},(Pin){3,0},3,signal,2) ||
-           !connect(&b,(Pin){3,1},(Pin){0,1},2,return_path,2)) return 0;
+           !connect(&b,(Pin){3,1},(Pin){0,1},2,return_path,2)) goto cleanup;
         selection=3;
     } else if(index==1) {
         WirePoint common[]={{409,260},{409,350}}, data[]={{311,425},{571,425}}, clock[]={{311,130},{571,130}}, back[]={{1019,560},{409,560}};
         if(bench_add(&b,PART_CLOCK,360,210)!=0 || bench_add(&b,PART_CLOCK,360,350)!=1 ||
            !bench_set_value(&b,1,400) || bench_add(&b,PART_DFF,620,280)!=2 ||
-           bench_add(&b,PART_RESISTOR,790,280)!=3 || bench_add(&b,PART_LED,970,280)!=4) return 0;
+           bench_add(&b,PART_RESISTOR,790,280)!=3 || bench_add(&b,PART_LED,970,280)!=4) goto cleanup;
         if(!connect(&b,(Pin){0,1},(Pin){1,1},2,common,2) ||
            !connect(&b,(Pin){1,0},(Pin){2,0},3,data,2) ||
            !connect(&b,(Pin){0,0},(Pin){2,1},1,clock,2) ||
            !connect(&b,(Pin){2,2},(Pin){3,0},0,NULL,0) ||
            !connect(&b,(Pin){3,1},(Pin){4,0},0,NULL,0) ||
-           !connect(&b,(Pin){4,1},(Pin){0,1},2,back,2)) return 0;
+           !connect(&b,(Pin){4,1},(Pin){0,1},2,back,2)) goto cleanup;
         selection=2;
     } else {
         WirePoint supply[]={{291,115},{447,115}}, ground[]={{389,590},{447,590}}, clk[]={{291,520},{560,520},{560,385}},
@@ -45,24 +47,27 @@ int workbench_example_create(int index,Workbench *destination,int *selected)
         if(bench_add(&b,PART_SOURCE,340,170)!=0 || bench_add(&b,PART_BREADBOARD,650,400)!=1 ||
            bench_add(&b,PART_74HC00,650,400)!=2 || !bench_snap_to_breadboard(&b,2) ||
            bench_add(&b,PART_CLOCK,340,550)!=3 || bench_add(&b,PART_RESISTOR,850,250)!=4 ||
-           bench_add(&b,PART_LED,1050,250)!=5) return 0;
+           bench_add(&b,PART_LED,1050,250)!=5) goto cleanup;
         if(!connect(&b,(Pin){0,0},(Pin){1,300},1,supply,2) ||
            !connect(&b,(Pin){0,1},(Pin){1,360},2,ground,2) ||
            !connect(&b,(Pin){3,1},(Pin){1,361},2,NULL,0) ||
            !connect(&b,(Pin){3,0},(Pin){2,0},3,clk,3) ||
            !connect(&b,(Pin){2,1},(Pin){1,312},1,NULL,0) ||
            !connect(&b,(Pin){2,13},(Pin){1,311},1,vcc,2) ||
-           !connect(&b,(Pin){2,6},(Pin){1,377},2,gnd,2)) return 0;
+           !connect(&b,(Pin){2,6},(Pin){1,377},2,gnd,2)) goto cleanup;
         for(k=0;k<6;++k) {
             int pin=unused[k],column=pin<7?pin:13-pin,rail=(pin<7?300:360)+11+column;
-            if(!connect(&b,(Pin){2,pin},(Pin){1,rail},pin<7?1:2,NULL,0)) return 0;
+            if(!connect(&b,(Pin){2,pin},(Pin){1,rail},pin<7?1:2,NULL,0)) goto cleanup;
         }
         if(!connect(&b,(Pin){2,2},(Pin){4,0},0,output,2) ||
            !connect(&b,(Pin){4,1},(Pin){5,0},0,NULL,0) ||
-           !connect(&b,(Pin){5,1},(Pin){1,383},2,ret,2)) return 0;
+           !connect(&b,(Pin){5,1},(Pin){1,383},2,ret,2)) goto cleanup;
         selection=2;
     }
-    bench_replace(destination, &b);
-    *selected = selection;
-    return 1;
+    published = bench_replace(destination, &b);
+    if (published)
+        *selected = selection;
+cleanup:
+    bench_snapshot_clear(&b);
+    return published;
 }

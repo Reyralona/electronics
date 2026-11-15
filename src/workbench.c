@@ -30,12 +30,15 @@ void bench_snapshot_move(Workbench *destination, Workbench *source)
     bench_snapshot_clear(source);
 }
 
-void bench_replace(Workbench *bench, const Workbench *replacement)
+int bench_replace(Workbench *bench, const Workbench *replacement)
 {
+    if (!bench || !replacement)
+        return 0;
     uint64_t revision = bench->revision + 1;
     if (!bench_snapshot_clone(bench, replacement))
-        return;
+        return 0;
     bench->revision = revision;
+    return 1;
 }
 
 float bench_part_scale(const Part *part)
