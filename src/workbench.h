@@ -33,6 +33,8 @@ typedef struct
     double value;
     int rotation;
     int board_layout;
+    int group; /* 0 = ordinary part; otherwise index in groups + 1. */
+    uint64_t exposed[(WORKBENCH_MAX_PINS + 63) / 64];
 } Part;
 typedef struct
 {
@@ -52,10 +54,17 @@ typedef struct
     int knee_count;
     int color;
 } Wire;
+
+typedef struct
+{
+    int active;
+    float x, y;
+} BenchGroup;
 typedef struct
 {
     Part parts[WORKBENCH_MAX_COMPONENTS];
     Wire wires[WORKBENCH_MAX_WIRES];
+    BenchGroup groups[WORKBENCH_MAX_COMPONENTS];
     int part_count, wire_count;
     /* Runtime identity of edits; never serialized or restored from history.
      * Edit published assemblies through the mutation functions below. */

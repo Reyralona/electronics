@@ -303,7 +303,7 @@ int bench_find_contact(const Workbench *b, int component, int pin, Pin *contact)
         return 0;
     bench_pin_position(&b->parts[component], pin, &x, &y);
     for (board = 0; board < b->part_count; ++board)
-        if (b->parts[board].type == PART_BREADBOARD)
+        if (b->parts[board].type == PART_BREADBOARD && b->parts[board].group == b->parts[component].group)
         {
             for (hole = 0; hole < BREADBOARD_PINS; ++hole)
             {
@@ -330,7 +330,7 @@ int bench_snap_to_breadboard(Workbench *b, int component)
         float x, y;
         bench_pin_position(&b->parts[component], pin, &x, &y);
         for (board = 0; board < b->part_count; ++board)
-            if (b->parts[board].type == PART_BREADBOARD)
+            if (b->parts[board].type == PART_BREADBOARD && b->parts[board].group == b->parts[component].group)
             {
                 for (hole = 0; hole < BREADBOARD_PINS; ++hole)
                 {
@@ -451,6 +451,7 @@ void bench_remove(Workbench *b, int index)
     int i;
     if (index < 0 || index >= b->part_count)
         return;
+    int removed_group = b->parts[index].group;
     for (i = b->wire_count - 1; i >= 0; --i)
     {
         Wire *w = &b->wires[i];
@@ -469,6 +470,14 @@ void bench_remove(Workbench *b, int index)
     }
     memmove(&b->parts[index], &b->parts[index + 1], (size_t)(b->part_count - index - 1) * sizeof(Part));
     --b->part_count;
+    if (removed_group)
+    {
+        int members = 0;
+        for (int p = 0; p < b->part_count; ++p)
+            members += b->parts[p].group == removed_group;
+        if (!members)
+            b->groups[removed_group - 1].active = 0;
+    }
     ++b->revision;
 }
 

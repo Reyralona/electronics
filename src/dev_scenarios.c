@@ -1,6 +1,7 @@
 #include "dev_scenarios.h"
 #include "dev_capture.h"
 #include "workbench_examples.h"
+#include "workbench_pack.h"
 #include "spice_trace.h"
 #include <stdio.h>
 #include <string.h>
@@ -182,6 +183,25 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         app->area_end = (WirePoint){800, 490};
         bench_selection_rect(&app->selection, &app->bench, app->area_start, app->area_end);
         app->status = "Selecao por area: Ctrl+C/X/V, Delete e arraste em grupo.";
+    }
+    if (argc > 1 && strcmp(argv[1], "--capture-packed") == 0)
+    {
+        app->bench = (Workbench){0};
+        bench_add(&app->bench, PART_SOURCE, 360, 250);
+        bench_add(&app->bench, PART_RESISTOR, 620, 250);
+        bench_add(&app->bench, PART_LED, 820, 250);
+        bench_toggle_wire(&app->bench, (Pin){0, 0}, (Pin){1, 0});
+        bench_toggle_wire(&app->bench, (Pin){1, 1}, (Pin){2, 0});
+        bench_toggle_wire(&app->bench, (Pin){2, 1}, (Pin){0, 1});
+        bench_set_wire_route(&app->bench, 0, (WirePoint[]){{311, 170}, {660, 170}}, 2);
+        bench_set_wire_route(&app->bench, 2, (WirePoint[]){{780, 380}, {409, 380}}, 2);
+        app->selection.parts[1] = app->selection.parts[2] = 1;
+        if (!bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status)))
+            return 1;
+        app->selected = 1;
+        app->palette_page = 2;
+        app->library_available[0] = 1;
+        app->status = "Fonte externa alimenta resistor e LED encapsulados; terminais preservados.";
     }
     return 0;
 }
@@ -564,6 +584,28 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_click(window, 800, 410);
     else if (app->selftest_phase == 87)
         queued = dev_test_key(window, SDLK_ESCAPE);
+    else if (app->selftest_phase == 88)
+        queued = dev_test_shortcut(window, SDLK_A, SDL_KMOD_CTRL);
+    else if (app->selftest_phase == 89)
+        queued = dev_test_shortcut(window, SDLK_G, SDL_KMOD_CTRL);
+    else if (app->selftest_phase == 90)
+        queued = dev_test_click(window, 40, 170);
+    else if (app->selftest_phase == 91)
+        queued = dev_test_click(window, 1200, 500);
+    else if (app->selftest_phase == 92)
+        queued = dev_test_shortcut(window, SDLK_G, SDL_KMOD_CTRL | SDL_KMOD_SHIFT);
+    else if (app->selftest_phase == 93 || app->selftest_phase == 98)
+        queued = dev_test_key(window, SDLK_Z);
+    else if (app->selftest_phase == 94)
+        queued = dev_test_key(window, SDLK_S);
+    else if (app->selftest_phase == 95)
+        queued = dev_test_key(window, SDLK_L);
+    else if (app->selftest_phase == 96)
+        queued = dev_test_click(window, 620, 280);
+    else if (app->selftest_phase == 97)
+        queued = dev_test_drag_finish(window, 660, 320);
+    else if (app->selftest_phase == 99)
+        queued = dev_test_key(window, SDLK_F3);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -753,13 +795,33 @@ void dev_scenario_validate(AppState *app)
         valid = app->save_slot == 8;
     else if (app->selftest_phase == 87)
         valid = !app->projects_open;
+    else if (app->selftest_phase == 88)
+        valid = bench_selection_count(&app->selection, &app->bench) == 5;
+    else if (app->selftest_phase == 89)
+        valid = app->bench.groups[0].active && app->library_available[0] && app->palette_page == 2;
+    else if (app->selftest_phase == 90)
+        valid = app->packed_placing;
+    else if (app->selftest_phase == 91 || app->selftest_phase == 93 || app->selftest_phase == 95)
+        valid = app->bench.part_count == 10 && app->bench.groups[0].active && app->bench.groups[1].active;
+    else if (app->selftest_phase == 92)
+        valid = app->bench.groups[0].active && !app->bench.groups[1].active;
+    else if (app->selftest_phase == 94)
+        valid = strcmp(app->status, "Salvo em bancada.elec.") == 0;
+    else if (app->selftest_phase == 96)
+        valid = bench_selection_count(&app->selection, &app->bench) == 5;
+    else if (app->selftest_phase == 97)
+        valid = app->bench.groups[0].x == 660 && app->bench.groups[0].y == 320 && app->bench.groups[1].x == 1200;
+    else if (app->selftest_phase == 98)
+        valid = app->bench.groups[0].x == 620 && app->bench.groups[0].y == 280;
+    else if (app->selftest_phase == 99)
+        valid = app->projects_open;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d.\n", app->selftest_phase);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 88)
+    if (++app->selftest_phase == 100)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

@@ -106,7 +106,10 @@ int main(int argc, char **argv)
     }
     spice_job_join(&app.dc_job);
     if (app.selftest)
+    {
         remove("build/gui-settings-test.elec");
+        remove("build/test-blocks/block-1.elec");
+    }
     free(app.history);
     if (font)
         glDeleteLists(font, 128);

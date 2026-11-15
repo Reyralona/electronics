@@ -13,9 +13,9 @@ static void wire(Workbench *b, int ca, int pa, int cb, int pb)
 static void test_limits(void)
 {
     BurnLimits limits = burn_limits_default();
-    Part led = {PART_LED, 0, 0, 0, 0, 0, 0};
-    Part resistor = {PART_RESISTOR, 0, 0, 0, 1000, 0, 0};
-    Part source = {PART_SOURCE, 0, 0, 1, 5, 0, 0};
+    Part led = {.type = PART_LED};
+    Part resistor = {.type = PART_RESISTOR, .value = 1000};
+    Part source = {.type = PART_SOURCE, .on = 1, .value = 5};
     BurnReason reason;
     double measured;
     assert(burn_stress(&led, 0.020, &limits, &reason, &measured) < 1 && reason == BURN_OVERCURRENT);
@@ -69,7 +69,8 @@ static void run(const Workbench *b, const char *exe, SimAutoResult *result, Spic
 {
     SimAutoOptions options = {0, {0, 0}, 1e-5, .005, burn_limits_default()};
     int ok = sim_auto_run(b, exe, &options, result, trace);
-    if (!ok) fprintf(stderr, "sim_auto_run: %s\n", result->message);
+    if (!ok)
+        fprintf(stderr, "sim_auto_run: %s\n", result->message);
     assert(ok);
 }
 
@@ -107,7 +108,8 @@ static void test_with_ngspice(const char *exe)
     wire(&b, 0, 0, 2, 0);
     wire(&b, 2, 1, 0, 1);
     run(&b, exe, &r, NULL);
-    assert(r.burnt_count == 1 && r.burnt[2] && r.burn_reason[2] == BURN_OVERPOWER && fabs(r.burn_value[2] - 2.5) < 1e-3);
+    assert(r.burnt_count == 1 && r.burnt[2] && r.burn_reason[2] == BURN_OVERPOWER &&
+           fabs(r.burn_value[2] - 2.5) < 1e-3);
 
     /* A wire across the source is a short: the source burns and the circuit loses power. */
     b.parts[2].value = 1000;
@@ -171,7 +173,6 @@ static void test_with_ngspice(const char *exe)
     run(&b, exe, &r, &trace);
     assert(r.has_trace && r.powered && !r.burnt_count);
     assert(trace.count > 10);
-
 }
 
 int main(int argc, char **argv)
@@ -179,7 +180,9 @@ int main(int argc, char **argv)
     test_limits();
     test_transforms();
     test_shorts();
-    if (argc > 1) test_with_ngspice(argv[1]);
-    puts(argc > 1 ? "Testes de simulacao automatica (com ngspice) passaram." : "Testes de simulacao automatica passaram.");
+    if (argc > 1)
+        test_with_ngspice(argv[1]);
+    puts(argc > 1 ? "Testes de simulacao automatica (com ngspice) passaram."
+                  : "Testes de simulacao automatica passaram.");
     return 0;
 }

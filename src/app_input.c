@@ -1,6 +1,8 @@
 #include "app_input.h"
 #include "app_commands.h"
 #include "app_editing.h"
+#include "app_packing.h"
+#include "workbench_pack.h"
 #include "app_layout.h"
 #include "app_palette.h"
 #include "workbench_file.h"
@@ -16,10 +18,12 @@ static int hit_wire(const Workbench *bench, float x, float y, float tolerance, i
     for (i = bench->wire_count - 1; i >= 0; --i)
     {
         const Wire *w = &bench->wires[i];
+        if (bench_group_wire_internal(bench, w))
+            continue;
         WirePoint a, b, path[WIRE_PATH_CAPACITY];
         int k, n;
-        bench_pin_position(&bench->parts[w->a.component], w->a.pin, &a.x, &a.y);
-        bench_pin_position(&bench->parts[w->b.component], w->b.pin, &b.x, &b.y);
+        bench_terminal_position(bench, w->a, &a.x, &a.y);
+        bench_terminal_position(bench, w->b, &b.x, &b.y);
         n = wire_path(w, a, b, rounded ? 18.0f : 0.0f, path);
         for (k = 1; k < n; ++k)
         {
@@ -37,11 +41,18 @@ static int hit_wire(const Workbench *bench, float x, float y, float tolerance, i
 }
 static int part_at(const Workbench *bench, float x, float y)
 {
+    for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
+        if (bench->groups[g].active && fabsf(x - bench->groups[g].x) < 60 &&
+            fabsf(y - bench->groups[g].y) < bench_group_height(bench, g + 1) * .5f)
+            return bench_group_first(bench, g + 1);
+
     int pass, i;
     for (pass = 0; pass < 2; ++pass)
         for (i = bench->part_count - 1; i >= 0; --i)
         {
             const Part *part = &bench->parts[i];
+            if (part->group)
+                continue;
             int board = part->type == PART_BREADBOARD, vertical = part->rotation % 2, chip = part->type == PART_74HC00;
             float hw, hh;
             if (board != pass)
@@ -343,8 +354,14 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
     }
     if (x < 220 && y >= 80 && y < 125)
     {
-        app->palette_page = x >= 110;
+        app->palette_page = 2;
+        if (x < 78)
+            app->palette_page = 0;
+        else if (x < 148)
+            app->palette_page = 1;
         app->placing = -1;
+        app->packed_placing = 0;
+        app_packing_refresh(app);
         return 1;
     }
     if (x < 220 && y >= 140 && y < 716)
@@ -352,6 +369,12 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
         int item = (int)((y - 140) / 72);
         if (item < (app->palette_page ? 8 : 8))
         {
+            if (app->palette_page == 2)
+            {
+                app_packing_choose(app, item);
+                return 1;
+            }
+            app->packed_placing = 0;
             app->placing = palette_part(app->palette_page, item);
             app->pending.component = -1;
             app->status = "Clique na bancada para posicionar.";
@@ -368,6 +391,9 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
     {
         int k;
         for (i = 0; i < app->bench.wire_count && app->drag_wire < 0; ++i)
+        {
+            if (bench_group_wire_internal(&app->bench, &app->bench.wires[i]))
+                continue;
             for (k = 0; k < app->bench.wires[i].knee_count; ++k)
             {
                 WirePoint point = app->bench.wires[i].knees[k];
@@ -378,6 +404,7 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
                     break;
                 }
             }
+        }
         if (app->drag_wire >= 0)
         {
             if (clicks >= 2)
@@ -417,11 +444,24 @@ static void input_place_part(AppState *app, float x, float y)
 
 static Pin input_pin_at(const Workbench *bench, float x, float y)
 {
+    for (int i = bench->part_count - 1; i >= 0; --i)
+        if (bench->parts[i].group)
+            for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
+                if (bench_pin_exposed(&bench->parts[i], p))
+                {
+                    float px, py;
+                    bench_terminal_position(bench, (Pin){i, p}, &px, &py);
+                    if ((x - px) * (x - px) + (y - py) * (y - py) <= 64)
+                        return (Pin){i, p};
+                }
+
     int i, hit = -1, hitpin = -1;
     int pass;
     for (pass = 0; pass < 2 && hit < 0; ++pass)
         for (i = bench->part_count - 1; i >= 0; --i)
         {
+            if (bench->parts[i].group)
+                continue;
             int p, board = bench->parts[i].type == PART_BREADBOARD;
             float radius = 12.0f;
             if (board)
@@ -493,6 +533,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
         bench_selection_clear(&app->selection);
     if (hit >= 0)
         app->selection.parts[hit] = 1;
+    bench_selection_expand_groups(&app->selection, &app->bench);
     app->selected = hit;
     app->selected_wire = -1;
     if (hit < 0 || app->bench.parts[hit].type == PART_BREADBOARD)
@@ -508,8 +549,9 @@ static void input_select(AppState *app, float x, float y, int clicks)
     }
     if (hit >= 0)
     {
-        if (clicks >= 2 && (app->bench.parts[hit].type == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
-                            app->bench.parts[hit].type == PART_CLOCK))
+        if (!app->bench.parts[hit].group && clicks >= 2 &&
+            (app->bench.parts[hit].type == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
+             app->bench.parts[hit].type == PART_CLOCK))
         {
             bench_history_record(app->history, &app->bench);
             bench_set_on(&app->bench, hit, !app->bench.parts[hit].on);
@@ -561,6 +603,11 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     if (input_click_knee(app, x, y, event->button.clicks))
         return;
+    if (app->packed_placing)
+    {
+        app_packing_place(app, x, y);
+        return;
+    }
     if (app->placing >= 0)
     {
         input_place_part(app, x, y);
@@ -594,7 +641,7 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
 
     app->selecting_area = 0;
     if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
-        bench_snap_to_breadboard(&app->bench, app->dragging))
+        !app->bench.parts[app->dragging].group && bench_snap_to_breadboard(&app->bench, app->dragging))
         app->status = "Componente encaixado na breadboard.";
     app->dragging = -1;
     app->drag_wire = -1;
@@ -640,7 +687,7 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
                 bench_history_record(app->history, &app->bench);
                 app->move_recorded = 1;
             }
-            if (bench_selection_count(&app->selection, &app->bench) > 1)
+            if (bench_selection_count(&app->selection, &app->bench) > 1 || app->bench.parts[app->dragging].group)
                 bench_selection_move(&app->bench, &app->selection, x - app->bench.parts[app->dragging].x,
                                      y - app->bench.parts[app->dragging].y);
             else

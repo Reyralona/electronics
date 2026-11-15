@@ -1,4 +1,5 @@
 #include "app_commands.h"
+#include "app_packing.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -94,6 +95,26 @@ int main(void)
     app_commands_key(&app, NULL, SDLK_L, SDL_KMOD_CTRL);
     assert(app.bench.revision == unchanged && strstr(app.status, "preservada"));
     remove("build/test-slots/slot-9.elec");
+
+    for (int i = 1; i <= 8; ++i)
+    {
+        char path[128];
+        snprintf(path, sizeof(path), "build/test-blocks/block-%d.elec", i);
+        remove(path);
+    }
+    app_commands_key(&app, NULL, SDLK_A, SDL_KMOD_CTRL);
+    app_commands_key(&app, NULL, SDLK_G, SDL_KMOD_CTRL);
+    assert(app.bench.groups[0].active && app.library_available[0]);
+    app_packing_choose(&app, 0);
+    assert(app.packed_placing);
+    app_packing_place(&app, 1100, 500);
+    assert(app.bench.part_count == original_count * 2 && app.bench.groups[1].active);
+    assert(app.bench.groups[1].x == 1100 && app.bench.groups[1].y == 500);
+    app_commands_key(&app, NULL, SDLK_G, SDL_KMOD_CTRL | SDL_KMOD_SHIFT);
+    assert(!app.bench.groups[1].active && app.bench.groups[0].active);
+    app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
+    assert(app.bench.groups[1].active);
+    remove("build/test-blocks/block-1.elec");
 
     free(app.history);
     return 0;

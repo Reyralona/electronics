@@ -12,6 +12,7 @@ static void reset_interaction(AppState *app)
     app->dragging = -1;
     app->drag_wire = -1;
     app->placing = -1;
+    app->packed_placing = 0;
     app->pending.component = -1;
     app->route_count = 0;
     app->selecting_area = 0;
@@ -118,7 +119,7 @@ static void slot_path(const AppState *app, int slot, char *path, size_t capacity
 
 void app_projects_refresh(AppState *app)
 {
-    for (int i = 0; i < 9; ++i)
+    for (int i = 0; i < PROJECT_SLOT_COUNT; ++i)
     {
         char path[128];
         slot_path(app, i, path, sizeof(path));

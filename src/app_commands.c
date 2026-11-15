@@ -1,5 +1,6 @@
 #include "app_commands.h"
 #include "app_editing.h"
+#include "app_packing.h"
 #include "app_palette.h"
 #include "workbench_examples.h"
 #include "workbench_file.h"
@@ -14,6 +15,7 @@ static void command_example(AppState *app)
     {
         bench_history_record(app->history, &app->bench);
         bench_replace(&app->bench, &example);
+        app->packed_placing = 0;
         bench_selection_clear(&app->selection);
         app->example_index = choice;
         app->selected = example_selected;
@@ -40,9 +42,13 @@ static void command_example(AppState *app)
 
 static void command_palette(AppState *app)
 {
-    app->palette_page = 1 - app->palette_page;
+    app->palette_page = (app->palette_page + 1) % 3;
     app->placing = -1;
-    app->status = app->palette_page ? "Biblioteca de portas logicas." : "Biblioteca de componentes.";
+    app->packed_placing = 0;
+    app_packing_refresh(app);
+    static const char *labels[] = {"Biblioteca de componentes.", "Biblioteca de portas logicas.",
+                                   "Biblioteca de blocos reutilizaveis. Ctrl+G cria um bloco."};
+    app->status = labels[app->palette_page];
     return;
 }
 
@@ -67,6 +73,7 @@ static void command_history(AppState *app, SDL_Keycode key)
         key == SDLK_Z ? bench_history_undo(app->history, &app->bench) : bench_history_redo(app->history, &app->bench);
     if (changed)
     {
+        app->packed_placing = 0;
         bench_selection_clear(&app->selection);
         app->selected = -1;
         app->selected_wire = -1;
@@ -85,6 +92,7 @@ static void command_history(AppState *app, SDL_Keycode key)
 static void command_cancel(AppState *app)
 {
     app->selecting_area = 0;
+    app->packed_placing = 0;
     bench_selection_clear(&app->selection);
     app->pending.component = -1;
     app->route_count = 0;
@@ -284,6 +292,7 @@ static void command_load(AppState *app)
     if (workbench_load_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved))
     {
         bench_history_record(app->history, &before);
+        app->packed_placing = 0;
         bench_selection_clear(&app->selection);
         app->selected = -1;
         app->selected_wire = -1;
@@ -313,6 +322,7 @@ static void command_delete_part(AppState *app)
 {
     bench_history_record(app->history, &app->bench);
     bench_remove(&app->bench, app->selected);
+    app->packed_placing = 0;
     bench_selection_clear(&app->selection);
     app->selected = -1;
     app->selected_wire = -1;
@@ -331,6 +341,11 @@ static void command_delete_wire(AppState *app)
 
 static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key)
 {
+    if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T)
+    {
+        app->status = "Ctrl+Shift+G abre o bloco para editar seu interior.";
+        return;
+    }
     switch (key)
     {
     case SDLK_R:
@@ -356,6 +371,8 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
 
 void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
+    if (!app->projects_open && app_packing_key(app, key, mod))
+        return;
     if (app_editing_key(app, key, mod))
         return;
     if ((mod & SDL_KMOD_CTRL) && (key == SDLK_Z || key == SDLK_Y))

@@ -13,6 +13,7 @@ typedef struct
     int valid;
 } BenchClipboard;
 
+void bench_selection_expand_groups(BenchSelection *selection, const Workbench *bench);
 void bench_selection_clear(BenchSelection *selection);
 int bench_selection_count(const BenchSelection *selection, const Workbench *bench);
 void bench_selection_rect(BenchSelection *selection, const Workbench *bench, WirePoint a, WirePoint b);

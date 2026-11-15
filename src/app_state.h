@@ -6,6 +6,9 @@
 #include "workbench_view.h"
 #include "workbench_selection.h"
 
+#define PROJECT_SLOT_COUNT 9
+#define BLOCK_LIBRARY_SLOTS 8
+
 /* Owned by the application thread. The worker receives its own snapshot. */
 typedef struct
 {
@@ -34,9 +37,12 @@ typedef struct
     BenchSelection selection;
     BenchClipboard clipboard;
     int selecting_area, projects_open, save_slot;
-    int saved_slots[9];
+    int saved_slots[PROJECT_SLOT_COUNT];
     WirePoint area_start, area_end, mouse_world;
     char selection_status[160];
+    BenchClipboard library_template;
+    int packed_placing, library_index;
+    int library_available[BLOCK_LIBRARY_SLOTS];
 } AppState;
 
 void app_state_init(AppState *app);

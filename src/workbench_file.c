@@ -1,4 +1,5 @@
 #include "workbench_file.h"
+#include "workbench_pack_file.h"
 #include <math.h>
 #include <string.h>
 #include <windows.h>
@@ -22,7 +23,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 15\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 16\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -43,6 +44,8 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
         if (fputc('\n', f) == EOF)
             return 0;
     }
+    if (!bench_groups_write(f, b))
+        return 0;
     if (fprintf(f, "settings %d %d %d %d %d %d %d %.17g %.17g\n", s->show_grid, s->show_handles, s->round_wires,
                 s->show_current, s->wire_color, s->probe_pin, s->probe_current, s->transient_step,
                 s->transient_stop) < 0)
@@ -59,7 +62,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         return 0;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 15) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 16) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         return 0;
     for (i = 0; i < parts; ++i)
@@ -127,6 +130,8 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
                 return 0;
         }
     }
+    if (version >= 16 && !bench_groups_read(f, &b))
+        return 0;
     if (version >= 10)
     {
         char tag[32];

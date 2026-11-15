@@ -2,6 +2,7 @@
 #include "app_render.h"
 #include "app_layout.h"
 #include "app_palette.h"
+#include "workbench_pack.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -626,7 +627,7 @@ static void draw_thumbnail(PartType type, float x, float y)
 
 static void draw_chrome(const AppState *app, GLuint font, int width, int height)
 {
-    int i;
+    int i, empty_shown = 0;
     glViewport(0, 0, width, height);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -647,16 +648,31 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     color(.98f, .985f, .99f);
     rect(0, 68, 220, 652);
     color(.17f, .24f, .29f);
-    color(app->palette_page == 0 ? .78f : .92f, .9f, .96f);
-    rect(14, 80, 92, 44);
-    color(app->palette_page == 1 ? .78f : .92f, .9f, .96f);
-    rect(114, 80, 92, 44);
-    color(.14f, .23f, .28f);
-    text(font, 22, 108, "Basicos");
-    text(font, 122, 108, "Digital");
+    static const char *tabs[] = {"Basicos", "Digital", "Blocos"};
+    for (int tab = 0; tab < 3; ++tab)
+    {
+        float x = 12 + tab * 70;
+        color(app->palette_page == tab ? .78f : .92f, .9f, .96f);
+        rect(x, 80, 62, 44);
+        color(.14f, .23f, .28f);
+        text(font, x + 4, 108, tabs[tab]);
+    }
     for (i = 0; i < (app->palette_page ? 8 : 8); ++i)
     {
         float y = 140 + i * 72;
+        if (app->palette_page == 2)
+        {
+            if (!app->library_available[i] && empty_shown++)
+                continue;
+            color(.9f, .94f, .97f);
+            rect(14, y, 192, 62);
+            draw_thumbnail(PART_74HC00, 42, y + 31);
+            char label[48];
+            snprintf(label, sizeof(label), app->library_available[i] ? "Bloco %d" : "Criar: Ctrl+G", i + 1);
+            color(.16f, .22f, .26f);
+            text(font, 76, y + 36, label);
+            continue;
+        }
         PartType type = palette_part(app->palette_page, i);
         color(app->placing == (int)type ? .79f : .92f, app->placing == (int)type ? .9f : .94f, .96f);
         rect(14, y, 192, 62);
@@ -689,7 +705,7 @@ static void draw_workspace_boards(const AppState *app)
 {
     int i;
     for (i = 0; i < app->bench.part_count; ++i)
-        if (app->bench.parts[i].type == PART_BREADBOARD)
+        if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_BREADBOARD)
         {
             int p;
             part_draw(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
@@ -776,8 +792,10 @@ static void draw_workspace_wires(const AppState *app)
         WirePoint start, end, path[WIRE_PATH_CAPACITY];
         int k, count, pass;
         const Wire *w = &app->bench.wires[i];
-        bench_pin_position(&app->bench.parts[w->a.component], w->a.pin, &start.x, &start.y);
-        bench_pin_position(&app->bench.parts[w->b.component], w->b.pin, &end.x, &end.y);
+        if (bench_group_wire_internal(&app->bench, w))
+            continue;
+        bench_terminal_position(&app->bench, w->a, &start.x, &start.y);
+        bench_terminal_position(&app->bench, w->b, &end.x, &end.y);
         count = wire_path(w, start, end, app->round_wires ? 18.0f : 0.0f, path);
         if (i == app->selected_wire)
         {
@@ -824,7 +842,7 @@ static void draw_workspace_route(const AppState *app)
     {
         float x, y;
         int k;
-        bench_pin_position(&app->bench.parts[app->pending.component], app->pending.pin, &x, &y);
+        bench_terminal_position(&app->bench, app->pending, &x, &y);
         color(.9f, .55f, .15f);
         for (k = 0; k < app->route_count; ++k)
         {
@@ -837,6 +855,8 @@ static void draw_workspace_route(const AppState *app)
         for (i = 0; i < app->bench.wire_count; ++i)
         {
             int k;
+            if (bench_group_wire_internal(&app->bench, &app->bench.wires[i]))
+                continue;
             for (k = 0; k < app->bench.wires[i].knee_count; ++k)
             {
                 WirePoint p = app->bench.wires[i].knees[k];
@@ -851,7 +871,7 @@ static void draw_workspace_parts(const AppState *app)
     int i;
     glLineWidth(1);
     for (i = 0; i < app->bench.part_count; ++i)
-        if (app->bench.parts[i].type != PART_BREADBOARD)
+        if (!app->bench.parts[i].group && app->bench.parts[i].type != PART_BREADBOARD)
         {
             int p;
             part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
@@ -862,7 +882,7 @@ static void draw_workspace_parts(const AppState *app)
                 int snapped = bench_find_contact(&app->bench, i, p, &contact);
                 float outer_radius = snapped ? 5.0f : 8.0f;
                 float inner_radius = snapped ? 3.0f : 5.0f;
-                if (app->bench.parts[i].type == PART_74HC00)
+                if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_74HC00)
                 {
                     outer_radius = 4.0f;
                     inner_radius = 2.5f;
@@ -895,10 +915,12 @@ static void draw_workspace_contacts(const AppState *app)
     for (i = 0; i < app->bench.wire_count; ++i)
     {
         const Wire *wire = &app->bench.wires[i];
+        if (bench_group_wire_internal(&app->bench, wire))
+            continue;
         WirePoint start, end, path[WIRE_PATH_CAPACITY];
         int count, k;
-        bench_pin_position(&app->bench.parts[wire->a.component], wire->a.pin, &start.x, &start.y);
-        bench_pin_position(&app->bench.parts[wire->b.component], wire->b.pin, &end.x, &end.y);
+        bench_terminal_position(&app->bench, wire->a, &start.x, &start.y);
+        bench_terminal_position(&app->bench, wire->b, &end.x, &end.y);
         count = wire_path(wire, start, end, app->round_wires ? 18.0f : 0.0f, path);
         if (app->bench.parts[wire->a.component].type == PART_BREADBOARD)
             for (k = 1; k < count; ++k)
@@ -921,18 +943,18 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
 {
     int i;
     for (i = 0; i < app->bench.part_count; ++i)
-        if (app->bench.parts[i].type == PART_74HC00)
+        if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_74HC00)
         {
             color(.85f, .88f, .9f);
             text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, "74HC00");
         }
     for (i = 0; i < app->bench.part_count; ++i)
-        if (is_gate(app->bench.parts[i].type))
+        if (!app->bench.parts[i].group && is_gate(app->bench.parts[i].type))
         {
             color(.13f, .22f, .27f);
             text(font, app->bench.parts[i].x - 25, app->bench.parts[i].y + 45, part_name(app->bench.parts[i].type) + 6);
         }
-    if (app->selected >= 0 &&
+    if (app->selected >= 0 && !app->bench.parts[app->selected].group &&
         (is_gate(app->bench.parts[app->selected].type) || app->bench.parts[app->selected].type == PART_CLOCK))
     {
         int terminal;
@@ -946,7 +968,8 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
             text(font, x + 8, y - 8, label);
         }
     }
-    if (app->selected >= 0 && app->bench.parts[app->selected].type == PART_74HC00)
+    if (app->selected >= 0 && !app->bench.parts[app->selected].group &&
+        app->bench.parts[app->selected].type == PART_74HC00)
     {
         static const int labels[] = {0, 6, 7, 13};
         int n;
@@ -969,8 +992,8 @@ static void draw_workspace_probe(const AppState *app, GLuint font)
     {
         const Wire *wire = &app->bench.wires[app->sim.trace_wire];
         float ax, ay, bx, by;
-        bench_pin_position(&app->bench.parts[wire->a.component], wire->a.pin, &ax, &ay);
-        bench_pin_position(&app->bench.parts[wire->b.component], wire->b.pin, &bx, &by);
+        bench_terminal_position(&app->bench, wire->a, &ax, &ay);
+        bench_terminal_position(&app->bench, wire->b, &bx, &by);
         color(.9f, .35f, .05f);
         circle(ax, ay, 9);
         circle(bx, by, 9);
@@ -984,8 +1007,62 @@ static void draw_workspace_burns(const AppState *app, GLuint font)
 {
     int i;
     for (i = 0; i < app->bench.part_count; ++i)
-        if (app->sim.burnt[i])
+        if (app->sim.burnt[i] && !app->bench.parts[i].group)
             burnt_draw(font, &app->bench.parts[i], SDL_GetTicks());
+}
+
+static void draw_groups(const AppState *app, GLuint font)
+{
+    for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
+    {
+        const BenchGroup *group = &app->bench.groups[g];
+        if (!group->active)
+            continue;
+        float height = bench_group_height(&app->bench, g + 1);
+        int selected = 0, lit = 0, burnt = 0;
+        for (int i = 0; i < app->bench.part_count; ++i)
+            if (app->bench.parts[i].group == g + 1)
+            {
+                selected |= app->selection.parts[i] || app->selected == i;
+                lit |= app->leds[i] == 1 && app->bench.parts[i].type == PART_LED;
+                burnt |= app->sim.burnt[i];
+            }
+        color(.65f, .69f, .72f);
+        rect(group->x - 46, group->y - height * .5f + 4, 98, height);
+        color(burnt ? .45f : .16f, .2f, .25f);
+        rect(group->x - 49, group->y - height * .5f, 98, height);
+        color(selected ? .22f : .55f, .7f, .9f);
+        glLineWidth(selected ? 3 : 1);
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(group->x - 50, group->y - height * .5f);
+        glVertex2f(group->x + 50, group->y - height * .5f);
+        glVertex2f(group->x + 50, group->y + height * .5f);
+        glVertex2f(group->x - 50, group->y + height * .5f);
+        glEnd();
+        glLineWidth(1);
+        char label[40];
+        snprintf(label, sizeof(label), "Bloco %d", g + 1);
+        color(.9f, .94f, .98f);
+        text(font, group->x - 30, group->y + 5, label);
+        if (lit)
+        {
+            color(.3f, .95f, .45f);
+            circle(group->x + 36, group->y - height * .5f + 8, 3);
+        }
+        Pin pin;
+        for (int index = 0; bench_group_port(&app->bench, g + 1, index, &pin); ++index)
+        {
+            float x, y;
+            bench_terminal_position(&app->bench, pin, &x, &y);
+            color(.45f, .52f, .58f);
+            line(x, y, x < group->x ? x + 10 : x - 10, y);
+            color(.94f, .96f, .98f);
+            circle(x, y, 4);
+            color(.22f, .38f, .52f);
+            snprintf(label, sizeof(label), "P%d", index + 1);
+            text(font, x < group->x ? x - 24 : x + 8, y - 5, label);
+        }
+    }
 }
 
 static void draw_selection_area(const AppState *app)
@@ -1017,6 +1094,7 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
     draw_workspace_wires(app);
     draw_workspace_route(app);
     draw_workspace_parts(app);
+    draw_groups(app, font);
     draw_workspace_contacts(app);
     draw_workspace_labels(app, font);
     draw_workspace_probe(app, font);
@@ -1028,6 +1106,19 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
 
 static void draw_inspector(const AppState *app, GLuint font)
 {
+    if (app->selected >= 0 && app->bench.parts[app->selected].group)
+    {
+        int group = app->bench.parts[app->selected].group;
+        char label[100];
+        color(.97f, .98f, .99f);
+        rect(840, 80, 420, 70);
+        color(.12f, .23f, .3f);
+        snprintf(label, sizeof(label), "BLOCO %d  /  %d terminais eletricos", group,
+                 bench_group_ports(&app->bench, group));
+        text(font, 850, 105, label);
+        text(font, 850, 135, "Ctrl+Shift+G: abrir interior | Ctrl+C/V: copiar");
+        return;
+    }
     if (app->selected >= 0)
     {
         const Part *part = &app->bench.parts[app->selected];
@@ -1091,7 +1182,8 @@ static void draw_status(const AppState *app, GLuint font)
     color(.2f, .26f, .3f);
     text(font, 238, 685, app->status);
     text(font, 238, 709,
-         "Shift+arraste: area | Ctrl+C/X/V: copiar/recortar/colar | Delete: excluir | Ctrl+Z/Y: desfazer/refazer");
+         "Shift+arraste: area | Ctrl+C/X/V: copiar/recortar/colar | Delete: excluir | Ctrl+G: bloco | Ctrl+Z/Y: "
+         "historico");
 }
 
 static void draw_settings(const AppState *app, GLuint font)
@@ -1178,7 +1270,7 @@ static void draw_projects(const AppState *app, GLuint font)
     color(.12f, .22f, .29f);
     text(font, 330, 165, "SAVE STATES  /  MONTAGEM E CONFIGURACOES");
     text(font, 330, 188, "Escolha um slot. F3 ou Esc fecha.");
-    for (int i = 0; i < 9; ++i)
+    for (int i = 0; i < PROJECT_SLOT_COUNT; ++i)
     {
         float x = 330 + (i % 3) * 200, y = 200 + (i / 3) * 90;
         color(i == app->save_slot ? .76f : .9f, .9f, .96f);
