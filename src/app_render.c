@@ -52,25 +52,7 @@ static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
     circle(hole.x, hole.y, 2.5f);
     glLineWidth(1);
 }
-static void wire_current_style(int level)
-{
-    if (level == 1)
-    {
-        color(.95f, .58f, .12f);
-        glLineWidth(3);
-    }
-    else if (level == 2)
-    {
-        color(1.0f, .36f, .04f);
-        glLineWidth(5);
-    }
-    else
-    {
-        color(.95f, .16f, .03f);
-        glLineWidth(7);
-    }
-}
-static void wire_direction_marker(const WirePoint *path, int count, int reverse)
+static void wire_direction_marker(const WirePoint *path, int count, int reverse, int level)
 {
     float total = 0, position;
     int i;
@@ -89,12 +71,23 @@ static void wire_direction_marker(const WirePoint *path, int count, int reverse)
                 ux = -ux;
                 uy = -uy;
             }
-            color(1, .91f, .35f);
-            glBegin(GL_TRIANGLES);
-            glVertex2f(x + ux * 7, y + uy * 7);
-            glVertex2f(x - ux * 5 - uy * 4, y - uy * 5 + ux * 4);
-            glVertex2f(x - ux * 5 + uy * 4, y - uy * 5 - ux * 4);
-            glEnd();
+            float size = 5 + 2 * level;
+            float half_width = 2 + level;
+            for (int pass = 0; pass < 2; ++pass)
+            {
+                float border = pass == 0 ? 2 : 0;
+                if (pass == 0)
+                    color(.12f, .16f, .19f);
+                else
+                    color(.98f, .98f, .94f);
+                glBegin(GL_TRIANGLES);
+                glVertex2f(x + ux * (size + border), y + uy * (size + border));
+                glVertex2f(x - ux * (size * .7f + border) - uy * (half_width + border),
+                          y - uy * (size * .7f + border) + ux * (half_width + border));
+                glVertex2f(x - ux * (size * .7f + border) + uy * (half_width + border),
+                          y - uy * (size * .7f + border) - ux * (half_width + border));
+                glEnd();
+            }
             return;
         }
         position -= len;
@@ -762,7 +755,6 @@ static void draw_workspace_boards(const AppState *app)
 
 static void draw_wire_trace_current(const AppState *app, int i, const WirePoint *path, int count)
 {
-    int k;
     if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->sim.trace.measures_wires)
     {
         uint64_t bit = UINT64_C(1) << (i % 64);
@@ -771,12 +763,7 @@ static void draw_wire_trace_current(const AppState *app, int i, const WirePoint 
         if (forward || reverse)
         {
             int level = (app->sim.trace.wire_levels[app->sim.trace_index][i / 4] >> ((i % 4) * 2)) & 3;
-            wire_current_style(level);
-            glBegin(GL_LINE_STRIP);
-            for (k = 0; k < count; ++k)
-                glVertex2f(path[k].x, path[k].y);
-            glEnd();
-            wire_direction_marker(path, count, reverse);
+            wire_direction_marker(path, count, reverse, level);
         }
     }
 }
@@ -789,11 +776,8 @@ static void draw_wire_dc_current(const AppState *app, int i, const WirePoint *pa
     {
         float total = 0, position;
         int segment;
-        wire_current_style(spice_wire_current_level(app->sim.dc_wire_currents[i]));
-        glBegin(GL_LINE_STRIP);
-        for (k = 0; k < count; ++k)
-            glVertex2f(path[k].x, path[k].y);
-        glEnd();
+        wire_direction_marker(path, count, app->sim.dc_wire_currents[i] < 0,
+                              spice_wire_current_level(app->sim.dc_wire_currents[i]));
         for (k = 1; k < count; ++k)
             total += hypotf(path[k].x - path[k - 1].x, path[k].y - path[k - 1].y);
         if (total > 0)
@@ -807,9 +791,12 @@ static void draw_wire_dc_current(const AppState *app, int i, const WirePoint *pa
                       length = hypotf(dx, dy);
                 if (length > 0 && position <= length)
                 {
-                    color(1, .9f, .38f);
-                    circle(path[segment - 1].x + dx * position / length, path[segment - 1].y + dy * position / length,
-                           4);
+                    float marker_x = path[segment - 1].x + dx * position / length;
+                    float marker_y = path[segment - 1].y + dy * position / length;
+                    color(.12f, .16f, .19f);
+                    circle(marker_x, marker_y, 5);
+                    color(.98f, .98f, .94f);
+                    circle(marker_x, marker_y, 3);
                     break;
                 }
                 position -= length;
@@ -1328,7 +1315,7 @@ static void draw_settings(const AppState *app, GLuint font)
         }
         text(font, 860, 535, "T: transitorio | Espaco: reproduzir | B/N: amostras");
         text(font, 860, 565, "1-100 uA | 100 uA-10 mA | >=10 mA");
-        text(font, 860, 590, "Largura e cor indicam faixas de corrente");
+        text(font, 860, 590, "Tamanho da seta indica faixa de corrente");
         text(font, 860, 625, "F1 fecha este painel");
     }
 }

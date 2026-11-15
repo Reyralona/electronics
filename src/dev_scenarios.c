@@ -76,6 +76,8 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             app->bench.wires[1].knees[0] = (WirePoint){308, 150};
             app->bench.wires[1].knees[1] = (WirePoint){478, 150};
             bench_toggle_wire(&app->bench, (Pin){3, 1}, (Pin){1, 0});
+            for (int wire = 0; wire < app->bench.wire_count; ++wire)
+                bench_set_wire_color(&app->bench, wire, wire == 0 ? 0 : wire == 1 ? 1 : 3);
         }
     }
     if (app->capture && !strcmp(argv[1], "--capture-scale"))
