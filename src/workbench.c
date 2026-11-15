@@ -365,24 +365,36 @@ static int same_pin(Pin a, Pin b)
     return a.component == b.component && a.pin == b.pin;
 }
 
+static double default_part_value(PartType type)
+{
+    switch (type)
+    {
+    case PART_SOURCE:
+        return 5.0;
+    case PART_RESISTOR:
+    case PART_CLOCK:
+        return 1000.0;
+    case PART_CAPACITOR:
+        return 1e-6;
+    case PART_INDUCTOR:
+        return .01;
+    default:
+        return 0.0;
+    }
+}
+
 int bench_add(Workbench *b, PartType type, float x, float y)
 {
     int id;
     if (b->part_count >= WORKBENCH_MAX_COMPONENTS || bench_pin_count(type) == 0)
         return -1;
     id = b->part_count++;
-    b->parts[id] = (Part){type,
-                          x,
-                          y,
-                          type == PART_SOURCE || type == PART_CLOCK,
-                          type == PART_SOURCE      ? 5.0
-                          : type == PART_RESISTOR  ? 1000.0
-                          : type == PART_CAPACITOR ? 1e-6
-                          : type == PART_INDUCTOR  ? .01
-                          : type == PART_CLOCK     ? 1000.0
-                                                   : 0.0,
-                          0,
-                          type == PART_BREADBOARD};
+    b->parts[id] = (Part){.type = type,
+                          .x = x,
+                          .y = y,
+                          .on = type == PART_SOURCE || type == PART_CLOCK,
+                          .value = default_part_value(type),
+                          .board_layout = type == PART_BREADBOARD};
     ++b->revision;
     return id;
 }

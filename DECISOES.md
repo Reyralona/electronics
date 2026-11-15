@@ -111,3 +111,29 @@ pendente apos editar/desfazer. sizeof(SimState), medido com GCC UCRT64: 290.576 
 Nao foi medido ganho de FPS; o ganho demonstrado e a memoria menor e a eliminacao das comparacoes
 integrais no ciclo. Nenhuma biblioteca/API externa nova; a comparacao e baseada no codigo local.
 Ainda pendentes: estado do ciclo completo de tarefas, cancelamento e backend de passo real.
+
+
+## 15/11/2026 - packing solicitado pelo usuario: comparacao antes da implementacao
+
+Fonte oficial consultada: [manual ngspice 46, secao 2.6](https://ngspice.sourceforge.io/docs/ngspice-46-manual.pdf),
+consulta em 15/11/2026. Fato: instancias .SUBCKT sao expandidas pelo parser em elementos internos;
+os terminais externos ligam os nos da instancia ao circuito maior. A hierarquia nao permanece no solver.
+
+Alternativas: (1) emitir .SUBCKT/X e remodelar nomes/sondas e resultados da camada atual; (2) manter
+as pecas reais no modelo e adicionar encapsulamento visual/portas, expandido antes do solver existente;
+(3) substituir o conjunto por portas booleanas ou equivalente simplificado. A terceira perde comportamento
+analogico e foi descartada. A primeira exige mudar o mapeamento de todos os sensores neste incremento.
+
+Decisao para o incremento: segunda alternativa, com membros/portas persistidos, conexoes de fronteira
+explicitas e instancias copiadas independentes. O solver continua analisando os componentes originais.
+Compactar geometricamente os componentes internos criaria contatos falsos em breadboards: o layout
+interno sera preservado e contatos implicitos externos serao materializados em fios antes do packing.
+A camada visual mostrara apenas o corpo compacto e os terminais expostos. Interligacoes internas
+continuam no modelo. Nao inferir direcao logica de um terminal analogico; portas sao terminais eletricos.
+
+Hipotese a validar: a conectividade e os resultados DC/transitorios antes/depois devem coincidir dentro
+das tolerancias existentes. Aceite: criar/desfazer/descompactar, conectar terminais, duplicar/instanciar,
+salvar/reabrir e resultados de referencia. Primeiro nivel de packing; composicao aninhada deve ser
+tratada explicitamente, sem aceitar juncoes geometricas acidentais. Os limites atuais de componentes
+continuam contando os membros reais e sao comunicados quando uma instancia nao cabe.
+O pedido do usuario prioriza essa funcionalidade sobre a ordem anterior de registro de componentes.
