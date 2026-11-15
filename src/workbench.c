@@ -77,6 +77,19 @@ int bench_replace(Workbench *bench, const Workbench *replacement)
     return 1;
 }
 
+int bench_set_control(Workbench *bench, int component, double position)
+{
+    if (!bench || component < 0 || component >= bench->part_count ||
+        bench->parts[component].type != PART_POTENTIOMETER || !isfinite(position) || position < 0 || position > 1)
+        return 0;
+    if (bench->parts[component].control != position)
+    {
+        bench->parts[component].control = position;
+        ++bench->revision;
+    }
+    return 1;
+}
+
 float bench_part_scale(const Part *part)
 {
     return part->scale == 0 ? 1 : part->scale;
@@ -389,12 +402,18 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
             *y = (rail == 0 ? -98.0f : rail == 1 ? -82.0f : rail == 2 ? 78.0f : 94.0f);
         }
     }
-    else if (p->type == PART_74HC00)
+    else if (p->type == PART_POTENTIOMETER)
+    {
+        *x = pin == 0 ? -49 : pin == 2 ? 49 : 0;
+        *y = pin == 1 ? 49 : 0;
+    }
+    else if (component_has_flag(p->type, COMPONENT_QUAD_GATE))
     {
         *x = (float)((pin < 7 ? pin : 13 - pin) * 14 - 42);
         *y = pin < 7 ? -15.0f : 15.0f;
     }
-    else if ((p->type >= PART_AND && p->type <= PART_XOR) || p->type == PART_DFF)
+    else if ((p->type >= PART_AND && p->type <= PART_XOR) || p->type == PART_DFF ||
+             p->type == PART_NOR || p->type == PART_XNOR)
     {
         *x = pin == 2 ? 49.0f : -49.0f;
         *y = 0;
@@ -513,6 +532,7 @@ int bench_add(Workbench *b, PartType type, float x, float y)
                           .x = x,
                           .y = y,
                           .on = component_has_flag(type, COMPONENT_STARTS_ON),
+                          .control = .5,
                           .value = info->primary ? info->primary->initial : 0,
                           .board_layout = type == PART_BREADBOARD};
     ++b->revision;
@@ -632,7 +652,7 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
     for (i = 0; i < b->part_count; ++i)
     {
         int base = i * WORKBENCH_MAX_PINS;
-        if (b->parts[i].type == PART_SWITCH && b->parts[i].on)
+        if ((b->parts[i].type == PART_SWITCH || b->parts[i].type == PART_BUTTON) && b->parts[i].on)
             join(parent, base, base + 1);
         if (b->parts[i].type == PART_BREADBOARD)
         {

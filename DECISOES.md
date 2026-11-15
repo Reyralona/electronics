@@ -272,3 +272,33 @@ https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html . Nao supor s
 Fonte da UI: reutilizar renderizador Unicode GDI/Segoe UI ja existente, com cache de texturas,
 em vez de listas raster WGL serrilhadas. Ctrl+scroll reservado ao tamanho da peca selecionada;
 scroll simples continua zoom; sem campo percentual obrigatorio. Validar capturas e eventos.
+
+
+## 15/11/2026 - Ampliacao inicial do catalogo para testes
+NOR/XNOR: usar primitivas XSPICE d_nor/d_xnor, mantendo bridges/limiares e atrasos ja documentados;
+nao simular gates pela conectividade. Fonte oficial consultada em 15/11/2026:
+https://ngspice.sourceforge.io/docs/ngspice-manual.pdf (Digital Models). Validar quatro combinacoes.
+Potenciometro: tres pinos A/W/B, divisor com duas resistencias; posicao de 0 a 1 persistida. Resistencias
+minimas de segmento 1 mOhm evitam curto ideal singular nos extremos; aproximacao visivel/documentada,
+sem ruido, potencia/curso mecanico ou taper logaritmico. Validar com divisor analitico e carga.
+Botao: contato ideal momentaneo, fechado enquanto pressionado, aberto ao soltar. Slots preservam
+montagem e configuracao; botao deve carregar solto. Nao representa bounce nem captura de pulso
+curto pelo backend de passo real ainda pendente. Catalogo maior precisa de rolagem na biblioteca.
+
+## Catalogo DIP e continuidade (15/11/2026)
+Fontes oficiais consultadas em 15/11/2026: https://www.ti.com/lit/ds/symlink/sn74hc08.pdf,
+https://www.ti.com/lit/ds/symlink/sn74hc32.pdf, https://www.ti.com/lit/ds/symlink/sn74hc86.pdf.
+Fatos: quatro portas de duas entradas, pinagem DIP14 compartilhada com o 74HC00.
+Alternativas: modelos completos do fabricante versus modelo didatico alimentado existente.
+Decisao: AND/OR/XOR com aproximacao explicita do 74HC00: somente 4.5..5.5 V, entradas
+<=1.5/>=3.5 V e saida de 50 ohms; nao representa todos os parametros TI.
+Dimensoes visuais independentes de blocos nao alteram netlist. Altura minima preserva
+espacamento de pinos. Formato 22 conserva dimensoes e le formatos anteriores.
+Continuidade: geometria sem breadboard e com mesmos endpoints/parametros conserva resultado.
+Backend batch reinicia IC=0 de capacitores/indutores e DFF. Alternativas pendentes: ngspice
+compartilhado persistente ou migracao completa de estados. Migrar apenas capacitor nao resolve DFF.
+Nao confundir retencao visual com continuidade eletrica concluida.
+Referencia visual: capturas paginas 5/6 do guia oficial Tinkercad Circuits consultadas em 15/11:
+https://assets.ctfassets.net/jl5ii4oqrdmc/4sMFqe3rDlbUymJt0I4yh/85a4487f7fe274e74c19870ae4679fc1/tinkercad-guides_circuits-Printable.pdf.
+Visual proprio 2.5D. Brilho e curva visual sqrt(I/20mA) da corrente direta medida, limitada
+a 1; nao e modelo fotometrico nem rating do LED.

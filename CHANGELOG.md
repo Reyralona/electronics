@@ -1,5 +1,21 @@
 # Histórico de versões
 
+## 0.25.0
+
+- Nome Bancada, icone de janela, fonte Segoe UI suavizada e tema escuro salvo.
+- Texto ajustavel entre 12 e 20 px em F1, padrao 15; ainda nao escala paineis inteiros.
+- Ctrl+scroll redimensiona pecas; Alt+clique facilita selecionar o corpo.
+- Biblioteca rolavel: NOR, XNOR, potenciometro, botao momentaneo, 74HC08/32/86.
+- Potenciometro com cursor Shift+scroll; botao abre ao soltar ou perder foco.
+- LED vertical e brilho gradual conforme corrente medida em DC/transiente; potenciometro e botao com volume.
+- Sem sombra deslocada de fio no tema escuro; cores dos fios preservadas.
+- Chips personalizados: largura Ctrl+scroll, altura Ctrl+Shift+scroll; limites de pinos preservados, undo e slots.
+- Movimentos puramente visuais sem breadboard conservam analise automatica concluida e posicao da curva.
+- Formato 22, leitura 1-21; testes eletricos ngspice, suite completa e 171 fases GUI passaram.
+- Pendente: continuidade de carga/estado digital em mudancas eletricas, terminais dobraveis,
+  escala completa da GUI e instrumentos posicionaveis. Nao atende ainda a meta 1.0.
+
+
 ## 0.20.0
 
 - Registro inicial centraliza metadados, IDs, parametros primarios e funcoes dos pinos.

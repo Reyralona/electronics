@@ -26,7 +26,14 @@ typedef enum
     PART_NOT,
     PART_CLOCK,
     PART_DFF,
-    PART_74HC00
+    PART_74HC00,
+    PART_NOR,
+    PART_XNOR,
+    PART_POTENTIOMETER,
+    PART_BUTTON,
+    PART_74HC08,
+    PART_74HC32,
+    PART_74HC86
 } PartType;
 typedef struct
 {
@@ -34,6 +41,7 @@ typedef struct
     float x, y;
     int on;
     double value;
+    double control; /* Potentiometer wiper position, 0..1. */
     int rotation;
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
@@ -65,6 +73,7 @@ typedef struct
     int active;
     float x, y;
     char name[BENCH_GROUP_NAME_CAPACITY];
+    float width, height; /* Zero selects the automatic package dimensions. */
 } BenchGroup;
 typedef struct
 {
@@ -87,6 +96,7 @@ int bench_snapshot_clone(Workbench *destination, const Workbench *source);
 void bench_snapshot_clear(Workbench *snapshot);
 void bench_snapshot_move(Workbench *destination, Workbench *source);
 float bench_part_scale(const Part *part);
+int bench_set_control(Workbench *bench, int component, double position);
 int bench_set_scale(Workbench *bench, int component, float scale);
 int bench_move_part(Workbench *bench, int component, float x, float y);
 int bench_set_on(Workbench *bench, int component, int on);

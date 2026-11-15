@@ -8,6 +8,7 @@ void app_state_init(AppState *app)
     app->pending = (Pin){-1, -1};
     app->hovered_pin = (Pin){-1, -1};
     app->selected = -1;
+    app->held_button = -1;
     app->mouse_world = (WirePoint){500, 300};
     app->placing = -1;
     app->dragging = -1;
@@ -15,6 +16,7 @@ void app_state_init(AppState *app)
     app->drag_wire = -1;
     app->drag_knee = -1;
     app->show_grid = 1;
+    app->gui_font_size = 15;
     app->grid_spacing = 24;
     app->snap_board = 1;
     app->show_handles = 1;

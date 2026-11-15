@@ -389,3 +389,26 @@ Suite completa e 155 fases GUI passaram. Capturas polish-dark.bmp/polish-light.b
 ultimo ajuste do titulo para BANCADA feito depois da captura. Falta revisao final do binario.
 Publica permanece 0.24.1; terminais e catalogo novo AINDA pendentes. Retomar integracao de geometry
 owned; usar cleanup GCC de snapshots locais conforme comparacao em DECISOES para encurtar handlers.
+
+
+## Retomada 0.25.0 ? 15/11/2026
+Suite ./build.ps1 -OutputName bancada-next -GuiTests passou, com 171 fases.
+Catalogo22 tipos: NOR/XNOR, pot, botao, 74HC08/32/86 adicionados. test_catalog verifica todas
+as entradas das quatro portas, ausencia de alimentacao, pot, botao, brilho por resistencia.
+Fonte15px configuravel12..20, temaescuro, sem sombra de fio escuro. NAO e escala completa da GUI.
+Blocos largura/altura independentes Ctrl+scroll/Ctrl+Shift+scroll, formato22 (le1..21), undo.
+Refatoracao de ownership separada no commit bae84ef; Part ainda SEM caminhos dinamicos anexados.
+Retencao visual em app_simulation compara snapshot concluido, parametros e endpoints, sem breadboard.
+NAO resolve edicao durante worker, contatos breadboard ou alteracoes eletricas. Modelos batch sempre
+reiniciam C/L com IC=0; sim_auto retorna sem fonte energizada. DFF tambem reinicia. Proxima prioridade
+usuario: sessao eletrica persistente, capacitor descarregando e memoriaDFF. Ha libngspice-0.dll e
+include/ngspice/sharedspice.h no runtime local. Comparar sessao persistente com migracao completa de
+estado; isolamento do interior requer contexto separado (ngspice global nao pode ser compartilhado
+silenciosamente entre bancada e editor). Fonte OFF atualmente e fonte0V, NAO desconexao fisica.
+Usuario mencionou capacitor no slot2, mas saves/slot-2.elec tem0pecas/0fios; slot1tem6pecas incluindo
+capacitor e LED. Nao alteramos saves. A pasta de execucao pode explicar a divergencia de slots.
+Terminais dobraveis AINDA pendentes; nao anunciar como concluidos. Instrumentos e escalaGUI pendentes.
+Capturas revisadas build/review-catalog.bmp, review-dark.bmp, review-packed.bmp; referencias oficiais
+Tinkercad em build/visual-references, paginas6/7 do guia. Nova aparenciaLEDvertical,pot,botao revisada.
+Meta geral havia sido pausada pelo usuario; nao alterar status automaticamente. Pedidos posteriores
+sao tarefas autorizadas. Nao fechar processos do usuario para substituir executavel.

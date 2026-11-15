@@ -43,7 +43,7 @@ static void build_nets(const Workbench *b, int *parents, int unite_wires, int sh
     {
         int base = i * WORKBENCH_MAX_PINS;
         PartType type = b->parts[i].type;
-        if (type == PART_SWITCH && b->parts[i].on)
+        if ((type == PART_SWITCH || type == PART_BUTTON) && b->parts[i].on)
             unite(parents, base, base + 1);
         if (type == PART_INDUCTOR && short_inductors)
             unite(parents, base, base + 1);
@@ -117,6 +117,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             if (source < 0)
                 source = i;
             break;
+        case PART_NOR:
+        case PART_XNOR:
         case PART_AND:
         case PART_NAND:
         case PART_OR:
@@ -125,9 +127,14 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_DFF:
             ++gate_count;
             break;
+        case PART_74HC08:
+        case PART_74HC32:
+        case PART_74HC86:
         case PART_74HC00:
             ++chip_count;
             break;
+        case PART_POTENTIOMETER:
+        case PART_BUTTON:
         case PART_SWITCH:
         case PART_BREADBOARD:
         case PART_RESISTOR:
@@ -227,6 +234,23 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
+        if (b->parts[i].type == PART_POTENTIOMETER)
+        {
+            double position = b->parts[i].control;
+            if (!isfinite(position) || position < 0 || position > 1)
+                return NETLIST_INVALID;
+            int a = find_root(parents, i * WORKBENCH_MAX_PINS);
+            int wiper = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
+            int c = find_root(parents, i * WORKBENCH_MAX_PINS + 2);
+            const double contact_ohms = .001; /* Minimum segment resistance at end stops. */
+            double first = fmax(contact_ohms, b->parts[i].value * position);
+            double second = fmax(contact_ohms, b->parts[i].value * (1 - position));
+            if (fprintf(out, "Rpot%d_a %d %d %.17g\nRpot%d_b %d %d %.17g\n", i,
+                        a == ground ? 0 : a + 1, wiper == ground ? 0 : wiper + 1, first,
+                        i, wiper == ground ? 0 : wiper + 1, c == ground ? 0 : c + 1, second) < 0)
+                return NETLIST_IO_ERROR;
+        }
+    for (i = 0; i < b->part_count; ++i)
         if (b->parts[i].type == PART_LED)
         {
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
@@ -250,12 +274,14 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
-        if ((b->parts[i].type >= PART_AND && b->parts[i].type <= PART_NOT) || b->parts[i].type == PART_DFF)
+        if (component_has_flag(b->parts[i].type, COMPONENT_GATE_SYMBOL))
         {
             PartType type = b->parts[i].type;
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
             int output_node = type == PART_NOT ? c : find_root(parents, i * WORKBENCH_MAX_PINS + 2);
-            const char *model = type == PART_AND    ? "gate_and"
+            const char *model = type == PART_NOR ? "gate_nor"
+                                : type == PART_XNOR ? "gate_xnor"
+                                : type == PART_AND    ? "gate_and"
                                 : type == PART_NAND ? "gate_nand"
                                 : type == PART_OR   ? "gate_or"
                                 : type == PART_XOR  ? "gate_xor"
@@ -284,7 +310,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
-        if (b->parts[i].type == PART_74HC00)
+        if (component_has_flag(b->parts[i].type, COMPONENT_QUAD_GATE))
         {
             static const int pins[4][3] = {{0, 1, 2}, {3, 4, 5}, {8, 9, 7}, {11, 12, 10}};
             int rail = find_root(parents, i * WORKBENCH_MAX_PINS + 13),
@@ -304,17 +330,30 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 if (fprintf(out, "Bchip%d_a%d chip%d_a%d 0 V=V(%d,%d)\nBchip%d_b%d chip%d_b%d 0 V=V(%d,%d)\n", i, g, i,
                             g, a, ref, i, g, i, g, c, ref) < 0)
                     return NETLIST_IO_ERROR;
-                if (fprintf(out,
-                            "Bchip%d_hi%d chip%d_hi%d 0 "
-                            "V=((V(chip%d_sup)>=4.5)&&(V(chip%d_sup)<=5.5)&&((V(chip%d_a%d)<=1.5)||(V(chip%d_b%d)<=1.5)"
-                            "))?1:0\n",
-                            i, g, i, g, i, i, i, g, i, g) < 0)
-                    return NETLIST_IO_ERROR;
-                if (fprintf(out,
-                            "Bchip%d_lo%d chip%d_lo%d 0 "
-                            "V=((V(chip%d_sup)>=4.5)&&(V(chip%d_sup)<=5.5)&&(V(chip%d_a%d)>=3.5)&&(V(chip%d_b%d)>=3.5))"
-                            "?1:0\n",
-                            i, g, i, g, i, i, i, g, i, g) < 0)
+                char al[48], ah[48], bl[48], bh[48], high[256], low[256];
+                snprintf(al, sizeof(al), "(V(chip%d_a%d)<=1.5)", i, g);
+                snprintf(ah, sizeof(ah), "(V(chip%d_a%d)>=3.5)", i, g);
+                snprintf(bl, sizeof(bl), "(V(chip%d_b%d)<=1.5)", i, g);
+                snprintf(bh, sizeof(bh), "(V(chip%d_b%d)>=3.5)", i, g);
+                PartType type = b->parts[i].type;
+                if (type == PART_74HC86)
+                {
+                    snprintf(high, sizeof(high), "((%s&&%s)||(%s&&%s))", ah, bl, al, bh);
+                    snprintf(low, sizeof(low), "((%s&&%s)||(%s&&%s))", ah, bh, al, bl);
+                }
+                else
+                {
+                    int either_high = type == PART_74HC32;
+                    int inverted = type == PART_74HC00;
+                    snprintf(high, sizeof(high), "(%s%s%s)", inverted ? al : ah,
+                             inverted || either_high ? "||" : "&&", inverted ? bl : bh);
+                    snprintf(low, sizeof(low), "(%s%s%s)", inverted ? ah : al,
+                             inverted || either_high ? "&&" : "||", inverted ? bh : bl);
+                }
+                if (fprintf(out, "Bchip%d_hi%d chip%d_hi%d 0 V=((V(chip%d_sup)>=4.5)&&"
+                            "(V(chip%d_sup)<=5.5)&&%s)?1:0\n", i, g, i, g, i, i, high) < 0 ||
+                    fprintf(out, "Bchip%d_lo%d chip%d_lo%d 0 V=((V(chip%d_sup)>=4.5)&&"
+                            "(V(chip%d_sup)<=5.5)&&%s)?1:0\n", i, g, i, g, i, i, low) < 0)
                     return NETLIST_IO_ERROR;
                 if (fprintf(
                         out,
@@ -330,7 +369,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             out,
             ".model gate_adc adc_bridge(in_low=1.5 in_high=3.5)\n.model gate_and d_and(rise_delay=1n "
             "fall_delay=1n)\n.model gate_nand d_nand(rise_delay=1n fall_delay=1n)\n.model gate_or d_or(rise_delay=1n "
-            "fall_delay=1n)\n.model gate_xor d_xor(rise_delay=1n fall_delay=1n)\n.model gate_not "
+            "fall_delay=1n)\n.model gate_nor d_nor(rise_delay=1n fall_delay=1n)\n"
+            ".model gate_xnor d_xnor(rise_delay=1n fall_delay=1n)\n.model gate_xor d_xor(rise_delay=1n fall_delay=1n)\n.model gate_not "
             "d_inverter(rise_delay=1n fall_delay=1n)\n.model gate_dff d_dff(ic=0 clk_delay=1n rise_delay=1n "
             "fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n") < 0)
         return NETLIST_IO_ERROR;

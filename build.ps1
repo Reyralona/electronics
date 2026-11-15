@@ -15,6 +15,10 @@ if (Test-Path (Join-Path $toolchain 'SDL3.dll')) {
 }
 & gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/workbench_grid.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_render.c src/app_palette.c src/app_state.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench.c src/bench_path.c src/component_registry.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_catalog.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench.c src/bench_path.c src/component_registry.c src/spice_process.c src/netlist.c -o build/test_catalog.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_catalog.exe "$ngspiceBin/ngspice_con.exe" } else { & ./build/test_catalog.exe }
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_bench_path.c src/bench_path.c -o build/test_bench_path.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_bench_path.exe

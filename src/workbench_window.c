@@ -89,7 +89,10 @@ int main(int argc, char **argv)
         app_state_dispose(&app);
         return 1;
     }
-    window = SDL_CreateWindow("Bancada", 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    Uint64 window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+    if (app.selftest)
+        window_flags |= SDL_WINDOW_HIDDEN;
+    window = SDL_CreateWindow("Bancada", 1280, 720, window_flags);
     if (!window)
     {
         fprintf(stderr, "Janela: %s\n", SDL_GetError());

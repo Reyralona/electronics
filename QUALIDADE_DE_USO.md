@@ -146,3 +146,15 @@ Pedido prioritario de 15/11/2026: concluir terminais dobraveis, ampliar catalogo
 validados para circuitos de teste, nome/icone consistentes, tipografia suavizada padrao, tema
 escuro, selecao mais facil e ajuste de tamanho por modificador + scroll. Nome provisoriamente
 adotado: Bancada. Nao confundir lista maior de icones com componentes eletricamente implementados.
+
+
+## Continuidade eletrica e apresentacao (pedido de 15/11/2026)
+- Mover/redimensionar/apenas consultar uma peca nao deve reiniciar tempo, carga ou memoria digital.
+- Alterar fontes, contatos, resistencia e cursor deve afetar o circuito em execucao sem reiniciar
+  capacitor, indutor, fase do clock ou flip-flop. Pausar/reiniciar sao acoes explicitas e distintas.
+- LED em posicao vertical com volume 2.5D e brilho conforme corrente direta medida, nao tensao isolada.
+- Componentes analogicos com volume e pinos claros; manter arte propria baseada em referencias fisicas.
+- Permitir largura e altura independentes dos chips personalizados, com controles visiveis,
+  pinos reposicionados, undo e persistencia. Nao deformar o circuito interno para mudar encapsulamento.
+Estado 0.25.0: dimensoes por scroll e retencao de analise de movimentos sem breadboard implementadas.
+Persistencia de estado eletrico atraves de alteracoes e controles dimensionais com botoes ainda pendentes.

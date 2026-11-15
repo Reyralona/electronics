@@ -1,3 +1,4 @@
+#include "bench_scope.h"
 #include "app_commands.h"
 #include "app_editor.h"
 #include "app_editing.h"
@@ -45,6 +46,7 @@ static void command_example(AppState *app)
 static void command_palette(AppState *app)
 {
     app->palette_page = (app->palette_page + 1) % 3;
+    app->palette_offset = 0;
     app->placing = -1;
     app->packed_placing = 0;
     app_packing_refresh(app);
@@ -291,7 +293,7 @@ static void command_save(AppState *app)
     WorkbenchSettings saved = {app->show_grid,     app->show_handles,   app->round_wires,
                                app->show_current,  app->wire_color,     app->probe_pin,
                                app->probe_current, app->transient_step, app->transient_stop,
-                                  app->grid_spacing, app->snap_grid, app->snap_board, app->dark_theme};
+                                  app->grid_spacing, app->snap_grid, app->snap_board, app->dark_theme, app->gui_font_size};
     app->status =
         workbench_save_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved)
             ? "Salvo em bancada.elec."
@@ -331,6 +333,7 @@ static void command_load(AppState *app)
         app->snap_grid = saved.snap_grid;
         app->snap_board = saved.snap_board;
         app->dark_theme = saved.dark_theme;
+        app->gui_font_size = saved.gui_font_size;
         sim_state_clear_result(&app->sim);
         memset(app->leds, 0, sizeof(app->leds));
         bench_simulate(&app->bench, app->leds);

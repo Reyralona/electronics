@@ -1,3 +1,5 @@
+#include "bench_scope.h"
+#include "component_registry.h"
 #include "workbench_grid.h"
 #include "app_input.h"
 #include "app_editor.h"
@@ -61,7 +63,7 @@ static void input_insert_knee(AppState *app, float x, float y)
 static int part_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
-        if (bench->groups[g].active && fabsf(x - bench->groups[g].x) < 60 &&
+        if (bench->groups[g].active && fabsf(x - bench->groups[g].x) < bench_group_width(bench, g + 1) * .5f + 11 &&
             fabsf(y - bench->groups[g].y) < bench_group_height(bench, g + 1) * .5f)
             return bench_group_first(bench, g + 1);
 
@@ -82,7 +84,7 @@ static int part_at(const Workbench *bench, float x, float y, float zoom)
                 half_width = 227;
                 half_height = 112;
             }
-            else if (part->type == PART_74HC00)
+            else if (component_has_flag(part->type, COMPONENT_QUAD_GATE))
             {
                 half_width = 50;
                 half_height = 20;
@@ -253,14 +255,52 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
     {
         x = event->wheel.mouse_x * 1280.0f / w;
         y = event->wheel.mouse_y * 720.0f / h;
+        if (x < 220 && y >= 140 && direction != 0)
+        {
+            int last = palette_count(app->palette_page) - 8;
+            app->palette_offset += direction < 0 ? 1 : -1;
+            if (app->palette_offset < 0)
+                app->palette_offset = 0;
+            if (app->palette_offset > last)
+                app->palette_offset = last;
+            app->status = "Biblioteca: use o scroll para ver mais componentes.";
+            return;
+        }
         if (x >= 220 && y >= 70 && y < 660 && direction != 0 && (SDL_GetModState() & SDL_KMOD_CTRL))
         {
-            if (app->selected < 0 || app->bench.parts[app->selected].group)
+            if (app->selected >= 0 && app->bench.parts[app->selected].group)
+            {
+                int group = app->bench.parts[app->selected].group;
+                Workbench before BENCH_AUTO_CLEAR = {0};
+                if (!bench_snapshot_clone(&before, &app->bench))
+                {
+                    app->status = "Memoria insuficiente para redimensionar o chip.";
+                    return;
+                }
+                float width = bench_group_width(&app->bench, group);
+                float height = bench_group_height(&app->bench, group);
+                float factor = direction > 0 ? 1.1f : 1 / 1.1f;
+                if (SDL_GetModState() & SDL_KMOD_SHIFT)
+                    height = fminf(10000, fmaxf(44, height * factor));
+                else
+                    width = fminf(10000, fmaxf(64, width * factor));
+                if (!bench_group_resize(&app->bench, group, width, height))
+                    app->status = "Dimensoes invalidas para o chip.";
+                else if (!bench_history_record(app->history, &before))
+                {
+                    bench_replace(&app->bench, &before);
+                    app->status = "Historico indisponivel; dimensoes anteriores restauradas.";
+                }
+                else
+                    app->status = "Chip: Ctrl+scroll ajusta largura; Ctrl+Shift+scroll ajusta altura; Ctrl+Z desfaz.";
+                return;
+            }
+            if (app->selected < 0)
             {
                 app->status = "Selecione uma peca para ajustar o tamanho com Ctrl+scroll.";
                 return;
             }
-            Workbench before = {0};
+            Workbench before BENCH_AUTO_CLEAR = {0};
             if (!bench_snapshot_clone(&before, &app->bench))
             {
                 app->status = "Memoria insuficiente para ajustar o tamanho.";
@@ -280,6 +320,27 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 }
             }
             bench_snapshot_clear(&before);
+            return;
+        }
+        if (x >= 220 && y >= 70 && y < 660 && direction != 0 && (SDL_GetModState() & SDL_KMOD_SHIFT) &&
+            app->selected >= 0 && app->bench.parts[app->selected].type == PART_POTENTIOMETER)
+        {
+            Workbench before BENCH_AUTO_CLEAR = {0};
+            if (!bench_snapshot_clone(&before, &app->bench))
+            {
+                app->status = "Memoria insuficiente para ajustar o potenciometro.";
+                return;
+            }
+            double position = app->bench.parts[app->selected].control + (direction > 0 ? .05 : -.05);
+            position = fmin(1, fmax(0, position));
+            if (bench_set_control(&app->bench, app->selected, position) && app->bench.revision != before.revision)
+                if (!bench_history_record(app->history, &before))
+                {
+                    bench_replace(&app->bench, &before);
+                    app->status = "Historico indisponivel; cursor anterior restaurado.";
+                    return;
+                }
+            app->status = "Cursor ajustado. Shift+scroll: posicao; E: resistencia total; Ctrl+Z: desfazer.";
             return;
         }
         if (x >= 220 && y >= 70 && y < 660 && direction != 0)
@@ -339,6 +400,14 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
 {
     if (x >= 260 && x < 800)
     {
+        if (y >= 410 && y < 450)
+        {
+            if (x >= 500 && x < 540 && app->gui_font_size > 12)
+                --app->gui_font_size;
+            else if (x >= 550 && x < 590 && app->gui_font_size < 20)
+                ++app->gui_font_size;
+            return;
+        }
         if (y >= 340 && y < 385)
         {
             app->dark_theme = !app->dark_theme;
@@ -518,6 +587,7 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
         else if (x < 148)
             app->palette_page = 1;
         app->placing = -1;
+        app->palette_offset = 0;
         app->packed_placing = 0;
         app_packing_refresh(app);
         return 1;
@@ -533,7 +603,7 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
                 return 1;
             }
             app->packed_placing = 0;
-            app->placing = palette_part(app->palette_page, item);
+            app->placing = palette_part(app->palette_page, item + app->palette_offset);
             app->pending.component = -1;
             app->status = "Clique na bancada para posicionar.";
         }
@@ -653,7 +723,7 @@ static Pin input_pin_at(const Workbench *bench, float x, float y)
             float radius = 12.0f;
             if (board)
                 radius = 4.0f;
-            else if (bench->parts[i].type == PART_74HC00)
+            else if (component_has_flag(bench->parts[i].type, COMPONENT_QUAD_GATE))
                 radius = 5.0f;
             radius *= fminf(1, bench_part_scale(&bench->parts[i]));
             if (board != pass)
@@ -744,6 +814,13 @@ static void input_select(AppState *app, float x, float y, int clicks)
     }
     if (hit >= 0)
     {
+        if (app->bench.parts[hit].type == PART_BUTTON)
+        {
+            bench_set_on(&app->bench, hit, 1);
+            app->held_button = hit;
+            app->status = "Botao pressionado; solte para abrir o contato. Contato ideal, sem bounce.";
+            return;
+        }
         if (!app->bench.parts[hit].group && clicks >= 2 &&
             (app->bench.parts[hit].type == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
              app->bench.parts[hit].type == PART_CLOCK))
@@ -840,6 +917,10 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
     (void)window;
     (void)event;
 
+    if (app->held_button >= 0 && app->held_button < app->bench.part_count &&
+        app->bench.parts[app->held_button].type == PART_BUTTON)
+        bench_set_on(&app->bench, app->held_button, 0);
+    app->held_button = -1;
     app->selecting_area = 0;
     if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
         !app->bench.parts[app->dragging].group && app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, app->dragging))
@@ -969,6 +1050,8 @@ void app_input_poll(AppState *app, SDL_Window *window)
             input_mouse_position(app, window, &e);
         if (e.type == SDL_EVENT_QUIT)
             app->running = 0;
+        else if (e.type == SDL_EVENT_WINDOW_FOCUS_LOST)
+            input_release(app, window, &e);
         else if (app->editing >= 0 && e.type == SDL_EVENT_TEXT_INPUT)
         {
             input_text(app, window, &e);

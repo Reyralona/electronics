@@ -23,6 +23,7 @@ typedef struct AppState
     int route_count, drag_wire, drag_knee;
     int settings, show_grid, show_handles, round_wires, show_current;
     int wire_color, selected_wire, palette_page, example_index;
+    int palette_offset, held_button;
     int leds[WORKBENCH_MAX_COMPONENTS];
     float offset_x, offset_y;
     SpiceJob dc_job;
@@ -30,7 +31,7 @@ typedef struct AppState
     double transient_step, transient_stop;
     double grid_spacing;
     int snap_grid, snap_board;
-    int dark_theme;
+    int dark_theme, gui_font_size;
     BenchHistory *history;
     int move_recorded;
     BenchView view;

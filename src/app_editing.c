@@ -1,3 +1,4 @@
+#include "bench_scope.h"
 #include "app_editing.h"
 #include "workbench_file.h"
 #include <direct.h>
@@ -148,7 +149,7 @@ void app_projects_save(AppState *app)
     WorkbenchSettings settings = {app->show_grid,     app->show_handles,   app->round_wires,
                                   app->show_current,  app->wire_color,     app->probe_pin,
                                   app->probe_current, app->transient_step, app->transient_stop,
-                                  app->grid_spacing, app->snap_grid, app->snap_board, app->dark_theme};
+                                  app->grid_spacing, app->snap_grid, app->snap_board, app->dark_theme, app->gui_font_size};
     slot_path(app, app->save_slot, path, sizeof(path));
     int saved = workbench_save_project(path, &app->bench, &settings);
     snprintf(app->selection_status, sizeof(app->selection_status),
@@ -191,6 +192,7 @@ void app_projects_load(AppState *app)
         app->snap_grid = settings.snap_grid;
         app->snap_board = settings.snap_board;
         app->dark_theme = settings.dark_theme;
+        app->gui_font_size = settings.gui_font_size;
     sim_state_clear_result(&app->sim);
     memset(app->leds, 0, sizeof(app->leds));
     app->projects_open = 0;

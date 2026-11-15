@@ -361,7 +361,7 @@ static void draw_part_gate(const Part *p)
         line(x - 16, y - 13, x + 18, y);
         line(x + 18, y, x - 16, y + 13);
     }
-    else if (p->type == PART_OR || p->type == PART_XOR)
+    else if (p->type == PART_OR || p->type == PART_XOR || p->type == PART_NOR || p->type == PART_XNOR)
     {
         line(x - 19, y - 13, x - 13, y);
         line(x - 13, y, x - 19, y + 13);
@@ -369,7 +369,7 @@ static void draw_part_gate(const Part *p)
         line(x + 2, y - 11, x + 20, y);
         line(x + 20, y, x + 2, y + 11);
         line(x + 2, y + 11, x - 19, y + 13);
-        if (p->type == PART_XOR)
+        if (p->type == PART_XOR || p->type == PART_XNOR)
         {
             line(x - 24, y - 13, x - 18, y);
             line(x - 18, y, x - 24, y + 13);
@@ -385,7 +385,7 @@ static void draw_part_gate(const Part *p)
         line(x + 20, y, x + 14, y + 8);
         line(x + 14, y + 8, x + 2, y + 13);
     }
-    if (p->type == PART_NAND || p->type == PART_NOT)
+    if (p->type == PART_NAND || p->type == PART_NOT || p->type == PART_NOR || p->type == PART_XNOR)
     {
         color(.84f, .89f, .92f);
         circle(x + 23, y, 3);
@@ -433,35 +433,46 @@ static void draw_part_inductor(const Part *p)
         rect(x - 26 + coil * 9, y - 14, 3, 21);
 }
 
-static void draw_part_led(const Part *p, int led)
+static void draw_part_led(const Part *p, int led, float brightness)
 {
     float x = p->x, y = p->y;
     color(.75f, .75f, .72f);
-    rect(x - 16, y + 5, 32, 7);
+    glLineWidth(3);
+    line(x - 49, y, x - 10, y + 18);
+    line(x + 49, y, x + 10, y + 18);
+    glLineWidth(1);
+    color(.38f, .08f, .07f);
+    circle(x, y + 7, 17);
+    rect(x - 14, y - 12, 28, 20);
+    color(.75f, .75f, .72f);
+    rect(x - 16, y + 9, 32, 5);
     /* led: -1 unknown, 0 off, 1 lit, 2 burnt */
     if (led == 2)
     {
         color(.22f, .14f, .10f);
-        circle(x, y - 3, 13);
+        circle(x, y - 14, 13);
+        rect(x - 13, y - 14, 26, 23);
         color(.40f, .30f, .24f);
-        circle(x - 4, y - 7, 3);
+        circle(x - 4, y - 18, 3);
     }
     else
     {
         if (led < 0)
             color(.48f, .48f, .48f);
         else
-            color(led ? 1.0f : .6f, led ? .28f : .12f, led ? .24f : .14f);
-        circle(x, y - 3, 13);
+            color(.48f + .52f * brightness, .08f + .25f * brightness, .08f + .18f * brightness);
+        circle(x, y - 14, 13);
+        rect(x - 13, y - 14, 26, 23);
         if (led < 0)
             color(.7f, .7f, .7f);
         else
-            color(led ? 1.0f : .8f, led ? .63f : .28f, led ? .55f : .27f);
-        circle(x - 4, y - 7, 4);
+            color(.72f + .28f * brightness, .24f + .50f * brightness, .22f + .40f * brightness);
+        circle(x - 4, y - 18, 4);
+        rect(x - 8, y - 17, 3, 14);
     }
 }
 
-static void part_draw(const Part *p, int selected, int led)
+static void part_draw(const Part *p, int selected, int led, float brightness)
 {
     float x = p->x, y = p->y;
     if (p->type == PART_BREADBOARD)
@@ -470,7 +481,8 @@ static void part_draw(const Part *p, int selected, int led)
         return;
     }
     color(.68f, .71f, .73f);
-    rect(x - 51, y - 3, 102, 6);
+    if (p->type != PART_LED && p->type != PART_POTENTIOMETER)
+        rect(x - 51, y - 3, 102, 6);
     color(.72f, .74f, .76f);
     if (p->type == PART_SOURCE || p->type == PART_SWITCH || p->type == PART_CLOCK)
         rect(x - 39, y - 23, 82, 50);
@@ -480,6 +492,17 @@ static void part_draw(const Part *p, int selected, int led)
     {
         draw_part_source(p);
     }
+    else if (p->type == PART_BUTTON)
+    {
+        color(.22f, .24f, .26f);
+        rect(x - 25, y - 18, 50, 40);
+        color(.65f, .68f, .70f);
+        rect(x - 25, y - 22, 50, 36);
+        color(.15f, .17f, .19f);
+        circle(x, y - (p->on ? 1 : 6), 14);
+        color(.25f, .28f, .31f);
+        circle(x - 2, y - (p->on ? 3 : 8), 11);
+    }
     else if (p->type == PART_SWITCH)
     {
         draw_part_switch(p);
@@ -488,13 +511,35 @@ static void part_draw(const Part *p, int selected, int led)
     {
         draw_part_clock(p);
     }
-    else if (p->type == PART_74HC00)
+    else if (component_has_flag(p->type, COMPONENT_QUAD_GATE))
     {
         draw_part_chip(p);
     }
     else if (is_gate(p->type))
     {
         draw_part_gate(p);
+    }
+    else if (p->type == PART_POTENTIOMETER)
+    {
+        color(.65f, .67f, .69f);
+        glLineWidth(3);
+        line(x - 49, y, x - 18, y + 16);
+        line(x + 49, y, x + 18, y + 16);
+        line(x, y + 20, x, y + 49);
+        glLineWidth(1);
+        color(.05f, .15f, .30f);
+        circle(x, y + 5, 25);
+        color(.10f, .35f, .65f);
+        circle(x, y - 2, 25);
+        color(.65f, .69f, .73f);
+        circle(x, y - 5, 13);
+        color(.85f, .87f, .89f);
+        circle(x - 2, y - 8, 10);
+        float angle = (float)(.75 * 3.141592653589793 + p->control * 1.5 * 3.141592653589793);
+        color(.12f, .14f, .17f);
+        glLineWidth(3);
+        line(x, y - 8, x + cosf(angle) * 9, y - 8 + sinf(angle) * 9);
+        glLineWidth(1);
     }
     else if (p->type == PART_RESISTOR)
     {
@@ -510,7 +555,7 @@ static void part_draw(const Part *p, int selected, int led)
     }
     else
     {
-        draw_part_led(p, led);
+        draw_part_led(p, led, brightness);
     }
     if (selected)
     {
@@ -526,7 +571,7 @@ static void part_draw(const Part *p, int selected, int led)
     }
 }
 
-static void part_draw_oriented(const Part *part, int selected, int led)
+static void part_draw_oriented(const Part *part, int selected, int led, float brightness)
 {
     Part local = *part;
     local.x = 0;
@@ -536,7 +581,7 @@ static void part_draw_oriented(const Part *part, int selected, int led)
     glRotatef((float)part->rotation * 90.0f, 0, 0, 1);
     float scale = bench_part_scale(part);
     glScalef(scale, scale, 1);
-    part_draw(&local, selected, led);
+    part_draw(&local, selected, led, brightness);
     glPopMatrix();
 }
 
@@ -629,7 +674,7 @@ static void draw_thumbnail(PartType type, float x, float y)
     glTranslatef(x, y, 0);
     glScalef(scale, scale, 1);
     glLineWidth(1);
-    part_draw(&preview, 0, 0);
+    part_draw(&preview, 0, 0, 0);
     if (type == PART_BREADBOARD)
     {
         color(.18f, .22f, .24f);
@@ -726,7 +771,10 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
                 text(font, 76, y + 36, label);
             continue;
         }
-        PartType type = palette_part(app->palette_page, i);
+        int item = i + app->palette_offset;
+        if (item >= palette_count(app->palette_page))
+            break;
+        PartType type = palette_part(app->palette_page, item);
         color(app->placing == (int)type ? .79f : .92f, app->placing == (int)type ? .9f : .94f, .96f);
         rect(14, y, 192, 62);
         color(.16f, .22f, .26f);
@@ -760,6 +808,18 @@ static void draw_workspace_grid(const AppState *app)
     }
 }
 
+/* Brightness is a display curve of measured forward current, not voltage.
+ * Twenty milliamperes is the visual full-scale reference, not a device rating. */
+static float measured_led_brightness(const AppState *app, int part)
+{
+    const double visual_full_scale_amperes = SPICE_LED_VISUAL_FULL_SCALE_AMPERES;
+    if (sim_state_has_result(&app->sim, SIM_RESULT_DC))
+        return (float)sqrt(fmin(1.0, fmax(0.0, app->sim.dc_led_currents[part] / visual_full_scale_amperes)));
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
+        return app->sim.trace.led_brightness[app->sim.trace_index][part] / 255.0f;
+    return app->leds[part] == 1 ? 1 : 0;
+}
+
 static void draw_workspace_boards(const AppState *app)
 {
     int i;
@@ -768,7 +828,7 @@ static void draw_workspace_boards(const AppState *app)
         {
             int p;
             float hole_radius = 3 * fminf(1, bench_part_scale(&app->bench.parts[i]));
-            part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
+            part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i], measured_led_brightness(app, i));
             for (p = 0; p < bench_pin_count(PART_BREADBOARD); ++p)
             {
                 float x, y;
@@ -862,6 +922,8 @@ static void draw_workspace_wires(const AppState *app)
         }
         for (pass = 0; pass < 3; ++pass)
         {
+            if (pass == 0 && app->dark_theme)
+                continue;
             float offset = pass == 0 ? 3.0f : 0.0f;
             if (pass == 0)
             {
@@ -928,7 +990,7 @@ static void draw_workspace_parts(const AppState *app)
         if (!app->bench.parts[i].group && app->bench.parts[i].type != PART_BREADBOARD)
         {
             int p;
-            part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
+            part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i], measured_led_brightness(app, i));
             for (p = 0; p < bench_pin_count(app->bench.parts[i].type); ++p)
             {
                 float x, y;
@@ -936,7 +998,7 @@ static void draw_workspace_parts(const AppState *app)
                 int snapped = bench_find_contact(&app->bench, i, p, &contact);
                 float outer_radius = snapped ? 5.0f : 8.0f;
                 float inner_radius = snapped ? 3.0f : 5.0f;
-                if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_74HC00)
+                if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
                 {
                     outer_radius = 4.0f;
                     inner_radius = 2.5f;
@@ -998,6 +1060,20 @@ static void draw_workspace_contacts(const AppState *app)
 
 static void pin_role_color(ComponentPinRole role)
 {
+    if (dark_interface && !interface_layer)
+    {
+        if (role == PIN_SUPPLY_POSITIVE || role == PIN_ANODE)
+            color(1, .56f, .45f);
+        else if (role == PIN_SUPPLY_RETURN || role == PIN_GROUND || role == PIN_CATHODE)
+            color(.53f, .73f, 1);
+        else if (role == PIN_INPUT || role == PIN_CLOCK_INPUT)
+            color(1, .76f, .40f);
+        else if (role == PIN_OUTPUT)
+            color(.47f, .91f, .65f);
+        else
+            color(.76f, .82f, .88f);
+        return;
+    }
     if (role == PIN_SUPPLY_POSITIVE || role == PIN_ANODE)
         color(.78f, .22f, .15f);
     else if (role == PIN_SUPPLY_RETURN || role == PIN_GROUND || role == PIN_CATHODE)
@@ -1029,7 +1105,7 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
         float x, y;
         bench_pin_position(part, pin, &x, &y);
         pin_role_color(info->role);
-        if (part->type == PART_74HC00)
+        if (component_has_flag(part->type, COMPONENT_QUAD_GATE))
         {
             char label[] = {pin_role_symbol(info->role), 0};
             if (part->rotation % 2)
@@ -1063,15 +1139,18 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
 {
     int i;
     for (i = 0; i < app->bench.part_count; ++i)
-        if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_74HC00)
+        if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
         {
             color(.85f, .88f, .9f);
-            text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, "74HC00");
+            text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_info(app->bench.parts[i].type)->display_name + 3);
         }
     for (i = 0; i < app->bench.part_count; ++i)
         if (!app->bench.parts[i].group && is_gate(app->bench.parts[i].type))
         {
-            color(.13f, .22f, .27f);
+            if (app->dark_theme)
+                color(.76f, .82f, .88f);
+            else
+                color(.13f, .22f, .27f);
             text(font, app->bench.parts[i].x - 25, app->bench.parts[i].y + 45, part_name(app->bench.parts[i].type) + 6);
         }
     draw_selected_pin_labels(app, font);
@@ -1111,6 +1190,7 @@ static void draw_groups(const AppState *app, GLuint font)
         if (!group->active)
             continue;
         float height = bench_group_height(&app->bench, g + 1);
+        float width = bench_group_width(&app->bench, g + 1);
         int selected = 0, lit = 0, burnt = 0;
         for (int i = 0; i < app->bench.part_count; ++i)
             if (app->bench.parts[i].group == g + 1)
@@ -1120,26 +1200,26 @@ static void draw_groups(const AppState *app, GLuint font)
                 burnt |= app->sim.burnt[i];
             }
         color(.65f, .69f, .72f);
-        rect(group->x - 46, group->y - height * .5f + 4, 98, height);
+        rect(group->x - width * .5f + 3, group->y - height * .5f + 4, width, height);
         color(burnt ? .45f : .16f, .2f, .25f);
-        rect(group->x - 49, group->y - height * .5f, 98, height);
+        rect(group->x - width * .5f, group->y - height * .5f, width, height);
         color(selected ? .22f : .55f, .7f, .9f);
         glLineWidth(selected ? 3 : 1);
         glBegin(GL_LINE_LOOP);
-        glVertex2f(group->x - 50, group->y - height * .5f);
-        glVertex2f(group->x + 50, group->y - height * .5f);
-        glVertex2f(group->x + 50, group->y + height * .5f);
-        glVertex2f(group->x - 50, group->y + height * .5f);
+        glVertex2f(group->x - width * .5f - 1, group->y - height * .5f);
+        glVertex2f(group->x + width * .5f + 1, group->y - height * .5f);
+        glVertex2f(group->x + width * .5f + 1, group->y + height * .5f);
+        glVertex2f(group->x - width * .5f - 1, group->y + height * .5f);
         glEnd();
         glLineWidth(1);
         char label[40];
         snprintf(label, sizeof(label), "Bloco %d", g + 1);
         color(.9f, .94f, .98f);
-        name_text(font, group->x - 41, group->y + 5, group->name[0] ? group->name : label, 82);
+        name_text(font, group->x - width * .5f + 8, group->y + 5, group->name[0] ? group->name : label, (int)width - 16);
         if (lit)
         {
             color(.3f, .95f, .45f);
-            circle(group->x + 36, group->y - height * .5f + 8, 3);
+            circle(group->x + width * .5f - 13, group->y - height * .5f + 8, 3);
         }
         Pin pin;
         for (int index = 0; bench_group_port(&app->bench, g + 1, index, &pin); ++index)
@@ -1205,7 +1285,7 @@ static void draw_inspector(const AppState *app, GLuint font)
     {
         int group = app->bench.parts[app->selected].group;
         color(.97f, .98f, .99f);
-        rect(840, 80, 420, 70);
+        rect(840, 80, 420, 126);
         color(.12f, .23f, .3f);
         name_text(font, 850, 105, app->bench.groups[group - 1].name, 395);
         color(.8f, .89f, .97f);
@@ -1214,6 +1294,11 @@ static void draw_inspector(const AppState *app, GLuint font)
         color(.12f, .28f, .45f);
         text(font, 858, 136, "Ver interior [Enter]");
         text(font, 1058, 136, "Renomear [F4]");
+        char dimensions[100];
+        snprintf(dimensions, sizeof(dimensions), "Largura: %.0f [Ctrl+scroll]", bench_group_width(&app->bench, group));
+        text(font, 850, 170, dimensions);
+        snprintf(dimensions, sizeof(dimensions), "Altura: %.0f [Ctrl+Shift+scroll]", bench_group_height(&app->bench, group));
+        text(font, 850, 193, dimensions);
         return;
     }
     if (app->selected >= 0)
@@ -1235,13 +1320,18 @@ static void draw_inspector(const AppState *app, GLuint font)
         else
             text(font, 850, 105,
                  part->type == PART_LED                               ? "LED generico"
-                 : (is_gate(part->type) || part->type == PART_74HC00) ? part_name(part->type)
+                 : (is_gate(part->type) || component_has_flag(part->type, COMPONENT_QUAD_GATE)) ? part_name(part->type)
                                                                       : "Componente selecionado");
         color(.86f, .91f, .95f);
         rect(850, 154, 330, 28);
         color(.12f, .34f, .52f);
         snprintf(reading, sizeof(reading), "Tamanho: %.5g%% [Ctrl+scroll]", bench_part_scale(part) * 100);
         text(font, 860, 174, reading);
+        if (part->type == PART_POTENTIOMETER)
+        {
+            snprintf(reading, sizeof(reading), "Cursor: %.0f%% [Shift+scroll]", part->control * 100);
+            text(font, 850, 210, reading);
+        }
         if (part->type != PART_BREADBOARD)
         {
             color(.86f, .91f, .95f);
@@ -1290,7 +1380,7 @@ static void draw_settings(const AppState *app, GLuint font)
     {
         int swatch;
         color(.98f, .98f, .99f);
-        rect(260, 84, 540, 325);
+        rect(260, 84, 540, 375);
         color(.14f, .22f, .28f);
         text(font, 280, 112, "ALINHAMENTO E ENCAIXE");
         text(font, 280, 155, app->snap_grid ? "[x] Encaixar na grade" : "[ ] Encaixar na grade");
@@ -1302,6 +1392,11 @@ static void draw_settings(const AppState *app, GLuint font)
         text(font, 280, 310, "Ocultar grade nao desativa o encaixe.");
         text(font, 280, 365, app->dark_theme ? "[x] Tema escuro" : "[ ] Tema escuro");
         text(font, 280, 395, "Ctrl+scroll: tamanho | Alt+clique: selecionar");
+        char size_label[64];
+        snprintf(size_label, sizeof(size_label), "Texto: %d px", app->gui_font_size);
+        text(font, 280, 435, size_label);
+        text(font, 510, 435, "[-]");
+        text(font, 560, 435, "[+]");
         color(.62f, .68f, .72f);
         rect(846, 90, 400, 558);
         color(.98f, .98f, .99f);
@@ -1479,6 +1574,7 @@ static void draw_editor_confirmation(const AppState *app, GLuint font)
 
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
+    app_text_utf8_set_size(app->gui_font_size);
     dark_interface = app->dark_theme;
     interface_layer = 1;
     draw_chrome(app, font, width, height);

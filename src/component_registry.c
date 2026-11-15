@@ -11,6 +11,7 @@ static const ComponentParameter frequency = {"frequency", "Hz", 1000.0, 1e-12, 1
 
 static const ComponentPinInfo pins_source[] = {{"V+", PIN_SUPPLY_POSITIVE}, {"V-", PIN_SUPPLY_RETURN}};
 static const ComponentPinInfo pins_passive[] = {{"1", PIN_PASSIVE}, {"2", PIN_PASSIVE}};
+static const ComponentPinInfo pins_pot[] = {{"A", PIN_PASSIVE}, {"W", PIN_PASSIVE}, {"B", PIN_PASSIVE}};
 static const ComponentPinInfo pins_led[] = {{"A", PIN_ANODE}, {"K", PIN_CATHODE}};
 static const ComponentPinInfo pins_gate[] = {{"A", PIN_INPUT}, {"B", PIN_INPUT}, {"Y", PIN_OUTPUT}};
 static const ComponentPinInfo pins_not[] = {{"A", PIN_INPUT}, {"Y", PIN_OUTPUT}};
@@ -43,13 +44,20 @@ static const ComponentInfo components[] = {
     [PART_CLOCK] = {PART_CLOCK, "clock", "Clock", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 13, &frequency,
                     pins_clock},
     [PART_DFF] = {PART_DFF, "dff", "Bloco DFF", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 14, NULL, pins_dff},
-    [PART_74HC00] = {PART_74HC00, "74hc00", "CI 74HC00", 14, COMPONENT_ROTATES, 15, NULL, pins_74hc00},
+    [PART_NOR] = {PART_NOR, "nor", "Porta NOR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
+    [PART_XNOR] = {PART_XNOR, "xnor", "Porta XNOR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
+    [PART_POTENTIOMETER] = {PART_POTENTIOMETER, "potentiometer", "Potenciometro", 3, COMPONENT_ROTATES, 21, &resistance, pins_pot},
+    [PART_BUTTON] = {PART_BUTTON, "button", "Botao", 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 21, NULL, pins_passive},
+    [PART_74HC08] = {PART_74HC08, "74hc08", "CI 74HC08", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
+    [PART_74HC32] = {PART_74HC32, "74hc32", "CI 74HC32", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
+    [PART_74HC86] = {PART_74HC86, "74hc86", "CI 74HC86", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
+    [PART_74HC00] = {PART_74HC00, "74hc00", "CI 74HC00", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 15, NULL, pins_74hc00},
 };
 
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86};
 
 size_t component_registry_count(void)
 {

@@ -7,11 +7,11 @@
 
 WorkbenchSettings workbench_settings_default(void)
 {
-    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0};
+    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15};
 }
 static int settings_valid(const WorkbenchSettings *s)
 {
-    return s && (s->dark_theme == 0 || s->dark_theme == 1) && (s->show_grid == 0 || s->show_grid == 1) && (s->show_handles == 0 || s->show_handles == 1) &&
+    return s && s->gui_font_size >= 12 && s->gui_font_size <= 20 && (s->dark_theme == 0 || s->dark_theme == 1) && (s->show_grid == 0 || s->show_grid == 1) && (s->show_handles == 0 || s->show_handles == 1) &&
            (s->round_wires == 0 || s->round_wires == 1) && (s->show_current == 0 || s->show_current == 1) &&
            s->wire_color >= 0 && s->wire_color < WIRE_COLOR_COUNT && (s->probe_pin >= 0 && s->probe_pin < 14) &&
            (s->probe_current == 0 || s->probe_current == 1) && isfinite(s->transient_step) &&
@@ -26,13 +26,13 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 20\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 22\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
         const Part *p = &b->parts[i];
-        if (fprintf(f, "%d %.9g %.9g %d %.17g %d %d %.9g\n", (int)p->type, p->x, p->y, p->on, p->value, p->rotation,
-                    p->board_layout, bench_part_scale(p)) < 0)
+        if (fprintf(f, "%d %.9g %.9g %d %.17g %d %d %.9g %.17g\n", (int)p->type, p->x, p->y, p->type == PART_BUTTON ? 0 : p->on, p->value, p->rotation,
+                    p->board_layout, bench_part_scale(p), p->control) < 0)
             return 0;
     }
     for (i = 0; i < b->wire_count; ++i)
@@ -55,7 +55,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
         return 0;
     if (fprintf(f, "grid %.17g %d %d\n", s->grid_spacing, s->snap_grid, s->snap_board) < 0)
         return 0;
-    if (fprintf(f, "theme %d\n", s->dark_theme) < 0)
+    if (fprintf(f, "theme %d %d\n", s->dark_theme, s->gui_font_size) < 0)
         return 0;
     return !ferror(f);
 }
@@ -70,7 +70,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 20) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 22) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -121,6 +121,15 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
             if (fscanf(f, "%f", &scale) != 1 || !bench_set_scale(&b, i, scale))
                 goto cleanup;
         }
+        if (version >= 21)
+        {
+            double control;
+            if (fscanf(f, "%lf", &control) != 1 || !isfinite(control) || control < 0 || control > 1)
+                goto cleanup;
+            b.parts[i].control = control;
+        }
+        if (type == PART_BUTTON)
+            b.parts[i].on = 0;
     }
     for (i = 0; i < wires; ++i)
     {
@@ -167,6 +176,8 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         if (fscanf(f, "%31s %d", tag, &saved.dark_theme) != 2 || strcmp(tag, "theme") || !settings_valid(&saved))
             goto cleanup;
     }
+    if (version >= 21 && (fscanf(f, "%d", &saved.gui_font_size) != 1 || !settings_valid(&saved)))
+        goto cleanup;
     if (fscanf(f, " %c", &extra) != EOF || ferror(f))
         goto cleanup;
     published = bench_replace(destination, &b);

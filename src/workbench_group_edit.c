@@ -40,7 +40,8 @@ static int valid_draft(const Workbench *parent, int group, const Workbench *draf
     {
         const Part *part = &draft->parts[i];
         const ComponentInfo *info = component_info(part->type);
-        if (!info || part->group || !isfinite(bench_part_scale(part)) ||
+        if (!info || part->group || !isfinite(part->control) || part->control < 0 || part->control > 1 ||
+            !isfinite(bench_part_scale(part)) ||
             bench_part_scale(part) < PART_SCALE_MIN || bench_part_scale(part) > PART_SCALE_MAX || !isfinite(part->x) || !isfinite(part->y) ||
             (info->primary && !component_value_valid(part->type, part->value)) || part->rotation < 0 ||
             part->rotation > 3 || (part->on != 0 && part->on != 1))

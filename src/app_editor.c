@@ -1,3 +1,4 @@
+#include "bench_scope.h"
 #include "app_editor.h"
 #include "app_packing.h"
 #include "workbench_group_edit.h"
@@ -66,6 +67,7 @@ AppState *app_editor_open(AppState *parent)
     child->snap_grid = parent->snap_grid;
     child->snap_board = parent->snap_board;
     child->dark_theme = parent->dark_theme;
+    child->gui_font_size = parent->gui_font_size;
     child->show_handles = parent->show_handles;
     child->round_wires = parent->round_wires;
     child->sim.auto_enabled = parent->sim.auto_enabled;

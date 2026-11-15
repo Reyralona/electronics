@@ -63,6 +63,24 @@ int main(void)
     app_simulation_update(&app);
     assert(!sim_state_has_result(&app.sim, SIM_RESULT_TRACE));
     test_discard_after_undo(&app);
+    /* Pure geometry retains automatic playback and the same trace position. */
+    assert(bench_snapshot_clone(&app.dc_job.snapshot, &app.bench));
+    app.sim.auto_enabled = 1;
+    app.sim.sim_running = 0;
+    app.sim.auto_requested_valid = 1;
+    app.sim.requested_revision = app.bench.revision;
+    sim_state_set_result(&app.sim, SIM_RESULT_TRACE, 1, app.bench.revision);
+    app.sim.trace_index = 1;
+    assert(bench_move_part(&app.bench, 0, 650, 400));
+    app_simulation_update(&app);
+    assert(sim_state_has_result(&app.sim, SIM_RESULT_TRACE));
+    assert(app.sim.trace_index == 1);
+    assert(app.sim.result_revision == app.bench.revision);
+    assert(app.sim.requested_revision == app.bench.revision);
+    assert(bench_add(&app.bench, PART_RESISTOR, 800, 400) == 1);
+    app_simulation_update(&app);
+    assert(!sim_state_has_result(&app.sim, SIM_RESULT_TRACE));
+
     app_state_dispose(&app);
     return 0;
 }

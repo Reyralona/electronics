@@ -240,3 +240,27 @@ por componente nem terminais dobraveis. O corpo compacto dos blocos continua com
 Ativar Visualizar corrente preserva as cores da montagem. Setas claras com contorno mostram o
 sentido convencional; o tamanho indica a faixa de corrente calculada. O ponto animado em DC e
 um indicador neutro, com velocidade apenas ilustrativa. Isso vale para DC e transientes.
+
+
+## Incremento 0.25.0 ? interface e catalogo
+
+F1 permite tema escuro e texto de 12 a 20 px (padrao 15). A escala dos paineis ainda e fixa.
+Use scroll sobre a biblioteca para revelar os itens adicionais; Tab alterna categorias.
+Ctrl+scroll altera o tamanho da peca selecionada; Alt+clique seleciona o corpo sem iniciar fio.
+No potenciometro, Shift+scroll ajusta o cursor e E edita a resistencia total. O botao e
+momentaneo: mantenha pressionado e solte; perder foco tambem abre o contato.
+Nos chips personalizados, Ctrl+scroll ajusta largura e Ctrl+Shift+scroll ajusta altura.
+O tamanho minimo vertical conserva espaco entre pinos; os ajustes sao salvos e desfaziveis.
+
+Catalogo: 22 tipos, incluindo NOR/XNOR e CIs 74HC08 (AND), 74HC32 (OR), 74HC86 (XOR).
+Os CIs usam modelo didatico de quatro portas alimentadas: 4.5..5.5 V, limiares de entrada
+1.5/3.5 V e resistencia de saida de 50 ohms; nao sao modelos completos do fabricante.
+Brilho do LED depende da corrente direta calculada, com curva de exibicao limitada a 20mA;
+isso nao e especificacao fotometrica nem corrente maxima permitida. Transientes conservam
+brilho por amostra. Sem resultado valido o LED permanece cinza.
+
+A analise automatica concluida sobrevive a movimentos sem breadboard quando conexoes e
+parametros continuam iguais. Mudancas eletricas ainda iniciam nova analise batch: carga de
+capacitor, corrente de indutor e memoria de flip-flop NAO sao preservadas entre essas analises.
+Os slots guardam montagens/configuracoes, nao o instante eletrico. Terminais flexiveis pendentes.
+Formato atual 22, leitura retrocompativel 1-21. Captura --capture-catalog mostra novos componentes.

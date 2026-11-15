@@ -1,3 +1,4 @@
+#include "bench_scope.h"
 #include "app_packing.h"
 #include "workbench_pack.h"
 #include "workbench_file.h"

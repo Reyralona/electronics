@@ -17,6 +17,7 @@ typedef struct
 } TextImage;
 static TextImage cache[TEXT_CACHE_ENTRIES];
 static uint64_t sequence;
+static int font_pixels = 15;
 
 static void release_image(TextImage *image)
 {
@@ -30,6 +31,15 @@ void app_text_utf8_clear(void)
 {
     for (int i = 0; i < TEXT_CACHE_ENTRIES; ++i)
         release_image(&cache[i]);
+}
+
+void app_text_utf8_set_size(int pixels)
+{
+    if (pixels >= 12 && pixels <= 20 && pixels != font_pixels)
+    {
+        app_text_utf8_clear();
+        font_pixels = pixels;
+    }
 }
 
 static int power_of_two(int value)
@@ -143,7 +153,7 @@ static int create_image(TextImage *image, const char *text, int maximum_width)
 {
     WCHAR *wide = wide_text(text);
     HDC dc = CreateCompatibleDC(NULL);
-    HFONT font = CreateFontW(-17, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, ANTIALIASED_QUALITY,
+    HFONT font = CreateFontW(-font_pixels, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, ANTIALIASED_QUALITY,
                              DEFAULT_PITCH, L"Segoe UI");
     int ok = 0;
     if (wide && dc && font)

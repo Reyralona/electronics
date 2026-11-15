@@ -175,6 +175,11 @@ int main(int argc, char **argv)
         assert(spice_dc_analyze(&bench, argv[1], &current, values, message, sizeof(message)));
         assert(fabs(values[2] - before_current) < before_current * .001 && values[4] < values[2] * .6);
     }
+    assert(bench_group_resize(&bench, 2, 180, 120));
+    assert(!bench_group_resize(&bench, 2, NAN, 120));
+    assert(!bench_group_resize(&bench, 2, 10, 120));
+    assert(bench_group_width(&bench, 2) == 180);
+    assert(bench_group_height(&bench, 2) == 120);
     FILE *file = tmpfile();
     Workbench loaded = {0};
     assert(file && workbench_write(file, &bench));
@@ -182,6 +187,7 @@ int main(int argc, char **argv)
     assert(workbench_read(file, &loaded));
     fclose(file);
     assert(loaded.parts[3].group == 2 && bench_group_ports(&loaded, 2) == 2);
+    assert(bench_group_width(&loaded, 2) == 180 && bench_group_height(&loaded, 2) == 120);
     assert(bench_unpack_selection(&loaded, &selection));
     assert(!loaded.parts[3].group && !loaded.groups[1].active);
     assert(loaded.parts[1].group == 1 && loaded.groups[0].active);

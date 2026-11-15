@@ -4,6 +4,49 @@
 #include <string.h>
 #define AUTO_DEBOUNCE_MS 120
 
+/* Without a breadboard, explicit wire endpoints determine connectivity.
+ * Moving bodies or wire knees then leaves the electrical system unchanged. */
+static int same_electrical_assembly(const Workbench *a, const Workbench *b)
+{
+    if (a->part_count != b->part_count || a->wire_count != b->wire_count)
+        return 0;
+    for (int i = 0; i < a->part_count; ++i)
+    {
+        const Part *p = &a->parts[i];
+        const Part *q = &b->parts[i];
+        if (p->type == PART_BREADBOARD || p->type != q->type || p->on != q->on ||
+            p->value != q->value || p->control != q->control)
+            return 0;
+    }
+    for (int i = 0; i < a->wire_count; ++i)
+    {
+        const Wire *p = &a->wires[i];
+        const Wire *q = &b->wires[i];
+        if (p->a.component != q->a.component || p->a.pin != q->a.pin ||
+            p->b.component != q->b.component || p->b.pin != q->b.pin)
+            return 0;
+    }
+    return 1;
+}
+
+static void retain_visual_edit_result(AppState *app)
+{
+    uint64_t previous = app->dc_job.snapshot.revision;
+    if (!app->sim.auto_enabled || previous == app->bench.revision ||
+        !same_electrical_assembly(&app->dc_job.snapshot, &app->bench))
+        return;
+    /* Never mutate the snapshot while its worker owns it. */
+    if (app->dc_job.thread)
+        return;
+    if (app->sim.result_revision == previous)
+        app->sim.result_revision = app->bench.revision;
+    if (app->sim.burn_revision == previous)
+        app->sim.burn_revision = app->bench.revision;
+    if (app->sim.requested_revision == previous)
+        app->sim.requested_revision = app->bench.revision;
+    app->dc_job.snapshot.revision = app->bench.revision;
+}
+
 static const char *burn_message(char *buffer, size_t capacity, const Workbench *bench, const unsigned char burnt[],
                                 const unsigned char reason[], const double value[])
 {
@@ -187,6 +230,7 @@ static void schedule_analysis(AppState *app)
 
 void app_simulation_update(AppState *app)
 {
+    retain_visual_edit_result(app);
     poll_result(app);
     schedule_analysis(app);
     const char *message = sim_state_invalidate(&app->sim, &app->bench);

@@ -62,7 +62,12 @@ static int analyze(const Workbench *bench,const char *executable,double *current
                     local.samples[local.count++]=(SpiceSample){time,value}; previous=time;
                 } else {
                     if(index>=local.count || time!=local.samples[index].time) { snprintf(message,capacity,"Correntes transitorias dessincronizadas."); goto cleanup; }
-                    if(section<=led_count) { if(value>=1e-6) local.leds_on[index]|=UINT64_C(1)<<led_indices[section-1]; }
+                    if(section<=led_count) {
+                        int part = led_indices[section-1];
+                        if(value>=1e-6) local.leds_on[index]|=UINT64_C(1)<<part;
+                        double fraction = fmin(1.0, fmax(0.0, value / SPICE_LED_VISUAL_FULL_SCALE_AMPERES));
+                        local.led_brightness[index][part] = (unsigned char)(255.0 * sqrt(fraction));
+                    }
                     else { int wire=section-led_count-1, level=spice_wire_current_level(value); uint64_t bit=UINT64_C(1)<<(wire%64);
                         if(level && value>0) local.wires_forward[index][wire/64]|=bit;
                         else if(level && value<0) local.wires_reverse[index][wire/64]|=bit;

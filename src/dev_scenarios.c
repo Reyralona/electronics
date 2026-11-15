@@ -85,6 +85,24 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
                 bench_set_wire_color(&app->bench, wire, wire == 0 ? 0 : wire == 1 ? 1 : 3);
         }
     }
+    if (app->capture && !strcmp(argv[1], "--capture-catalog"))
+    {
+        app->bench = (Workbench){0};
+        bench_add(&app->bench, PART_POTENTIOMETER, 500, 260);
+        bench_add(&app->bench, PART_BUTTON, 750, 260);
+        bench_add(&app->bench, PART_NOR, 500, 460);
+        bench_add(&app->bench, PART_XNOR, 750, 460);
+        bench_add(&app->bench, PART_74HC08, 400, 590);
+        bench_add(&app->bench, PART_74HC32, 650, 590);
+        bench_add(&app->bench, PART_74HC86, 900, 590);
+        bench_add(&app->bench, PART_LED, 1000, 350);
+        bench_toggle_wire(&app->bench, (Pin){2, 2}, (Pin){3, 0});
+        bench_set_wire_color(&app->bench, 0, 3);
+        app->selected = 0;
+        app->dark_theme = 1;
+        app->palette_offset = 2;
+        app->status = "Biblioteca: scroll | Potenciometro: Shift+scroll | Botao: segure e solte.";
+    }
     if (app->capture && !strcmp(argv[1], "--capture-scale"))
     {
         app->bench = (Workbench){0};
@@ -415,6 +433,7 @@ int dev_scenario_analyze(AppState *app, char **argv)
 void dev_scenario_queue(AppState *app, SDL_Window *window)
 {
 
+    SDL_SetModState(SDL_KMOD_NONE);
     int queued = 1;
     if (app->selftest_phase == 0)
         queued = dev_test_click(window, 50, 150) && dev_test_click(window, 400, 250);
@@ -815,6 +834,73 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         SDL_SetModState(SDL_KMOD_NONE);
         queued = dev_test_key(window, SDLK_UNKNOWN);
     }
+    else if (app->selftest_phase == 155)
+    {
+        app->bench = (Workbench){0};
+        bench_add(&app->bench, PART_POTENTIOMETER, 500, 300);
+        bench_add(&app->bench, PART_BUTTON, 800, 300);
+        app->selected = 0;
+        app->palette_page = 0;
+        app->palette_offset = 0;
+        queued = dev_test_wheel(window, 50, 400, -1);
+    }
+    else if (app->selftest_phase == 156)
+        queued = dev_test_wheel(window, 50, 400, -1);
+    else if (app->selftest_phase == 157)
+        queued = dev_test_click(window, 50, 670);
+    else if (app->selftest_phase == 158)
+    {
+        app->placing = -1;
+        app->selected = 0;
+        SDL_SetModState(SDL_KMOD_SHIFT);
+        queued = dev_test_wheel(window, 500, 300, 1);
+    }
+    else if (app->selftest_phase == 159)
+        queued = dev_test_key(window, SDLK_Z);
+    else if (app->selftest_phase == 160)
+        queued = dev_test_click(window, 800, 300);
+    else if (app->selftest_phase == 161)
+        queued = dev_test_drag_finish(window, 800, 300);
+    else if (app->selftest_phase == 162)
+        queued = dev_test_key(window, SDLK_TAB);
+    else if (app->selftest_phase == 163)
+        queued = dev_test_wheel(window, 50, 400, -2);
+    else if (app->selftest_phase == 164)
+        queued = dev_test_wheel(window, 50, 400, -1) && dev_test_click(window, 50, 602);
+    else if (app->selftest_phase == 165)
+        queued = dev_test_click(window, 700, 500);
+    else if (app->selftest_phase == 166)
+        queued = dev_test_key(window, SDLK_F1);
+    else if (app->selftest_phase == 167)
+        queued = dev_test_click(window, 510, 430);
+    else if (app->selftest_phase == 168)
+    {
+        app->settings = 0;
+        app->placing = -1;
+        bench_selection_clear(&app->selection);
+        app->selection.parts[0] = 1;
+        app->selection.parts[1] = 1;
+        char message[256];
+        if (!bench_pack_selection(&app->bench, &app->selection, message, sizeof(message)))
+        {
+            app->exit_code = 1;
+            app->running = 0;
+            return;
+        }
+        app->selected = 0;
+        SDL_SetModState(SDL_KMOD_CTRL);
+        queued = dev_test_wheel(window, 500, 300, 1);
+    }
+    else if (app->selftest_phase == 169)
+    {
+        SDL_SetModState(SDL_KMOD_CTRL | SDL_KMOD_SHIFT);
+        queued = dev_test_wheel(window, 500, 300, 1);
+    }
+    else if (app->selftest_phase == 170)
+    {
+        SDL_SetModState(SDL_KMOD_CTRL);
+        queued = dev_test_key(window, SDLK_Z);
+    }
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1104,13 +1190,46 @@ void dev_scenario_validate(AppState *app)
         valid = !app->settings;
     else if (app->selftest_phase == 153)
         valid = app->selected == 1 && app->pending.component < 0;
+    else if (app->selftest_phase == 155)
+        valid = app->palette_offset == 1;
+    else if (app->selftest_phase == 156)
+        valid = app->palette_offset == 2;
+    else if (app->selftest_phase == 157)
+        valid = app->placing == PART_POTENTIOMETER;
+    else if (app->selftest_phase == 158)
+        valid = fabs(app->bench.parts[0].control - .55) < 1e-9;
+    else if (app->selftest_phase == 159)
+        valid = app->bench.parts[0].control == .5;
+    else if (app->selftest_phase == 160)
+        valid = app->held_button == 1 && app->bench.parts[1].on;
+    else if (app->selftest_phase == 161)
+        valid = app->held_button < 0 && !app->bench.parts[1].on;
+    else if (app->selftest_phase == 162)
+        valid = app->palette_page == 1 && app->palette_offset == 0;
+    else if (app->selftest_phase == 164)
+        valid = app->placing == PART_NOR;
+    else if (app->selftest_phase == 165)
+        valid = app->bench.part_count == 3 && app->bench.parts[2].type == PART_NOR;
+    else if (app->selftest_phase == 167)
+        valid = app->gui_font_size == 14;
+    else if (app->selftest_phase == 168)
+        valid = fabsf(bench_group_width(&app->bench, 1) - 107.8f) < .001f;
+    else if (app->selftest_phase == 169)
+        valid = fabsf(bench_group_height(&app->bench, 1) - 81.4f) < .001f;
+    else if (app->selftest_phase == 170)
+        valid = bench_group_height(&app->bench, 1) == 74 &&
+                fabsf(bench_group_width(&app->bench, 1) - 107.8f) < .001f;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
+        fprintf(stderr, "hover=%d/%d mouse=%.1f/%.1f view=%.2f/%.1f/%.1f drag=%d/%d area=%d mods=%u\n",
+                app->hovered_pin.component, app->hovered_pin.pin, app->mouse_screen.x, app->mouse_screen.y,
+                app->view.zoom, app->view.pan_x, app->view.pan_y, app->dragging, app->drag_wire,
+                app->selecting_area, (unsigned)SDL_GetModState());
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 155)
+    if (++app->selftest_phase == 171)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");
