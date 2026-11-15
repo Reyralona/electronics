@@ -753,7 +753,7 @@ int bench_add(Workbench *b, PartType type, float x, float y)
                           .x = x,
                           .y = y,
                           .on = component_has_flag(type, COMPONENT_STARTS_ON),
-                          .control = .5,
+                          .control = component_default_control(type),
                           .value = info->primary ? info->primary->initial : 0,
                           .board_layout = type == PART_BREADBOARD};
     ++b->revision;
@@ -904,7 +904,7 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
         for (j = 0; j < b->part_count; ++j)
         {
             int positive, negative;
-            if (b->parts[j].type != PART_SOURCE || !b->parts[j].on)
+            if (component_electrical_type(b->parts[j].type) != PART_SOURCE || !b->parts[j].on)
                 continue;
             positive = root(parent, j * WORKBENCH_MAX_PINS);
             negative = root(parent, j * WORKBENCH_MAX_PINS + 1);

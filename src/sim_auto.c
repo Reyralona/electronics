@@ -1,3 +1,4 @@
+#include "component_registry.h"
 #include "bench_scope.h"
 #include "sim_auto.h"
 #include "netlist.h"
@@ -86,7 +87,7 @@ static int has_energized_source(const Workbench *bench)
     int i;
     for (i = 0; i < bench->part_count; ++i) {
         const Part *part = &bench->parts[i];
-        if ((part->type == PART_SOURCE || part->type == PART_CLOCK) && part->on) return 1;
+        if ((component_electrical_type(part->type) == PART_SOURCE || part->type == PART_CLOCK) && part->on) return 1;
     }
     return 0;
 }

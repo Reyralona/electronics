@@ -1,3 +1,4 @@
+#include "component_registry.h"
 #include "sim_state.h"
 #include "spice_trace.h"
 #include <string.h>
@@ -34,7 +35,7 @@ Pin sim_state_probe(const Workbench *bench, int selected, int probe_pin)
         probe_pin >= 0 && probe_pin < bench_pin_count(bench->parts[selected].type))
         return (Pin){selected, probe_pin};
     for (i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].type == PART_SOURCE || bench->parts[i].type == PART_CLOCK)
+        if (component_electrical_type(bench->parts[i].type) == PART_SOURCE || bench->parts[i].type == PART_CLOCK)
             return (Pin){i, 0};
     for (i = 0; i < bench->part_count; ++i)
         if (bench->parts[i].type != PART_BREADBOARD)

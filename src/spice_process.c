@@ -1,3 +1,4 @@
+#include "component_registry.h"
 #include "spice_process.h"
 #include "netlist.h"
 #include <windows.h>
@@ -88,9 +89,10 @@ static int analyze(const Workbench *bench,const char *executable,double *current
         if(!start) { snprintf(message,capacity,"Corrente da fonte indisponivel."); goto cleanup; }
         value=strtod(start+strlen("@vsource[i] ="),&end);
         if(end==start+strlen("@vsource[i] =") || !isfinite(value)) goto cleanup;
-        for(i=0;i<bench->part_count;++i) if(bench->parts[i].type==PART_LED || bench->parts[i].type==PART_RESISTOR) {
-            char key[32]; double led;
-            snprintf(key,sizeof(key),bench->parts[i].type==PART_LED?"@d%d[id] =":"@r%d[i] =",i);
+        for(i=0;i<bench->part_count;++i) {
+            char vector[48], key[64]; double led;
+            if (!component_current_vector(bench->parts[i].type, i, vector, sizeof(vector))) continue;
+            snprintf(key,sizeof(key),"%s =",vector);
             start=strstr(buffer,key);
             if(!start) { snprintf(message,capacity,"Corrente de componente indisponivel."); goto cleanup; }
             led=strtod(start+strlen(key),&end);

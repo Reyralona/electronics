@@ -147,7 +147,7 @@ static int alter(SpiceLive *live, const char *name, double value, char *message,
 static int primary_source(const Workbench *bench)
 {
     for (int i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].type == PART_SOURCE)
+        if (component_electrical_type(bench->parts[i].type) == PART_SOURCE)
             return i;
     for (int i = 0; i < bench->part_count; ++i)
         if (bench->parts[i].type == PART_CLOCK)
@@ -162,12 +162,12 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
     {
         const Part *part = &bench->parts[i];
         char name[48];
-        if (part->type == PART_SOURCE || part->type == PART_CLOCK)
+        if (component_electrical_type(part->type) == PART_SOURCE || part->type == PART_CLOCK)
         {
             snprintf(name, sizeof(name), "Rpower%d", i);
             if (!alter(live, name, part->on ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS, message, capacity))
                 return 0;
-            if (part->type == PART_SOURCE)
+            if (component_electrical_type(part->type) == PART_SOURCE)
             {
                 if (i == primary)
                     snprintf(name, sizeof(name), "Vsource");
@@ -183,15 +183,15 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
             if (!alter(live, name, part->on ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS, message, capacity))
                 return 0;
         }
-        if (part->type == PART_RESISTOR || part->type == PART_CAPACITOR || part->type == PART_INDUCTOR)
+        if (component_electrical_type(part->type) == PART_RESISTOR || part->type == PART_CAPACITOR || part->type == PART_INDUCTOR)
         {
             char prefix = 'L';
-            if (part->type == PART_RESISTOR)
+            if (component_electrical_type(part->type) == PART_RESISTOR)
                 prefix = 'R';
             else if (part->type == PART_CAPACITOR)
                 prefix = 'C';
             snprintf(name, sizeof(name), "%c%d", prefix, i);
-            if (!alter(live, name, part->value, message, capacity))
+            if (!alter(live, name, component_effective_value(part), message, capacity))
                 return 0;
         }
         if (part->type == PART_LED)
@@ -246,9 +246,8 @@ static int read_currents(SpiceLive *live, const Workbench *bench, SimAutoResult 
     char vector[48];
     for (int i = 0; i < bench->part_count; ++i)
     {
-        if (bench->parts[i].type != PART_LED && bench->parts[i].type != PART_RESISTOR)
+        if (!component_current_vector(bench->parts[i].type, i, vector, sizeof(vector)))
             continue;
-        snprintf(vector, sizeof(vector), bench->parts[i].type == PART_LED ? "@d%d[id]" : "@r%d[i]", i);
         if (!spice_session_value(live->session, vector, &result->currents[i], result->message, sizeof(result->message)))
             return 0;
     }
@@ -382,7 +381,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         result->burnt_count += live->burnt[i] != 0;
     result->has_dc = 1;
     for (int i = 0; i < bench->part_count; ++i)
-        if ((bench->parts[i].type == PART_SOURCE || bench->parts[i].type == PART_CLOCK) && bench->parts[i].on)
+        if ((component_electrical_type(bench->parts[i].type) == PART_SOURCE || bench->parts[i].type == PART_CLOCK) && bench->parts[i].on)
             result->powered = 1;
     live->restarted = rebuilt;
     const char *status = "Tempo continuo: %.6g s.";

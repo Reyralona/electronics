@@ -82,7 +82,7 @@ int netlist_shorted_sources(const Workbench *b, unsigned char shorted[WORKBENCH_
     {
         PartType type = b->parts[i].type;
         int base = i * WORKBENCH_MAX_PINS;
-        if (type != PART_SOURCE && type != PART_CLOCK)
+        if (component_electrical_type(type) != PART_SOURCE && type != PART_CLOCK)
             continue;
         if (find_root(parents, base) != find_root(parents, base + 1))
             continue;
@@ -96,7 +96,7 @@ static int write_live_contacts(FILE *out, const Workbench *bench, int *parents, 
 {
     int primary = -1;
     for (int i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].type == PART_SOURCE)
+        if (component_electrical_type(bench->parts[i].type) == PART_SOURCE)
         {
             primary = i;
             break;
@@ -111,7 +111,7 @@ static int write_live_contacts(FILE *out, const Workbench *bench, int *parents, 
     for (int i = 0; i < bench->part_count; ++i)
     {
         const Part *part = &bench->parts[i];
-        if (part->type != PART_SOURCE && part->type != PART_CLOCK &&
+        if (component_electrical_type(part->type) != PART_SOURCE && part->type != PART_CLOCK &&
             part->type != PART_SWITCH && part->type != PART_BUTTON)
             continue;
         int a = find_root(parents, i * WORKBENCH_MAX_PINS);
@@ -168,7 +168,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         const ComponentInfo *info = component_info(type);
         if (!info || (info->primary && !component_value_valid(type, b->parts[i].value)))
             return NETLIST_INVALID;
-        switch (b->parts[i].type)
+        switch (component_electrical_type(b->parts[i].type))
         {
         case PART_SOURCE:
             if (source < 0)
@@ -219,7 +219,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
     if (!session && ground == positive)
         return NETLIST_INVALID;
     for (i = 0; i < b->part_count; ++i)
-        if (!session && (b->parts[i].type == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
+        if (!session && (component_electrical_type(b->parts[i].type) == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
             find_root(parents, i * WORKBENCH_MAX_PINS) == find_root(parents, i * WORKBENCH_MAX_PINS + 1))
             return NETLIST_INVALID;
     if (measure_wires)
@@ -235,7 +235,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             unite(paths, a, c);
         }
         for (i = 0; i < b->part_count; ++i)
-            if (!session && (b->parts[i].type == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
+            if (!session && (component_electrical_type(b->parts[i].type) == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
                 find_root(paths, i * WORKBENCH_MAX_PINS) == find_root(paths, i * WORKBENCH_MAX_PINS + 1))
                 return NETLIST_INVALID;
     }
@@ -261,7 +261,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                                                          : 0.0) < 0)
         return NETLIST_IO_ERROR;
     for (i = 0; i < b->part_count; ++i)
-        if (b->parts[i].type == PART_SOURCE && i != source)
+        if (component_electrical_type(b->parts[i].type) == PART_SOURCE && i != source)
         {
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
             if (fprintf(out, "Vsource%d %d %d %.17g\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1,
@@ -291,11 +291,11 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
-        if (b->parts[i].type == PART_RESISTOR)
+        if (component_electrical_type(b->parts[i].type) == PART_RESISTOR)
         {
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
             if (fprintf(out, "R%d %d %d %.17g\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1,
-                        b->parts[i].value) < 0)
+                        component_effective_value(&b->parts[i])) < 0)
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
@@ -457,9 +457,9 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             return NETLIST_IO_ERROR;
         for (i = 0; i < b->part_count; ++i)
         {
-            if (b->parts[i].type == PART_LED && fprintf(out, " @d%d[id]", i) < 0)
-                return NETLIST_IO_ERROR;
-            if (b->parts[i].type == PART_RESISTOR && fprintf(out, " @r%d[i]", i) < 0)
+            char vector[48];
+            if (component_current_vector(b->parts[i].type, i, vector, sizeof(vector)) &&
+                fprintf(out, " %s", vector) < 0)
                 return NETLIST_IO_ERROR;
         }
         if (fprintf(out, "\n.end\n") < 0)
@@ -474,7 +474,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         {
             PartType type = b->parts[probe.component].type;
             int component = probe.component;
-            if (type == PART_SOURCE)
+            if (component_electrical_type(type) == PART_SOURCE)
             {
                 if (component == source)
                     snprintf(vector, sizeof(vector), "@vsource[i]");
@@ -488,7 +488,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 else
                     snprintf(vector, sizeof(vector), "@vclock%d[i]", component);
             }
-            else if (type == PART_RESISTOR)
+            else if (component_electrical_type(type) == PART_RESISTOR)
                 snprintf(vector, sizeof(vector), "@r%d[i]", component);
             else if (type == PART_CAPACITOR)
                 snprintf(vector, sizeof(vector), "@c%d[i]", component);
@@ -541,13 +541,12 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         if (fprintf(out, ".control\nop\nprint v(%d) @vsource[i]\n", positive == ground ? 0 : positive + 1) < 0)
             return NETLIST_IO_ERROR;
         for (i = 0; i < b->part_count; ++i)
-            if (b->parts[i].type == PART_LED)
-                if (fprintf(out, "print @d%d[id]\n", i) < 0)
-                    return NETLIST_IO_ERROR;
-        for (i = 0; i < b->part_count; ++i)
-            if (b->parts[i].type == PART_RESISTOR)
-                if (fprintf(out, "print @r%d[i]\n", i) < 0)
-                    return NETLIST_IO_ERROR;
+        {
+            char vector[48];
+            if (component_current_vector(b->parts[i].type, i, vector, sizeof(vector)) &&
+                fprintf(out, "print %s\n", vector) < 0)
+                return NETLIST_IO_ERROR;
+        }
         if (measure_wires)
             for (i = 0; i < b->wire_count; ++i)
                 if (fprintf(out, "print @vwire%d[i]\n", i) < 0)
@@ -603,7 +602,7 @@ int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin)
     int parents[PIN_TOTAL], source = -1;
     build_nets(bench, parents, !measure_wires, 0, 0);
     for (int i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].type == PART_SOURCE)
+        if (component_electrical_type(bench->parts[i].type) == PART_SOURCE)
         {
             source = i;
             break;

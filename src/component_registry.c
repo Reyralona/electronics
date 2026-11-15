@@ -1,5 +1,6 @@
 #include "component_registry.h"
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 
 /* Preserve the existing model ranges; these are data per parameter, not physical ratings. */
@@ -139,4 +140,36 @@ const char *component_pin_marker(ComponentPinRole role)
     if ((unsigned)role >= sizeof(marks) / sizeof(marks[0]))
         return "?";
     return marks[role];
+}
+
+PartType component_electrical_type(PartType type)
+{
+    return type;
+}
+
+double component_effective_value(const Part *part)
+{
+    return part->value;
+}
+
+int component_effective_on(const Part *part)
+{
+    return part->on;
+}
+
+double component_default_control(PartType type)
+{
+    (void)type;
+    return .5;
+}
+
+int component_current_vector(PartType type, int index, char *vector, size_t capacity)
+{
+    if (type == PART_LED)
+        snprintf(vector, capacity, "@d%d[id]", index);
+    else if (component_electrical_type(type) == PART_RESISTOR)
+        snprintf(vector, capacity, "@r%d[i]", index);
+    else
+        return 0;
+    return 1;
 }

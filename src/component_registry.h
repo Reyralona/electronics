@@ -51,6 +51,11 @@ typedef struct
     const ComponentPinInfo *pins;
 } ComponentInfo;
 
+PartType component_electrical_type(PartType type);
+double component_effective_value(const Part *part);
+int component_effective_on(const Part *part);
+double component_default_control(PartType type);
+int component_current_vector(PartType type, int index, char *vector, size_t capacity);
 size_t component_registry_count(void);
 const ComponentInfo *component_info(PartType type);
 const ComponentInfo *component_from_legacy(int code, int version);

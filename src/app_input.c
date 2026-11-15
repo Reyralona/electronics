@@ -823,7 +823,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
             return;
         }
         if (!app->bench.parts[hit].group && clicks >= 2 &&
-            (app->bench.parts[hit].type == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
+            (component_electrical_type(app->bench.parts[hit].type) == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
              app->bench.parts[hit].type == PART_CLOCK))
         {
             bench_history_record(app->history, &app->bench);
