@@ -154,3 +154,30 @@ Nao tratar clipboard como conclusao desse pedido. Prioridade do usuario precede 
 que colocava registro de componentes antes de features. Preservar independencia do modelo/solver.
 Pesquisa oficial iniciada: manual ngspice 46, secao 2.6, confirma expansao de subcircuitos.
 Comparar encapsulamento no modelo (expandido para solver) com emissao .SUBCKT antes de implementar.
+
+## Estado mais recente: 0.19.0 - pedido de packing entregue
+15/11/2026: Ctrl+G encapsula selecao em corpo compacto com terminais P1..Pn; Ctrl+Shift+G abre.
+Biblioteca Blocos (terceira aba/Tab), oito slots em blocks/block-N.elec, instancias independentes.
+Slots F3 e clipboard da 0.18.0 preservam os grupos. Render/hit-test usam terminais expostos;
+solver continua recebendo as pecas originais. Layout interno preservado; contatos de fronteira
+com breadboards viram fios e grupos de instancias diferentes nao fazem contatos geometricos ocultos.
+
+Formato 16 agora adiciona grupos/membros/portas ao esquema 15. Leitura 1-15 preservada.
+A proposta antiga de formato 16 com IDs em string ainda NAO foi implementada: futura migracao
+precisa usar outro numero e preservar os blocos existentes. Codec em workbench_pack_file.c.
+Modelo em workbench_pack.c, comandos/biblioteca em app_packing.c. Construcao de Part usa campos
+nomeados para acomodar metadados sem iniciais incompletas; modelo segue sem SDL/OpenGL.
+
+Verificacao: ./build.ps1 -GuiTests passou (100 fases). test_workbench_pack com ngspice cobre
+DC antes/depois, independencia de instancias e alteracao de valor, transiente RC, contatos de
+fronteira e breadboards internas sobrepostas. Codec rejeita grupos vazios, portas duplicadas,
+indices invalidos e fio externo em pino oculto; destino preservado. Capacidade insuficiente
+para materializar contatos nao modifica a montagem. Movimentos invalidos nao corrompem grupos.
+Captura --capture-packed revisada em build/packed-preview.bmp: terminais e dois fios externos legiveis.
+
+Limites explicitos: sem blocos aninhados ou encaixe automatico de portas compactas na breadboard;
+conexoes externas por fios. Biblioteca 8 slots; 64 pecas/128 fios incluem membros ocultos.
+Pedido recente do usuario (slots, thumbnails, selecao/copia e packing basico) implementado.
+Meta 1.0 permanece ativa: registro/IDs estaveis, capacidades dinamicas, parametros/logs inspecionaveis,
+catalogo validado, passo real e distribuicao continuam pendentes. Proximo: retomar registro de
+componentes e preparar persistencia extensivel sem perder grupos ou formatos anteriores.

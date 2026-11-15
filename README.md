@@ -140,5 +140,36 @@ conjunto e os joelhos dos fios internos. Desfazer/refazer agrupa cada operacao. 
 continuam 64 componentes/128 fios; colagem que nao cabe falha sem alterar a montagem.
 
 A biblioteca possui abas Basicos/Digital e miniaturas desenhadas a partir das pecas reais.
-Packing em componente reutilizavel com portas ainda esta em implementacao; copiar um conjunto
-nao e apresentado como encapsulamento eletrico.
+A versao 0.19.0 acrescenta o packing descrito abaixo; copiar um conjunto continua sendo uma
+operacao separada de encapsular seus componentes.
+
+
+### Blocos reutilizaveis / packing (0.19.0)
+
+Selecione as pecas e pressione **Ctrl+G**. Elas passam a aparecer como uma unica peca compacta,
+com terminais P1, P2 etc. Sao expostos os terminais com ligacoes para fora da selecao e os pinos
+livres dos componentes (furos livres de breadboard nao viram centenas de portas). Para escolher
+uma fronteira especifica, ligue os terminais desejados a componentes externos antes de encapsular.
+Os terminais sao eletricos: sua funcao de entrada, saida ou alimentacao depende do circuito interno.
+
+O bloco e salvo automaticamente no primeiro dos oito slots livres em `blocks/block-N.elec`.
+Na aba **Blocos**, clique na miniatura e depois na bancada para colocar uma instancia independente.
+As instancias possuem pecas, valores e conexoes proprios. Ctrl+C/V tambem duplica blocos.
+Arrastar move o conjunto; Delete remove; Ctrl+Z/Y desfaz/refaz. **Ctrl+Shift+G** restaura o interior
+para editar. Recriar um bloco modificado gera outra entrada da biblioteca; nao atualiza instancias
+antigas automaticamente. Salvar um projeto ou slot preserva os blocos e seus terminais.
+
+O modelo eletrico mantem os componentes originais. Contatos implicitos que atravessam a fronteira
+com breadboards sao convertidos em fios explicitos; breadboards internas de instancias diferentes
+ficam isoladas mesmo se seus layouts ocultos coincidirem. Conexoes externas dos blocos usam fios;
+encaixe automatico dos terminais compactos em breadboards ainda nao esta implementado.
+
+Primeira versao: um nivel de encapsulamento. Abra blocos existentes antes de combinar seus interiores.
+O limite atual de 64 pecas/128 fios conta os componentes internos, e a biblioteca possui oito slots.
+Falhas por capacidade preservam a montagem e exibem a causa. Os arquivos novos usam formato 16,
+com grupos/membros/portas; formatos 1-15 continuam legiveis. A migracao para IDs estaveis de tipos
+continua pendente e exigira outra versao de formato.
+
+Validacao: `./build.ps1 -GuiTests` inclui testes de packing com ngspice quando o runtime esta instalado,
+comparando DC e transiente RC antes/depois, contatos de fronteira e instancias independentes.
+O autoteste GUI possui 100 fases. `--capture-packed` gera uma cena para revisao visual.

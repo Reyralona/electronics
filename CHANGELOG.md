@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.19.0
+
+- Ctrl+G cria blocos compactos com terminais expostos; Ctrl+Shift+G restaura o interior.
+- Aba Blocos salva oito templates locais e coloca instancias independentes; clipboard/historico suportam grupos.
+- Componentes e modelos eletricos internos preservados; contatos externos de breadboard materializados em fios.
+- Formato 16 grava grupos/membros/portas e preserva leitura dos formatos 1-15.
+- Testes DC/RC com ngspice, independencia/isolamento de instancias, codec estrito e falhas atomicas passaram.
+- Build estrito e 100 fases GUI passaram; captura de packing revisada.
+- Sem nesting ou encaixe automatico de blocos em breadboards; limites existentes continuam explicitos.
+
 ## 0.18.0
 
 - Nove save states de montagem/configuracoes em F3; Ctrl+S salva e Ctrl+L carrega o slot escolhido.

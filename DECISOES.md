@@ -137,3 +137,11 @@ salvar/reabrir e resultados de referencia. Primeiro nivel de packing; composicao
 tratada explicitamente, sem aceitar juncoes geometricas acidentais. Os limites atuais de componentes
 continuam contando os membros reais e sao comunicados quando uma instancia nao cabe.
 O pedido do usuario prioriza essa funcionalidade sobre a ordem anterior de registro de componentes.
+
+
+Packing validado em 0.19.0: formato 16 acrescenta grupos/membros/portas; a migracao de tipos para
+IDs persistentes proposta na revisao de qualidade ficou para outro numero de formato. Preservar
+leitura 1-16 nessa migracao. O primeiro nivel de encapsulamento foi validado com DC, RC e fronteiras
+de breadboard. Encapsular blocos ja encapsulados e recusado com motivo, para evitar unir layouts
+internos de instancias antes de definir uma representacao hierarquica segura. Sem modelo eletrico
+simplificado novo. Conexoes de portas compactas sao explicitas; nao presumir encaixe em breadboard.
