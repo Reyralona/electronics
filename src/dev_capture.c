@@ -7,14 +7,15 @@
 int dev_capture_requested(const char *argument)
 {
     static const char *modes[] = {
-        "--capture-packed",     "--capture",          "--capture-settings",   "--capture-projects",
-        "--capture-selection",  "--capture-analog",   "--capture-dc",         "--capture-current",
-        "--capture-edit",       "--capture-zoom",     "--capture-snap",       "--capture-board",
-        "--capture-rotation",   "--capture-colors",   "--capture-trace",      "--capture-trace-current",
-        "--capture-trace-wire", "--capture-and",      "--capture-logic",      "--capture-clock",
-        "--capture-play",       "--capture-led-on",   "--capture-led-off",    "--capture-dff",
-        "--capture-ci",         "--capture-example0", "--capture-example1",   "--capture-example2",
-        "--capture-burn",       "--capture-auto",     "--capture-auto-clock", "--capture-zoomout",
+        "--capture-pins",       "--capture-pin-led",       "--capture-packed",     "--capture",
+        "--capture-settings",   "--capture-projects",      "--capture-selection",  "--capture-analog",
+        "--capture-dc",         "--capture-current",       "--capture-edit",       "--capture-zoom",
+        "--capture-snap",       "--capture-board",         "--capture-rotation",   "--capture-colors",
+        "--capture-trace",      "--capture-trace-current", "--capture-trace-wire", "--capture-and",
+        "--capture-logic",      "--capture-clock",         "--capture-play",       "--capture-led-on",
+        "--capture-led-off",    "--capture-dff",           "--capture-ci",         "--capture-example0",
+        "--capture-example1",   "--capture-example2",      "--capture-burn",       "--capture-auto",
+        "--capture-auto-clock", "--capture-zoomout",
     };
     if (!argument)
         return 0;

@@ -344,7 +344,7 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
 {
     if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T)
     {
-        app->status = "Ctrl+Shift+G abre o bloco para editar seu interior.";
+        app->status = "Ctrl+Shift+G desempacota o bloco nesta bancada.";
         return;
     }
     switch (key)

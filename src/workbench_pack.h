@@ -2,6 +2,7 @@
 #define WORKBENCH_PACK_H
 #include "workbench_selection.h"
 #include <stddef.h>
+#define BENCH_GROUP_PIN_SPACING 20.0f
 
 int bench_pin_exposed(const Part *part, int pin);
 int bench_group_first(const Workbench *bench, int group);

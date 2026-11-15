@@ -46,7 +46,7 @@ int bench_group_ports(const Workbench *bench, int group)
 float bench_group_height(const Workbench *bench, int group)
 {
     int rows = (bench_group_ports(bench, group) + 1) / 2;
-    return rows > 2 ? rows * 14.0f + 14.0f : 44.0f;
+    return rows > 2 ? rows * BENCH_GROUP_PIN_SPACING + 14.0f : 44.0f;
 }
 
 void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y)
@@ -67,7 +67,7 @@ void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y
     int rows = index < left ? left : count - left;
     const BenchGroup *group = &bench->groups[part->group - 1];
     *x = group->x + (index < left ? -60.0f : 60.0f);
-    *y = group->y + (row - (rows - 1) * .5f) * 14.0f;
+    *y = group->y + (row - (rows - 1) * .5f) * BENCH_GROUP_PIN_SPACING;
 }
 
 static int same_pin(Pin a, Pin b)
@@ -168,7 +168,7 @@ int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char
             packed.parts[i].group = slot + 1;
     packed.groups[slot] = group;
     bench_replace(bench, &packed);
-    snprintf(message, capacity, "Bloco criado com %d terminais. Ctrl+Shift+G abre o interior.",
+    snprintf(message, capacity, "Bloco criado com %d terminais. Ctrl+Shift+G desempacota na bancada.",
              bench_group_ports(bench, slot + 1));
     return slot + 1;
 }

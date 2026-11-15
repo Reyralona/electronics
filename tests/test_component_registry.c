@@ -6,8 +6,9 @@
 int main(void)
 {
     /* This is the historical file contract, not the current enum's declaration order. */
-    static const char *legacy_ids[] = {"source", "switch", "led", "breadboard", "resistor", "capacitor",
-                                       "inductor", "and", "nand", "or", "xor", "not", "clock", "dff", "74hc00"};
+    static const char *legacy_ids[] = {"source",    "switch",   "led",   "breadboard", "resistor",
+                                       "capacitor", "inductor", "and",   "nand",       "or",
+                                       "xor",       "not",      "clock", "dff",        "74hc00"};
     for (int code = 0; code < 15; ++code)
     {
         const ComponentInfo *info = component_from_legacy(code, 16);
@@ -30,5 +31,16 @@ int main(void)
     assert(!component_has_flag(PART_BREADBOARD, COMPONENT_ROTATES));
     assert(component_has_flag(PART_DFF, COMPONENT_GATE_SYMBOL));
     assert(!component_has_flag(PART_74HC00, COMPONENT_GATE_SYMBOL));
+    assert(component_pin_info(PART_LED, 0)->role == PIN_ANODE);
+    assert(component_pin_info(PART_LED, 1)->role == PIN_CATHODE);
+    assert(component_pin_info(PART_RESISTOR, 0)->role == PIN_PASSIVE);
+    assert(component_pin_info(PART_DFF, 1)->role == PIN_CLOCK_INPUT);
+    assert(!strcmp(component_pin_info(PART_74HC00, 7)->name, "3Y"));
+    assert(component_pin_info(PART_74HC00, 7)->role == PIN_OUTPUT);
+    assert(component_pin_info(PART_74HC00, 8)->role == PIN_INPUT);
+    assert(component_pin_info(PART_74HC00, 6)->role == PIN_GROUND);
+    assert(component_pin_info(PART_74HC00, 13)->role == PIN_SUPPLY_POSITIVE);
+    assert(component_pin_info(PART_BREADBOARD, 419)->role == PIN_CONTACT);
+    assert(!component_pin_info(PART_74HC00, 14) && !component_pin_info(PART_LED, -1));
     return 0;
 }

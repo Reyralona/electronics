@@ -940,6 +940,60 @@ static void draw_workspace_contacts(const AppState *app)
     }
 }
 
+static void pin_role_color(ComponentPinRole role)
+{
+    if (role == PIN_SUPPLY_POSITIVE || role == PIN_ANODE)
+        color(.78f, .22f, .15f);
+    else if (role == PIN_SUPPLY_RETURN || role == PIN_GROUND || role == PIN_CATHODE)
+        color(.15f, .37f, .7f);
+    else if (role == PIN_INPUT || role == PIN_CLOCK_INPUT)
+        color(.65f, .36f, .1f);
+    else if (role == PIN_OUTPUT)
+        color(.08f, .48f, .28f);
+    else
+        color(.2f, .28f, .36f);
+}
+
+static char pin_role_symbol(ComponentPinRole role)
+{
+    static const char symbols[] = {'B', 'I', 'C', 'O', '+', '-', 'G', 'A', 'K', '.'};
+    return (unsigned)role < sizeof(symbols) / sizeof(symbols[0]) ? symbols[role] : '?';
+}
+
+static void draw_selected_pin_labels(const AppState *app, GLuint font)
+{
+    if (app->selected < 0)
+        return;
+    const Part *part = &app->bench.parts[app->selected];
+    if (part->group || part->type == PART_BREADBOARD)
+        return;
+    for (int pin = 0; pin < bench_pin_count(part->type); ++pin)
+    {
+        const ComponentPinInfo *info = component_pin_info(part->type, pin);
+        float x, y;
+        bench_pin_position(part, pin, &x, &y);
+        pin_role_color(info->role);
+        if (part->type == PART_74HC00)
+        {
+            char label[] = {pin_role_symbol(info->role), 0};
+            if (part->rotation % 2)
+                text(font, x + (x < part->x ? -16 : 10), y + 5, label);
+            else
+                text(font, x - 4, y + (y < part->y ? -9 : 20), label);
+        }
+        else
+        {
+            char label[40];
+            const char *marker = component_pin_marker(info->role);
+            if (!strcmp(info->name, marker))
+                snprintf(label, sizeof(label), "%s", info->name);
+            else
+                snprintf(label, sizeof(label), "%s %s", info->name, marker);
+            text(font, x + 8, y - 10, label);
+        }
+    }
+}
+
 static void draw_workspace_labels(const AppState *app, GLuint font)
 {
     int i;
@@ -955,35 +1009,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
             color(.13f, .22f, .27f);
             text(font, app->bench.parts[i].x - 25, app->bench.parts[i].y + 45, part_name(app->bench.parts[i].type) + 6);
         }
-    if (app->selected >= 0 && !app->bench.parts[app->selected].group &&
-        (is_gate(app->bench.parts[app->selected].type) || app->bench.parts[app->selected].type == PART_CLOCK))
-    {
-        int terminal;
-        color(.10f, .25f, .36f);
-        for (terminal = 0; terminal < bench_pin_count(app->bench.parts[app->selected].type); ++terminal)
-        {
-            float x, y;
-            char label[2] = {
-                app->bench.parts[app->selected].type == PART_DFF ? "DCQ"[terminal] : (char)('1' + terminal), 0};
-            bench_pin_position(&app->bench.parts[app->selected], terminal, &x, &y);
-            text(font, x + 8, y - 8, label);
-        }
-    }
-    if (app->selected >= 0 && !app->bench.parts[app->selected].group &&
-        app->bench.parts[app->selected].type == PART_74HC00)
-    {
-        static const int labels[] = {0, 6, 7, 13};
-        int n;
-        color(.1f, .25f, .36f);
-        for (n = 0; n < 4; ++n)
-        {
-            float x, y;
-            char label[16];
-            bench_pin_position(&app->bench.parts[app->selected], labels[n], &x, &y);
-            snprintf(label, sizeof(label), "%d", labels[n] + 1);
-            text(font, x - 5, y + (labels[n] < 7 ? -7 : 18), label);
-        }
-    }
+    draw_selected_pin_labels(app, font);
 }
 
 static void draw_workspace_probe(const AppState *app, GLuint font)
@@ -1057,11 +1083,14 @@ static void draw_groups(const AppState *app, GLuint font)
             bench_terminal_position(&app->bench, pin, &x, &y);
             color(.45f, .52f, .58f);
             line(x, y, x < group->x ? x + 10 : x - 10, y);
+            color(.18f, .23f, .28f);
+            circle(x, y, 8);
             color(.94f, .96f, .98f);
-            circle(x, y, 4);
-            color(.22f, .38f, .52f);
-            snprintf(label, sizeof(label), "P%d", index + 1);
-            text(font, x < group->x ? x - 24 : x + 8, y - 5, label);
+            circle(x, y, 5);
+            const ComponentPinInfo *info = component_pin_info(app->bench.parts[pin.component].type, pin.pin);
+            pin_role_color(info->role);
+            snprintf(label, sizeof(label), "%d %s", index + 1, component_pin_marker(info->role));
+            text(font, x < group->x ? x - 56 : x + 12, y - 8, label);
         }
     }
 }
@@ -1117,7 +1146,7 @@ static void draw_inspector(const AppState *app, GLuint font)
         snprintf(label, sizeof(label), "BLOCO %d  /  %d terminais eletricos", group,
                  bench_group_ports(&app->bench, group));
         text(font, 850, 105, label);
-        text(font, 850, 135, "Ctrl+Shift+G: abrir interior | Ctrl+C/V: copiar");
+        text(font, 850, 135, "Ctrl+Shift+G: desempacotar | Ctrl+C/V: copiar");
         return;
     }
     if (app->selected >= 0)
@@ -1287,12 +1316,49 @@ static void draw_projects(const AppState *app, GLuint font)
     text(font, 660, 529, "Carregar [Ctrl+L]");
 }
 
+static void draw_pin_help(const AppState *app, GLuint font)
+{
+    Pin pin = app->hovered_pin;
+    if (app->settings || app->projects_open || app->editing >= 0 || app->selecting_area ||
+        app->hover_revision != app->bench.revision || pin.component < 0 || pin.component >= app->bench.part_count)
+        return;
+    const Part *part = &app->bench.parts[pin.component];
+    const ComponentPinInfo *info = component_pin_info(part->type, pin.pin);
+    if (!info)
+        return;
+    float x, y;
+    bench_terminal_position(&app->bench, pin, &x, &y);
+    bench_view_to_screen(&app->view, x, y, &x, &y);
+    float panel_y = y > 480 ? 80 : 560;
+    color(.14f, .42f, .8f);
+    circle(x, y, fmaxf(9 * app->view.zoom, 6));
+    color(.96f, .98f, 1);
+    circle(x, y, fmaxf(5 * app->view.zoom, 3));
+    color(.78f, .85f, .91f);
+    rect(240, panel_y, 588, 84);
+    color(.98f, .99f, 1);
+    rect(238, panel_y - 2, 588, 84);
+    char label[128];
+    if (part->group)
+        snprintf(label, sizeof(label), "Bloco %d > %s / pino %d (%s)", part->group, part_name(part->type), pin.pin + 1,
+                 info->name);
+    else
+        snprintf(label, sizeof(label), "%s / pino %d (%s)", part_name(part->type), pin.pin + 1, info->name);
+    color(.14f, .22f, .28f);
+    text(font, 250, panel_y + 21, label);
+    pin_role_color(info->role);
+    text(font, 250, panel_y + 44, component_pin_role_label(info->role));
+    color(.24f, .3f, .35f);
+    text(font, 250, panel_y + 68, "Funcao do terminal; nao e uma medicao de tensao.");
+}
+
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
     draw_chrome(app, font, width, height);
     draw_workspace(app, font, width, height);
     draw_inspector(app, font);
     draw_status(app, font);
+    draw_pin_help(app, font);
     draw_settings(app, font);
     draw_value_editor(app, font);
     draw_projects(app, font);

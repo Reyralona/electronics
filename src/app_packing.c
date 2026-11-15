@@ -43,8 +43,7 @@ static int store_block(AppState *app)
             if (!bench_selection_copy(&app->bench, &app->selection, &app->library_template) ||
                 !workbench_save_project(path, &app->library_template.bench, &settings))
             {
-                snprintf(app->selection_status, sizeof(app->selection_status),
-                         "Falha ao gravar bloco: %s", path);
+                snprintf(app->selection_status, sizeof(app->selection_status), "Falha ao gravar bloco: %s", path);
                 return -1;
             }
             app->library_available[i] = 1;
@@ -68,7 +67,7 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
             app->status = "Interior restaurado. Os fios externos permanecem ligados aos terminais originais.";
         }
         else
-            app->status = "Selecione um bloco para abrir seu interior.";
+            app->status = "Selecione um bloco para desempacotar.";
         return 1;
     }
     if (!bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status)))
@@ -83,7 +82,7 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
     else if (!stored)
         app->status = "Bloco criado; biblioteca cheia (8 slots). Ctrl+C/V ainda copia o bloco.";
     else
-        app->status = "Bloco criado e salvo na aba Blocos [Tab]. Ctrl+Shift+G abre o interior.";
+        app->status = "Bloco criado e salvo na aba Blocos [Tab]. Ctrl+Shift+G desempacota na bancada.";
     app->palette_page = 2;
     app->pending.component = -1;
     app->route_count = 0;
@@ -141,5 +140,5 @@ void app_packing_place(AppState *app, float x, float y)
     app->selected = before.part_count;
     app->selected_wire = -1;
     app->packed_placing = 0;
-    app->status = "Bloco colocado. Conecte seus terminais; Ctrl+Shift+G abre o interior.";
+    app->status = "Bloco colocado. Conecte seus terminais; Ctrl+Shift+G desempacota na bancada.";
 }

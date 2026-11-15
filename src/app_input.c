@@ -704,6 +704,8 @@ static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Ev
         return;
     float x = event->motion.x * 1280.0f / width, y = event->motion.y * 720.0f / height;
     bench_view_to_world(&app->view, x, y, &app->mouse_world.x, &app->mouse_world.y);
+    app->mouse_screen = (WirePoint){x, y};
+    app->mouse_position_valid = 1;
     if (!app->selecting_area)
         return;
     app->area_end = app->mouse_world;
@@ -716,6 +718,19 @@ static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Ev
              "%d componentes selecionados. Ctrl+C/X/V; Delete remove.",
              bench_selection_count(&app->selection, &app->bench));
     app->status = app->selection_status;
+}
+
+/* Coalesce hover hit testing to one pass per frame; drag/model events still all execute. */
+static void input_refresh_hover(AppState *app)
+{
+    app->hovered_pin = (Pin){-1, -1};
+    app->hover_revision = app->bench.revision;
+    float x = app->mouse_screen.x, y = app->mouse_screen.y;
+    if (x < 220 || y < 70 || y >= 660 || app->settings || app->projects_open || app->editing >= 0 ||
+        app->selecting_area || app->panning || app->dragging >= 0 || app->drag_wire >= 0)
+        return;
+    bench_view_to_world(&app->view, x, y, &x, &y);
+    app->hovered_pin = input_pin_at(&app->bench, x, y);
 }
 
 /* Dispatch in priority order: text editing consumes input before workspace interaction. */
@@ -785,4 +800,6 @@ void app_input_poll(AppState *app, SDL_Window *window)
             input_drag_part(app, window, &e);
         }
     }
+    if (app->mouse_position_valid)
+        input_refresh_hover(app);
 }

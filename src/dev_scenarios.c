@@ -203,6 +203,21 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         app->library_available[0] = 1;
         app->status = "Fonte externa alimenta resistor e LED encapsulados; terminais preservados.";
     }
+    if (argc > 1 && strcmp(argv[1], "--capture-pins") == 0)
+    {
+        if (!workbench_example_create(2, &app->bench, &app->selected))
+            return 1;
+        app->hovered_pin = (Pin){2, 13};
+        app->hover_revision = app->bench.revision;
+        app->status = "Pinagem do 74HC00: I entrada, O saida, G terra, + alimentacao. Aponte para um terminal.";
+    }
+    if (argc > 1 && strcmp(argv[1], "--capture-pin-led") == 0)
+    {
+        app->selected = 1;
+        app->hovered_pin = (Pin){1, 1};
+        app->hover_revision = app->bench.revision;
+        app->status = "LED: A anodo, K catodo. A funcao construtiva e separada da tensao medida.";
+    }
     return 0;
 }
 
@@ -606,6 +621,25 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_drag_finish(window, 660, 320);
     else if (app->selftest_phase == 99)
         queued = dev_test_key(window, SDLK_F3);
+    else if (app->selftest_phase == 100)
+        queued = dev_test_key(window, SDLK_ESCAPE);
+    else if (app->selftest_phase == 101)
+    {
+        app->bench = (Workbench){0};
+        bench_add(&app->bench, PART_LED, 300, 200);
+        app->selected = 0;
+        app->show_trace = 0;
+        bench_selection_clear(&app->selection);
+        queued = dev_test_drag_finish(window, 251, 200);
+    }
+    else if (app->selftest_phase == 102)
+        queued = dev_test_drag_finish(window, 349, 200);
+    else if (app->selftest_phase == 103)
+        queued = dev_test_drag_finish(window, 700, 400);
+    else if (app->selftest_phase == 104)
+        queued = dev_test_key(window, SDLK_F1);
+    else if (app->selftest_phase == 105)
+        queued = dev_test_drag_finish(window, 251, 200);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -815,13 +849,25 @@ void dev_scenario_validate(AppState *app)
         valid = app->bench.groups[0].x == 620 && app->bench.groups[0].y == 280;
     else if (app->selftest_phase == 99)
         valid = app->projects_open;
+    else if (app->selftest_phase == 100)
+        valid = !app->projects_open;
+    else if (app->selftest_phase == 101)
+        valid = app->hovered_pin.component == 0 && app->hovered_pin.pin == 0;
+    else if (app->selftest_phase == 102)
+        valid = app->hovered_pin.component == 0 && app->hovered_pin.pin == 1;
+    else if (app->selftest_phase == 103)
+        valid = app->hovered_pin.component == -1;
+    else if (app->selftest_phase == 104)
+        valid = app->settings;
+    else if (app->selftest_phase == 105)
+        valid = app->hovered_pin.component == -1 && app->settings;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d.\n", app->selftest_phase);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 100)
+    if (++app->selftest_phase == 106)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

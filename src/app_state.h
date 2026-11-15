@@ -13,7 +13,8 @@
 typedef struct
 {
     Workbench bench;
-    Pin pending;
+    Pin pending, hovered_pin;
+    uint64_t hover_revision;
     int selected, placing, dragging, running;
     WirePoint route[WIRE_MAX_KNEES];
     int route_count, drag_wire, drag_knee;
@@ -38,7 +39,8 @@ typedef struct
     BenchClipboard clipboard;
     int selecting_area, projects_open, save_slot;
     int saved_slots[PROJECT_SLOT_COUNT];
-    WirePoint area_start, area_end, mouse_world;
+    WirePoint area_start, area_end, mouse_world, mouse_screen;
+    int mouse_position_valid;
     char selection_status[160];
     BenchClipboard library_template;
     int packed_placing, library_index;

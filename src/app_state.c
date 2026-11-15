@@ -6,6 +6,7 @@ void app_state_init(AppState *app)
 {
     memset(app, 0, sizeof(*app));
     app->pending = (Pin){-1, -1};
+    app->hovered_pin = (Pin){-1, -1};
     app->selected = -1;
     app->mouse_world = (WirePoint){500, 300};
     app->placing = -1;
