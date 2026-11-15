@@ -6,19 +6,50 @@
 #include <errno.h>
 #include <stdlib.h>
 
+void bench_part_clear(Part *part)
+{
+    if (!part)
+        return;
+    if (part->terminals)
+    {
+        for (size_t pin = 0; pin < part->terminals->pin_count; ++pin)
+            bench_path_clear(&part->terminals->paths[pin]);
+        free(part->terminals->paths);
+        free(part->terminals);
+    }
+    memset(part, 0, sizeof(*part));
+}
+
 int bench_part_clone(Part *destination, const Part *source)
 {
     if (!destination || !source)
         return 0;
-    if (destination != source)
-        *destination = *source;
+    if (destination == source)
+        return 1;
+    Part copy = *source;
+    copy.terminals = NULL;
+    if (source->terminals)
+    {
+        copy.terminals = calloc(1, sizeof(*copy.terminals));
+        if (!copy.terminals)
+            return 0;
+        copy.terminals->pin_count = source->terminals->pin_count;
+        copy.terminals->paths = calloc(copy.terminals->pin_count, sizeof(BenchPath));
+        if (!copy.terminals->paths)
+        {
+            free(copy.terminals);
+            return 0;
+        }
+        for (size_t i = 0; i < copy.terminals->pin_count; ++i)
+            if (bench_path_clone(&copy.terminals->paths[i], &source->terminals->paths[i]) != BENCH_PATH_OK)
+            {
+                bench_part_clear(&copy);
+                return 0;
+            }
+    }
+    bench_part_clear(destination);
+    *destination = copy;
     return 1;
-}
-
-void bench_part_clear(Part *part)
-{
-    if (part)
-        memset(part, 0, sizeof(*part));
 }
 
 void bench_part_move(Part *destination, Part *source)

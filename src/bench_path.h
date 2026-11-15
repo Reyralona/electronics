@@ -21,6 +21,12 @@ typedef struct
     size_t capacity;
 } BenchPath;
 
+struct BenchTerminals
+{
+    size_t pin_count;
+    BenchPath *paths;
+};
+
 typedef struct
 {
     size_t segment; /* Index of the first vertex of the selected segment. */

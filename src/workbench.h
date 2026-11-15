@@ -38,6 +38,7 @@ typedef enum
 typedef struct
 {
     PartType type;
+    struct BenchTerminals *terminals; /* Owned; use part clone/clear, never owning assignment. */
     float x, y;
     int on;
     double value;
