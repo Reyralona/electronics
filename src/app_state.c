@@ -25,6 +25,8 @@ void app_state_init(AppState *app)
     app->history = calloc(1, sizeof(*app->history));
     app->view = (BenchView){1, 0, 0};
     app->editing = -1;
+    app->name_target_group = -1;
+    app->editor_library_slot = -1;
     app->status = "Escolha um componente na biblioteca e clique na bancada.";
     app->sim.sim_running = 1;
     app->sim.trace_wire = -1;

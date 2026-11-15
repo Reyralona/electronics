@@ -1,4 +1,5 @@
 #include "app_commands.h"
+#include "app_editor.h"
 #include "app_editing.h"
 #include "app_packing.h"
 #include "app_palette.h"
@@ -372,6 +373,8 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
 
 void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
+    if (app_editor_key(app, window, key, mod))
+        return;
     if (!app->projects_open && app_packing_key(app, key, mod))
         return;
     if (app_editing_key(app, key, mod))

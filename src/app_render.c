@@ -1,5 +1,7 @@
 #include <windows.h>
 #include "app_render.h"
+#include "app_editor.h"
+#include "app_text_utf8.h"
 #include "app_layout.h"
 #include "app_palette.h"
 #include "component_registry.h"
@@ -147,6 +149,12 @@ static void text(GLuint font, float x, float y, const char *str)
     glRasterPos2f(x, y);
     glListBase(font);
     glCallLists((GLsizei)strlen(str), GL_UNSIGNED_BYTE, str);
+}
+
+static void name_text(GLuint font, float x, float y, const char *name, int maximum_width)
+{
+    if (!app_text_utf8(x, y, name, maximum_width))
+        text(font, x, y, "[texto indisponivel]");
 }
 
 static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int pin, int current)
@@ -640,10 +648,27 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     color(.97f, .98f, .98f);
     rect(0, 0, 1280, 68);
     color(.11f, .2f, .27f);
-    text(font, 24, 42, "ELECTRONICS  /  BANCADA EXPERIMENTAL");
-    text(font, 510, 42, "Projetos [F3]");
-    text(font, 700, 42, "Exemplos [F2]");
-    text(font, 880, 42, "Configuracoes [F1]");
+    if (app->editor_parent)
+    {
+        char context[BENCH_GROUP_NAME_CAPACITY + 40];
+        snprintf(context, sizeof(context), "EDITOR ISOLADO > %s%s", app->editor_name,
+                 app_editor_dirty(app) ? " *" : "");
+        name_text(font, 24, 42, context, 310);
+        color(.75f, .89f, .8f);
+        rect(350, 12, 140, 44);
+        color(.12f, .28f, .2f);
+        text(font, 360, 41, "Aplicar ao chip");
+        text(font, 510, 42, "Renomear [F4]");
+        text(font, 700, 42, "Salvar modelo");
+        text(font, 880, 42, "Voltar [Esc]");
+    }
+    else
+    {
+        text(font, 24, 42, "ELECTRONICS  /  BANCADA EXPERIMENTAL");
+        text(font, 510, 42, "Projetos [F3]");
+        text(font, 700, 42, "Exemplos [F2]");
+        text(font, 880, 42, "Configuracoes [F1]");
+    }
     play_button_draw(font, app->sim.sim_running, app->dc_job.thread != NULL, app->sim.auto_failed,
                      app->sim.burnt_count);
     color(.98f, .985f, .99f);
@@ -671,7 +696,10 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
             char label[48];
             snprintf(label, sizeof(label), app->library_available[i] ? "Bloco %d" : "Criar: Ctrl+G", i + 1);
             color(.16f, .22f, .26f);
-            text(font, 76, y + 36, label);
+            if (app->library_available[i] && app->library_names[i][0])
+                name_text(font, 76, y + 36, app->library_names[i], 122);
+            else
+                text(font, 76, y + 36, label);
             continue;
         }
         PartType type = palette_part(app->palette_page, i);
@@ -1070,7 +1098,7 @@ static void draw_groups(const AppState *app, GLuint font)
         char label[40];
         snprintf(label, sizeof(label), "Bloco %d", g + 1);
         color(.9f, .94f, .98f);
-        text(font, group->x - 30, group->y + 5, label);
+        name_text(font, group->x - 41, group->y + 5, group->name[0] ? group->name : label, 82);
         if (lit)
         {
             color(.3f, .95f, .45f);
@@ -1139,14 +1167,16 @@ static void draw_inspector(const AppState *app, GLuint font)
     if (app->selected >= 0 && app->bench.parts[app->selected].group)
     {
         int group = app->bench.parts[app->selected].group;
-        char label[100];
         color(.97f, .98f, .99f);
         rect(840, 80, 420, 70);
         color(.12f, .23f, .3f);
-        snprintf(label, sizeof(label), "BLOCO %d  /  %d terminais eletricos", group,
-                 bench_group_ports(&app->bench, group));
-        text(font, 850, 105, label);
-        text(font, 850, 135, "Ctrl+Shift+G: desempacotar | Ctrl+C/V: copiar");
+        name_text(font, 850, 105, app->bench.groups[group - 1].name, 395);
+        color(.8f, .89f, .97f);
+        rect(850, 116, 194, 28);
+        rect(1050, 116, 194, 28);
+        color(.12f, .28f, .45f);
+        text(font, 858, 136, "Ver interior [Enter]");
+        text(font, 1058, 136, "Renomear [F4]");
         return;
     }
     if (app->selected >= 0)
@@ -1272,15 +1302,29 @@ static void draw_value_editor(const AppState *app, GLuint font)
 {
     if (app->editing >= 0)
     {
-        char reading[110];
+        char reading[BENCH_GROUP_NAME_CAPACITY + 8];
         color(.62f, .68f, .72f);
         rect(446, 268, 400, 146);
         color(.98f, .98f, .99f);
         rect(440, 262, 400, 146);
         color(.14f, .22f, .28f);
-        text(font, 460, 294, app->editing >= WORKBENCH_MAX_COMPONENTS ? "TEMPO EM SEGUNDOS" : "VALOR EM UNIDADES SI");
+        const char *title = "VALOR EM UNIDADES SI";
+        if (app->editing == APP_EDIT_GROUP_NAME)
+            title = "NOME DO CHIP";
+        else if (app->editing >= WORKBENCH_MAX_COMPONENTS)
+            title = "TEMPO EM SEGUNDOS";
+        text(font, 460, 294, title);
+        if (app->editing == APP_EDIT_GROUP_NAME && app->edit_select_all)
+        {
+            color(.78f, .88f, .98f);
+            rect(458, 315, 360, 26);
+            color(.14f, .22f, .28f);
+        }
         snprintf(reading, sizeof(reading), "> %s_", app->edit_text);
-        text(font, 460, 336, reading);
+        if (app->editing == APP_EDIT_GROUP_NAME)
+            name_text(font, 460, 336, reading, 355);
+        else
+            text(font, 460, 336, reading);
         text(font, 460, 380, "Enter confirma | Esc cancela");
     }
 }
@@ -1352,6 +1396,28 @@ static void draw_pin_help(const AppState *app, GLuint font)
     text(font, 250, panel_y + 68, "Funcao do terminal; nao e uma medicao de tensao.");
 }
 
+static void draw_editor_confirmation(const AppState *app, GLuint font)
+{
+    if (!app->editor_confirm_close)
+        return;
+    color(.6f, .65f, .7f);
+    rect(324, 256, 640, 190);
+    color(.98f, .98f, .99f);
+    rect(320, 250, 640, 190);
+    color(.14f, .22f, .28f);
+    text(font, 350, 285, "ALTERACOES NAO SALVAS NO EDITOR ISOLADO");
+    name_text(font, 350, 316, app->editor_name, 560);
+    text(font, 350, 345, "A bancada externa permanece preservada.");
+    static const char *labels[] = {"Salvar e voltar", "Descartar", "Cancelar"};
+    for (int i = 0; i < 3; ++i)
+    {
+        color(.78f, .88f, .97f);
+        rect(360 + 190 * i, 370, 180, 45);
+        color(.12f, .28f, .45f);
+        text(font, 372 + 190 * i, 399, labels[i]);
+    }
+}
+
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
     draw_chrome(app, font, width, height);
@@ -1362,4 +1428,5 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_settings(app, font);
     draw_value_editor(app, font);
     draw_projects(app, font);
+    draw_editor_confirmation(app, font);
 }

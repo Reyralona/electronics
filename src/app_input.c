@@ -1,4 +1,6 @@
 #include "app_input.h"
+#include "app_editor.h"
+#include "workbench_group_name.h"
 #include "app_commands.h"
 #include "app_editing.h"
 #include "app_packing.h"
@@ -82,6 +84,20 @@ static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event
 {
     (void)window;
 
+    if (app->editing == APP_EDIT_GROUP_NAME)
+    {
+        const char *input = event->text.text;
+        size_t before = app->edit_select_all ? 0 : strlen(app->edit_text);
+        if ((!bench_group_name_valid(input) && strspn(input, " ") != strlen(input)) ||
+            before + strlen(input) >= sizeof(app->edit_text))
+        {
+            app->status = "Nome invalido ou longo demais; limite atual de 127 bytes UTF-8.";
+            return;
+        }
+        memcpy(app->edit_text + before, input, strlen(input) + 1);
+        app->edit_select_all = 0;
+        return;
+    }
     const char *p = event->text.text;
     size_t length = strlen(app->edit_text);
     while (*p && length + 1 < sizeof(app->edit_text))
@@ -96,6 +112,42 @@ static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event
 static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
 
+    if (app->editing == APP_EDIT_GROUP_NAME)
+    {
+        if (event->key.key == SDLK_ESCAPE)
+        {
+            app->editing = -1;
+            app->name_target_group = -1;
+            SDL_StopTextInput(window);
+            app->status = "Renomeacao cancelada.";
+        }
+        else if (event->key.key == SDLK_A && (event->key.mod & SDL_KMOD_CTRL))
+            app->edit_select_all = 1;
+        else if (event->key.key == SDLK_BACKSPACE)
+        {
+            size_t length = strlen(app->edit_text);
+            if (app->edit_select_all)
+                length = 0;
+            else if (length)
+            {
+                --length;
+                while (length && ((unsigned char)app->edit_text[length] & 0xc0) == 0x80)
+                    --length;
+            }
+            app->edit_text[length] = 0;
+            app->edit_select_all = 0;
+        }
+        else if (event->key.key == SDLK_RETURN || event->key.key == SDLK_KP_ENTER)
+        {
+            if (app_editor_set_name(app, app->edit_text))
+            {
+                app->editing = -1;
+                app->name_target_group = -1;
+                SDL_StopTextInput(window);
+            }
+        }
+        return;
+    }
     if (event->key.key == SDLK_ESCAPE)
     {
         app->editing = -1;
@@ -293,6 +345,8 @@ static int input_projects(AppState *app, float x, float y)
 
 static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
 {
+    if (app_editor_click(app, window, x, y))
+        return 1;
     if (input_projects(app, x, y))
         return 1;
     if (x >= 700 && x < 850 && y < 68)
@@ -727,7 +781,7 @@ static void input_refresh_hover(AppState *app)
     app->hover_revision = app->bench.revision;
     float x = app->mouse_screen.x, y = app->mouse_screen.y;
     if (x < 220 || y < 70 || y >= 660 || app->settings || app->projects_open || app->editing >= 0 ||
-        app->selecting_area || app->panning || app->dragging >= 0 || app->drag_wire >= 0)
+        app->selecting_area || app->editor_confirm_close || app->panning || app->dragging >= 0 || app->drag_wire >= 0)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
     app->hovered_pin = input_pin_at(&app->bench, x, y);
@@ -739,6 +793,9 @@ void app_input_poll(AppState *app, SDL_Window *window)
     SDL_Event e;
     while (SDL_PollEvent(&e))
     {
+        /* Finish draining this context before routing to another editor. */
+        if (app->editor_open_requested || app->editor_close_requested)
+            continue;
         if (e.type == SDL_EVENT_MOUSE_MOTION)
             input_mouse_position(app, window, &e);
         if (e.type == SDL_EVENT_QUIT)
@@ -763,16 +820,16 @@ void app_input_poll(AppState *app, SDL_Window *window)
             continue;
         else if (e.type == SDL_EVENT_MOUSE_MOTION && app->selecting_area)
             continue;
-        else if (e.type == SDL_EVENT_MOUSE_WHEEL && !app->settings && app->editing < 0)
+        else if (e.type == SDL_EVENT_MOUSE_WHEEL && !app->settings && !app->editor_confirm_close && app->editing < 0)
         {
             input_zoom(app, window, &e);
         }
-        else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button == SDL_BUTTON_RIGHT && !app->settings &&
+        else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button == SDL_BUTTON_RIGHT && !app->settings && !app->editor_confirm_close &&
                  app->editing < 0)
         {
             input_rotate(app, window, &e);
         }
-        else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button == SDL_BUTTON_MIDDLE && !app->settings &&
+        else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button == SDL_BUTTON_MIDDLE && !app->settings && !app->editor_confirm_close &&
                  app->editing < 0)
         {
             input_pan_start(app, window, &e);

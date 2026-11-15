@@ -126,6 +126,7 @@ int bench_selection_paste(Workbench *bench, BenchSelection *selection, const Ben
     for (int i = 0; i < copy->part_count; ++i)
     {
         Part part = copy->parts[i];
+        part.edit_origin = 0;
         part.x += dx;
         part.y += dy;
         if (part.group)

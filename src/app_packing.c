@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 static void block_path(const AppState *app, int index, char *path, size_t capacity)
 {
@@ -17,39 +18,61 @@ void app_packing_refresh(AppState *app)
     {
         char path[128];
         block_path(app, i, path, sizeof(path));
-        FILE *file = fopen(path, "r");
-        app->library_available[i] = file != NULL;
-        if (file)
-            fclose(file);
+        struct _stat metadata;
+        app->library_available[i] = _stat(path, &metadata) == 0 || errno != ENOENT;
+        snprintf(app->library_names[i], sizeof(app->library_names[i]), "Bloco %d", i + 1);
+        if (app->library_available[i])
+        {
+            Workbench candidate = {0};
+            WorkbenchSettings settings;
+            if (workbench_load_project(path, &candidate, &settings) && candidate.part_count && candidate.parts[0].group)
+                memcpy(app->library_names[i], candidate.groups[candidate.parts[0].group - 1].name,
+                       sizeof(app->library_names[i]));
+            else
+                strcpy(app->library_names[i], "Arquivo indisponivel");
+        }
     }
 }
 
-static int store_block(AppState *app)
+int app_packing_store_model(AppState *app, const Workbench *model, int *slot)
 {
     const char *directory = app->selftest ? "build/test-blocks" : "blocks";
     if (_mkdir(directory) != 0 && errno != EEXIST)
     {
-        snprintf(app->selection_status, sizeof(app->selection_status), "Bloco criado; falha ao criar biblioteca: %s",
+        snprintf(app->selection_status, sizeof(app->selection_status), "Falha ao criar biblioteca: %s",
                  strerror(errno));
         return -1;
     }
     app_packing_refresh(app);
-    for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
-        if (!app->library_available[i])
-        {
-            char path[128];
-            block_path(app, i, path, sizeof(path));
-            WorkbenchSettings settings = workbench_settings_default();
-            if (!bench_selection_copy(&app->bench, &app->selection, &app->library_template) ||
-                !workbench_save_project(path, &app->library_template.bench, &settings))
+    int target = *slot;
+    if (target < 0)
+        for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
+            if (!app->library_available[i])
             {
-                snprintf(app->selection_status, sizeof(app->selection_status), "Falha ao gravar bloco: %s", path);
-                return -1;
+                target = i;
+                break;
             }
-            app->library_available[i] = 1;
-            return 1;
-        }
-    return 0;
+    if (target < 0 || target >= BLOCK_LIBRARY_SLOTS)
+        return 0;
+    char path[128];
+    block_path(app, target, path, sizeof(path));
+    WorkbenchSettings settings = workbench_settings_default();
+    if (!workbench_save_project(path, model, &settings))
+    {
+        snprintf(app->selection_status, sizeof(app->selection_status), "Falha ao gravar bloco: %s", path);
+        return -1;
+    }
+    *slot = target;
+    app_packing_refresh(app);
+    return 1;
+}
+
+static int store_block(AppState *app)
+{
+    if (!bench_selection_copy(&app->bench, &app->selection, &app->library_template))
+        return -1;
+    int slot = -1;
+    return app_packing_store_model(app, &app->library_template.bench, &slot);
 }
 
 int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)

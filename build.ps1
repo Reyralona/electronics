@@ -13,13 +13,13 @@ if (Test-Path (Join-Path $toolchain 'SDL3.dll')) {
         }
     }
 }
-& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/app_commands.c src/app_editing.c src/app_packing.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_render.c src/app_palette.c src/app_state.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench.c src/component_registry.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
+& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_render.c src/app_palette.c src/app_state.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench.c src/component_registry.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_component_registry.c src/component_registry.c -o build/test_component_registry.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_component_registry.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_revision.c src/workbench.c src/component_registry.c src/workbench_history.c src/workbench_file.c src/workbench_pack_file.c -o build/test_workbench_revision.exe
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_revision.c src/workbench.c src/component_registry.c src/workbench_history.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c -o build/test_workbench_revision.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_workbench_revision.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -27,7 +27,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_workbench_selection.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_pack.c src/workbench_examples.c src/workbench_pack.c src/workbench_selection.c src/workbench_file.c src/workbench_pack_file.c src/spice_process.c src/netlist.c src/workbench.c src/component_registry.c -o build/test_workbench_pack.exe
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_pack.c src/workbench_examples.c src/workbench_pack.c src/workbench_selection.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/spice_process.c src/netlist.c src/workbench.c src/component_registry.c -o build/test_workbench_pack.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path 'build/spice-local/ucrt64/bin/ngspice_con.exe') {
     & ./build/test_workbench_pack.exe 'build/spice-local/ucrt64/bin/ngspice_con.exe'
@@ -35,11 +35,23 @@ if (Test-Path 'build/spice-local/ucrt64/bin/ngspice_con.exe') {
     & ./build/test_workbench_pack.exe
 }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_group_edit.c src/workbench_group_edit.c src/workbench_group_name.c src/workbench_pack.c src/workbench_selection.c src/workbench_file.c src/workbench_pack_file.c src/spice_process.c src/netlist.c src/workbench.c src/component_registry.c -o build/test_workbench_group_edit.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (Test-Path 'build/spice-local/ucrt64/bin/ngspice_con.exe') {
+    & ./build/test_workbench_group_edit.exe 'build/spice-local/ucrt64/bin/ngspice_con.exe'
+} else {
+    & ./build/test_workbench_group_edit.exe
+}
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_sim_state.c src/sim_state.c src/spice_trace.c src/workbench.c src/component_registry.c -o build/test_sim_state.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_sim_state.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_commands.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_packing.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_history.c src/spice_job.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c src/component_registry.c -o build/test_app_commands.exe -lSDL3
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_editor.c src/app_simulation.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c src/component_registry.c -o build/test_app_editor.exe -lSDL3
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_app_editor.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_commands.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c src/component_registry.c -o build/test_app_commands.exe -lSDL3
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_app_commands.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -56,7 +68,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_workbench.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_file.c src/workbench_file.c src/workbench_pack_file.c src/workbench.c src/component_registry.c -o build/test_workbench_file.exe
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_file.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench.c src/component_registry.c -o build/test_workbench_file.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_workbench_file.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

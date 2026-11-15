@@ -24,7 +24,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 16\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 17\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -63,7 +63,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         return 0;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 16) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 17) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         return 0;
     for (i = 0; i < parts; ++i)
@@ -130,7 +130,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
                 return 0;
         }
     }
-    if (version >= 16 && !bench_groups_read(f, &b))
+    if (version >= 16 && !bench_groups_read(f, &b, version))
         return 0;
     if (version >= 10)
     {

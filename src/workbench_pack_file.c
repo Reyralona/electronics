@@ -1,4 +1,5 @@
 #include "workbench_pack_file.h"
+#include "workbench_group_name.h"
 #include <math.h>
 #include <string.h>
 #define PROJECT_COORDINATE_LIMIT 100000.0f
@@ -6,6 +7,18 @@
 static int exposed(const Part *part, int pin)
 {
     return (part->exposed[pin / 64] & (UINT64_C(1) << (pin % 64))) != 0;
+}
+
+static int write_group(FILE *file, int index, const BenchGroup *group)
+{
+    char fallback[BENCH_GROUP_NAME_CAPACITY];
+    snprintf(fallback, sizeof(fallback), "Bloco %d", index + 1);
+    const char *name = group->name[0] ? group->name : fallback;
+    if (!bench_group_name_valid(name))
+        return 0;
+    size_t length = strlen(name);
+    return fprintf(file, "group %d %.9g %.9g %zu\n", index + 1, group->x, group->y, length) >= 0 &&
+           fwrite(name, 1, length, file) == length && fputc('\n', file) != EOF;
 }
 
 int bench_groups_write(FILE *file, const Workbench *bench)
@@ -23,8 +36,7 @@ int bench_groups_write(FILE *file, const Workbench *bench)
     if (fprintf(file, "groups %d\n", groups) < 0)
         return 0;
     for (int i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
-        if (bench->groups[i].active &&
-            fprintf(file, "group %d %.9g %.9g\n", i + 1, bench->groups[i].x, bench->groups[i].y) < 0)
+        if (bench->groups[i].active && !write_group(file, i, &bench->groups[i]))
             return 0;
     if (fprintf(file, "members %d\n", members) < 0)
         return 0;
@@ -47,7 +59,39 @@ static int count_record(FILE *file, const char *expected, int maximum, int *coun
     return fscanf(file, "%31s %d", tag, count) == 2 && !strcmp(tag, expected) && *count >= 0 && *count <= maximum;
 }
 
-static int read_groups(FILE *file, Workbench *bench)
+static int end_line(FILE *file)
+{
+    int c;
+    do
+        c = fgetc(file);
+    while (c == ' ' || c == '\t');
+    if (c == '\r')
+        c = fgetc(file);
+    return c == '\n';
+}
+
+static int read_group_name(FILE *file, BenchGroup *group)
+{
+    char token[32];
+    size_t length = 0;
+    if (fscanf(file, "%31s", token) != 1)
+        return 0;
+    for (size_t i = 0; token[i]; ++i)
+    {
+        if (token[i] < '0' || token[i] > '9')
+            return 0;
+        length = length * 10 + (unsigned)(token[i] - '0');
+        if (length >= sizeof(group->name))
+            return 0;
+    }
+    if (!length || !end_line(file) || fread(group->name, 1, length, file) != length || memchr(group->name, 0, length) ||
+        !end_line(file))
+        return 0;
+    group->name[length] = 0;
+    return bench_group_name_valid(group->name);
+}
+
+static int read_groups(FILE *file, Workbench *bench, int version)
 {
     int count;
     if (!count_record(file, "groups", WORKBENCH_MAX_COMPONENTS, &count))
@@ -61,7 +105,15 @@ static int read_groups(FILE *file, Workbench *bench)
             id > WORKBENCH_MAX_COMPONENTS || bench->groups[id - 1].active || !isfinite(x) || !isfinite(y) ||
             fabsf(x) > PROJECT_COORDINATE_LIMIT || fabsf(y) > PROJECT_COORDINATE_LIMIT)
             return 0;
-        bench->groups[id - 1] = (BenchGroup){1, x, y};
+        BenchGroup *group = &bench->groups[id - 1];
+        *group = (BenchGroup){.active = 1, .x = x, .y = y};
+        if (version >= 17)
+        {
+            if (!read_group_name(file, group))
+                return 0;
+        }
+        else
+            snprintf(group->name, sizeof(group->name), "Bloco %d", id);
     }
     return 1;
 }
@@ -92,10 +144,10 @@ static int read_members(FILE *file, Workbench *bench)
     return 1;
 }
 
-int bench_groups_read(FILE *file, Workbench *bench)
+int bench_groups_read(FILE *file, Workbench *bench, int version)
 {
     int count;
-    if (!read_groups(file, bench) || !read_members(file, bench) ||
+    if (!read_groups(file, bench, version) || !read_members(file, bench) ||
         !count_record(file, "ports", bench->part_count * WORKBENCH_MAX_PINS, &count))
         return 0;
     for (int i = 0; i < count; ++i)

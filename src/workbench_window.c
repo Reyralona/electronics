@@ -15,6 +15,8 @@
 #include "sim_auto.h"
 #include "dev_capture.h"
 #include "app_state.h"
+#include "app_editor.h"
+#include "app_text_utf8.h"
 #include "app_input.h"
 #include "app_render.h"
 #include "app_simulation.h"
@@ -82,17 +84,21 @@ int main(int argc, char **argv)
     SDL_GL_SetSwapInterval(1);
     if (dev_scenario_analyze(&app, argv))
         return 1;
+    AppState *active = &app;
     while (app.running)
     {
         int width, height;
         if (app.selftest)
             dev_scenario_queue(&app, window);
-        app_input_poll(&app, window);
+        app_input_poll(active, window);
+        active = app_editor_route(active);
+        if (app.capture && !strcmp(argv[1], "--capture-editor-name") && active->editor_parent)
+            app_editor_begin_name(active, window);
         if (app.selftest)
             dev_scenario_validate(&app);
-        app_simulation_update(&app);
+        app_simulation_update(active);
         SDL_GetWindowSizeInPixels(window, &width, &height);
-        app_render_draw(&app, font, width, height);
+        app_render_draw(active, font, width, height);
         SDL_GL_SwapWindow(window);
         if (app.capture)
         {
@@ -104,6 +110,7 @@ int main(int argc, char **argv)
             app.running = 0;
         }
     }
+    app_editor_dispose(active);
     spice_job_join(&app.dc_job);
     if (app.selftest)
     {
@@ -111,6 +118,7 @@ int main(int argc, char **argv)
         remove("build/test-blocks/block-1.elec");
     }
     free(app.history);
+    app_text_utf8_clear();
     if (font)
         glDeleteLists(font, 128);
     SDL_GL_DestroyContext(context);

@@ -8,9 +8,10 @@
 
 #define PROJECT_SLOT_COUNT 9
 #define BLOCK_LIBRARY_SLOTS 8
+#define APP_EDIT_GROUP_NAME (WORKBENCH_MAX_COMPONENTS + 2)
 
 /* Owned by the application thread. The worker receives its own snapshot. */
-typedef struct
+typedef struct AppState
 {
     Workbench bench;
     Pin pending, hovered_pin;
@@ -29,7 +30,8 @@ typedef struct
     int move_recorded;
     BenchView view;
     int panning, editing;
-    char edit_text[64];
+    char edit_text[BENCH_GROUP_NAME_CAPACITY];
+    int name_target_group, edit_select_all;
     int selftest, selftest_phase, exit_code;
     const char *status;
     int capture, auto_capture;
@@ -45,6 +47,13 @@ typedef struct
     BenchClipboard library_template;
     int packed_placing, library_index;
     int library_available[BLOCK_LIBRARY_SLOTS];
+    char library_names[BLOCK_LIBRARY_SLOTS][BENCH_GROUP_NAME_CAPACITY];
+    struct AppState *editor_parent, *editor_child;
+    int editor_open_requested, editor_close_requested, editor_quit_requested, editor_confirm_close;
+    int editor_group, editor_library_slot;
+    uint64_t editor_parent_revision, editor_initial_revision, editor_saved_revision, editor_opened_at;
+    char editor_name[BENCH_GROUP_NAME_CAPACITY];
+    char editor_initial_name[BENCH_GROUP_NAME_CAPACITY], editor_saved_name[BENCH_GROUP_NAME_CAPACITY];
 } AppState;
 
 void app_state_init(AppState *app);

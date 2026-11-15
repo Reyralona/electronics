@@ -1,5 +1,7 @@
 #include "dev_scenarios.h"
 #include "dev_capture.h"
+#include "app_editor.h"
+#include "workbench_group_name.h"
 #include "workbench_examples.h"
 #include "workbench_pack.h"
 #include "spice_trace.h"
@@ -184,7 +186,7 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         bench_selection_rect(&app->selection, &app->bench, app->area_start, app->area_end);
         app->status = "Selecao por area: Ctrl+C/X/V, Delete e arraste em grupo.";
     }
-    if (argc > 1 && strcmp(argv[1], "--capture-packed") == 0)
+    if (argc > 1 && (strcmp(argv[1], "--capture-packed") == 0 || strncmp(argv[1], "--capture-editor", 16) == 0))
     {
         app->bench = (Workbench){0};
         bench_add(&app->bench, PART_SOURCE, 360, 250);
@@ -199,6 +201,8 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         if (!bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status)))
             return 1;
         app->selected = 1;
+        bench_group_set_name(&app->bench, 1, "Indicador \xc3\xa1rvore");
+        app->editor_open_requested = strncmp(argv[1], "--capture-editor", 16) == 0;
         app->palette_page = 2;
         app->library_available[0] = 1;
         app->status = "Fonte externa alimenta resistor e LED encapsulados; terminais preservados.";
@@ -640,6 +644,38 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 105)
         queued = dev_test_drag_finish(window, 251, 200);
+    else if (app->selftest_phase == 106)
+        queued = dev_test_key(window, SDLK_F1);
+    else if (app->selftest_phase == 107)
+    {
+        app->bench = (Workbench){0};
+        bench_selection_clear(&app->selection);
+        bench_add(&app->bench, PART_RESISTOR, 500, 250);
+        bench_add(&app->bench, PART_LED, 700, 250);
+        bench_toggle_wire(&app->bench, (Pin){0, 1}, (Pin){1, 0});
+        app->selection.parts[0] = app->selection.parts[1] = 1;
+        bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status));
+        app->selected = 0;
+        queued = dev_test_click(window, 1130, 128);
+    }
+    else if (app->selftest_phase == 108)
+        queued = dev_test_replace_text(window, "Indicador \xc3\xa1rvore");
+    else if (app->selftest_phase == 109 || app->selftest_phase == 116)
+        queued = dev_test_click(window, 930, 128);
+    else if (app->selftest_phase == 110 || app->selftest_phase == 117)
+        queued = dev_test_click(window, 560, 42);
+    else if (app->selftest_phase == 111 || app->selftest_phase == 118)
+        queued = dev_test_replace_text(window, "Driver \xc3\xa1rvore");
+    else if (app->selftest_phase == 112 || app->selftest_phase == 114)
+        queued = dev_test_click(window, 930, 42);
+    else if (app->selftest_phase == 113)
+        queued = dev_test_click(window, 820, 390);
+    else if (app->selftest_phase == 115)
+        queued = dev_test_click(window, 640, 390);
+    else if (app->selftest_phase == 119)
+        queued = dev_test_click(window, 410, 42);
+    else if (app->selftest_phase == 120)
+        queued = dev_test_key(window, SDLK_Z);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -861,13 +897,32 @@ void dev_scenario_validate(AppState *app)
         valid = app->settings;
     else if (app->selftest_phase == 105)
         valid = app->hovered_pin.component == -1 && app->settings;
+    else if (app->selftest_phase == 106)
+        valid = !app->settings;
+    else if (app->selftest_phase == 107)
+        valid = app->editing == APP_EDIT_GROUP_NAME;
+    else if (app->selftest_phase == 108 || app->selftest_phase == 115 || app->selftest_phase == 120)
+        valid = !app->editor_child && !strcmp(app->bench.groups[0].name, "Indicador \xc3\xa1rvore");
+    else if (app->selftest_phase == 109 || app->selftest_phase == 116)
+        valid = app->editor_child && !app_editor_dirty(app->editor_child);
+    else if (app->selftest_phase == 110 || app->selftest_phase == 117)
+        valid = app->editor_child && app->editor_child->editing == APP_EDIT_GROUP_NAME;
+    else if (app->selftest_phase == 111 || app->selftest_phase == 118)
+        valid = app->editor_child && app_editor_dirty(app->editor_child) &&
+                !strcmp(app->bench.groups[0].name, "Indicador \xc3\xa1rvore");
+    else if (app->selftest_phase == 112 || app->selftest_phase == 114)
+        valid = app->editor_child && app->editor_child->editor_confirm_close;
+    else if (app->selftest_phase == 113)
+        valid = app->editor_child && !app->editor_child->editor_confirm_close;
+    else if (app->selftest_phase == 119)
+        valid = !app->editor_child && !strcmp(app->bench.groups[0].name, "Driver \xc3\xa1rvore");
     if (!valid)
     {
-        fprintf(stderr, "Autoteste de eventos falhou na fase %d.\n", app->selftest_phase);
+        fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 106)
+    if (++app->selftest_phase == 121)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

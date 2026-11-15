@@ -6,6 +6,7 @@
 #define WORKBENCH_MAX_WIRES 128
 #define WORKBENCH_MAX_PINS 420
 #define BREADBOARD_PINS 420
+#define BENCH_GROUP_NAME_CAPACITY 128
 
 typedef enum
 {
@@ -35,6 +36,7 @@ typedef struct
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
     uint64_t exposed[(WORKBENCH_MAX_PINS + 63) / 64];
+    int edit_origin; /* Transaction provenance; cleared by paste/import, never serialized. */
 } Part;
 typedef struct
 {
@@ -59,6 +61,7 @@ typedef struct
 {
     int active;
     float x, y;
+    char name[BENCH_GROUP_NAME_CAPACITY];
 } BenchGroup;
 typedef struct
 {

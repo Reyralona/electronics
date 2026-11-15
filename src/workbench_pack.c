@@ -152,11 +152,11 @@ int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char
         return 0;
     }
     BenchGroup group = {.active = 1};
+    snprintf(group.name, sizeof(group.name), "Bloco %d", slot + 1);
     for (int i = 0; i < packed.part_count; ++i)
         if (selection->parts[i])
         {
             Part *part = &packed.parts[i];
-            memset(part->exposed, 0, sizeof(part->exposed));
             for (int p = 0; p < bench_pin_count(part->type); ++p)
                 if (port_needed(&packed, selection, (Pin){i, p}))
                     expose_pin(part, p);
