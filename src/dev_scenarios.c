@@ -676,6 +676,42 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_click(window, 410, 42);
     else if (app->selftest_phase == 120)
         queued = dev_test_key(window, SDLK_Z);
+    else if (app->selftest_phase == 121)
+        queued = dev_test_key(window, SDLK_F1);
+    else if (app->selftest_phase == 122)
+        queued = dev_test_click(window, 300, 150);
+    else if (app->selftest_phase == 123)
+        queued = dev_test_click(window, 300, 190);
+    else if (app->selftest_phase == 124)
+        queued = dev_test_replace_text(window, "16");
+    else if (app->selftest_phase == 125)
+        queued = dev_test_click(window, 300, 230);
+    else if (app->selftest_phase == 126)
+    {
+        app->palette_page = 0;
+        queued = dev_test_key(window, SDLK_F1);
+    }
+    else if (app->selftest_phase == 127)
+        queued = dev_test_click(window, 50, 460) && dev_test_click(window, 530, 257);
+    else if (app->selftest_phase == 128)
+        queued = dev_test_click(window, 528, 260) && dev_test_drag_finish(window, 559, 283);
+    else if (app->selftest_phase == 129)
+    {
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = dev_test_click(window, 560, 276) && dev_test_drag_finish(window, 569, 281);
+    }
+    else if (app->selftest_phase == 130)
+    {
+        SDL_SetModState(SDL_KMOD_NONE);
+        queued = dev_test_key(window, SDLK_S);
+    }
+    else if (app->selftest_phase == 131)
+    {
+        app->grid_spacing = 24;
+        app->snap_grid = 0;
+        app->snap_board = 1;
+        queued = dev_test_key(window, SDLK_L);
+    }
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -916,13 +952,33 @@ void dev_scenario_validate(AppState *app)
         valid = app->editor_child && !app->editor_child->editor_confirm_close;
     else if (app->selftest_phase == 119)
         valid = !app->editor_child && !strcmp(app->bench.groups[0].name, "Driver \xc3\xa1rvore");
+    else if (app->selftest_phase == 121)
+        valid = app->settings;
+    else if (app->selftest_phase == 122)
+        valid = app->snap_grid;
+    else if (app->selftest_phase == 123)
+        valid = app->editing == APP_EDIT_GRID;
+    else if (app->selftest_phase == 124)
+        valid = app->editing < 0 && app->grid_spacing == 16;
+    else if (app->selftest_phase == 125)
+        valid = !app->snap_board;
+    else if (app->selftest_phase == 126)
+        valid = !app->settings;
+    else if (app->selftest_phase == 127)
+        valid = app->bench.part_count == 3 && app->bench.parts[2].x == 528 && app->bench.parts[2].y == 260;
+    else if (app->selftest_phase == 128)
+        valid = app->bench.parts[2].x == 560 && app->bench.parts[2].y == 276;
+    else if (app->selftest_phase == 129)
+        valid = app->bench.parts[2].x == 569 && app->bench.parts[2].y == 281;
+    else if (app->selftest_phase == 131)
+        valid = app->grid_spacing == 16 && app->snap_grid && !app->snap_board;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 121)
+    if (++app->selftest_phase == 132)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

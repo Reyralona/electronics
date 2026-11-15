@@ -142,7 +142,8 @@ void app_projects_save(AppState *app)
     }
     WorkbenchSettings settings = {app->show_grid,     app->show_handles,   app->round_wires,
                                   app->show_current,  app->wire_color,     app->probe_pin,
-                                  app->probe_current, app->transient_step, app->transient_stop};
+                                  app->probe_current, app->transient_step, app->transient_stop,
+                                  app->grid_spacing, app->snap_grid, app->snap_board};
     slot_path(app, app->save_slot, path, sizeof(path));
     int saved = workbench_save_project(path, &app->bench, &settings);
     snprintf(app->selection_status, sizeof(app->selection_status),
@@ -176,6 +177,9 @@ void app_projects_load(AppState *app)
     app->probe_current = settings.probe_current;
     app->transient_step = settings.transient_step;
     app->transient_stop = settings.transient_stop;
+        app->grid_spacing = settings.grid_spacing;
+        app->snap_grid = settings.snap_grid;
+        app->snap_board = settings.snap_board;
     sim_state_clear_result(&app->sim);
     memset(app->leds, 0, sizeof(app->leds));
     app->projects_open = 0;

@@ -115,5 +115,17 @@ int main(void)
         b2.parts[1].x-=1; b2.parts[0].y+=1;
         bench_simulate(&b2,led2); assert(!led2[1]);
     }
+    {
+        Workbench board = {0};
+        bench_add(&board, PART_BREADBOARD, 550, 430);
+        Part candidate = {.type = PART_RESISTOR, .x = 538, .y = 377};
+        Workbench before = board;
+        float x, y;
+        assert(bench_breadboard_snap_position(&board, &candidate, &x, &y));
+        assert(board.revision == before.revision && board.parts[0].x == before.parts[0].x);
+        int resistor = bench_add(&board, PART_RESISTOR, candidate.x, candidate.y);
+        assert(bench_snap_to_breadboard(&board, resistor));
+        assert(board.parts[resistor].x == x && board.parts[resistor].y == y);
+    }
     return 0;
 }

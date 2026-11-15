@@ -8,6 +8,7 @@
 
 #define PROJECT_SLOT_COUNT 9
 #define BLOCK_LIBRARY_SLOTS 8
+#define APP_EDIT_GRID (WORKBENCH_MAX_COMPONENTS + 3)
 #define APP_EDIT_GROUP_NAME (WORKBENCH_MAX_COMPONENTS + 2)
 
 /* Owned by the application thread. The worker receives its own snapshot. */
@@ -26,6 +27,8 @@ typedef struct AppState
     SpiceJob dc_job;
     int probe_pin, show_trace, probe_current;
     double transient_step, transient_stop;
+    double grid_spacing;
+    int snap_grid, snap_board;
     BenchHistory *history;
     int move_recorded;
     BenchView view;

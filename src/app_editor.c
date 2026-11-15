@@ -60,6 +60,9 @@ AppState *app_editor_open(AppState *parent)
     memcpy(child->ngspice, parent->ngspice, sizeof(child->ngspice));
     child->selftest = parent->selftest;
     child->show_grid = parent->show_grid;
+    child->grid_spacing = parent->grid_spacing;
+    child->snap_grid = parent->snap_grid;
+    child->snap_board = parent->snap_board;
     child->show_handles = parent->show_handles;
     child->round_wires = parent->round_wires;
     child->sim.auto_enabled = parent->sim.auto_enabled;

@@ -721,6 +721,7 @@ static void draw_workspace_grid(const AppState *app)
         /* Cover the whole visible area at any zoom; widen the spacing when lines would crowd together. */
         float left, top, right, bottom, gx, gy;
         BenchGrid grid = bench_grid_default();
+        grid.spacing = app->grid_spacing;
         float spacing = (float)bench_grid_display_spacing(&grid, app->view.zoom, 10);
         bench_view_to_world(&app->view, 220, 60, &left, &top);
         bench_view_to_world(&app->view, 1280, 660, &right, &bottom);
@@ -1250,6 +1251,17 @@ static void draw_settings(const AppState *app, GLuint font)
     if (app->settings)
     {
         int swatch;
+        color(.98f, .98f, .99f);
+        rect(260, 84, 540, 250);
+        color(.14f, .22f, .28f);
+        text(font, 280, 112, "ALINHAMENTO E ENCAIXE");
+        text(font, 280, 155, app->snap_grid ? "[x] Encaixar na grade" : "[ ] Encaixar na grade");
+        char grid_label[100];
+        snprintf(grid_label, sizeof(grid_label), "Espacamento: %.6g unidades (clique)", app->grid_spacing);
+        text(font, 280, 195, grid_label);
+        text(font, 280, 235, app->snap_board ? "[x] Encaixar na breadboard" : "[ ] Encaixar na breadboard");
+        text(font, 280, 275, "Alt: suspender encaixe durante movimento");
+        text(font, 280, 310, "Ocultar grade nao desativa o encaixe.");
         color(.62f, .68f, .72f);
         rect(846, 90, 400, 558);
         color(.98f, .98f, .99f);
@@ -1314,6 +1326,8 @@ static void draw_value_editor(const AppState *app, GLuint font)
         const char *title = "VALOR EM UNIDADES SI";
         if (app->editing == APP_EDIT_GROUP_NAME)
             title = "NOME DO CHIP";
+        else if (app->editing == APP_EDIT_GRID)
+            title = "ESPACAMENTO DA GRADE (1 A 10000)";
         else if (app->editing >= WORKBENCH_MAX_COMPONENTS)
             title = "TEMPO EM SEGUNDOS";
         text(font, 460, 294, title);

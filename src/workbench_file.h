@@ -6,6 +6,8 @@
 typedef struct {
     int show_grid, show_handles, round_wires, show_current, wire_color, probe_pin, probe_current;
     double transient_step, transient_stop;
+    double grid_spacing;
+    int snap_grid, snap_board;
 } WorkbenchSettings;
 WorkbenchSettings workbench_settings_default(void);
 int workbench_read_project(FILE *file, Workbench *destination, WorkbenchSettings *settings);

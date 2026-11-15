@@ -118,6 +118,7 @@ int main(void)
     }
     {
         WorkbenchSettings custom=workbench_settings_default(), restored=workbench_settings_default();
+        custom.grid_spacing=12.5; custom.snap_grid=1; custom.snap_board=0;
         custom.show_grid=0; custom.show_handles=0; custom.round_wires=0; custom.show_current=1;
         custom.wire_color=5; custom.probe_pin=1; custom.probe_current=1; custom.transient_step=2e-5; custom.transient_stop=.002;
         file=tmpfile(); assert(file); assert(workbench_write_project(file,&source,&custom)); rewind(file);
@@ -125,9 +126,11 @@ int main(void)
         assert(!restored.show_grid && !restored.show_handles && !restored.round_wires && restored.show_current);
         assert(restored.wire_color==5 && restored.probe_pin==1 && restored.probe_current==1);
         assert(restored.transient_step==2e-5 && restored.transient_stop==.002);
+        assert(restored.grid_spacing==12.5 && restored.snap_grid && !restored.snap_board);
         file=tmpfile(); assert(file); fputs("workbench 9\n0 0\n",file); rewind(file);
         assert(workbench_read_project(file,&loaded,&restored)); fclose(file);
         assert(restored.show_grid && restored.transient_step==1e-5 && restored.transient_stop==.005);
+        assert(restored.grid_spacing==24 && !restored.snap_grid && restored.snap_board);
         restored.wire_color=4;
         file=tmpfile(); assert(file); fputs("workbench 10\n0 0\nsettings 1 1 1 0 2 0 0 1e-9 1\n",file); rewind(file);
         assert(!workbench_read_project(file,&loaded,&restored)); fclose(file);
@@ -202,6 +205,19 @@ int main(void)
         assert(loaded.parts[1].type==PART_74HC00);
         file=tmpfile(); assert(file); fputs("workbench 14\n1 0\n14 100 100 0 0 0 0\nsettings 1 1 1 0 0 0 0 1e-5 .005\n",file); rewind(file);
         assert(!workbench_read(file,&loaded)); fclose(file);
+    }
+    {
+        WorkbenchSettings settings = workbench_settings_default();
+        WorkbenchSettings before = settings;
+        Workbench before_bench = loaded;
+        file = tmpfile();
+        assert(file);
+        fputs("workbench 18\n0 0\ngroups 0\nmembers 0\nports 0\n"
+              "settings 1 1 1 0 0 0 0 1e-5 .005\ngrid nan 1 1\n", file);
+        rewind(file);
+        assert(!workbench_read_project(file, &loaded, &settings));
+        assert(settings.grid_spacing == before.grid_spacing && loaded.revision == before_bench.revision);
+        fclose(file);
     }
     return 0;
 }

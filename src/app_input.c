@@ -1,3 +1,4 @@
+#include "workbench_grid.h"
 #include "app_input.h"
 #include "app_editor.h"
 #include "workbench_group_name.h"
@@ -164,7 +165,19 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
     {
         double value;
         Workbench before = app->bench;
-        if (app->editing >= WORKBENCH_MAX_COMPONENTS)
+        if (app->editing == APP_EDIT_GRID)
+        {
+            if (bench_parse_value(app->edit_text, &value) && value >= 1 && value <= 10000)
+            {
+                app->grid_spacing = value;
+                app->editing = -1;
+                SDL_StopTextInput(window);
+                app->status = "Espacamento atualizado em unidades da montagem.";
+            }
+            else
+                app->status = "Use espacamento de 1 a 10000 unidades.";
+        }
+        else if (app->editing >= WORKBENCH_MAX_COMPONENTS)
         {
             double step = app->transient_step, stop = app->transient_stop;
             int parsed = bench_parse_value(app->edit_text, &value);
@@ -261,6 +274,19 @@ static void input_pan(AppState *app, SDL_Window *window, const SDL_Event *event)
 
 static void input_settings(AppState *app, SDL_Window *window, float x, float y)
 {
+    if (x >= 260 && x < 800)
+    {
+        if (y >= 130 && y < 170)
+            app->snap_grid = !app->snap_grid;
+        else if (y >= 170 && y < 210 && SDL_StartTextInput(window))
+        {
+            app->editing = APP_EDIT_GRID;
+            snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", app->grid_spacing);
+        }
+        else if (y >= 210 && y < 250)
+            app->snap_board = !app->snap_board;
+        return;
+    }
     if (x > 850 && x < 1240)
     {
         if (y >= 120 && y < 160)
@@ -479,13 +505,37 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
     return 0;
 }
 
+static int snap_suspended(void)
+{
+    return (SDL_GetModState() & SDL_KMOD_ALT) != 0;
+}
+
+static void input_snap_grid(const AppState *app, float *x, float *y)
+{
+    if (!app->snap_grid || snap_suspended())
+        return;
+    BenchGrid grid = bench_grid_default();
+    grid.spacing = app->grid_spacing;
+    double snapped_x, snapped_y;
+    if (bench_grid_snap(&grid, *x, *y, &snapped_x, &snapped_y))
+    {
+        *x = (float)snapped_x;
+        *y = (float)snapped_y;
+    }
+}
+
 static void input_place_part(AppState *app, float x, float y)
 {
     Workbench before = app->bench;
     int added = bench_add(&app->bench, (PartType)app->placing, x, y);
     if (added >= 0)
     {
-        int snapped = bench_snap_to_breadboard(&app->bench, added);
+        int snapped = app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, added);
+        if (!snapped)
+        {
+            input_snap_grid(app, &x, &y);
+            bench_move_part(&app->bench, added, x, y);
+        }
         bench_history_record(app->history, &before);
         app->selected_wire = -1;
         app->status =
@@ -659,6 +709,7 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         return;
     if (app->packed_placing)
     {
+        input_snap_grid(app, &x, &y);
         app_packing_place(app, x, y);
         return;
     }
@@ -695,7 +746,7 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
 
     app->selecting_area = 0;
     if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
-        !app->bench.parts[app->dragging].group && bench_snap_to_breadboard(&app->bench, app->dragging))
+        !app->bench.parts[app->dragging].group && app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, app->dragging))
         app->status = "Componente encaixado na breadboard.";
     app->dragging = -1;
     app->drag_wire = -1;
@@ -711,6 +762,7 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
         float x = event->motion.x * 1280.0f / w, y = event->motion.y * 720.0f / h;
         WirePoint *point = &app->bench.wires[app->drag_wire].knees[app->drag_knee];
         bench_view_to_world(&app->view, x, y, &x, &y);
+        input_snap_grid(app, &x, &y);
         if (point->x != x || point->y != y)
         {
             if (!app->move_recorded)
@@ -734,6 +786,27 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
         bench_view_to_world(&app->view, x, y, &x, &y);
         x -= app->offset_x;
         y -= app->offset_y;
+        const Part *dragged = &app->bench.parts[app->dragging];
+        if (dragged->group)
+        {
+            const BenchGroup *group = &app->bench.groups[dragged->group - 1];
+            float body_x = group->x + x - dragged->x;
+            float body_y = group->y + y - dragged->y;
+            input_snap_grid(app, &body_x, &body_y);
+            x = dragged->x + body_x - group->x;
+            y = dragged->y + body_y - group->y;
+        }
+        else
+        {
+            Part candidate = *dragged;
+            candidate.x = x;
+            candidate.y = y;
+            int board_snap = app->snap_board && !snap_suspended() &&
+                             bench_selection_count(&app->selection, &app->bench) <= 1 &&
+                             bench_breadboard_snap_position(&app->bench, &candidate, &x, &y);
+            if (!board_snap)
+                input_snap_grid(app, &x, &y);
+        }
         if (app->bench.parts[app->dragging].x != x || app->bench.parts[app->dragging].y != y)
         {
             if (!app->move_recorded)
