@@ -83,7 +83,7 @@ cleanup:
 
 int dev_test_click_count(SDL_Window *window,float x,float y,int clicks)
 {
-    SDL_Event event={0};
+    SDL_Event event; SDL_zero(event);
     event.type=SDL_EVENT_MOUSE_BUTTON_DOWN;
     event.button.windowID=SDL_GetWindowID(window);
     event.button.button=SDL_BUTTON_LEFT;
@@ -94,7 +94,7 @@ int dev_test_click_count(SDL_Window *window,float x,float y,int clicks)
 int dev_test_click(SDL_Window *window,float x,float y) { return dev_test_click_count(window,x,y,1); }
 int dev_test_drag_finish(SDL_Window *window,float x,float y)
 {
-    SDL_Event event={0};
+    SDL_Event event; SDL_zero(event);
     event.type=SDL_EVENT_MOUSE_MOTION; event.motion.windowID=SDL_GetWindowID(window); event.motion.x=x; event.motion.y=y;
     if(!SDL_PushEvent(&event)) return 0;
     SDL_zero(event); event.type=SDL_EVENT_MOUSE_BUTTON_UP; event.button.windowID=SDL_GetWindowID(window); event.button.button=SDL_BUTTON_LEFT;
@@ -102,7 +102,7 @@ int dev_test_drag_finish(SDL_Window *window,float x,float y)
 }
 int dev_test_key(SDL_Window *window,SDL_Keycode key)
 {
-    SDL_Event event={0};
+    SDL_Event event; SDL_zero(event);
     event.type=SDL_EVENT_KEY_DOWN;
     event.key.windowID=SDL_GetWindowID(window);
     event.key.key=key; event.key.mod=SDL_KMOD_CTRL;
@@ -110,21 +110,22 @@ int dev_test_key(SDL_Window *window,SDL_Keycode key)
 }
 int dev_test_replace_text(SDL_Window *window,const char *value)
 {
-    SDL_Event event={0}; int i;
+    SDL_Event event; SDL_zero(event); int i;
     for(i=0;i<32;++i) if(!dev_test_key(window,SDLK_BACKSPACE)) return 0;
     event.type=SDL_EVENT_TEXT_INPUT; event.text.windowID=SDL_GetWindowID(window); event.text.text=value;
     return SDL_PushEvent(&event) && dev_test_key(window,SDLK_RETURN);
 }
 int dev_test_wheel(SDL_Window *window,float x,float y,float amount)
 {
-    SDL_Event event={0};
+    SDL_Event event; SDL_zero(event);
     event.type=SDL_EVENT_MOUSE_WHEEL; event.wheel.windowID=SDL_GetWindowID(window);
+    event.wheel.direction=SDL_MOUSEWHEEL_NORMAL;
     event.wheel.mouse_x=x; event.wheel.mouse_y=y; event.wheel.y=amount;
     return SDL_PushEvent(&event);
 }
 int dev_test_pan(SDL_Window *window)
 {
-    SDL_Event event={0};
+    SDL_Event event; SDL_zero(event);
     event.type=SDL_EVENT_MOUSE_BUTTON_DOWN; event.button.windowID=SDL_GetWindowID(window);
     event.button.button=SDL_BUTTON_MIDDLE; event.button.x=600; event.button.y=400;
     if(!SDL_PushEvent(&event)) return 0;
