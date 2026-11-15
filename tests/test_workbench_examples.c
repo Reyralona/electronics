@@ -29,5 +29,26 @@ int main(int argc,char **argv)
         assert(trace.samples[hold].value>4.9 && trace.samples[low].value<.01);
         assert((trace.leds_on[hold]&(UINT64_C(1)<<4)) && !(trace.leds_on[low]&(UINT64_C(1)<<4)));
     }
+    assert(workbench_example_create(2, &b, &selected));
+    assert(b.part_count == 6 && selected == 2 && b.parts[2].type == PART_74HC00);
+    for (int pin = 0; pin < 14; ++pin) {
+        Pin contact;
+        assert(bench_find_contact(&b, 2, pin, &contact) && contact.component == 1);
+    }
+    if (argc > 1) {
+        static SpiceTrace trace;
+        char message[128];
+        int low = 0, high = 0;
+        assert(spice_transient_instrumented(&b, argv[1], 1, (Pin){2, 2}, 1e-5, .002,
+                                            &trace, message, sizeof(message)));
+        for (int i = 1; i < trace.count; ++i) {
+            if (fabs(trace.samples[i].time - .00025) < fabs(trace.samples[low].time - .00025)) low = i;
+            if (fabs(trace.samples[i].time - .00075) < fabs(trace.samples[high].time - .00075)) high = i;
+        }
+        assert(trace.samples[low].value < .01 && trace.samples[high].value > 4.5);
+        assert(!(trace.leds_on[low] & (UINT64_C(1) << 5)));
+        assert(trace.leds_on[high] & (UINT64_C(1) << 5));
+        assert(trace.measures_wires);
+    }
     return 0;
 }

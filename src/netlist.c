@@ -1,5 +1,6 @@
 #include "netlist.h"
 #include <math.h>
+#include <string.h>
 
 #define PIN_TOTAL (WORKBENCH_MAX_COMPONENTS * WORKBENCH_MAX_PINS)
 static int find_root(int *parents,int x) { while(parents[x]!=x) x=parents[x]; return x; }
@@ -7,37 +8,76 @@ static void unite(int *parents,int a,int b) { parents[find_root(parents,a)]=find
 static int pin_index(Pin p) { return p.component*WORKBENCH_MAX_PINS+p.pin; }
 static int valid_pin(const Workbench *b,Pin p) { return p.component>=0 && p.component<b->part_count && p.pin>=0 && p.pin<bench_pin_count(b->parts[p.component].type); }
 
-static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,int measure_wires,Pin probe,double step,double stop)
+/* Joins pins that are electrically the same node. Union order is kept stable so node numbers do not change. */
+static void build_nets(const Workbench *b,int *parents,int unite_wires,int short_inductors)
 {
-    int parents[PIN_TOTAL],i,j,source=-1,ground,positive,gate_count=0,chip_count=0;
-    if(!out || !b || b->part_count<0 || b->part_count>WORKBENCH_MAX_COMPONENTS || b->wire_count<0 || b->wire_count>WORKBENCH_MAX_WIRES) return NETLIST_INVALID;
-    if(transient && ((transient==3?(probe.component<0 || probe.component>=b->wire_count):!valid_pin(b,probe)) || !isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || step>stop)) return NETLIST_INVALID;
+    int i,j;
     for(i=0;i<PIN_TOTAL;++i) parents[i]=i;
-    for(i=0;i<b->wire_count;++i) {
-        Wire w=b->wires[i];
-        if(!valid_pin(b,w.a) || !valid_pin(b,w.b)) return NETLIST_INVALID;
-        if(!measure_wires) unite(parents,pin_index(w.a),pin_index(w.b));
+    if(unite_wires) {
+        for(i=0;i<b->wire_count;++i) {
+            Wire w=b->wires[i];
+            if(valid_pin(b,w.a) && valid_pin(b,w.b)) unite(parents,pin_index(w.a),pin_index(w.b));
+        }
     }
     for(i=0;i<b->part_count;++i) {
         int base=i*WORKBENCH_MAX_PINS;
+        PartType type=b->parts[i].type;
+        if(type==PART_SWITCH && b->parts[i].on) unite(parents,base,base+1);
+        if(type==PART_INDUCTOR && short_inductors) unite(parents,base,base+1);
+        if(type==PART_BREADBOARD) {
+            for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+bench_board_group_first(j),base+j);
+        }
+    }
+    for(i=0;i<b->part_count;++i) {
+        int pin;
+        if(b->parts[i].type==PART_BREADBOARD) continue;
+        for(pin=0;pin<bench_pin_count(b->parts[i].type);++pin) {
+            Pin contact;
+            if(bench_find_contact(b,i,pin,&contact)) unite(parents,i*WORKBENCH_MAX_PINS+pin,pin_index(contact));
+        }
+    }
+}
+
+int netlist_shorted_sources(const Workbench *b,unsigned char shorted[WORKBENCH_MAX_COMPONENTS])
+{
+    int parents[PIN_TOTAL],i,count=0;
+    if(!b || !shorted || b->part_count<0 || b->part_count>WORKBENCH_MAX_COMPONENTS) return 0;
+    memset(shorted,0,WORKBENCH_MAX_COMPONENTS);
+    build_nets(b,parents,1,1);
+    for(i=0;i<b->part_count;++i) {
+        PartType type=b->parts[i].type;
+        int base=i*WORKBENCH_MAX_PINS;
+        if(type!=PART_SOURCE && type!=PART_CLOCK) continue;
+        if(find_root(parents,base)!=find_root(parents,base+1)) continue;
+        shorted[i]=1;
+        ++count;
+    }
+    return count;
+}
+
+static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,int measure_wires,Pin probe,double step,double stop)
+{
+    int parents[PIN_TOTAL],i,source=-1,ground,positive,gate_count=0,chip_count=0;
+    if(!out || !b || b->part_count<0 || b->part_count>WORKBENCH_MAX_COMPONENTS || b->wire_count<0 || b->wire_count>WORKBENCH_MAX_WIRES) return NETLIST_INVALID;
+    if(transient && ((transient==3?(probe.component<0 || probe.component>=b->wire_count):!valid_pin(b,probe)) || !isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || step>stop)) return NETLIST_INVALID;
+    for(i=0;i<b->wire_count;++i) {
+        Wire w=b->wires[i];
+        if(!valid_pin(b,w.a) || !valid_pin(b,w.b)) return NETLIST_INVALID;
+    }
+    for(i=0;i<b->part_count;++i) {
         PartType type=b->parts[i].type;
         if((type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR || type==PART_CLOCK) &&
            (!isfinite(b->parts[i].value) || b->parts[i].value<1e-12 || b->parts[i].value>1e12)) return NETLIST_INVALID;
         switch(b->parts[i].type) {
         case PART_SOURCE: if(source<0) source=i; break;
-        case PART_SWITCH: if(b->parts[i].on) unite(parents,base,base+1); break;
-        case PART_BREADBOARD: for(j=0;j<BREADBOARD_PINS;++j) unite(parents,base+bench_board_group_first(j),base+j); break;
         case PART_AND: case PART_NAND: case PART_OR: case PART_XOR: case PART_NOT: case PART_DFF: ++gate_count; break;
         case PART_74HC00: ++chip_count; break;
+        case PART_SWITCH: case PART_BREADBOARD:
         case PART_RESISTOR: case PART_LED: case PART_CAPACITOR: case PART_INDUCTOR: case PART_CLOCK: break;
         default: return NETLIST_UNSUPPORTED;
         }
     }
-    for(i=0;i<b->part_count;++i) if(b->parts[i].type!=PART_BREADBOARD) {
-        int pin; for(pin=0;pin<bench_pin_count(b->parts[i].type);++pin) { Pin contact;
-            if(bench_find_contact(b,i,pin,&contact)) unite(parents,i*WORKBENCH_MAX_PINS+pin,pin_index(contact));
-        }
-    }
+    build_nets(b,parents,!measure_wires,0);
     if(source<0) for(i=0;i<b->part_count;++i) if(b->parts[i].type==PART_CLOCK) { source=i; break; }
     if(source<0) return NETLIST_INVALID;
     ground=find_root(parents,source*WORKBENCH_MAX_PINS+1);
@@ -122,7 +162,9 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
     }
     if(chip_count && fprintf(out,".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=0)\n")<0) return NETLIST_IO_ERROR;
     if(gate_count && fprintf(out,".model gate_adc adc_bridge(in_low=1.5 in_high=3.5)\n.model gate_and d_and(rise_delay=1n fall_delay=1n)\n.model gate_nand d_nand(rise_delay=1n fall_delay=1n)\n.model gate_or d_or(rise_delay=1n fall_delay=1n)\n.model gate_xor d_xor(rise_delay=1n fall_delay=1n)\n.model gate_not d_inverter(rise_delay=1n fall_delay=1n)\n.model gate_dff d_dff(ic=0 clk_delay=1n rise_delay=1n fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n")<0) return NETLIST_IO_ERROR;
-    if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2)\n")<0) return NETLIST_IO_ERROR;
+    /* RS: series resistance so an LED wired straight to a source gives a finite, realistic current.
+       rshunt: 1 TOhm from every node to ground so unfinished circuits (floating nodes) still solve. */
+    if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2 RS=%.17g)\n.options rshunt=1e12\n",NETLIST_LED_SERIES_OHMS)<0) return NETLIST_IO_ERROR;
     if(transient) {
         int node=transient==3?0:find_root(parents,pin_index(probe)); char vector[40]={0};
         if(transient==2) {
