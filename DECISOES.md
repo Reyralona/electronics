@@ -168,3 +168,30 @@ IDs textuais ja existem na API; persistencia continua 16 para separar migracao d
 refatoracao. Teste verifica o contrato historico dos codigos, nomes de IDs e funcoes de pinos.
 Padroes/faixas foram preservados. Isso nao conclui emissores locais, geometria ou parametros
 completos propostos em QUALIDADE_CODIGO.md. Nenhuma dependencia externa nova foi introduzida.
+
+
+## 15/11/2026 - editor isolado e nomes UTF-8: comparacao antes da implementacao
+
+Fatos locais: AppState possui montagem/historico/worker; copiar a montagem para a mesma instancia
+misturaria resultados e historico. Alternativas: trocar campos globais temporariamente ou manter
+um AppState proprio do editor. Decisao: contexto proprio, trabalhador e historico separados;
+a bancada externa fica suspensa e conservada. Voltar/descartar nao altera o modelo externo.
+Salvar modelo e aplicar a instancia sao acoes distintas; aplicar usa substituicao transacional
+com validacao das portas conectadas. Proveniencia temporaria dos membros acompanha as mutacoes
+no editor, e e apagada em copias/importacoes; remover uma porta externa conectada impede aplicar,
+em vez de reconectar silenciosamente um componente que ocupou o mesmo indice.
+
+Nomes precisam preservar UTF-8, espacos e pontuacao. Formato 17 acrescentara nomes a grupos;
+leitura 1-16 sera mantida. A migracao de tipos para IDs textuais continua separada. Capacidade
+provisoria nomeada de 127 bytes, com rejeicao visivel de excesso, ate a migracao de dados dinamicos.
+
+Fontes oficiais consultadas em 15/11/2026:
+- [MultiByteToWideChar](https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar):
+  conversao CP_UTF8 com MB_ERR_INVALID_CHARS evita descartar sequencias invalidas.
+- [CreateDIBSection](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createdibsection):
+  bitmap acessivel pela aplicacao; GdiFlush sincroniza a escrita GDI antes de ler pixels.
+
+Comparacao de texto: manter glCallLists de bytes nao renderiza nomes UTF-8 corretamente; adicionar
+SDL_ttf introduziria outra dependencia de distribuicao. Adotado GDI Unicode para nomes, enviado
+a textura com cache/evicao; fontes ASCII existentes podem continuar no caminho rapido.
+Texto e graficos permanecem na camada de UI, sem SDL/OpenGL no modelo.
