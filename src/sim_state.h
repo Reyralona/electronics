@@ -31,4 +31,9 @@ typedef struct
     char auto_status[200];
 } SimState;
 Pin sim_state_probe(const Workbench *bench, int selected, int probe_pin);
+/* Transitions return a status only when the presentation needs to change.
+ * The caller supplies monotonic time; no window, renderer or clock API is needed. */
+const char *sim_state_invalidate(SimState *sim, const Workbench *bench);
+const char *sim_state_advance(SimState *sim, uint64_t now);
+void sim_state_leds(const SimState *sim, const Workbench *bench, int leds[]);
 #endif

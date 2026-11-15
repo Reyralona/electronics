@@ -188,102 +188,15 @@ static void schedule_analysis(AppState *app)
     }
 }
 
-static void invalidate_results(AppState *app)
-{
-    {
-        /* Electrical results belong only to the exact assembly that produced them. */
-        int keep = app->sim.auto_enabled && memcmp(&app->sim.result_shape, &app->bench, sizeof(app->bench)) == 0;
-        if (!keep && app->sim.burnt_count && memcmp(&app->sim.result_shape, &app->bench, sizeof(app->bench)) != 0)
-        {
-            memset(app->sim.burnt, 0, sizeof(app->sim.burnt));
-            app->sim.burnt_count = 0;
-        }
-        const char *paused_text = "Pausado: a montagem mudou; aperte play para calcular.";
-        if (!keep && app->sim.trace_valid && memcmp(&app->sim.trace_snapshot, &app->bench, sizeof(app->bench)) != 0)
-        {
-            app->sim.trace_valid = 0;
-            if (!app->sim.auto_enabled)
-                app->status = "Montagem alterada; transitorio descartado.";
-            else if (!app->sim.sim_running)
-                app->status = paused_text;
-        }
-        if (!keep && app->sim.dc_valid && memcmp(&app->sim.dc_snapshot, &app->bench, sizeof(app->bench)) != 0)
-        {
-            app->sim.dc_valid = 0;
-            if (!app->sim.auto_enabled)
-                app->status = "Montagem alterada; pressione P para recalcular.";
-            else if (!app->sim.sim_running)
-                app->status = paused_text;
-        }
-    }
-}
-
-static void advance_playback(AppState *app)
-{
-    if (app->sim.trace_valid && app->sim.sim_running)
-    {
-        int finished = 0, index = spice_trace_replay_index(&app->sim.trace, app->sim.trace_play_start_index,
-                                                           SDL_GetTicks() - app->sim.trace_play_started, &finished);
-        if (index < 0)
-        {
-            app->sim.sim_running = 0;
-            app->status = "Nao foi possivel reproduzir a curva.";
-        }
-        else
-        {
-            app->sim.trace_index = index;
-            if (finished && app->sim.trace_periodic)
-            {
-                app->sim.trace_index = 0;
-                app->sim.trace_play_start_index = 0;
-                app->sim.trace_play_started = SDL_GetTicks();
-            }
-            else if (finished && !app->sim.trace_automatic)
-            {
-                app->sim.sim_running = 0;
-                app->status = "Fim da curva; Espaco reinicia, B volta.";
-            }
-            /* An automatic, non-repeating curve (RC charging, for example) holds its final state. */
-        }
-    }
-}
-
-static void update_leds(AppState *app)
-{
-    int i;
-    if (app->sim.trace_valid)
-    {
-        for (i = 0; i < app->bench.part_count; ++i)
-            app->leds[i] =
-                app->bench.parts[i].type == PART_LED && ((app->sim.trace.leds_on[app->sim.trace_index] >> i) & 1);
-    }
-    else if (app->sim.dc_valid)
-    {
-        for (i = 0; i < app->bench.part_count; ++i)
-            app->leds[i] = app->bench.parts[i].type == PART_LED && app->sim.dc_led_currents[i] >= 1e-6;
-    }
-    else if (app->sim.auto_enabled && !app->sim.auto_failed)
-    {
-        for (i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
-            app->leds[i] = app->sim.sim_running ? 0 : -1;
-    }
-    else if (!bench_boolean_supported(&app->bench))
-    {
-        for (i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
-            app->leds[i] = -1;
-    }
-    else if (app->sim.sim_running)
-        bench_simulate(&app->bench, app->leds);
-    for (i = 0; i < app->bench.part_count; ++i)
-        if (app->sim.burnt[i] && app->bench.parts[i].type == PART_LED)
-            app->leds[i] = 2;
-}
-
 void app_simulation_update(AppState *app)
 {
     poll_result(app);
     schedule_analysis(app);
-    invalidate_results(app);
-    advance_playback(app);
-    update_leds(app);
+    const char *message = sim_state_invalidate(&app->sim, &app->bench);
+    if (message)
+        app->status = message;
+    message = sim_state_advance(&app->sim, SDL_GetTicks());
+    if (message)
+        app->status = message;
+    sim_state_leds(&app->sim, &app->bench, app->leds);
 }
