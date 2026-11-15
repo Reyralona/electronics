@@ -182,3 +182,13 @@
 - Tolerancia dos joelhos passa a acompanhar zoom; inserir torna os pontos de controle visiveis.
 - Casos puros de projecao, ordem, curvas, rejeicao e capacidade; GUI cobre inserir/remover,
   desfazer e salvar/reabrir. Modelo eletrico e formato 18 preservados.
+
+
+## 0.24.0 - 15/11/2026
+- Tamanho ajustavel no inspetor, com escala uniforme para corpo, pinos e selecao, incluindo breadboard.
+- Transformacao local compartilhada evita divergencia entre desenho, contatos e rotacao.
+- Formato 19 preserva escala; leitura 1-18, undo/redo, clipboard e editor isolado conservados.
+- Pinos e rotulos se adaptam a pecas reduzidas; enquadramento do editor considera escala.
+- Testes: resistor entre furos adjacentes, rotacoes/inversa, rejeicao, persistencia e bloco com
+  resistor reduzido validado com ngspice; GUI ampliada de 138 para 146 fases.
+- Dobra dos terminais, presets fisicos e demais criterios 1.0 continuam pendentes.

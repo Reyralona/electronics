@@ -295,3 +295,20 @@ Ainda nao implementa escala nem dobra; preparar campo de escala, persistencia, d
 como proximo incremento funcional separado. Caminhos flexiveis precisam de ownership explicito:
 nao adicionar ponteiros a Workbench sem revisar snapshots/historico/clipboard/jobs (copias por valor).
 Branch continua ativa; executavel canonico 0.23.0 preservado ate concluir incremento funcional.
+
+
+## Escala de componentes - 0.24.0
+Part.scale usa 0 como identidade legada; bench_part_scale normaliza para 1. bench_set_scale valida
+PART_SCALE_MIN/MAX (.01-100), publica revisao e nao altera valor eletrico. Transformacoes locais
+incluem escala; renderer e hit testing acompanham. Board e pinos mudam juntos; fios explicitos
+continuam ligados por Pin, contatos implicitos sao recalculados. Inspetor Tamanho abre percentual;
+APP_EDIT_SCALE separado de valor/tempo/nome/grid. Corpo compacto do grupo nao e redimensionado.
+Formato 19 acrescenta float no fim de cada registro de peca; le 1-18 com escala 1. Futuro formato
+com IDs textuais deve ser 20 ou posterior. Clipboard/historico/jobs copiam escala por valor.
+Teste de resistor 1/7 entre furos adjacentes; inversa em quatro rotacoes, arquivo invalido, roundtrip,
+e aplicar bloco reduzido com ngspice passaram. Suite completa e 146 fases GUI passaram.
+Recompilacao estrita e 146 fases repetidas apos ajustes visuais/fit passaram; captura
+capture-scale-preview.bmp revisada com rotulos sem sobreposicao.
+Nao muda padrao de tamanho das pecas novas nem calibra unidades fisicas. Proximo: terminais
+flexiveis, modo dedicado com duplo clique para joelhos, presets proporcionais e instrumentos.
+Meta 1.0 permanece ativa; nao marcar concluida.

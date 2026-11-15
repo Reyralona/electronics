@@ -129,3 +129,9 @@ Colagem/preview ainda precisam refletir encaixe; redimensionamento e dobra conti
 0.23.0: insercao por duplo clique em trecho de fio implementada, com projecao no caminho
 renderizado, ordem preservada e undo/persistencia. Joelho existente tem prioridade quando os
 pontos de controle estao visiveis. Terminais flexiveis e seu modo dedicado ainda pendentes.
+
+
+0.24.0: controle Tamanho no inspetor, 1%-10000%, com undo/persistencia e geometria dos pinos
+compartilhada. Resistor reduzido pode ocupar furos vizinhos. Parametros eletricos sao preservados.
+Pecas novas mantem tamanho anterior; presets proporcionais e calibracao fisica ainda precisam
+ser definidos. Terminais dobraveis e modo dedicado continuam pendentes.

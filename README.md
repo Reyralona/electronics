@@ -223,3 +223,14 @@ para dobrar o fio; duplo clique no joelho remove. Ctrl+Z/Ctrl+Y desfaz/refaz. A 
 a ordem do caminho, inclusive curvas arredondadas, e conserva as conexoes eletricas. Os pontos
 acompanham salvar/carregar e chips. Limite atual de 16 joelhos por fio, com mensagem ao atingir.
 Terminais fisicos dos componentes ainda nao possuem dobra; essa parte continua pendente.
+
+
+### Tamanho dos componentes (0.24.0)
+Selecione uma peca e clique em **Tamanho** no inspetor. Informe porcentagem (1% a 10000%).
+Corpo, pinos, contato na breadboard e selecao acompanham a escala; Ctrl+Z/Ctrl+Y desfaz/refaz.
+A escala acompanha slots, arquivos, clipboard e membros de chips; edite membros no editor isolado.
+Arquivos antigos conservam tamanho original. Formato 19 acrescenta escala por componente.
+Tamanho e geometria visual: nao altera resistencia/capacitancia, modelo eletrico ou potencia nominal.
+Ao redimensionar, confira encaixes: os furos/terminais mudam de lugar; fios explicitos conservam
+identidade dos pinos. A geometria ainda nao possui unidade fisica calibrada, presets proporcionais
+por componente nem terminais dobraveis. O corpo compacto dos blocos continua com tamanho proprio.
