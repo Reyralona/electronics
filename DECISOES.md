@@ -250,3 +250,14 @@ Fato oficial: realloc pode mover armazenamento e preserva bloco original quando 
 ponteiro antigo ate sucesso; verificar overflow antes de multiplicar capacidade por sizeof.
 Hipotese de modelo: deformacao geometrica nao modela plasticidade/esforco; comprimento fisico e
 limites mecanicos precisam ser definidos antes de apresentar a dobra como mecanica realista.
+
+
+## 15/11/2026 - Fronteiras de snapshots antes de dados com ownership
+Refatoracao incremental escolhida: clone/clear/move explicitos para snapshots, mantendo Workbench
+sem ponteiros neste commit. Historico usa transferencia em vez de memmove de objetos proprietarios;
+redo descartado e entradas consumidas sao limpos. Undo/redo preparam estado e pilha de retorno
+antes de publicar revisao nova. Workers mantem snapshot ate resultado ser consumido; join sozinho
+nao o apaga, pois app_simulation ainda consulta revision/periodicidade depois do poll.
+Encerramento explicito de AppState libera snapshots/historico/clipboard. Nenhuma mudanca de
+formato ou novas alocacoes no modelo ainda; faltam migrar copias locais/packing antes de anexar
+caminhos dinamicos. Nao confundir este contrato preparatorio com ownership dinamico ja integrado.
