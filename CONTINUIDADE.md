@@ -81,3 +81,18 @@ Nao atribuir causa interna ao SDL sem evidencia adicional.
 Proximo: extrair entrada/desenho da janela e consolidar transicoes de SimState com testes sem janela.
 Ainda faltam revisoes de montagem em vez de memcmp, registro de componentes, capacidades dinamicas,
 parametros/logs inspecionaveis e backend de passo real. Meta 1.0 continua nao atendida.
+
+## Estado mais recente: 0.17.3 - entrada, comandos e desenho
+Em 15/11/2026, retomada a branch refactor/input-render com alteracoes locais preservadas.
+workbench_window.c cuida do ciclo de vida; app_input despacha eventos para handlers de texto,
+zoom, pan, giro e arraste; app_commands separa comandos de teclado com testes sem janela.
+app_render recebe AppState const e divide chrome, bancada, inspetor, status, configuracoes e editor.
+Comparacao local: manter eventos/desenho em main preservaria o acoplamento; extracao mecanica
+preserva a ordem e permite validar comandos sem contexto OpenGL. Nenhuma dependencia nova.
+
+Verificacao: ./build.ps1 -GuiTests; captura --capture-example2 revisada visualmente e identica
+? referencia quality-nand.bmp (SHA256 3AC311CAD802DD3EE35FB5FE8298907906BDE2A2BEC184CEFBEE152D104B113C).
+Teste de comandos cobre exemplos, valor, giro, exclusao de componente/fio, undo/redo e limites de reproducao.
+Ainda ha funcoes grandes: input_click, draw_workspace e part_draw. SimState ainda precisa consolidar
+transicoes; revisoes de montagem ainda usam memcmp. Esses itens antecedem ampliacao do catalogo.
+A meta 1.0 permanece ativa e nao atendida; modelos eletricos e limites existentes foram preservados.

@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.17.3
+
+- Ciclo de vida da janela separado da entrada e do desenho; renderizacao recebe estado somente para leitura.
+- Comandos de teclado extraidos e eventos divididos por tipo de interacao.
+- Teste sem janela cobre edicao, historico, exclusao de fio e navegacao de amostras.
+- Build estrito, autoteste GUI e captura NAND identica ? referencia; sem mudanca do modelo eletrico.
+- Divisao das funcoes grandes de clique/desenho e consolidacao de SimState ainda pendentes.
+
 ## 0.17.2
 
 - AppState e SimState organizam os dados da aplicacao e os resultados da simulacao.
