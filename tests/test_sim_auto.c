@@ -142,6 +142,36 @@ static void test_with_ngspice(const char *exe)
     b.parts[1].on = 1;
     run(&b, exe, &r, &trace);
     assert(!r.burnt[2] && r.has_trace);
+
+    /* Redundant ideal wires do not hide why wire-current instrumentation was unavailable. */
+    memset(&b, 0, sizeof(b));
+    assert(bench_add(&b, PART_CLOCK, 0, 0) == 0);
+    assert(bench_add(&b, PART_RESISTOR, 0, 0) == 1);
+    assert(bench_add(&b, PART_LED, 0, 0) == 2);
+    assert(bench_add(&b, PART_SWITCH, 0, 0) == 3);
+    b.parts[3].on = 1;
+    wire(&b, 0, 0, 1, 0);
+    wire(&b, 1, 1, 2, 0);
+    wire(&b, 2, 1, 0, 1);
+    wire(&b, 0, 0, 3, 0);
+    wire(&b, 0, 0, 3, 1);
+    {
+        SimAutoOptions options = {1, {0, 0}, 1e-5, .005, burn_limits_default()};
+        assert(sim_auto_run(&b, exe, &options, &r, &trace));
+        assert(r.has_trace && !trace.measures_wires);
+        assert(strstr(r.message, "Correntes indisponiveis:"));
+    }
+
+    /* An inductor across a voltage source ramps current; it is not an immediate DC short. */
+    memset(&b, 0, sizeof(b));
+    assert(bench_add(&b, PART_SOURCE, 0, 0) == 0);
+    assert(bench_add(&b, PART_INDUCTOR, 0, 0) == 1);
+    wire(&b, 0, 0, 1, 0);
+    wire(&b, 1, 1, 0, 1);
+    run(&b, exe, &r, &trace);
+    assert(r.has_trace && r.powered && !r.burnt_count);
+    assert(trace.count > 10);
+
 }
 
 int main(int argc, char **argv)

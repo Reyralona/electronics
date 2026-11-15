@@ -76,3 +76,5 @@ Dois exemplos reproduzíveis são abertos por F2: LED com resistor na breadboard
 
 
 Integracao de 14/11/2026: adotada a revisao QUALIDADE_CODIGO.md como direcao incremental. O trabalho local do Claude foi preservado em outra branch e integrado com testes. Calculo automatico por processo isolado passou a ser o fluxo normal; P/T continuam disponiveis. Queima estatica usa heuristica didatica reversivel (30 mA no LED, 0,25 W no resistor), sem modelo termico. Transientes ignoram essa heuristica DC, evitando falso curto de indutores e inferencias incorretas a partir de clocks fixados no nivel alto. LED generico usa RS=2 ohms; rshunt=1e12 facilita montagens incompletas com fuga numerica. Resultados antigos sao invalidados ao mudar a montagem. CONTINUIDADE.md registra origem, validacao e pendencias.
+
+A extracao inicial para dev_capture.c preservou a captura automatica byte a byte. Cenarios e fases ainda precisam sair de main. Fallback transititorio sem instrumentacao preserva a causa no status; teste com ciclo de fios ideais confirma curva valida sem correntes inventadas. Teste adicional confirma indutor diretamente na fonte sem queima baseada no equivalente DC.

@@ -41,3 +41,9 @@ Cenarios e fases do autoteste ainda estao na janela; extracao completa permanece
 Build estrito e autoteste passaram apos a extracao. Captura --capture-auto identica antes/depois
 (SHA256 340A6047DFAF84EDB9DAE2B6F9CFC903621024FA2C002C36984E751E2E285C28).
 Captura do terceiro exemplo revisada em build/quality-nand.bmp.
+
+## Correcoes e validacao final deste incremento
+Fallback transititorio sem sensores preserva a causa da indisponibilidade de correntes na mensagem da UI.
+Regressoes: indutor diretamente na fonte gera transiente sem queima DC; caminhos ideais redundantes
+permitem a curva sem inventar correntes e apresentam aviso. test_sim_auto passou com ngspice.
+`tools/test-workbench-ngspice.ps1` e `tools/test-xspice-gates.ps1` passaram (RC, RL, fontes, LED e portas).

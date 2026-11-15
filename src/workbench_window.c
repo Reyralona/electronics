@@ -881,7 +881,6 @@ int main(int argc, char **argv) {
             }
             else if(dc_job.automatic) {
                 const SimAutoResult *r=&dc_job.auto_result;
-                int was_bad=auto_failed || burnt_count;
                 result_shape=dc_job.snapshot;
                 memcpy(burnt,r->burnt,sizeof(burnt));
                 memcpy(burn_reason,r->burn_reason,sizeof(burn_reason));
@@ -910,7 +909,7 @@ int main(int argc, char **argv) {
                     }
                     burn_text=burn_message(auto_status,sizeof(auto_status),&bench,burnt,burn_reason,burn_value);
                     if(burn_text) status=burn_text;
-                    else if(was_bad || !r->powered) { snprintf(auto_status,sizeof(auto_status),"%s",r->powered?"Circuito funcionando.":r->message); status=auto_status; }
+                    else { snprintf(auto_status,sizeof(auto_status),"%s",r->message); status=auto_status; }
                 }
             }
             else if(dc_job.transient) {

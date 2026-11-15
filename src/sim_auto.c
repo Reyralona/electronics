@@ -135,9 +135,11 @@ static int run_transient(const Workbench *bench, const char *executable, const S
 {
     char message[128];
     int ok = 0;
+    char instrumentation_error[128] = {0};
     if (options->instrument_wires) {
         ok = spice_transient_instrumented(bench, executable, 1, options->probe, options->step, options->stop,
                                           trace, message, sizeof(message));
+        if (!ok) snprintf(instrumentation_error, sizeof(instrumentation_error), "%s", message);
     }
     if (!ok) {
         ok = spice_transient_analyze(bench, executable, options->probe, options->step, options->stop,
@@ -145,6 +147,9 @@ static int run_transient(const Workbench *bench, const char *executable, const S
     }
     snprintf(result->message, sizeof(result->message), "%s", message);
     if (!ok) return 0;
+    if (instrumentation_error[0]) {
+        snprintf(result->message, sizeof(result->message), "Correntes indisponiveis: %s", instrumentation_error);
+    }
     result->has_trace = 1;
     result->periodic = sim_auto_is_periodic(bench);
     return 1;

@@ -162,7 +162,7 @@ static NetlistResult write_netlist(FILE *out,const Workbench *b,int transient,in
     }
     if(chip_count && fprintf(out,".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=0)\n")<0) return NETLIST_IO_ERROR;
     if(gate_count && fprintf(out,".model gate_adc adc_bridge(in_low=1.5 in_high=3.5)\n.model gate_and d_and(rise_delay=1n fall_delay=1n)\n.model gate_nand d_nand(rise_delay=1n fall_delay=1n)\n.model gate_or d_or(rise_delay=1n fall_delay=1n)\n.model gate_xor d_xor(rise_delay=1n fall_delay=1n)\n.model gate_not d_inverter(rise_delay=1n fall_delay=1n)\n.model gate_dff d_dff(ic=0 clk_delay=1n rise_delay=1n fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n")<0) return NETLIST_IO_ERROR;
-    /* RS: series resistance so an LED wired straight to a source gives a finite, realistic current.
+    /* RS: series resistance so an LED wired straight to a source gives a finite current in this didactic model.
        rshunt: 1 TOhm from every node to ground so unfinished circuits (floating nodes) still solve. */
     if(fprintf(out,".model LED_GENERIC D(IS=1e-18 N=2 RS=%.17g)\n.options rshunt=1e12\n",NETLIST_LED_SERIES_OHMS)<0) return NETLIST_IO_ERROR;
     if(transient) {
