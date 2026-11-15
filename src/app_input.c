@@ -17,31 +17,42 @@
 
 static int hit_wire(const Workbench *bench, float x, float y, float tolerance, int rounded)
 {
-    int i;
-    for (i = bench->wire_count - 1; i >= 0; --i)
+    for (int i = bench->wire_count - 1; i >= 0; --i)
     {
-        const Wire *w = &bench->wires[i];
-        if (bench_group_wire_internal(bench, w))
+        const Wire *wire = &bench->wires[i];
+        if (bench_group_wire_internal(bench, wire))
             continue;
-        WirePoint a, b, path[WIRE_PATH_CAPACITY];
-        int k, n;
-        bench_terminal_position(bench, w->a, &a.x, &a.y);
-        bench_terminal_position(bench, w->b, &b.x, &b.y);
-        n = wire_path(w, a, b, rounded ? 18.0f : 0.0f, path);
-        for (k = 1; k < n; ++k)
-        {
-            float dx = path[k].x - path[k - 1].x, dy = path[k].y - path[k - 1].y, den = dx * dx + dy * dy, t = 0, px,
-                  py;
-            if (den > 0)
-                t = fminf(1, fmaxf(0, ((x - path[k - 1].x) * dx + (y - path[k - 1].y) * dy) / den));
-            px = path[k - 1].x + t * dx;
-            py = path[k - 1].y + t * dy;
-            if ((x - px) * (x - px) + (y - py) * (y - py) <= tolerance * tolerance)
-                return i;
-        }
+        WirePoint start, end, projected;
+        int slot;
+        bench_terminal_position(bench, wire->a, &start.x, &start.y);
+        bench_terminal_position(bench, wire->b, &end.x, &end.y);
+        if (wire_pick_segment(wire, start, end, rounded ? 18.0f : 0, (WirePoint){x, y}, tolerance, &slot, &projected))
+            return i;
     }
     return -1;
 }
+
+static void input_insert_knee(AppState *app, float x, float y)
+{
+    int index = app->selected_wire, slot;
+    const Wire *wire = &app->bench.wires[index];
+    WirePoint start, end, projected;
+    bench_terminal_position(&app->bench, wire->a, &start.x, &start.y);
+    bench_terminal_position(&app->bench, wire->b, &end.x, &end.y);
+    if (!wire_pick_segment(wire, start, end, app->round_wires ? 18.0f : 0,
+                           (WirePoint){x, y}, 7.0f / app->view.zoom, &slot, &projected))
+        return;
+    Workbench before = app->bench;
+    if (!bench_insert_knee(&app->bench, index, slot, projected))
+    {
+        app->status = "Nao foi possivel inserir: limite atual de 16 joelhos por fio.";
+        return;
+    }
+    bench_history_record(app->history, &before);
+    app->show_handles = 1;
+    app->status = "Joelho adicionado. Arraste para dobrar; duplo clique remove; Ctrl+Z desfaz.";
+}
+
 static int part_at(const Workbench *bench, float x, float y)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
@@ -477,7 +488,7 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
             for (k = 0; k < app->bench.wires[i].knee_count; ++k)
             {
                 WirePoint point = app->bench.wires[i].knees[k];
-                if (fabsf(x - point.x) < 8 && fabsf(y - point.y) < 8)
+                if (fabsf(x - point.x) < 8 / app->view.zoom && fabsf(y - point.y) < 8 / app->view.zoom)
                 {
                     app->drag_wire = i;
                     app->drag_knee = k;
@@ -647,7 +658,9 @@ static void input_select(AppState *app, float x, float y, int clicks)
         {
             app->selected = -1;
             app->wire_color = app->bench.wires[app->selected_wire].color;
-            app->status = "Fio selecionado; F1 abre as cores.";
+            app->status = "Fio selecionado; duplo clique no trecho adiciona joelho; F1 abre as cores.";
+            if (clicks >= 2)
+                input_insert_knee(app, x, y);
             return;
         }
     }

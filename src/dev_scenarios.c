@@ -78,6 +78,13 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             bench_toggle_wire(&app->bench, (Pin){3, 1}, (Pin){1, 0});
         }
     }
+    if (app->capture && !strcmp(argv[1], "--capture-knee-edit"))
+    {
+        bench_insert_knee(&app->bench, 0, 1, (WirePoint){500, 130});
+        bench_move_knee(&app->bench, 0, 1, (WirePoint){500, 240});
+        app->selected_wire = 0;
+        app->status = "Duplo clique no trecho adiciona joelho; no joelho remove. Arraste para dobrar; Ctrl+Z desfaz.";
+    }
     if (app->capture && strcmp(argv[1], "--capture-and") == 0)
     {
         app->bench = (Workbench){0};
@@ -712,6 +719,29 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->snap_board = 1;
         queued = dev_test_key(window, SDLK_L);
     }
+    else if (app->selftest_phase == 132)
+    {
+        app->bench = (Workbench){0};
+        app->view = (BenchView){1, 0, 0};
+        app->settings = 0;
+        app->selected = -1;
+        app->show_handles = 1;
+        bench_selection_clear(&app->selection);
+        bench_add(&app->bench, PART_SOURCE, 400, 200);
+        bench_add(&app->bench, PART_LED, 700, 200);
+        bench_toggle_wire(&app->bench, (Pin){0, 0}, (Pin){1, 0});
+        queued = dev_test_click_count(window, 500, 200, 2);
+    }
+    else if (app->selftest_phase == 133)
+        queued = dev_test_click_count(window, 500, 200, 2);
+    else if (app->selftest_phase == 134)
+        queued = dev_test_key(window, SDLK_Z);
+    else if (app->selftest_phase == 135)
+        queued = dev_test_click_count(window, 620, 200, 2);
+    else if (app->selftest_phase == 136)
+        queued = dev_test_key(window, SDLK_S);
+    else if (app->selftest_phase == 137)
+        queued = dev_test_key(window, SDLK_L);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -972,13 +1002,20 @@ void dev_scenario_validate(AppState *app)
         valid = app->bench.parts[2].x == 569 && app->bench.parts[2].y == 281;
     else if (app->selftest_phase == 131)
         valid = app->grid_spacing == 16 && app->snap_grid && !app->snap_board;
+    else if (app->selftest_phase == 132 || app->selftest_phase == 134)
+        valid = app->bench.wires[0].knee_count == 1 && app->bench.wires[0].knees[0].x == 500;
+    else if (app->selftest_phase == 133)
+        valid = app->bench.wires[0].knee_count == 0;
+    else if (app->selftest_phase == 135 || app->selftest_phase == 137)
+        valid = app->bench.wires[0].knee_count == 2 && app->bench.wires[0].knees[0].x == 500 &&
+                app->bench.wires[0].knees[1].x == 620;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 132)
+    if (++app->selftest_phase == 138)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

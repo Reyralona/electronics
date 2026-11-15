@@ -127,5 +127,36 @@ int main(void)
         assert(bench_snap_to_breadboard(&board, resistor));
         assert(board.parts[resistor].x == x && board.parts[resistor].y == y);
     }
+    {
+        Workbench route = {0};
+        bench_add(&route, PART_SOURCE, 100, 100);
+        bench_add(&route, PART_LED, 400, 100);
+        bench_toggle_wire(&route, (Pin){0, 0}, (Pin){1, 0});
+        WirePoint projected;
+        int slot = -1;
+        assert(wire_pick_segment(&route.wires[0], (WirePoint){0, 0}, (WirePoint){100, 0},
+                                 18, (WirePoint){50, 3}, 4, &slot, &projected));
+        assert(slot == 0 && projected.x == 50 && projected.y == 0);
+        assert(bench_insert_knee(&route, 0, slot, projected));
+        assert(bench_insert_knee(&route, 0, 0, (WirePoint){25, 0}));
+        assert(route.wires[0].knees[1].x == 50);
+        assert(!bench_insert_knee(&route, 0, 3, projected));
+        assert(bench_remove_knee(&route, 0, 0));
+        assert(route.wires[0].knees[0].x == 50);
+        Wire corner = {.knee_count = 1, .knees = {{100, 0}}};
+        assert(wire_pick_segment(&corner, (WirePoint){0, 0}, (WirePoint){100, 100},
+                                 18, (WirePoint){95.5f, 4.5f}, 1, &slot, &projected));
+        assert(slot == 0);
+        assert(wire_pick_segment(&corner, (WirePoint){0, 0}, (WirePoint){100, 100},
+                                 18, (WirePoint){100, 60}, 1, &slot, &projected));
+        assert(slot == 1);
+        while (route.wires[0].knee_count < WIRE_MAX_KNEES)
+            assert(bench_insert_knee(&route, 0, route.wires[0].knee_count, (WirePoint){10, 10}));
+        uint64_t revision = route.revision;
+        assert(!bench_insert_knee(&route, 0, 0, projected));
+        assert(route.revision == revision && route.wires[0].knee_count == WIRE_MAX_KNEES);
+        assert(!wire_pick_segment(&corner, (WirePoint){0, 0}, (WirePoint){100, 100},
+                                  18, (WirePoint){500, 500}, 1, &slot, &projected));
+    }
     return 0;
 }

@@ -79,6 +79,9 @@ int bench_move_part(Workbench *bench, int component, float x, float y);
 int bench_set_on(Workbench *bench, int component, int on);
 int bench_set_wire_color(Workbench *bench, int wire, int color);
 int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count);
+int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point);
+int wire_pick_segment(const Wire *wire, WirePoint start, WirePoint end, float radius,
+                      WirePoint point, float tolerance, int *slot, WirePoint *projected);
 int bench_move_knee(Workbench *bench, int wire, int knee, WirePoint point);
 int bench_remove_knee(Workbench *bench, int wire, int knee);
 int bench_remove_wire(Workbench *bench, int wire);

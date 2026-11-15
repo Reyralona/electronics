@@ -140,7 +140,8 @@ int bench_parse_value(const char *text, double *value)
     return 1;
 }
 
-int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, WirePoint output[WIRE_PATH_CAPACITY])
+static int wire_path_indexed(const Wire *wire, WirePoint start, WirePoint end, float radius,
+                             WirePoint output[WIRE_PATH_CAPACITY], int *slots)
 {
     int i, count = 0;
     output[count++] = start;
@@ -153,7 +154,11 @@ int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, Wi
         float after = hypotf(next.x - corner.x, next.y - corner.y);
         float r = fminf(radius, fminf(before * .45f, after * .45f));
         if (r <= 0 || before < .001f || after < .001f)
+        {
+            if (slots)
+                slots[count] = i;
             output[count++] = corner;
+        }
         else
         {
             int step;
@@ -163,13 +168,74 @@ int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, Wi
             for (step = 0; step <= 8; ++step)
             {
                 float t = step / 8.0f, u = 1 - t;
+                if (slots)
+                    slots[count] = i + (step > 4);
                 output[count++] = (WirePoint){u * u * a.x + 2 * u * t * corner.x + t * t * b.x,
                                               u * u * a.y + 2 * u * t * corner.y + t * t * b.y};
             }
         }
     }
+    if (slots)
+        slots[count] = wire->knee_count;
     output[count++] = end;
     return count;
+}
+
+int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, WirePoint output[WIRE_PATH_CAPACITY])
+{
+    return wire_path_indexed(wire, start, end, radius, output, NULL);
+}
+
+int wire_pick_segment(const Wire *wire, WirePoint start, WirePoint end, float radius,
+                      WirePoint point, float tolerance, int *slot, WirePoint *projected)
+{
+    if (!wire || !slot || !projected || wire->knee_count < 0 || wire->knee_count > WIRE_MAX_KNEES ||
+        !isfinite(point.x) || !isfinite(point.y) || !isfinite(tolerance) || tolerance < 0 ||
+        !isfinite(start.x) || !isfinite(start.y) || !isfinite(end.x) || !isfinite(end.y) ||
+        !isfinite(radius) || radius < 0)
+        return 0;
+    for (int i = 0; i < wire->knee_count; ++i)
+        if (!isfinite(wire->knees[i].x) || !isfinite(wire->knees[i].y))
+            return 0;
+    WirePoint path[WIRE_PATH_CAPACITY];
+    int slots[WIRE_PATH_CAPACITY];
+    int count = wire_path_indexed(wire, start, end, radius, path, slots);
+    double best = (double)tolerance * tolerance;
+    int found = 0;
+    for (int i = 1; i < count; ++i)
+    {
+        double dx = (double)path[i].x - path[i - 1].x;
+        double dy = (double)path[i].y - path[i - 1].y;
+        double length = dx * dx + dy * dy;
+        double t = 0;
+        if (length > 0)
+            t = fmin(1, fmax(0, ((point.x - path[i - 1].x) * dx + (point.y - path[i - 1].y) * dy) / length));
+        WirePoint nearest = {(float)(path[i - 1].x + t * dx), (float)(path[i - 1].y + t * dy)};
+        double offset_x = (double)point.x - nearest.x;
+        double offset_y = (double)point.y - nearest.y;
+        double distance = offset_x * offset_x + offset_y * offset_y;
+        if (distance <= best && (!found || distance < best))
+        {
+            best = distance;
+            *slot = slots[i];
+            *projected = nearest;
+            found = 1;
+        }
+    }
+    return found;
+}
+
+int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point)
+{
+    if (!wire_valid(bench, wire) || slot < 0 || slot > bench->wires[wire].knee_count ||
+        bench->wires[wire].knee_count >= WIRE_MAX_KNEES || !isfinite(point.x) || !isfinite(point.y))
+        return 0;
+    Wire *route = &bench->wires[wire];
+    memmove(&route->knees[slot + 1], &route->knees[slot], (size_t)(route->knee_count - slot) * sizeof(WirePoint));
+    route->knees[slot] = point;
+    ++route->knee_count;
+    ++bench->revision;
+    return 1;
 }
 
 int bench_pin_count(PartType type)
