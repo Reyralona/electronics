@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.17.2
+
+- AppState e SimState organizam os dados da aplicacao e os resultados da simulacao.
+- Cenarios de captura e 79 fases de autoteste extraidos da janela; atualizacao de simulacao em modulo proprio.
+- Teste sem janela verifica invalidacao DC/transitoria e LEDs por amostra; modelo eletrico preservado.
+- Eventos sinteticos inicializados explicitamente; autoteste e captura NAND verificados sem regressao visual.
+- Estilo de formatacao registrado em .clang-format; entrada e desenho ainda precisam ser separados.
+
+
 ## 0.17.1
 
 - Preparacao do ngspice baixa explicitamente gcc-libs e libwinpthread e verifica as DLLs antes de publicar o runtime.
