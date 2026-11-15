@@ -4,6 +4,113 @@
 #include <errno.h>
 #include <stdlib.h>
 
+void bench_replace(Workbench *bench, const Workbench *replacement)
+{
+    uint64_t revision = bench->revision + 1;
+    *bench = *replacement;
+    bench->revision = revision;
+}
+
+int bench_move_part(Workbench *bench, int component, float x, float y)
+{
+    if (!bench || component < 0 || component >= bench->part_count || !isfinite(x) || !isfinite(y))
+        return 0;
+    Part *part = &bench->parts[component];
+    if (part->x != x || part->y != y)
+    {
+        part->x = x;
+        part->y = y;
+        ++bench->revision;
+    }
+    return 1;
+}
+
+int bench_set_on(Workbench *bench, int component, int on)
+{
+    if (!bench || component < 0 || component >= bench->part_count || (on != 0 && on != 1))
+        return 0;
+    if (bench->parts[component].on != on)
+    {
+        bench->parts[component].on = on;
+        ++bench->revision;
+    }
+    return 1;
+}
+
+static int wire_valid(const Workbench *bench, int wire)
+{
+    return bench && wire >= 0 && wire < bench->wire_count;
+}
+
+int bench_set_wire_color(Workbench *bench, int wire, int color)
+{
+    if (!wire_valid(bench, wire) || color < 0 || color >= WIRE_COLOR_COUNT)
+        return 0;
+    if (bench->wires[wire].color != color)
+    {
+        bench->wires[wire].color = color;
+        ++bench->revision;
+    }
+    return 1;
+}
+
+int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count)
+{
+    int i, changed;
+    if (!wire_valid(bench, wire) || count < 0 || count > WIRE_MAX_KNEES || (count && !points))
+        return 0;
+    changed = count != bench->wires[wire].knee_count;
+    for (i = 0; i < count; ++i)
+    {
+        if (!isfinite(points[i].x) || !isfinite(points[i].y))
+            return 0;
+        changed |= points[i].x != bench->wires[wire].knees[i].x || points[i].y != bench->wires[wire].knees[i].y;
+    }
+    if (changed)
+    {
+        if (count)
+            memmove(bench->wires[wire].knees, points, (size_t)count * sizeof(*points));
+        bench->wires[wire].knee_count = count;
+        ++bench->revision;
+    }
+    return 1;
+}
+
+int bench_move_knee(Workbench *bench, int wire, int knee, WirePoint point)
+{
+    if (!wire_valid(bench, wire) || knee < 0 || knee >= bench->wires[wire].knee_count || !isfinite(point.x) ||
+        !isfinite(point.y))
+        return 0;
+    WirePoint *old = &bench->wires[wire].knees[knee];
+    if (old->x != point.x || old->y != point.y)
+    {
+        *old = point;
+        ++bench->revision;
+    }
+    return 1;
+}
+
+int bench_remove_knee(Workbench *bench, int wire, int knee)
+{
+    if (!wire_valid(bench, wire) || knee < 0 || knee >= bench->wires[wire].knee_count)
+        return 0;
+    Wire *route = &bench->wires[wire];
+    memmove(&route->knees[knee], &route->knees[knee + 1], (size_t)(route->knee_count - knee - 1) * sizeof(WirePoint));
+    --route->knee_count;
+    ++bench->revision;
+    return 1;
+}
+
+int bench_remove_wire(Workbench *bench, int wire)
+{
+    if (!wire_valid(bench, wire))
+        return 0;
+    memmove(&bench->wires[wire], &bench->wires[wire + 1], (size_t)(bench->wire_count - wire - 1) * sizeof(Wire));
+    --bench->wire_count;
+    ++bench->revision;
+    return 1;
+}
+
 int bench_parse_value(const char *text, double *value)
 {
     char buffer[64], *end;
@@ -242,8 +349,7 @@ int bench_snap_to_breadboard(Workbench *b, int component)
     }
     if (found)
     {
-        b->parts[component].x += dx;
-        b->parts[component].y += dy;
+        bench_move_part(b, component, b->parts[component].x + dx, b->parts[component].y + dy);
     }
     return found;
 }
@@ -277,6 +383,7 @@ int bench_add(Workbench *b, PartType type, float x, float y)
                                                    : 0.0,
                           0,
                           type == PART_BREADBOARD};
+    ++b->revision;
     return id;
 }
 
@@ -285,6 +392,7 @@ int bench_rotate_part(Workbench *b, int component)
     if (!b || component < 0 || component >= b->part_count || b->parts[component].type == PART_BREADBOARD)
         return 0;
     b->parts[component].rotation = (b->parts[component].rotation + 1) % 4;
+    ++b->revision;
     return 1;
 }
 
@@ -297,7 +405,11 @@ int bench_set_value(Workbench *b, int component, double value)
     if (type != PART_SOURCE && type != PART_RESISTOR && type != PART_CAPACITOR && type != PART_INDUCTOR &&
         type != PART_CLOCK)
         return 0;
-    b->parts[component].value = value;
+    if (b->parts[component].value != value)
+    {
+        b->parts[component].value = value;
+        ++b->revision;
+    }
     return 1;
 }
 
@@ -311,14 +423,14 @@ int bench_toggle_wire(Workbench *b, Pin a, Pin c)
         Wire w = b->wires[i];
         if ((same_pin(w.a, a) && same_pin(w.b, c)) || (same_pin(w.a, c) && same_pin(w.b, a)))
         {
-            memmove(&b->wires[i], &b->wires[i + 1], (size_t)(b->wire_count - i - 1) * sizeof(Wire));
-            --b->wire_count;
+            bench_remove_wire(b, i);
             return 2;
         }
     }
     if (b->wire_count == WORKBENCH_MAX_WIRES)
         return 0;
     b->wires[b->wire_count++] = (Wire){.a = a, .b = c};
+    ++b->revision;
     return 1;
 }
 
@@ -345,6 +457,7 @@ void bench_remove(Workbench *b, int index)
     }
     memmove(&b->parts[index], &b->parts[index + 1], (size_t)(b->part_count - index - 1) * sizeof(Part));
     --b->part_count;
+    ++b->revision;
 }
 
 static int root(int *parent, int n)

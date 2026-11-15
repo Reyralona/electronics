@@ -31,7 +31,7 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
 static void accept_automatic_result(AppState *app)
 {
     const SimAutoResult *r = &app->dc_job.auto_result;
-    app->sim.result_shape = app->dc_job.snapshot;
+    app->sim.result_revision = app->dc_job.snapshot.revision;
     memcpy(app->sim.burnt, r->burnt, sizeof(app->sim.burnt));
     memcpy(app->sim.burn_reason, r->burn_reason, sizeof(app->sim.burn_reason));
     memcpy(app->sim.burn_value, r->burn_value, sizeof(app->sim.burn_value));
@@ -54,7 +54,7 @@ static void accept_automatic_result(AppState *app)
                 app->show_trace = 0;
             app->sim.trace = app->dc_job.trace;
             app->sim.trace_valid = 1;
-            app->sim.trace_snapshot = app->dc_job.snapshot;
+            app->sim.trace_revision = app->dc_job.snapshot.revision;
             app->sim.trace_index = 0;
             app->sim.trace_pin = app->dc_job.probe.pin;
             app->sim.trace_current = 0;
@@ -71,7 +71,7 @@ static void accept_automatic_result(AppState *app)
             app->sim.trace_valid = 0;
             app->sim.trace_automatic = 0;
             app->sim.dc_valid = 1;
-            app->sim.dc_snapshot = app->dc_job.snapshot;
+            app->sim.dc_revision = app->dc_job.snapshot.revision;
             app->sim.dc_current = r->source_current;
             memcpy(app->sim.dc_led_currents, r->currents, sizeof(app->sim.dc_led_currents));
             app->sim.dc_wire_valid = r->measures_wires;
@@ -99,7 +99,7 @@ static void accept_transient_result(AppState *app)
     app->sim.trace_pin = app->dc_job.probe.pin;
     app->sim.trace_current = app->dc_job.transient == 3 ? 2 : app->dc_job.transient == 2 ? 1 : 0;
     app->sim.trace_wire = app->sim.trace_current == 2 ? app->dc_job.probe.component : -1;
-    app->sim.trace_snapshot = app->dc_job.snapshot;
+    app->sim.trace_revision = app->dc_job.snapshot.revision;
     if (app->sim.trace_valid)
     {
         app->sim.trace = app->dc_job.trace;
@@ -123,7 +123,7 @@ static void poll_result(AppState *app)
 {
     if (spice_job_poll(&app->dc_job))
     {
-        if (memcmp(&app->dc_job.snapshot, &app->bench, sizeof(app->bench)) != 0)
+        if (app->dc_job.snapshot.revision != app->bench.revision)
         {
             /* An automatic result for an older assembly is simply dropped; a newer analysis follows. */
             if (!app->dc_job.automatic)
@@ -144,7 +144,7 @@ static void poll_result(AppState *app)
         {
             app->sim.dc_valid = app->dc_job.success;
             app->sim.dc_wire_valid = app->dc_job.success && app->dc_job.measures_wires;
-            app->sim.dc_snapshot = app->dc_job.snapshot;
+            app->sim.dc_revision = app->dc_job.snapshot.revision;
             app->sim.dc_current = app->dc_job.current;
             memcpy(app->sim.dc_led_currents, app->dc_job.led_currents, sizeof(app->sim.dc_led_currents));
             if (app->sim.dc_wire_valid)
@@ -158,23 +158,22 @@ static void poll_result(AppState *app)
 static void schedule_analysis(AppState *app)
 {
     /* Automatic analysis: once the assembly has been still for a moment, recalculate whatever changed. */
-    if (memcmp(&app->sim.frame_bench, &app->bench, sizeof(app->bench)) != 0)
+    if (app->sim.frame_revision != app->bench.revision)
     {
-        app->sim.frame_bench = app->bench;
+        app->sim.frame_revision = app->bench.revision;
         app->sim.bench_changed_at = SDL_GetTicks();
     }
     if (app->sim.auto_enabled && app->sim.sim_running && !app->dc_job.thread &&
         SDL_GetTicks() - app->sim.bench_changed_at >= AUTO_DEBOUNCE_MS)
     {
-        int dirty =
-            !app->sim.auto_requested_valid || memcmp(&app->sim.auto_requested, &app->bench, sizeof(app->bench)) != 0;
+        int dirty = !app->sim.auto_requested_valid || app->sim.requested_revision != app->bench.revision;
         dirty = dirty || app->sim.auto_show_current != app->show_current || app->sim.auto_step != app->transient_step ||
                 app->sim.auto_stop != app->transient_stop;
         if (dirty)
         {
             SimAutoOptions options = {app->show_current, sim_state_probe(&app->bench, app->selected, app->probe_pin),
                                       app->transient_step, app->transient_stop, burn_limits_default()};
-            app->sim.auto_requested = app->bench;
+            app->sim.requested_revision = app->bench.revision;
             app->sim.auto_requested_valid = 1;
             app->sim.auto_show_current = app->show_current;
             app->sim.auto_step = app->transient_step;

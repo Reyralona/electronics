@@ -138,7 +138,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     }
     if (fscanf(f, " %c", &extra) != EOF || ferror(f))
         return 0;
-    *destination = b;
+    bench_replace(destination, &b);
     *settings = saved;
     return 1;
 }

@@ -9,21 +9,21 @@ static void test_invalidation(void)
     assert(bench_add(&bench, PART_LED, 300, 200) == 0);
     sim.auto_enabled = 1;
     sim.dc_valid = 1;
-    sim.dc_snapshot = bench;
-    sim.result_shape = bench;
+    sim.dc_revision = bench.revision;
+    sim.result_revision = bench.revision;
     sim.burnt_count = 1;
     sim.burnt[0] = 1;
     assert(sim_state_invalidate(&sim, &bench) == NULL);
     assert(sim.dc_valid && sim.burnt_count == 1);
-    bench.parts[0].value += 1;
+    assert(bench_move_part(&bench, 0, 310, 200));
     const char *message = sim_state_invalidate(&sim, &bench);
     assert(message && strstr(message, "Pausado"));
     assert(!sim.dc_valid && !sim.burnt_count && !sim.burnt[0]);
 
     sim.trace_valid = 1;
-    sim.trace_snapshot = bench;
+    sim.trace_revision = bench.revision;
     assert(sim_state_invalidate(&sim, &bench) == NULL);
-    bench.parts[0].x += 10;
+    assert(bench_move_part(&bench, 0, 320, 200));
     sim.sim_running = 1;
     assert(sim_state_invalidate(&sim, &bench) == NULL);
     assert(!sim.trace_valid);

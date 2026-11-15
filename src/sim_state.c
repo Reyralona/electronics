@@ -21,14 +21,14 @@ const char *sim_state_invalidate(SimState *sim, const Workbench *bench)
 {
     const char *message = NULL;
     /* Electrical results belong only to the exact assembly that produced them. */
-    int keep = sim->auto_enabled && memcmp(&sim->result_shape, bench, sizeof(*bench)) == 0;
-    if (!keep && sim->burnt_count && memcmp(&sim->result_shape, bench, sizeof(*bench)) != 0)
+    int keep = sim->auto_enabled && sim->result_revision == bench->revision;
+    if (!keep && sim->burnt_count && sim->result_revision != bench->revision)
     {
         memset(sim->burnt, 0, sizeof(sim->burnt));
         sim->burnt_count = 0;
     }
     const char *paused_text = "Pausado: a montagem mudou; aperte play para calcular.";
-    if (!keep && sim->trace_valid && memcmp(&sim->trace_snapshot, bench, sizeof(*bench)) != 0)
+    if (!keep && sim->trace_valid && sim->trace_revision != bench->revision)
     {
         sim->trace_valid = 0;
         if (!sim->auto_enabled)
@@ -36,7 +36,7 @@ const char *sim_state_invalidate(SimState *sim, const Workbench *bench)
         else if (!sim->sim_running)
             message = paused_text;
     }
-    if (!keep && sim->dc_valid && memcmp(&sim->dc_snapshot, bench, sizeof(*bench)) != 0)
+    if (!keep && sim->dc_valid && sim->dc_revision != bench->revision)
     {
         sim->dc_valid = 0;
         if (!sim->auto_enabled)

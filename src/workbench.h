@@ -1,5 +1,6 @@
 #ifndef WORKBENCH_H
 #define WORKBENCH_H
+#include <stdint.h>
 
 #define WORKBENCH_MAX_COMPONENTS 64
 #define WORKBENCH_MAX_WIRES 128
@@ -56,7 +57,19 @@ typedef struct
     Part parts[WORKBENCH_MAX_COMPONENTS];
     Wire wires[WORKBENCH_MAX_WIRES];
     int part_count, wire_count;
+    /* Runtime identity of edits; never serialized or restored from history.
+     * Edit published assemblies through the mutation functions below. */
+    uint64_t revision;
 } Workbench;
+
+void bench_replace(Workbench *bench, const Workbench *replacement);
+int bench_move_part(Workbench *bench, int component, float x, float y);
+int bench_set_on(Workbench *bench, int component, int on);
+int bench_set_wire_color(Workbench *bench, int wire, int color);
+int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count);
+int bench_move_knee(Workbench *bench, int wire, int knee, WirePoint point);
+int bench_remove_knee(Workbench *bench, int wire, int knee);
+int bench_remove_wire(Workbench *bench, int wire);
 
 int bench_add(Workbench *bench, PartType type, float x, float y);
 int bench_pin_count(PartType type);

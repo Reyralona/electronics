@@ -187,7 +187,7 @@ int dev_scenario_analyze(AppState *app, char **argv)
         {
             while (!SDL_GetAtomicInt(&app->dc_job.done))
                 SDL_Delay(5);
-            app->sim.auto_requested = app->bench;
+            app->sim.requested_revision = app->bench.revision;
             app->sim.auto_requested_valid = 1;
             app->sim.auto_show_current = app->show_current;
             app->sim.auto_step = app->transient_step;
@@ -216,7 +216,7 @@ int dev_scenario_analyze(AppState *app, char **argv)
                 spice_dc_analyze(&app->bench, app->ngspice, &app->sim.dc_current, app->sim.dc_led_currents,
                                  app->sim.dc_status, sizeof(app->sim.dc_status));
         if (app->sim.dc_valid)
-            app->sim.dc_snapshot = app->bench;
+            app->sim.dc_revision = app->bench.revision;
         app->status = app->sim.dc_status;
     }
     if (app->capture && (strcmp(argv[1], "--capture-trace") == 0 || strcmp(argv[1], "--capture-trace-current") == 0 ||
@@ -251,7 +251,7 @@ int dev_scenario_analyze(AppState *app, char **argv)
                                           sizeof(app->sim.dc_status));
         if (app->sim.trace_valid)
         {
-            app->sim.trace_snapshot = app->bench;
+            app->sim.trace_revision = app->bench.revision;
             app->sim.trace_index = app->sim.trace.count / 3;
             app->sim.sim_running = 0;
             app->status = "Sondagem RC calculada.";
@@ -293,7 +293,7 @@ int dev_scenario_analyze(AppState *app, char **argv)
             fprintf(stderr, "Captura LED: %s\n", app->sim.dc_status);
             return 1;
         }
-        app->sim.trace_snapshot = app->bench;
+        app->sim.trace_revision = app->bench.revision;
         app->sim.trace_index =
             spice_trace_nearest(&app->sim.trace, strcmp(argv[1], "--capture-led-on") == 0 ? .125 : .375);
         app->sim.sim_running = 0;
@@ -322,7 +322,7 @@ int dev_scenario_analyze(AppState *app, char **argv)
             fprintf(stderr, "Captura DFF: %s\n", app->sim.dc_status);
             return 1;
         }
-        app->sim.trace_snapshot = app->bench;
+        app->sim.trace_revision = app->bench.revision;
         app->sim.trace_index = spice_trace_nearest(&app->sim.trace, .43);
         app->sim.trace_pin = 2;
         app->sim.sim_running = 0;
@@ -433,7 +433,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->sim.trace.samples[2] = (SpiceSample){2, 3};
         app->sim.trace_index = 0;
         app->sim.trace_valid = 1;
-        app->sim.trace_snapshot = app->bench;
+        app->sim.trace_revision = app->bench.revision;
         app->sim.sim_running = 0;
         queued = dev_test_key(window, SDLK_F1);
     }
@@ -485,7 +485,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->sim.trace.samples[2] = (SpiceSample){2, 3};
         app->sim.trace_index = 0;
         app->sim.trace_valid = 1;
-        app->sim.trace_snapshot = app->bench;
+        app->sim.trace_revision = app->bench.revision;
         app->sim.sim_running = 0;
         queued = dev_test_key(window, SDLK_SPACE);
     }
@@ -503,7 +503,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 70)
     {
         bench_add(&app->bench, PART_LED, 1200, 500);
-        app->sim.trace_snapshot = app->bench;
+        app->sim.trace_revision = app->bench.revision;
         app->sim.trace_valid = 1;
         app->sim.trace_index = 0;
         app->sim.trace.leds_on[0] = UINT64_C(1) << 7;

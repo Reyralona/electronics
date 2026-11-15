@@ -12,7 +12,7 @@ static void command_example(AppState *app)
     if (workbench_example_create(choice, &example, &example_selected))
     {
         bench_history_record(app->history, &app->bench);
-        app->bench = example;
+        bench_replace(&app->bench, &example);
         app->example_index = choice;
         app->selected = example_selected;
         app->selected_wire = -1;
@@ -327,9 +327,7 @@ static void command_delete_part(AppState *app)
 static void command_delete_wire(AppState *app)
 {
     bench_history_record(app->history, &app->bench);
-    memmove(&app->bench.wires[app->selected_wire], &app->bench.wires[app->selected_wire + 1],
-            (size_t)(app->bench.wire_count - app->selected_wire - 1) * sizeof(Wire));
-    --app->bench.wire_count;
+    bench_remove_wire(&app->bench, app->selected_wire);
     app->selected_wire = -1;
     app->status = "Fio removido.";
 }

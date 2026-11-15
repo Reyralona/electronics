@@ -244,7 +244,7 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
                     app->bench.wires[app->selected_wire].color != chosen)
                 {
                     bench_history_record(app->history, &app->bench);
-                    app->bench.wires[app->selected_wire].color = chosen;
+                    bench_set_wire_color(&app->bench, app->selected_wire, chosen);
                     app->status = "Cor do fio selecionado alterada.";
                 }
                 else
@@ -353,11 +353,8 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
         {
             if (clicks >= 2)
             {
-                Wire *wire = &app->bench.wires[app->drag_wire];
                 bench_history_record(app->history, &app->bench);
-                memmove(&wire->knees[app->drag_knee], &wire->knees[app->drag_knee + 1],
-                        (size_t)(wire->knee_count - app->drag_knee - 1) * sizeof(WirePoint));
-                --wire->knee_count;
+                bench_remove_knee(&app->bench, app->drag_wire, app->drag_knee);
                 app->drag_wire = -1;
                 app->status = "Joelho removido.";
             }
@@ -442,10 +439,9 @@ static void input_connect_pin(AppState *app, Pin clicked)
         int result = bench_toggle_wire(&app->bench, app->pending, clicked);
         if (result == 1)
         {
-            Wire *wire = &app->bench.wires[app->bench.wire_count - 1];
-            wire->knee_count = app->route_count;
-            wire->color = app->wire_color;
-            memcpy(wire->knees, app->route, (size_t)app->route_count * sizeof(WirePoint));
+            int wire = app->bench.wire_count - 1;
+            bench_set_wire_route(&app->bench, wire, app->route, app->route_count);
+            bench_set_wire_color(&app->bench, wire, app->wire_color);
         }
         if (result)
             bench_history_record(app->history, &before);
@@ -483,7 +479,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
                             app->bench.parts[hit].type == PART_CLOCK))
         {
             bench_history_record(app->history, &app->bench);
-            app->bench.parts[hit].on = !app->bench.parts[hit].on;
+            bench_set_on(&app->bench, hit, !app->bench.parts[hit].on);
             app->status = "Estado alterado.";
         }
         else
@@ -572,7 +568,7 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
                 bench_history_record(app->history, &app->bench);
                 app->move_recorded = 1;
             }
-            *point = (WirePoint){x, y};
+            bench_move_knee(&app->bench, app->drag_wire, app->drag_knee, (WirePoint){x, y});
         }
     }
 }
@@ -595,8 +591,7 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
                 bench_history_record(app->history, &app->bench);
                 app->move_recorded = 1;
             }
-            app->bench.parts[app->dragging].x = x;
-            app->bench.parts[app->dragging].y = y;
+            bench_move_part(&app->bench, app->dragging, x, y);
         }
     }
 }

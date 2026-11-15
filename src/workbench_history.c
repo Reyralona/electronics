@@ -20,7 +20,7 @@ int bench_history_undo(BenchHistory *history, Workbench *bench)
     if (!history->undo_count)
         return 0;
     push(history->redo, &history->redo_count, bench);
-    *bench = history->undo[--history->undo_count];
+    bench_replace(bench, &history->undo[--history->undo_count]);
     return 1;
 }
 int bench_history_redo(BenchHistory *history, Workbench *bench)
@@ -28,6 +28,6 @@ int bench_history_redo(BenchHistory *history, Workbench *bench)
     if (!history->redo_count)
         return 0;
     push(history->undo, &history->undo_count, bench);
-    *bench = history->redo[--history->redo_count];
+    bench_replace(bench, &history->redo[--history->redo_count]);
     return 1;
 }
