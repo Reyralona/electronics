@@ -4,6 +4,12 @@
 #include "workbench.h"
 /* Experimental DC: one 5 V source, 1 kOhm resistors, generic diode LEDs, switches and breadboards. */
 typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERROR, NETLIST_AMBIGUOUS_WIRES } NetlistResult;
+/* Finite contact impedances keep topology stable across live on/off changes. */
+#define NETLIST_LIVE_CLOSED_OHMS 1e-6
+#define NETLIST_POT_MIN_SEGMENT_OHMS .001
+#define NETLIST_LIVE_OPEN_OHMS 1e12
+NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires);
+int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin);
 NetlistResult netlist_write_dc(FILE *out, const Workbench *bench);
 /* Each wire becomes a zero-volt current sensor; ideal wire cycles are ambiguous. */
 NetlistResult netlist_write_dc_instrumented(FILE *out, const Workbench *bench);

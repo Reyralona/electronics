@@ -317,3 +317,26 @@ sem unir as pontas nao cria contato. Blocos distintos continuam isolados interna
 Continuidade: fonte oficial https://ngspice.sourceforge.io/shared.html consultada em 15/11/2026
 confirma parar, alterar parametros e retomar na mesma sessao. DLL por contexto/processo e a
 recomendacao para preservar estados e isolamento; somente reapresentar curvas nao atende.
+
+
+## Sessao continua nativa (15/11/2026)
+Evidencia: experiments/persistent_spice_probe.py preservou RC/DFF; testes nativos repetiram e
+mantiveram duas sessoes independentes. Comparacao: DLL global no processo da UI e barata mas
+compartilha estado/risco de crash; copias de DLL/codemodel exigem validar globais; host separado
+por documento isola tanto estado quanto falhas. Decisao: spice-live-host.exe por contexto,
+protocolo interno em pipes, timeout10s, logs de falha preservados. Worker segue sem bloquear UI.
+Fontes: https://ngspice.sourceforge.io/shared.html e https://ngspice.sourceforge.io/parallel.html
+consultadas em15/11/2026; header sharedspice.h do runtime instalado confirma ABI utilizada.
+Novo netlistlive usa contatos finitos1uOhm/1TOhm, evitando mudar topologia quando abre/fecha.
+FonteOFF abre contato de alimentacao: nao e mais fonte0V em curto no backendcontinuo.
+Ngspice guarda C/L e estadosXSPICE entre resume/alter. Topologia nova ou frequencia de clock
+nova ainda reconstroi sessao explicitamente; migracao de estado nesses casos permanece pendente.
+Tempo e mostrado em segundos simulados; ritmo deriva do intervalo de visualizacao existente.
+Vetores completos da sessao permanecem no solver ate fechar o contexto; memoria cresce com tempo,
+um limite pratico a acompanhar antes da1.0. Nao manipular vetores internos para truncar semvalidacao.
+
+Validacao adicional: tentativa de desativar spinit/.spiceinit pelas funcoes pre-init indicadas
+no header causou0xC0000005 neste runtime. Chamadas removidas; nao reintroduzir apenas com base
+na declaracao do header, sem validar binario/API. Host isolado conteve a falha. Caminho validado
+usa ngSpice_Init padrao e carrega digital.cm explicitamente. Configuracao externa do ngspice
+ainda precisa de tratamento deterministico antes da1.0. Falhas de host agora reportam exitcode.

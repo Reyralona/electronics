@@ -25,7 +25,7 @@ static int valid_pin(const Workbench *b, Pin p)
 }
 
 /* Joins pins that are electrically the same node. Union order is kept stable so node numbers do not change. */
-static void build_nets(const Workbench *b, int *parents, int unite_wires, int short_inductors)
+static void build_nets(const Workbench *b, int *parents, int unite_wires, int short_inductors, int switches)
 {
     int i, j;
     for (i = 0; i < PIN_TOTAL; ++i)
@@ -43,7 +43,7 @@ static void build_nets(const Workbench *b, int *parents, int unite_wires, int sh
     {
         int base = i * WORKBENCH_MAX_PINS;
         PartType type = b->parts[i].type;
-        if ((type == PART_SWITCH || type == PART_BUTTON) && b->parts[i].on)
+        if (switches && (type == PART_SWITCH || type == PART_BUTTON) && b->parts[i].on)
             unite(parents, base, base + 1);
         if (type == PART_INDUCTOR && short_inductors)
             unite(parents, base, base + 1);
@@ -77,7 +77,7 @@ int netlist_shorted_sources(const Workbench *b, unsigned char shorted[WORKBENCH_
     if (!b || !shorted || b->part_count < 0 || b->part_count > WORKBENCH_MAX_COMPONENTS)
         return 0;
     memset(shorted, 0, WORKBENCH_MAX_COMPONENTS);
-    build_nets(b, parents, 1, 1);
+    build_nets(b, parents, 1, 1, 1);
     for (i = 0; i < b->part_count; ++i)
     {
         PartType type = b->parts[i].type;
@@ -92,8 +92,61 @@ int netlist_shorted_sources(const Workbench *b, unsigned char shorted[WORKBENCH_
     return count;
 }
 
+static int write_live_contacts(FILE *out, const Workbench *bench, int *parents, int ground)
+{
+    int primary = -1;
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].type == PART_SOURCE)
+        {
+            primary = i;
+            break;
+        }
+    if (primary < 0)
+        for (int i = 0; i < bench->part_count; ++i)
+            if (bench->parts[i].type == PART_CLOCK)
+            {
+                primary = i;
+                break;
+            }
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        const Part *part = &bench->parts[i];
+        if (part->type != PART_SOURCE && part->type != PART_CLOCK &&
+            part->type != PART_SWITCH && part->type != PART_BUTTON)
+            continue;
+        int a = find_root(parents, i * WORKBENCH_MAX_PINS);
+        int b = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
+        a = a == ground ? 0 : a + 1;
+        b = b == ground ? 0 : b + 1;
+        double resistance = part->on ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS;
+        if (part->type == PART_SWITCH || part->type == PART_BUTTON)
+        {
+            if (fprintf(out, "Rcontact%d %d %d %.17g\n", i, a, b, resistance) < 0)
+                return 0;
+            continue;
+        }
+        char name[32];
+        if (i == primary)
+            snprintf(name, sizeof(name), "Vsource");
+        else
+            snprintf(name, sizeof(name), "Vsource%d", i);
+        if (part->type == PART_CLOCK)
+        {
+            double period = 1 / part->value;
+            if (fprintf(out, "%s drive%d %d PULSE(0 5 0 %.17g %.17g %.17g %.17g)\n", name, i, b,
+                        period * .001, period * .001, period * .499, period) < 0)
+                return 0;
+        }
+        else if (fprintf(out, "%s drive%d %d %.17g\n", name, i, b, part->value) < 0)
+            return 0;
+        if (fprintf(out, "Rpower%d drive%d %d %.17g\n", i, i, a, resistance) < 0)
+            return 0;
+    }
+    return 1;
+}
+
 static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient, int measure_wires, Pin probe,
-                                   double step, double stop)
+                                   double step, double stop, int session)
 {
     int parents[PIN_TOTAL], i, source = -1, ground, positive, gate_count = 0, chip_count = 0;
     if (!out || !b || b->part_count < 0 || b->part_count > WORKBENCH_MAX_COMPONENTS || b->wire_count < 0 ||
@@ -151,7 +204,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             return NETLIST_UNSUPPORTED;
         }
     }
-    build_nets(b, parents, !measure_wires, 0);
+    build_nets(b, parents, !measure_wires, 0, !session);
     if (source < 0)
         for (i = 0; i < b->part_count; ++i)
             if (b->parts[i].type == PART_CLOCK)
@@ -163,10 +216,10 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         return NETLIST_INVALID;
     ground = find_root(parents, source * WORKBENCH_MAX_PINS + 1);
     positive = find_root(parents, source * WORKBENCH_MAX_PINS);
-    if (ground == positive)
+    if (!session && ground == positive)
         return NETLIST_INVALID;
     for (i = 0; i < b->part_count; ++i)
-        if ((b->parts[i].type == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
+        if (!session && (b->parts[i].type == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
             find_root(parents, i * WORKBENCH_MAX_PINS) == find_root(parents, i * WORKBENCH_MAX_PINS + 1))
             return NETLIST_INVALID;
     if (measure_wires)
@@ -182,12 +235,19 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             unite(paths, a, c);
         }
         for (i = 0; i < b->part_count; ++i)
-            if ((b->parts[i].type == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
+            if (!session && (b->parts[i].type == PART_SOURCE || b->parts[i].type == PART_CLOCK) &&
                 find_root(paths, i * WORKBENCH_MAX_PINS) == find_root(paths, i * WORKBENCH_MAX_PINS + 1))
                 return NETLIST_INVALID;
     }
     if (fprintf(out, "Electronics experimental %s\n", transient ? "transient" : "DC") < 0)
         return NETLIST_IO_ERROR;
+    if (session)
+    {
+        if (!write_live_contacts(out, b, parents, ground))
+            return NETLIST_IO_ERROR;
+    }
+    else
+    {
     if (b->parts[source].type == PART_CLOCK && b->parts[source].on)
     {
         double period = 1.0 / b->parts[source].value;
@@ -222,6 +282,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             else if (fprintf(out, "Vclock%d %d %d 0\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1) < 0)
                 return NETLIST_IO_ERROR;
         }
+    }
     if (measure_wires)
         for (i = 0; i < b->wire_count; ++i)
         {
@@ -246,7 +307,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             int a = find_root(parents, i * WORKBENCH_MAX_PINS);
             int wiper = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
             int c = find_root(parents, i * WORKBENCH_MAX_PINS + 2);
-            const double contact_ohms = .001; /* Minimum segment resistance at end stops. */
+            const double contact_ohms = NETLIST_POT_MIN_SEGMENT_OHMS; /* Minimum segment resistance at end stops. */
             double first = fmax(contact_ohms, b->parts[i].value * position);
             double second = fmax(contact_ohms, b->parts[i].value * (1 - position));
             if (fprintf(out, "Rpot%d_a %d %d %.17g\nRpot%d_b %d %d %.17g\n", i,
@@ -258,7 +319,14 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         if (b->parts[i].type == PART_LED)
         {
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
-            if (fprintf(out, "D%d %d %d LED_GENERIC\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1) < 0)
+            if (session)
+            {
+                if (fprintf(out, "D%d led%d %d LED_GENERIC\nRguard%d %d led%d %.17g\n", i, i,
+                            c == ground ? 0 : c + 1, i, a == ground ? 0 : a + 1, i,
+                            NETLIST_LIVE_CLOSED_OHMS) < 0)
+                    return NETLIST_IO_ERROR;
+            }
+            else if (fprintf(out, "D%d %d %d LED_GENERIC\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1) < 0)
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
@@ -383,6 +451,21 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
     if (fprintf(out, ".model LED_GENERIC D(IS=1e-18 N=2 RS=%.17g)\n.options rshunt=1e12\n", NETLIST_LED_SERIES_OHMS) <
         0)
         return NETLIST_IO_ERROR;
+    if (session)
+    {
+        if (fprintf(out, ".save all") < 0)
+            return NETLIST_IO_ERROR;
+        for (i = 0; i < b->part_count; ++i)
+        {
+            if (b->parts[i].type == PART_LED && fprintf(out, " @d%d[id]", i) < 0)
+                return NETLIST_IO_ERROR;
+            if (b->parts[i].type == PART_RESISTOR && fprintf(out, " @r%d[i]", i) < 0)
+                return NETLIST_IO_ERROR;
+        }
+        if (fprintf(out, "\n.end\n") < 0)
+            return NETLIST_IO_ERROR;
+        return NETLIST_OK;
+    }
     if (transient)
     {
         int node = transient == 3 ? 0 : find_root(parents, pin_index(probe));
@@ -479,25 +562,25 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
 
 NetlistResult netlist_write_dc(FILE *out, const Workbench *b)
 {
-    return write_netlist(out, b, 0, 0, (Pin){0, 0}, 0, 0);
+    return write_netlist(out, b, 0, 0, (Pin){0, 0}, 0, 0, 0);
 }
 NetlistResult netlist_write_dc_instrumented(FILE *out, const Workbench *b)
 {
-    return write_netlist(out, b, 0, 1, (Pin){0, 0}, 0, 0);
+    return write_netlist(out, b, 0, 1, (Pin){0, 0}, 0, 0, 0);
 }
 NetlistResult netlist_write_transient(FILE *out, const Workbench *b, Pin probe, double step, double stop)
 {
-    return write_netlist(out, b, 1, 0, probe, step, stop);
+    return write_netlist(out, b, 1, 0, probe, step, stop, 0);
 }
 
 NetlistResult netlist_write_transient_current(FILE *out, const Workbench *b, int component, double step, double stop)
 {
-    return write_netlist(out, b, 2, 0, (Pin){component, 0}, step, stop);
+    return write_netlist(out, b, 2, 0, (Pin){component, 0}, step, stop, 0);
 }
 
 NetlistResult netlist_write_transient_wire(FILE *out, const Workbench *b, int wire, double step, double stop)
 {
-    return write_netlist(out, b, 3, 1, (Pin){wire, 0}, step, stop);
+    return write_netlist(out, b, 3, 1, (Pin){wire, 0}, step, stop, 0);
 }
 
 NetlistResult netlist_write_transient_instrumented(FILE *out, const Workbench *b, int mode, Pin probe, double step,
@@ -505,5 +588,36 @@ NetlistResult netlist_write_transient_instrumented(FILE *out, const Workbench *b
 {
     if (mode < 1 || mode > 3)
         return NETLIST_INVALID;
-    return write_netlist(out, b, mode, 1, probe, step, stop);
+    return write_netlist(out, b, mode, 1, probe, step, stop, 0);
+}
+
+NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires)
+{
+    return write_netlist(out, bench, 0, measure_wires, (Pin){0, 0}, 0, 0, 1);
+}
+
+int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin)
+{
+    if (!bench || !valid_pin(bench, pin))
+        return -1;
+    int parents[PIN_TOTAL], source = -1;
+    build_nets(bench, parents, !measure_wires, 0, 0);
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].type == PART_SOURCE)
+        {
+            source = i;
+            break;
+        }
+    if (source < 0)
+        for (int i = 0; i < bench->part_count; ++i)
+            if (bench->parts[i].type == PART_CLOCK)
+            {
+                source = i;
+                break;
+            }
+    if (source < 0)
+        return -1;
+    int ground = find_root(parents, source * WORKBENCH_MAX_PINS + 1);
+    int node = find_root(parents, pin_index(pin));
+    return node == ground ? 0 : node + 1;
 }
