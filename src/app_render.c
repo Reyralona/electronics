@@ -669,6 +669,64 @@ static void draw_workspace_boards(const AppState *app)
         }
 }
 
+static void draw_wire_trace_current(const AppState *app, int i, const WirePoint *path, int count)
+{
+    int k;
+    if (app->show_current && app->sim.trace_valid && app->sim.trace.measures_wires)
+    {
+        uint64_t bit = UINT64_C(1) << (i % 64);
+        int forward = (app->sim.trace.wires_forward[app->sim.trace_index][i / 64] & bit) != 0,
+            reverse = (app->sim.trace.wires_reverse[app->sim.trace_index][i / 64] & bit) != 0;
+        if (forward || reverse)
+        {
+            int level = (app->sim.trace.wire_levels[app->sim.trace_index][i / 4] >> ((i % 4) * 2)) & 3;
+            wire_current_style(level);
+            glBegin(GL_LINE_STRIP);
+            for (k = 0; k < count; ++k)
+                glVertex2f(path[k].x, path[k].y);
+            glEnd();
+            wire_direction_marker(path, count, reverse);
+        }
+    }
+}
+
+static void draw_wire_dc_current(const AppState *app, int i, const WirePoint *path, int count)
+{
+    int k;
+    if (app->show_current && app->sim.dc_valid && app->sim.dc_wire_valid &&
+        spice_wire_current_level(app->sim.dc_wire_currents[i]) > 0)
+    {
+        float total = 0, position;
+        int segment;
+        wire_current_style(spice_wire_current_level(app->sim.dc_wire_currents[i]));
+        glBegin(GL_LINE_STRIP);
+        for (k = 0; k < count; ++k)
+            glVertex2f(path[k].x, path[k].y);
+        glEnd();
+        for (k = 1; k < count; ++k)
+            total += hypotf(path[k].x - path[k - 1].x, path[k].y - path[k - 1].y);
+        if (total > 0)
+        {
+            position = app->sim.sim_running ? fmodf((float)SDL_GetTicks() * .08f, total) : 0.0f;
+            if (app->sim.dc_wire_currents[i] < 0)
+                position = total - position;
+            for (segment = 1; segment < count; ++segment)
+            {
+                float dx = path[segment].x - path[segment - 1].x, dy = path[segment].y - path[segment - 1].y,
+                      length = hypotf(dx, dy);
+                if (length > 0 && position <= length)
+                {
+                    color(1, .9f, .38f);
+                    circle(path[segment - 1].x + dx * position / length, path[segment - 1].y + dy * position / length,
+                           4);
+                    break;
+                }
+                position -= length;
+            }
+        }
+    }
+}
+
 static void draw_workspace_wires(const AppState *app)
 {
     int i;
@@ -715,54 +773,8 @@ static void draw_workspace_wires(const AppState *app)
                 glVertex2f(path[k].x + offset, path[k].y + offset);
             glEnd();
         }
-        if (app->show_current && app->sim.trace_valid && app->sim.trace.measures_wires)
-        {
-            uint64_t bit = UINT64_C(1) << (i % 64);
-            int forward = (app->sim.trace.wires_forward[app->sim.trace_index][i / 64] & bit) != 0,
-                reverse = (app->sim.trace.wires_reverse[app->sim.trace_index][i / 64] & bit) != 0;
-            if (forward || reverse)
-            {
-                int level = (app->sim.trace.wire_levels[app->sim.trace_index][i / 4] >> ((i % 4) * 2)) & 3;
-                wire_current_style(level);
-                glBegin(GL_LINE_STRIP);
-                for (k = 0; k < count; ++k)
-                    glVertex2f(path[k].x, path[k].y);
-                glEnd();
-                wire_direction_marker(path, count, reverse);
-            }
-        }
-        if (app->show_current && app->sim.dc_valid && app->sim.dc_wire_valid &&
-            spice_wire_current_level(app->sim.dc_wire_currents[i]) > 0)
-        {
-            float total = 0, position;
-            int segment;
-            wire_current_style(spice_wire_current_level(app->sim.dc_wire_currents[i]));
-            glBegin(GL_LINE_STRIP);
-            for (k = 0; k < count; ++k)
-                glVertex2f(path[k].x, path[k].y);
-            glEnd();
-            for (k = 1; k < count; ++k)
-                total += hypotf(path[k].x - path[k - 1].x, path[k].y - path[k - 1].y);
-            if (total > 0)
-            {
-                position = app->sim.sim_running ? fmodf((float)SDL_GetTicks() * .08f, total) : 0.0f;
-                if (app->sim.dc_wire_currents[i] < 0)
-                    position = total - position;
-                for (segment = 1; segment < count; ++segment)
-                {
-                    float dx = path[segment].x - path[segment - 1].x, dy = path[segment].y - path[segment - 1].y,
-                          length = hypotf(dx, dy);
-                    if (length > 0 && position <= length)
-                    {
-                        color(1, .9f, .38f);
-                        circle(path[segment - 1].x + dx * position / length,
-                               path[segment - 1].y + dy * position / length, 4);
-                        break;
-                    }
-                    position -= length;
-                }
-            }
-        }
+        draw_wire_trace_current(app, i, path, count);
+        draw_wire_dc_current(app, i, path, count);
     }
 }
 
