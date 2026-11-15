@@ -20,8 +20,28 @@ static void rect(float x, float y, float w, float h)
     glVertex2f(x, y + h);
     glEnd();
 }
+/* Theme affects interface surfaces and ink; physical parts and wire colors keep their palette. */
+static int dark_interface;
+static int interface_layer;
 static void color(float r, float g, float b)
 {
+    if (dark_interface && interface_layer)
+    {
+        float minimum = fminf(r, fminf(g, b));
+        float maximum = fmaxf(r, fmaxf(g, b));
+        if (minimum > .55f)
+        {
+            r = .10f + (1 - r) * .35f;
+            g = .14f + (1 - g) * .35f;
+            b = .19f + (1 - b) * .35f;
+        }
+        else if (maximum < .65f)
+        {
+            r = .70f + r * .35f;
+            g = .73f + g * .35f;
+            b = .77f + b * .30f;
+        }
+    }
     glColor3f(r, g, b);
 }
 static void line(float x, float y, float x2, float y2)
@@ -138,6 +158,8 @@ GLuint app_render_font_create(void)
 }
 static void text(GLuint font, float x, float y, const char *str)
 {
+    if (app_text_utf8(x, y, str, 2048))
+        return;
     if (!font)
         return;
     glRasterPos2f(x, y);
@@ -596,6 +618,8 @@ static void play_button_draw(GLuint font, int running, int busy, int failed, int
 
 static void draw_thumbnail(PartType type, float x, float y)
 {
+    int previous_layer = interface_layer;
+    interface_layer = 0;
     Part preview = {0};
     preview.type = type;
     preview.on = 1;
@@ -628,6 +652,7 @@ static void draw_thumbnail(PartType type, float x, float y)
             circle(px, py, 4);
         }
     glPopMatrix();
+    interface_layer = previous_layer;
 }
 
 static void draw_chrome(const AppState *app, GLuint font, int width, int height)
@@ -639,7 +664,10 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     glOrtho(0, 1280, 720, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glClearColor(.92f, .94f, .95f, 1);
+    if (app->dark_theme)
+        glClearColor(.07f, .10f, .14f, 1);
+    else
+        glClearColor(.92f, .94f, .95f, 1);
     glClear(GL_COLOR_BUFFER_BIT);
     color(.97f, .98f, .98f);
     rect(0, 0, 1280, 68);
@@ -660,7 +688,7 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     }
     else
     {
-        text(font, 24, 42, "ELECTRONICS  /  BANCADA EXPERIMENTAL");
+        text(font, 24, 42, "BANCADA");
         text(font, 510, 42, "Projetos [F3]");
         text(font, 700, 42, "Exemplos [F2]");
         text(font, 880, 42, "Configuracoes [F1]");
@@ -709,7 +737,10 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
 
 static void draw_workspace_grid(const AppState *app)
 {
-    color(.85f, .88f, .89f);
+    if (app->dark_theme)
+        color(.17f, .22f, .28f);
+    else
+        color(.85f, .88f, .89f);
     glLineWidth(1);
     if (app->show_grid)
     {
@@ -1209,7 +1240,7 @@ static void draw_inspector(const AppState *app, GLuint font)
         color(.86f, .91f, .95f);
         rect(850, 154, 330, 28);
         color(.12f, .34f, .52f);
-        snprintf(reading, sizeof(reading), "Tamanho: %.5g%% (clique)", bench_part_scale(part) * 100);
+        snprintf(reading, sizeof(reading), "Tamanho: %.5g%% [Ctrl+scroll]", bench_part_scale(part) * 100);
         text(font, 860, 174, reading);
         if (part->type != PART_BREADBOARD)
         {
@@ -1259,7 +1290,7 @@ static void draw_settings(const AppState *app, GLuint font)
     {
         int swatch;
         color(.98f, .98f, .99f);
-        rect(260, 84, 540, 250);
+        rect(260, 84, 540, 325);
         color(.14f, .22f, .28f);
         text(font, 280, 112, "ALINHAMENTO E ENCAIXE");
         text(font, 280, 155, app->snap_grid ? "[x] Encaixar na grade" : "[ ] Encaixar na grade");
@@ -1269,6 +1300,8 @@ static void draw_settings(const AppState *app, GLuint font)
         text(font, 280, 235, app->snap_board ? "[x] Encaixar na breadboard" : "[ ] Encaixar na breadboard");
         text(font, 280, 275, "Alt: suspender encaixe durante movimento");
         text(font, 280, 310, "Ocultar grade nao desativa o encaixe.");
+        text(font, 280, 365, app->dark_theme ? "[x] Tema escuro" : "[ ] Tema escuro");
+        text(font, 280, 395, "Ctrl+scroll: tamanho | Alt+clique: selecionar");
         color(.62f, .68f, .72f);
         rect(846, 90, 400, 558);
         color(.98f, .98f, .99f);
@@ -1286,7 +1319,7 @@ static void draw_settings(const AppState *app, GLuint font)
             float sx = 860 + swatch * 50;
             color(.2f, .25f, .29f);
             rect(sx - 2, 318, 36, 30);
-            color(wire_palette[swatch][0], wire_palette[swatch][1], wire_palette[swatch][2]);
+            glColor3f(wire_palette[swatch][0], wire_palette[swatch][1], wire_palette[swatch][2]);
             rect(sx, 320, 32, 26);
             if (swatch == app->wire_color)
             {
@@ -1446,8 +1479,12 @@ static void draw_editor_confirmation(const AppState *app, GLuint font)
 
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
+    dark_interface = app->dark_theme;
+    interface_layer = 1;
     draw_chrome(app, font, width, height);
+    interface_layer = 0;
     draw_workspace(app, font, width, height);
+    interface_layer = 1;
     draw_inspector(app, font);
     draw_status(app, font);
     draw_pin_help(app, font);

@@ -7,11 +7,11 @@
 
 WorkbenchSettings workbench_settings_default(void)
 {
-    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1};
+    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0};
 }
 static int settings_valid(const WorkbenchSettings *s)
 {
-    return s && (s->show_grid == 0 || s->show_grid == 1) && (s->show_handles == 0 || s->show_handles == 1) &&
+    return s && (s->dark_theme == 0 || s->dark_theme == 1) && (s->show_grid == 0 || s->show_grid == 1) && (s->show_handles == 0 || s->show_handles == 1) &&
            (s->round_wires == 0 || s->round_wires == 1) && (s->show_current == 0 || s->show_current == 1) &&
            s->wire_color >= 0 && s->wire_color < WIRE_COLOR_COUNT && (s->probe_pin >= 0 && s->probe_pin < 14) &&
            (s->probe_current == 0 || s->probe_current == 1) && isfinite(s->transient_step) &&
@@ -26,7 +26,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 19\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 20\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -55,6 +55,8 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
         return 0;
     if (fprintf(f, "grid %.17g %d %d\n", s->grid_spacing, s->snap_grid, s->snap_board) < 0)
         return 0;
+    if (fprintf(f, "theme %d\n", s->dark_theme) < 0)
+        return 0;
     return !ferror(f);
 }
 
@@ -68,7 +70,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 19) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 20) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -157,6 +159,12 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         char tag[32];
         if (fscanf(f, "%31s %lf %d %d", tag, &saved.grid_spacing, &saved.snap_grid, &saved.snap_board) != 4 ||
             strcmp(tag, "grid") || !settings_valid(&saved))
+            goto cleanup;
+    }
+    if (version >= 20)
+    {
+        char tag[32];
+        if (fscanf(f, "%31s %d", tag, &saved.dark_theme) != 2 || strcmp(tag, "theme") || !settings_valid(&saved))
             goto cleanup;
     }
     if (fscanf(f, " %c", &extra) != EOF || ferror(f))

@@ -261,3 +261,14 @@ nao o apaga, pois app_simulation ainda consulta revision/periodicidade depois do
 Encerramento explicito de AppState libera snapshots/historico/clipboard. Nenhuma mudanca de
 formato ou novas alocacoes no modelo ainda; faltam migrar copias locais/packing antes de anexar
 caminhos dinamicos. Nao confundir este contrato preparatorio com ownership dinamico ja integrado.
+
+
+## 15/11/2026 - Escopo prioritario e limpeza de snapshots na toolchain atual
+Usuario priorizou dobra, catalogo e polimento. Para reduzir retornos manuais esquecidos, avaliar
+cleanup de variavel automatica no GCC (toolchain atual): executa funcao de limpeza ao sair do
+escopo, inclusive return. Alternativa: goto cleanup em cada handler; mais portavel, mas alonga
+os handlers. Fonte oficial consultada em 15/11/2026:
+https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html . Nao supor suporte MSVC.
+Fonte da UI: reutilizar renderizador Unicode GDI/Segoe UI ja existente, com cache de texturas,
+em vez de listas raster WGL serrilhadas. Ctrl+scroll reservado ao tamanho da peca selecionada;
+scroll simples continua zoom; sem campo percentual obrigatorio. Validar capturas e eventos.

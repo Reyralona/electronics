@@ -140,3 +140,9 @@ ser definidos. Terminais dobraveis e modo dedicado continuam pendentes.
 Pedido de 15/11/2026: visualizar corrente NAO deve mudar a cor escolhida para os fios. Cores sao
 identidade da montagem. A 0.24.1 preserva a paleta em DC/transiente e usa setas claras contornadas,
 com tamanho por faixa, e marcador DC neutro. Nao sobrepor faixa vermelha/laranja ao trajeto inteiro.
+
+
+Pedido prioritario de 15/11/2026: concluir terminais dobraveis, ampliar catalogo com modelos
+validados para circuitos de teste, nome/icone consistentes, tipografia suavizada padrao, tema
+escuro, selecao mais facil e ajuste de tamanho por modificador + scroll. Nome provisoriamente
+adotado: Bancada. Nao confundir lista maior de icones com componentes eletricamente implementados.

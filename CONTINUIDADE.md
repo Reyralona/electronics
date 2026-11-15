@@ -378,3 +378,14 @@ NAO significam terminais flexiveis prontos. Faltam 14 copias locais UI, lifecycl
 de historico/publicacao e integracao final. Retomar dai em branch nova apos integrar esta.
 Sessao do usuario deve ser preservada. Nao substituir bancada.exe se estiver aberto; binario
 verificado em bancada-next.exe. Meta 1.0 permanece ativa com instrumentos/backend/catalogo etc.
+
+
+## Polimento em feature/workbench-polish (ainda sem release)
+Novo pedido usuario prioriza concluir terminais, ampliar catalogo validado e polir UI. Implementados
+Ctrl+scroll para escala com undo, Alt+clique seleciona sem criar fio, minimo de selecao de 6 pixels,
+Segoe UI suavizada via cache Unicode em todos os textos, nome Bancada e icone SDL nativo da janela.
+Tema escuro em F1, salvo no formato 20 (le 1-19); paleta fisica dos fios/componentes preservada.
+Suite completa e 155 fases GUI passaram. Capturas polish-dark.bmp/polish-light.bmp revisadas;
+ultimo ajuste do titulo para BANCADA feito depois da captura. Falta revisao final do binario.
+Publica permanece 0.24.1; terminais e catalogo novo AINDA pendentes. Retomar integracao de geometry
+owned; usar cleanup GCC de snapshots locais conforme comparacao em DECISOES para encurtar handlers.

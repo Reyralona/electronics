@@ -8,6 +8,7 @@ typedef struct {
     double transient_step, transient_stop;
     double grid_spacing;
     int snap_grid, snap_board;
+    int dark_theme;
 } WorkbenchSettings;
 WorkbenchSettings workbench_settings_default(void);
 int workbench_read_project(FILE *file, Workbench *destination, WorkbenchSettings *settings);

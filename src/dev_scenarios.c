@@ -11,6 +11,11 @@
 
 int dev_scenario_prepare(AppState *app, int argc, char **argv)
 {
+    if (argc > 1 && !strcmp(argv[1], "--capture-dark"))
+    {
+        app->dark_theme = 1;
+        app->settings = 1;
+    }
     if (argc > 1 && strcmp(argv[1], "--capture-projects") == 0)
         app->projects_open = 1;
     if (argc > 1 && strcmp(argv[1], "--capture-settings") == 0)
@@ -776,6 +781,40 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_S);
     else if (app->selftest_phase == 145)
         queued = dev_test_key(window, SDLK_L);
+    else if (app->selftest_phase == 146)
+    {
+        app->selected = 1;
+        SDL_SetModState(SDL_KMOD_CTRL);
+        queued = dev_test_wheel(window, 650, 200, 1);
+    }
+    else if (app->selftest_phase == 147)
+    {
+        SDL_SetModState(SDL_KMOD_NONE);
+        queued = dev_test_key(window, SDLK_Z);
+    }
+    else if (app->selftest_phase == 148)
+        queued = dev_test_key(window, SDLK_F1);
+    else if (app->selftest_phase == 149)
+        queued = dev_test_click(window, 300, 360);
+    else if (app->selftest_phase == 150)
+        queued = dev_test_key(window, SDLK_S);
+    else if (app->selftest_phase == 151)
+    {
+        app->dark_theme = 0;
+        queued = dev_test_key(window, SDLK_L);
+    }
+    else if (app->selftest_phase == 152)
+        queued = dev_test_key(window, SDLK_F1);
+    else if (app->selftest_phase == 153)
+    {
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = dev_test_click(window, 650, 200);
+    }
+    else if (app->selftest_phase == 154)
+    {
+        SDL_SetModState(SDL_KMOD_NONE);
+        queued = dev_test_key(window, SDLK_UNKNOWN);
+    }
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1053,13 +1092,25 @@ void dev_scenario_validate(AppState *app)
         valid = app->bench.parts[1].x == 650 && app->bench.parts[1].y == 200;
     else if (app->selftest_phase == 142)
         valid = bench_part_scale(&app->bench.parts[1]) == 1;
+    else if (app->selftest_phase == 146)
+        valid = fabsf(bench_part_scale(&app->bench.parts[1]) - .275f) < .00001f && app->view.zoom == 1;
+    else if (app->selftest_phase == 147)
+        valid = bench_part_scale(&app->bench.parts[1]) == .25f;
+    else if (app->selftest_phase == 148)
+        valid = app->settings;
+    else if (app->selftest_phase == 149 || app->selftest_phase == 151)
+        valid = app->dark_theme;
+    else if (app->selftest_phase == 152)
+        valid = !app->settings;
+    else if (app->selftest_phase == 153)
+        valid = app->selected == 1 && app->pending.component < 0;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 146)
+    if (++app->selftest_phase == 155)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

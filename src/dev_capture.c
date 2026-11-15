@@ -7,6 +7,7 @@
 int dev_capture_requested(const char *argument)
 {
     static const char *modes[] = {
+        "--capture-dark",
         "--capture-scale",
         "--capture-knee-edit",
         "--capture-editor", "--capture-editor-name",

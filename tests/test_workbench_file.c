@@ -118,7 +118,7 @@ int main(void)
     }
     {
         WorkbenchSettings custom=workbench_settings_default(), restored=workbench_settings_default();
-        custom.grid_spacing=12.5; custom.snap_grid=1; custom.snap_board=0;
+        custom.dark_theme=1; custom.grid_spacing=12.5; custom.snap_grid=1; custom.snap_board=0;
         custom.show_grid=0; custom.show_handles=0; custom.round_wires=0; custom.show_current=1;
         custom.wire_color=5; custom.probe_pin=1; custom.probe_current=1; custom.transient_step=2e-5; custom.transient_stop=.002;
         file=tmpfile(); assert(file); assert(workbench_write_project(file,&source,&custom)); rewind(file);
@@ -126,7 +126,7 @@ int main(void)
         assert(!restored.show_grid && !restored.show_handles && !restored.round_wires && restored.show_current);
         assert(restored.wire_color==5 && restored.probe_pin==1 && restored.probe_current==1);
         assert(restored.transient_step==2e-5 && restored.transient_stop==.002);
-        assert(restored.grid_spacing==12.5 && restored.snap_grid && !restored.snap_board);
+        assert(restored.grid_spacing==12.5 && restored.snap_grid && !restored.snap_board && restored.dark_theme);
         file=tmpfile(); assert(file); fputs("workbench 9\n0 0\n",file); rewind(file);
         assert(workbench_read_project(file,&loaded,&restored)); fclose(file);
         assert(restored.show_grid && restored.transient_step==1e-5 && restored.transient_stop==.005);

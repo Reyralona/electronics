@@ -53,7 +53,7 @@ static void input_insert_knee(AppState *app, float x, float y)
     app->status = "Joelho adicionado. Arraste para dobrar; duplo clique remove; Ctrl+Z desfaz.";
 }
 
-static int part_at(const Workbench *bench, float x, float y)
+static int part_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
         if (bench->groups[g].active && fabsf(x - bench->groups[g].x) < 60 &&
@@ -82,6 +82,9 @@ static int part_at(const Workbench *bench, float x, float y)
                 half_width = 50;
                 half_height = 20;
             }
+            float minimum_hit = 6 / (zoom * bench_part_scale(part));
+            half_width = fmaxf(half_width, minimum_hit);
+            half_height = fmaxf(half_height, minimum_hit);
             if (fabsf(local.x) < half_width && fabsf(local.y) < half_height)
                 return i;
         }
@@ -240,6 +243,35 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
     {
         x = event->wheel.mouse_x * 1280.0f / w;
         y = event->wheel.mouse_y * 720.0f / h;
+        if (x >= 220 && y >= 70 && y < 660 && direction != 0 && (SDL_GetModState() & SDL_KMOD_CTRL))
+        {
+            if (app->selected < 0 || app->bench.parts[app->selected].group)
+            {
+                app->status = "Selecione uma peca para ajustar o tamanho com Ctrl+scroll.";
+                return;
+            }
+            Workbench before = {0};
+            if (!bench_snapshot_clone(&before, &app->bench))
+            {
+                app->status = "Memoria insuficiente para ajustar o tamanho.";
+                return;
+            }
+            float scale = bench_part_scale(&app->bench.parts[app->selected]);
+            scale *= direction > 0 ? 1.1f : 1 / 1.1f;
+            scale = fminf(PART_SCALE_MAX, fmaxf(PART_SCALE_MIN, scale));
+            if (bench_set_scale(&app->bench, app->selected, scale) && app->bench.revision != before.revision)
+            {
+                if (bench_history_record(app->history, &before))
+                    app->status = "Tamanho ajustado. Ctrl+scroll redimensiona; Ctrl+Z desfaz.";
+                else
+                {
+                    bench_replace(&app->bench, &before);
+                    app->status = "Nao foi possivel registrar o historico; tamanho anterior restaurado.";
+                }
+            }
+            bench_snapshot_clear(&before);
+            return;
+        }
         if (x >= 220 && y >= 70 && y < 660 && direction != 0)
             bench_view_zoom_at(&app->view, direction > 0 ? 1.2f : 1.0f / 1.2f, x, y);
     }
@@ -259,7 +291,7 @@ static void input_rotate(AppState *app, SDL_Window *window, const SDL_Event *eve
     if (x < 220 || y < 70 || y > 660)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
-    hit = part_at(&app->bench, x, y);
+    hit = part_at(&app->bench, x, y, app->view.zoom);
     if (hit >= 0 && app->bench.parts[hit].type != PART_BREADBOARD)
     {
         SDL_Event shortcut = {0};
@@ -297,6 +329,11 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
 {
     if (x >= 260 && x < 800)
     {
+        if (y >= 340 && y < 385)
+        {
+            app->dark_theme = !app->dark_theme;
+            return;
+        }
         if (y >= 130 && y < 170)
             app->snap_grid = !app->snap_grid;
         else if (y >= 170 && y < 210 && SDL_StartTextInput(window))
@@ -664,7 +701,7 @@ static void input_connect_pin(AppState *app, Pin clicked)
 static void input_select(AppState *app, float x, float y, int clicks)
 {
     int hit;
-    hit = part_at(&app->bench, x, y);
+    hit = part_at(&app->bench, x, y, app->view.zoom);
     if (hit < 0 || !app->selection.parts[hit])
         bench_selection_clear(&app->selection);
     if (hit >= 0)
@@ -737,6 +774,11 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         app->drag_wire = -1;
         app->pending.component = -1;
         app->placing = -1;
+        return;
+    }
+    if (SDL_GetModState() & SDL_KMOD_ALT)
+    {
+        input_select(app, x, y, 1);
         return;
     }
     if (input_click_knee(app, x, y, event->button.clicks))

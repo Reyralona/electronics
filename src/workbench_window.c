@@ -36,6 +36,32 @@ static void find_ngspice(char *path, size_t capacity)
     }
 }
 
+static void set_window_icon(SDL_Window *window)
+{
+    SDL_Surface *icon = SDL_CreateSurface(32, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!icon)
+        return;
+    Uint32 background = SDL_MapSurfaceRGBA(icon, 18, 31, 44, 255);
+    Uint32 body = SDL_MapSurfaceRGBA(icon, 36, 158, 165, 255);
+    Uint32 pins = SDL_MapSurfaceRGBA(icon, 230, 239, 242, 255);
+    SDL_FillSurfaceRect(icon, NULL, background);
+    SDL_Rect rectangle = {8, 8, 16, 16};
+    SDL_FillSurfaceRect(icon, &rectangle, body);
+    for (int pin = 0; pin < 3; ++pin)
+    {
+        rectangle = (SDL_Rect){3, 10 + pin * 5, 6, 2};
+        SDL_FillSurfaceRect(icon, &rectangle, pins);
+        rectangle.x = 23;
+        SDL_FillSurfaceRect(icon, &rectangle, pins);
+    }
+    rectangle = (SDL_Rect){12, 12, 8, 2};
+    SDL_FillSurfaceRect(icon, &rectangle, pins);
+    rectangle = (SDL_Rect){15, 12, 2, 8};
+    SDL_FillSurfaceRect(icon, &rectangle, pins);
+    SDL_SetWindowIcon(window, icon);
+    SDL_DestroySurface(icon);
+}
+
 int main(int argc, char **argv)
 {
     SDL_Window *window;
@@ -63,7 +89,7 @@ int main(int argc, char **argv)
         app_state_dispose(&app);
         return 1;
     }
-    window = SDL_CreateWindow("Bancada experimental", 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Bancada", 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (!window)
     {
         fprintf(stderr, "Janela: %s\n", SDL_GetError());
@@ -71,6 +97,7 @@ int main(int argc, char **argv)
         app_state_dispose(&app);
         return 1;
     }
+    set_window_icon(window);
     context = SDL_GL_CreateContext(window);
     if (!context)
     {

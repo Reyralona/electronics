@@ -30,6 +30,7 @@ typedef struct AppState
     double transient_step, transient_stop;
     double grid_spacing;
     int snap_grid, snap_board;
+    int dark_theme;
     BenchHistory *history;
     int move_recorded;
     BenchView view;

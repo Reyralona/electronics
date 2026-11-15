@@ -281,7 +281,7 @@ static void command_save(AppState *app)
     WorkbenchSettings saved = {app->show_grid,     app->show_handles,   app->round_wires,
                                app->show_current,  app->wire_color,     app->probe_pin,
                                app->probe_current, app->transient_step, app->transient_stop,
-                                  app->grid_spacing, app->snap_grid, app->snap_board};
+                                  app->grid_spacing, app->snap_grid, app->snap_board, app->dark_theme};
     app->status =
         workbench_save_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved)
             ? "Salvo em bancada.elec."
@@ -315,6 +315,7 @@ static void command_load(AppState *app)
         app->grid_spacing = saved.grid_spacing;
         app->snap_grid = saved.snap_grid;
         app->snap_board = saved.snap_board;
+        app->dark_theme = saved.dark_theme;
         sim_state_clear_result(&app->sim);
         memset(app->leds, 0, sizeof(app->leds));
         bench_simulate(&app->bench, app->leds);
