@@ -195,3 +195,19 @@ Comparacao de texto: manter glCallLists de bytes nao renderiza nomes UTF-8 corre
 SDL_ttf introduziria outra dependencia de distribuicao. Adotado GDI Unicode para nomes, enviado
 a textura com cache/evicao; fontes ASCII existentes podem continuar no caminho rapido.
 Texto e graficos permanecem na camada de UI, sem SDL/OpenGL no modelo.
+
+
+## 15/11/2026 - Grid configuravel: comparacao antes da implementacao
+Fato: grid atual usa 24 unidades no mundo, origem Y=20 e oculta linhas intermediarias em zoom
+baixo; nao participa do posicionamento. Breadboard tem encaixe geometrico separado. Fato oficial:
+SDL_GetModState retorna mascara dos modificadores; consulta 15/11/2026:
+https://wiki.libsdl.org/SDL3/SDL_GetModState .
+Alternativa A: arredondar pixels de tela. Barata, mas muda montagem com zoom/pan; rejeitada.
+Alternativa B: quantizar coordenadas do mundo com origem e espacamento explicitos. Custo constante,
+independente da camera; escolhida. Ocultar linhas por densidade sera apenas visual, sem mudar snap.
+Hipotese de UX: Alt suspende encaixe durante arraste, sem competir com Shift (selecao) e Ctrl
+(clipboard). Validar por eventos/capturas antes de publicar. Encaixe em breadboard tem prioridade
+no fim do arraste; grupos devem receber uma unica translacao para preservar geometria interna.
+Primeiro incremento: matematica pura validada e compartilhada por desenho/entrada; depois controles
+visiveis, persistencia retrocompativel e testes de GUI. Escala e terminais flexiveis continuam
+pendentes e nao devem ser simulados apenas mudando o zoom.
