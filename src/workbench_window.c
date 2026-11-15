@@ -14,6 +14,7 @@
 #include "workbench_view.h"
 #include "sim_auto.h"
 #include "dev_capture.h"
+#include "app_state.h"
 
 /* Delay after the last edit before the automatic analysis starts, so dragging does not flood the solver. */
 #define AUTO_DEBOUNCE_MS 120
@@ -338,663 +339,643 @@ static const char *burn_message(char *buffer,size_t capacity,const Workbench *be
 }
 
 int main(int argc, char **argv) {
-    SDL_Window *window; SDL_GLContext context; GLuint font; Workbench bench={0};
-    Pin pending={-1,-1}; int selected=-1, placing=-1, dragging=-1, running=1, sim_running=1;
-    WirePoint route[WIRE_MAX_KNEES]; int route_count=0, drag_wire=-1, drag_knee=-1;
-    int settings=0, show_grid=1, show_handles=1, round_wires=1, show_current=0, dc_wire_valid=0;
-    int wire_color=0, selected_wire=-1, palette_page=0, example_index=-1;
-    int leds[WORKBENCH_MAX_COMPONENTS]={0}; float offset_x=0,offset_y=0;
-    Workbench dc_snapshot={0}; int dc_valid=0; double dc_current=0; char dc_status[160];
-    double dc_led_currents[WORKBENCH_MAX_COMPONENTS]={0};
-    double dc_wire_currents[WORKBENCH_MAX_WIRES]={0};
-    SpiceJob dc_job={0}; SpiceTrace trace={0}; Workbench trace_snapshot={0};
-    int trace_valid=0, trace_index=0, trace_pin=0, probe_pin=0, show_trace=1, probe_current=0, trace_current=0, trace_wire=-1; char trace_status[128];
-    double transient_step=1e-5, transient_stop=.005;
-    Uint64 trace_play_started=0; int trace_play_start_index=0;
-    BenchHistory *history=calloc(1,sizeof(*history)); int move_recorded=0;
-    BenchView view={1,0,0}; int panning=0;
-    int editing=-1; char edit_text[64]={0};
-    int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
-    const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && dev_capture_requested(argv[1]);
-    /* Automatic analysis: on in normal use and in the --capture-auto* / --capture-burn modes; off in the scripted
-       self-test and the older captures, which drive the analyses themselves. */
-    int auto_capture=capture && (strcmp(argv[1],"--capture-burn")==0 || strncmp(argv[1],"--capture-auto",14)==0);
-    int auto_enabled=(!selftest && !capture) || auto_capture, auto_failed=0, auto_requested_valid=0, auto_show_current=0;
-    double auto_step=0, auto_stop=0;
-    Workbench auto_requested={0}, frame_bench={0}, result_shape={0}; Uint64 bench_changed_at=0;
-    unsigned char burnt[WORKBENCH_MAX_COMPONENTS]={0}, burn_reason[WORKBENCH_MAX_COMPONENTS]={0};
-    double burn_value[WORKBENCH_MAX_COMPONENTS]={0};
-    int burnt_count=0, trace_periodic=0, trace_automatic=0;
-    char auto_status[200], ngspice[1024];
-    find_ngspice(ngspice,sizeof(ngspice));
+    SDL_Window *window;
+    SDL_GLContext context;
+    GLuint font;
+    static AppState app;
+    app_state_init(&app);
+    app.selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0;
+    app.capture=argc>1 && dev_capture_requested(argv[1]);
+    app.auto_capture=app.capture && (strcmp(argv[1],"--capture-burn")==0 || strncmp(argv[1],"--capture-auto",14)==0);
+    app.sim.auto_enabled=(!app.selftest && !app.capture) || app.auto_capture;
+    find_ngspice(app.ngspice,sizeof(app.ngspice));
 
-    if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
-    if(capture) {
-        bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0});
-        bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){308,130}; bench.wires[0].knees[1]=(WirePoint){668,130};
-        bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1});
-        bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){772,300}; bench.wires[1].knees[1]=(WirePoint){412,300};
-        if(strcmp(argv[1],"--capture-colors")==0) { bench.wires[0].color=1; bench.wires[1].color=3; wire_color=1; selected_wire=0; settings=1; }
-        if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&bench,PART_RESISTOR,380,520); bench_add(&bench,PART_CAPACITOR,720,520); bench_add(&bench,PART_INDUCTOR,970,520); }
-        if(strcmp(argv[1],"--capture-snap")==0) { int part=bench_add(&bench,PART_RESISTOR,538,377); bench_snap_to_breadboard(&bench,part); bench_view_zoom_at(&view,1.2f,550,430); }
-        if(strcmp(argv[1],"--capture-rotation")==0) { int part=bench_add(&bench,PART_RESISTOR,538,393); bench_rotate_part(&bench,part); bench_snap_to_breadboard(&bench,part); bench_view_zoom_at(&view,1.2f,550,430); }
+    if(argc>1 && strcmp(argv[1],"--capture-settings")==0) app.settings=1;
+    if(app.capture) {
+        bench_add(&app.bench,PART_SOURCE,360,220); bench_add(&app.bench,PART_LED,720,220); bench_add(&app.bench,PART_BREADBOARD,550,430);
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,0});
+        app.bench.wires[0].knee_count=2; app.bench.wires[0].knees[0]=(WirePoint){308,130}; app.bench.wires[0].knees[1]=(WirePoint){668,130};
+        bench_toggle_wire(&app.bench,(Pin){1,1},(Pin){0,1});
+        app.bench.wires[1].knee_count=2; app.bench.wires[1].knees[0]=(WirePoint){772,300}; app.bench.wires[1].knees[1]=(WirePoint){412,300};
+        if(strcmp(argv[1],"--capture-colors")==0) { app.bench.wires[0].color=1; app.bench.wires[1].color=3; app.wire_color=1; app.selected_wire=0; app.settings=1; }
+        if(strcmp(argv[1],"--capture-analog")==0) { bench_add(&app.bench,PART_RESISTOR,380,520); bench_add(&app.bench,PART_CAPACITOR,720,520); bench_add(&app.bench,PART_INDUCTOR,970,520); }
+        if(strcmp(argv[1],"--capture-snap")==0) { int part=bench_add(&app.bench,PART_RESISTOR,538,377); bench_snap_to_breadboard(&app.bench,part); bench_view_zoom_at(&app.view,1.2f,550,430); }
+        if(strcmp(argv[1],"--capture-rotation")==0) { int part=bench_add(&app.bench,PART_RESISTOR,538,393); bench_rotate_part(&app.bench,part); bench_snap_to_breadboard(&app.bench,part); bench_view_zoom_at(&app.view,1.2f,550,430); }
         if(strcmp(argv[1],"--capture-board")==0) {
-            bench_toggle_wire(&bench,(Pin){0,0},(Pin){2,100});
-            bench.wires[2].knee_count=1; bench.wires[2].knees[0]=(WirePoint){431,300};
-            bench_toggle_wire(&bench,(Pin){0,1},(Pin){2,140});
-            bench.wires[3].knee_count=1; bench.wires[3].knees[0]=(WirePoint){380,441};
-            bench_view_zoom_at(&view,1.4f,550,430);
+            bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){2,100});
+            app.bench.wires[2].knee_count=1; app.bench.wires[2].knees[0]=(WirePoint){431,300};
+            bench_toggle_wire(&app.bench,(Pin){0,1},(Pin){2,140});
+            app.bench.wires[3].knee_count=1; app.bench.wires[3].knees[0]=(WirePoint){380,441};
+            bench_view_zoom_at(&app.view,1.4f,550,430);
         }
         if(strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0) {
-            bench_add(&bench,PART_RESISTOR,530,220);
-            selected=3;
-            bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0});
-            bench_toggle_wire(&bench,(Pin){0,0},(Pin){3,0});
-            bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){308,150}; bench.wires[1].knees[1]=(WirePoint){478,150};
-            bench_toggle_wire(&bench,(Pin){3,1},(Pin){1,0});
+            bench_add(&app.bench,PART_RESISTOR,530,220);
+            app.selected=3;
+            bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,0});
+            bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){3,0});
+            app.bench.wires[1].knee_count=2; app.bench.wires[1].knees[0]=(WirePoint){308,150}; app.bench.wires[1].knees[1]=(WirePoint){478,150};
+            bench_toggle_wire(&app.bench,(Pin){3,1},(Pin){1,0});
         }
     }
-    if(capture && strcmp(argv[1],"--capture-and")==0) {
-        bench=(Workbench){0}; bench_add(&bench,PART_SOURCE,340,270); bench_add(&bench,PART_AND,570,270); bench_add(&bench,PART_RESISTOR,760,270); bench_add(&bench,PART_LED,960,270);
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){291,175}; bench.wires[0].knees[1]=(WirePoint){521,175};
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,1}); bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){291,320}; bench.wires[1].knees[1]=(WirePoint){521,320};
-        bench_toggle_wire(&bench,(Pin){1,2},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){2,1},(Pin){3,0}); bench_toggle_wire(&bench,(Pin){3,1},(Pin){0,1});
-        bench.wires[4].knee_count=2; bench.wires[4].knees[0]=(WirePoint){1009,400}; bench.wires[4].knees[1]=(WirePoint){389,400};
-        selected=1;
+    if(app.capture && strcmp(argv[1],"--capture-and")==0) {
+        app.bench=(Workbench){0}; bench_add(&app.bench,PART_SOURCE,340,270); bench_add(&app.bench,PART_AND,570,270); bench_add(&app.bench,PART_RESISTOR,760,270); bench_add(&app.bench,PART_LED,960,270);
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,0}); app.bench.wires[0].knee_count=2; app.bench.wires[0].knees[0]=(WirePoint){291,175}; app.bench.wires[0].knees[1]=(WirePoint){521,175};
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,1}); app.bench.wires[1].knee_count=2; app.bench.wires[1].knees[0]=(WirePoint){291,320}; app.bench.wires[1].knees[1]=(WirePoint){521,320};
+        bench_toggle_wire(&app.bench,(Pin){1,2},(Pin){2,0}); bench_toggle_wire(&app.bench,(Pin){2,1},(Pin){3,0}); bench_toggle_wire(&app.bench,(Pin){3,1},(Pin){0,1});
+        app.bench.wires[4].knee_count=2; app.bench.wires[4].knees[0]=(WirePoint){1009,400}; app.bench.wires[4].knees[1]=(WirePoint){389,400};
+        app.selected=1;
     }
-    if(capture && strcmp(argv[1],"--capture-logic")==0) {
-        int kind; bench=(Workbench){0}; palette_page=1;
-        for(kind=PART_AND;kind<=PART_NOT;++kind) bench_add(&bench,(PartType)kind,360+(kind-PART_AND)*170,300);
-        selected=4;
+    if(app.capture && strcmp(argv[1],"--capture-logic")==0) {
+        int kind; app.bench=(Workbench){0}; app.palette_page=1;
+        for(kind=PART_AND;kind<=PART_NOT;++kind) bench_add(&app.bench,(PartType)kind,360+(kind-PART_AND)*170,300);
+        app.selected=4;
     }
-    if(capture && strcmp(argv[1],"--capture-clock")==0) {
-        bench=(Workbench){0}; palette_page=1;
-        bench_add(&bench,PART_CLOCK,400,250); bench_add(&bench,PART_NOT,650,250);
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); selected=0;
+    if(app.capture && strcmp(argv[1],"--capture-clock")==0) {
+        app.bench=(Workbench){0}; app.palette_page=1;
+        bench_add(&app.bench,PART_CLOCK,400,250); bench_add(&app.bench,PART_NOT,650,250);
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,0}); app.selected=0;
     }
-    if(capture && strcmp(argv[1],"--capture-ci")==0) {
-        bench=(Workbench){0}; palette_page=1; bench_add(&bench,PART_BREADBOARD,650,380); bench_add(&bench,PART_74HC00,650,380);
-        bench_snap_to_breadboard(&bench,1); selected=1; bench_view_zoom_at(&view,1.3f,650,380);
+    if(app.capture && strcmp(argv[1],"--capture-ci")==0) {
+        app.bench=(Workbench){0}; app.palette_page=1; bench_add(&app.bench,PART_BREADBOARD,650,380); bench_add(&app.bench,PART_74HC00,650,380);
+        bench_snap_to_breadboard(&app.bench,1); app.selected=1; bench_view_zoom_at(&app.view,1.3f,650,380);
     }
-    if(capture && (strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0 || strcmp(argv[1],"--capture-example2")==0)) {
+    if(app.capture && (strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0 || strcmp(argv[1],"--capture-example2")==0)) {
         int which=strcmp(argv[1],"--capture-example2")==0?2:strcmp(argv[1],"--capture-example1")==0;
-        if(!workbench_example_create(which,&bench,&selected)) { fprintf(stderr,"Falha no exemplo de captura.\n"); return 1; }
-        probe_pin=which?2:0; status=workbench_example_name(which);
+        if(!workbench_example_create(which,&app.bench,&app.selected)) { fprintf(stderr,"Falha no exemplo de captura.\n"); return 1; }
+        app.probe_pin=which?2:0; app.status=workbench_example_name(which);
     }
-    if(capture && (strcmp(argv[1],"--capture-auto")==0 || strcmp(argv[1],"--capture-auto-clock")==0)) {
+    if(app.capture && (strcmp(argv[1],"--capture-auto")==0 || strcmp(argv[1],"--capture-auto-clock")==0)) {
         int which=strcmp(argv[1],"--capture-auto-clock")==0;
-        if(!workbench_example_create(which,&bench,&selected)) { fprintf(stderr,"Falha no exemplo de captura.\n"); return 1; }
-        probe_pin=which?2:0;
+        if(!workbench_example_create(which,&app.bench,&app.selected)) { fprintf(stderr,"Falha no exemplo de captura.\n"); return 1; }
+        app.probe_pin=which?2:0;
     }
-    if(capture && strcmp(argv[1],"--capture-burn")==0) {
+    if(app.capture && strcmp(argv[1],"--capture-burn")==0) {
         /* LED straight on the source burns; the LED with a resistor in parallel keeps working. */
-        bench=(Workbench){0};
-        bench_add(&bench,PART_SOURCE,360,260); bench_add(&bench,PART_LED,700,180); bench_add(&bench,PART_RESISTOR,600,380); bench_add(&bench,PART_LED,820,380);
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench.wires[0].knee_count=1; bench.wires[0].knees[0]=(WirePoint){311,180};
-        bench_toggle_wire(&bench,(Pin){1,1},(Pin){0,1}); bench.wires[1].knee_count=2; bench.wires[1].knees[0]=(WirePoint){780,300}; bench.wires[1].knees[1]=(WirePoint){409,300};
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){2,0}); bench.wires[2].knee_count=1; bench.wires[2].knees[0]=(WirePoint){311,380};
-        bench_toggle_wire(&bench,(Pin){2,1},(Pin){3,0});
-        bench_toggle_wire(&bench,(Pin){3,1},(Pin){0,1}); bench.wires[4].knee_count=2; bench.wires[4].knees[0]=(WirePoint){900,470}; bench.wires[4].knees[1]=(WirePoint){409,470};
-        selected=1;
+        app.bench=(Workbench){0};
+        bench_add(&app.bench,PART_SOURCE,360,260); bench_add(&app.bench,PART_LED,700,180); bench_add(&app.bench,PART_RESISTOR,600,380); bench_add(&app.bench,PART_LED,820,380);
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,0}); app.bench.wires[0].knee_count=1; app.bench.wires[0].knees[0]=(WirePoint){311,180};
+        bench_toggle_wire(&app.bench,(Pin){1,1},(Pin){0,1}); app.bench.wires[1].knee_count=2; app.bench.wires[1].knees[0]=(WirePoint){780,300}; app.bench.wires[1].knees[1]=(WirePoint){409,300};
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){2,0}); app.bench.wires[2].knee_count=1; app.bench.wires[2].knees[0]=(WirePoint){311,380};
+        bench_toggle_wire(&app.bench,(Pin){2,1},(Pin){3,0});
+        bench_toggle_wire(&app.bench,(Pin){3,1},(Pin){0,1}); app.bench.wires[4].knee_count=2; app.bench.wires[4].knees[0]=(WirePoint){900,470}; app.bench.wires[4].knees[1]=(WirePoint){409,470};
+        app.selected=1;
     }
-    if(capture && strcmp(argv[1],"--capture-zoomout")==0) bench_view_zoom_at(&view,.3f,750,365);
-    if(!history) { fprintf(stderr,"Memoria insuficiente para historico.\n"); return 1; }
-    if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); free(history); return 1; }
+    if(app.capture && strcmp(argv[1],"--capture-zoomout")==0) bench_view_zoom_at(&app.view,.3f,750,365);
+    if(!app.history) { fprintf(stderr,"Memoria insuficiente para historico.\n"); return 1; }
+    if(!SDL_Init(SDL_INIT_VIDEO)) { fprintf(stderr,"SDL: %s\n",SDL_GetError()); free(app.history); return 1; }
     window=SDL_CreateWindow("Bancada experimental",1280,720,SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
-    if(!window) { fprintf(stderr,"Janela: %s\n",SDL_GetError()); SDL_Quit(); free(history); return 1; }
+    if(!window) { fprintf(stderr,"Janela: %s\n",SDL_GetError()); SDL_Quit(); free(app.history); return 1; }
     context=SDL_GL_CreateContext(window);
-    if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); free(history); return 1; }
+    if(!context) { fprintf(stderr,"OpenGL: %s\n",SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); free(app.history); return 1; }
     font=make_font(); SDL_GL_SetSwapInterval(1);
-    if(auto_capture) {
+    if(app.auto_capture) {
         /* Captures need the result in the first frame: start the analysis now and wait for it. */
-        SimAutoOptions options={show_current,auto_probe(&bench,selected,probe_pin),transient_step,transient_stop,burn_limits_default()};
-        if(spice_job_start_auto(&dc_job,&bench,ngspice,&options)) {
-            while(!SDL_GetAtomicInt(&dc_job.done)) SDL_Delay(5);
-            auto_requested=bench; auto_requested_valid=1; auto_show_current=show_current; auto_step=transient_step; auto_stop=transient_stop;
+        SimAutoOptions options={app.show_current,auto_probe(&app.bench,app.selected,app.probe_pin),app.transient_step,app.transient_stop,burn_limits_default()};
+        if(spice_job_start_auto(&app.dc_job,&app.bench,app.ngspice,&options)) {
+            while(!SDL_GetAtomicInt(&app.dc_job.done)) SDL_Delay(5);
+            app.sim.auto_requested=app.bench; app.sim.auto_requested_valid=1; app.sim.auto_show_current=app.show_current; app.sim.auto_step=app.transient_step; app.sim.auto_stop=app.transient_stop;
         }
     }
-    if(capture && strcmp(argv[1],"--capture-zoom")==0) bench_view_zoom_at(&view,1.8f,550,430);
-    if(capture && strcmp(argv[1],"--capture-edit")==0) { editing=3; strcpy(edit_text,"2200"); }
-    if(capture && (strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0)) {
-        show_current=strcmp(argv[1],"--capture-current")==0;
-        if(show_current) { dc_valid=spice_dc_analyze_wires(&bench,ngspice,&dc_current,dc_led_currents,dc_wire_currents,dc_status,sizeof(dc_status)); dc_wire_valid=dc_valid; }
-        else dc_valid=spice_dc_analyze(&bench,ngspice,&dc_current,dc_led_currents,dc_status,sizeof(dc_status));
-        if(dc_valid) dc_snapshot=bench;
-        status=dc_status;
+    if(app.capture && strcmp(argv[1],"--capture-zoom")==0) bench_view_zoom_at(&app.view,1.8f,550,430);
+    if(app.capture && strcmp(argv[1],"--capture-edit")==0) { app.editing=3; strcpy(app.edit_text,"2200"); }
+    if(app.capture && (strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0)) {
+        app.show_current=strcmp(argv[1],"--capture-current")==0;
+        if(app.show_current) { app.sim.dc_valid=spice_dc_analyze_wires(&app.bench,app.ngspice,&app.sim.dc_current,app.sim.dc_led_currents,app.sim.dc_wire_currents,app.sim.dc_status,sizeof(app.sim.dc_status)); app.sim.dc_wire_valid=app.sim.dc_valid; }
+        else app.sim.dc_valid=spice_dc_analyze(&app.bench,app.ngspice,&app.sim.dc_current,app.sim.dc_led_currents,app.sim.dc_status,sizeof(app.sim.dc_status));
+        if(app.sim.dc_valid) app.sim.dc_snapshot=app.bench;
+        app.status=app.sim.dc_status;
     }
-    if(capture && (strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-play")==0)) {
-        bench=(Workbench){0}; bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_RESISTOR,550,220); bench_add(&bench,PART_CAPACITOR,720,220);
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1});
-        trace_current=strcmp(argv[1],"--capture-trace-wire")==0?2:strcmp(argv[1],"--capture-trace-current")==0;
-        if(trace_current==2) { trace_wire=0; show_current=1; bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){311,150}; bench.wires[0].knees[1]=(WirePoint){501,150}; }
-        trace_valid=trace_current==2?spice_transient_wire(&bench,ngspice,0,transient_step,transient_stop,&trace,dc_status,sizeof(dc_status)):trace_current?spice_transient_current(&bench,ngspice,1,transient_step,transient_stop,&trace,dc_status,sizeof(dc_status)):spice_transient_analyze(&bench,ngspice,(Pin){2,0},transient_step,transient_stop,&trace,dc_status,sizeof(dc_status));
-        if(trace_valid) { trace_snapshot=bench; trace_index=trace.count/3; sim_running=0; status="Sondagem RC calculada.";
-            if(strcmp(argv[1],"--capture-play")==0) { trace_play_start_index=0; trace_play_started=SDL_GetTicks()-2000; sim_running=1; status="Reproducao da curva: intervalo completo em 5 s reais."; }
+    if(app.capture && (strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-play")==0)) {
+        app.bench=(Workbench){0}; bench_add(&app.bench,PART_SOURCE,360,220); bench_add(&app.bench,PART_RESISTOR,550,220); bench_add(&app.bench,PART_CAPACITOR,720,220);
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,0}); bench_toggle_wire(&app.bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&app.bench,(Pin){2,1},(Pin){0,1});
+        app.sim.trace_current=strcmp(argv[1],"--capture-trace-wire")==0?2:strcmp(argv[1],"--capture-trace-current")==0;
+        if(app.sim.trace_current==2) { app.sim.trace_wire=0; app.show_current=1; app.bench.wires[0].knee_count=2; app.bench.wires[0].knees[0]=(WirePoint){311,150}; app.bench.wires[0].knees[1]=(WirePoint){501,150}; }
+        app.sim.trace_valid=app.sim.trace_current==2?spice_transient_wire(&app.bench,app.ngspice,0,app.transient_step,app.transient_stop,&app.sim.trace,app.sim.dc_status,sizeof(app.sim.dc_status)):app.sim.trace_current?spice_transient_current(&app.bench,app.ngspice,1,app.transient_step,app.transient_stop,&app.sim.trace,app.sim.dc_status,sizeof(app.sim.dc_status)):spice_transient_analyze(&app.bench,app.ngspice,(Pin){2,0},app.transient_step,app.transient_stop,&app.sim.trace,app.sim.dc_status,sizeof(app.sim.dc_status));
+        if(app.sim.trace_valid) { app.sim.trace_snapshot=app.bench; app.sim.trace_index=app.sim.trace.count/3; app.sim.sim_running=0; app.status="Sondagem RC calculada.";
+            if(strcmp(argv[1],"--capture-play")==0) { app.sim.trace_play_start_index=0; app.sim.trace_play_started=SDL_GetTicks()-2000; app.sim.sim_running=1; app.status="Reproducao da curva: intervalo completo em 5 s reais."; }
         }
-        else { fprintf(stderr,"Captura transitoria: %s\n",dc_status); return 1; }
+        else { fprintf(stderr,"Captura transitoria: %s\n",app.sim.dc_status); return 1; }
     }
-    if(capture && (strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0)) {
-        bench=(Workbench){0}; bench_add(&bench,PART_CLOCK,400,250); bench_add(&bench,PART_RESISTOR,600,250); bench_add(&bench,PART_LED,800,250);
-        bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0}); bench.wires[0].knee_count=2; bench.wires[0].knees[0]=(WirePoint){351,150}; bench.wires[0].knees[1]=(WirePoint){551,150};
-        bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1}); bench.wires[2].knee_count=2; bench.wires[2].knees[0]=(WirePoint){849,370}; bench.wires[2].knees[1]=(WirePoint){449,370};
-        show_current=1;
-        trace_valid=spice_transient_instrumented(&bench,ngspice,1,(Pin){0,0},1e-5,.002,&trace,dc_status,sizeof(dc_status));
-        if(!trace_valid) { fprintf(stderr,"Captura LED: %s\n",dc_status); return 1; }
-        trace_snapshot=bench; trace_index=trace_nearest(&trace,strcmp(argv[1],"--capture-led-on")==0?.125:.375); sim_running=0; status="LED acompanha corrente transitoria calculada.";
+    if(app.capture && (strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0)) {
+        app.bench=(Workbench){0}; bench_add(&app.bench,PART_CLOCK,400,250); bench_add(&app.bench,PART_RESISTOR,600,250); bench_add(&app.bench,PART_LED,800,250);
+        bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){1,0}); app.bench.wires[0].knee_count=2; app.bench.wires[0].knees[0]=(WirePoint){351,150}; app.bench.wires[0].knees[1]=(WirePoint){551,150};
+        bench_toggle_wire(&app.bench,(Pin){1,1},(Pin){2,0}); bench_toggle_wire(&app.bench,(Pin){2,1},(Pin){0,1}); app.bench.wires[2].knee_count=2; app.bench.wires[2].knees[0]=(WirePoint){849,370}; app.bench.wires[2].knees[1]=(WirePoint){449,370};
+        app.show_current=1;
+        app.sim.trace_valid=spice_transient_instrumented(&app.bench,app.ngspice,1,(Pin){0,0},1e-5,.002,&app.sim.trace,app.sim.dc_status,sizeof(app.sim.dc_status));
+        if(!app.sim.trace_valid) { fprintf(stderr,"Captura LED: %s\n",app.sim.dc_status); return 1; }
+        app.sim.trace_snapshot=app.bench; app.sim.trace_index=trace_nearest(&app.sim.trace,strcmp(argv[1],"--capture-led-on")==0?.125:.375); app.sim.sim_running=0; app.status="LED acompanha corrente transitoria calculada.";
     }
-    if(capture && strcmp(argv[1],"--capture-dff")==0) {
-        bench=(Workbench){0}; palette_page=1;
-        bench_add(&bench,PART_CLOCK,350,200); bench_add(&bench,PART_CLOCK,350,350); bench_set_value(&bench,1,400);
-        bench_add(&bench,PART_DFF,620,260); bench_add(&bench,PART_RESISTOR,780,260); bench_add(&bench,PART_LED,1010,260);
-        bench_toggle_wire(&bench,(Pin){0,1},(Pin){1,1}); bench_toggle_wire(&bench,(Pin){1,0},(Pin){2,0}); bench_toggle_wire(&bench,(Pin){0,0},(Pin){2,1});
-        bench_toggle_wire(&bench,(Pin){2,2},(Pin){3,0}); bench_toggle_wire(&bench,(Pin){3,1},(Pin){4,0}); bench_toggle_wire(&bench,(Pin){4,1},(Pin){0,1});
-        trace_valid=spice_transient_analyze(&bench,ngspice,(Pin){2,2},1e-5,.0035,&trace,dc_status,sizeof(dc_status));
-        if(!trace_valid) { fprintf(stderr,"Captura DFF: %s\n",dc_status); return 1; }
-        trace_snapshot=bench; trace_index=trace_nearest(&trace,.43); trace_pin=2; sim_running=0; selected=2; status="DFF: saida retida entre bordas do clock.";
+    if(app.capture && strcmp(argv[1],"--capture-dff")==0) {
+        app.bench=(Workbench){0}; app.palette_page=1;
+        bench_add(&app.bench,PART_CLOCK,350,200); bench_add(&app.bench,PART_CLOCK,350,350); bench_set_value(&app.bench,1,400);
+        bench_add(&app.bench,PART_DFF,620,260); bench_add(&app.bench,PART_RESISTOR,780,260); bench_add(&app.bench,PART_LED,1010,260);
+        bench_toggle_wire(&app.bench,(Pin){0,1},(Pin){1,1}); bench_toggle_wire(&app.bench,(Pin){1,0},(Pin){2,0}); bench_toggle_wire(&app.bench,(Pin){0,0},(Pin){2,1});
+        bench_toggle_wire(&app.bench,(Pin){2,2},(Pin){3,0}); bench_toggle_wire(&app.bench,(Pin){3,1},(Pin){4,0}); bench_toggle_wire(&app.bench,(Pin){4,1},(Pin){0,1});
+        app.sim.trace_valid=spice_transient_analyze(&app.bench,app.ngspice,(Pin){2,2},1e-5,.0035,&app.sim.trace,app.sim.dc_status,sizeof(app.sim.dc_status));
+        if(!app.sim.trace_valid) { fprintf(stderr,"Captura DFF: %s\n",app.sim.dc_status); return 1; }
+        app.sim.trace_snapshot=app.bench; app.sim.trace_index=trace_nearest(&app.sim.trace,.43); app.sim.trace_pin=2; app.sim.sim_running=0; app.selected=2; app.status="DFF: saida retida entre bordas do clock.";
     }
-    while(running) {
+    while(app.running) {
         SDL_Event e; int width,height,i;
-        if(selftest) {
+        if(app.selftest) {
             int queued=1;
-            if(selftest_phase==0) queued=dev_test_click(window,50,150) && dev_test_click(window,400,250);
-            else if(selftest_phase==1) queued=dev_test_click(window,50,438) && dev_test_click(window,600,250);
-            else if(selftest_phase==2) queued=dev_test_click(window,351,250) && dev_test_click(window,450,180) && dev_test_click(window,551,250);
-            else if(selftest_phase==3) queued=dev_test_key(window,SDLK_Z);
-            else if(selftest_phase==4) queued=dev_test_key(window,SDLK_Y);
-            else if(selftest_phase==5) queued=dev_test_click(window,450,180) && dev_test_drag_finish(window,460,190);
-            else if(selftest_phase==6) queued=dev_test_key(window,SDLK_Z);
-            else if(selftest_phase==7) queued=dev_test_key(window,SDLK_Y);
-            else if(selftest_phase==8) queued=dev_test_click_count(window,460,190,2);
-            else if(selftest_phase==9) queued=dev_test_key(window,SDLK_Z);
-            else if(selftest_phase==10) queued=dev_test_wheel(window,400,250,1);
-            else if(selftest_phase==11) queued=dev_test_click(window,341.2f,250);
-            else if(selftest_phase==12) queued=dev_test_click(window,581.2f,250);
-            else if(selftest_phase==13) queued=dev_test_key(window,SDLK_Z);
-            else if(selftest_phase==14) queued=dev_test_key(window,SDLK_HOME);
-            else if(selftest_phase==15) queued=dev_test_pan(window);
-            else if(selftest_phase==16) queued=dev_test_click(window,451,290);
-            else if(selftest_phase==17) queued=dev_test_key(window,SDLK_ESCAPE);
-            else if(selftest_phase==18) queued=dev_test_key(window,SDLK_HOME);
-            else if(selftest_phase==19) queued=dev_test_click(window,50,366) && dev_test_click(window,850,430);
-            else if(selftest_phase==20) queued=dev_test_click(window,50,438) && dev_test_click(window,838,377);
-            else if(selftest_phase==21) queued=dev_test_key(window,SDLK_Z);
-            else if(selftest_phase==22) queued=dev_test_key(window,SDLK_Y);
-            else if(selftest_phase==23) queued=dev_test_click(window,836,375);
-            else if(selftest_phase==24) queued=dev_test_key(window,SDLK_R);
-            else if(selftest_phase==25) queued=dev_test_key(window,SDLK_Z);
-            else if(selftest_phase==26) queued=dev_test_key(window,SDLK_Y);
-            else if(selftest_phase==27) queued=dev_test_click(window,505,220);
-            else if(selftest_phase==28) queued=dev_test_key(window,SDLK_F1);
-            else if(selftest_phase==29) queued=dev_test_click(window,915,330);
-            else if(selftest_phase==30) queued=dev_test_key(window,SDLK_F1);
-            else if(selftest_phase==31) queued=dev_test_key(window,SDLK_Z);
-            else if(selftest_phase==32) queued=dev_test_key(window,SDLK_Y);
-            else if(selftest_phase==33) queued=dev_test_key(window,SDLK_F1);
-            else if(selftest_phase==34) queued=dev_test_click(window,900,405);
-            else if(selftest_phase==35) queued=dev_test_click(window,900,445);
-            else if(selftest_phase==36) queued=dev_test_key(window,SDLK_RETURN);
-            else if(selftest_phase==37) queued=dev_test_click(window,900,485);
-            else if(selftest_phase==38) queued=dev_test_key(window,SDLK_ESCAPE);
-            else if(selftest_phase==39) queued=dev_test_click(window,900,445);
-            else if(selftest_phase==40) queued=dev_test_replace_text(window,"2e-5");
-            else if(selftest_phase==41) queued=dev_test_click(window,900,445);
-            else if(selftest_phase==42) queued=dev_test_replace_text(window,"1e-9");
-            else if(selftest_phase==43) queued=dev_test_key(window,SDLK_ESCAPE);
-            else if(selftest_phase==44) { trace.count=3; trace.samples[0]=(SpiceSample){0,0}; trace.samples[1]=(SpiceSample){1,2}; trace.samples[2]=(SpiceSample){2,3}; trace_index=0; trace_valid=1; trace_snapshot=bench; sim_running=0; queued=dev_test_key(window,SDLK_F1); }
-            else if(selftest_phase==45) queued=dev_test_key(window,SDLK_N);
-            else if(selftest_phase==46) queued=dev_test_key(window,SDLK_B);
-            else if(selftest_phase==47) queued=dev_test_click(window,1219,500);
-            else if(selftest_phase==48) queued=dev_test_key(window,SDLK_N);
-            else if(selftest_phase==49) queued=dev_test_key(window,SDLK_B);
-            else if(selftest_phase==50) queued=dev_test_key(window,SDLK_F1);
-            else if(selftest_phase==51) queued=dev_test_click(window,900,370);
-            else if(selftest_phase==52) queued=dev_test_key(window,SDLK_F1);
-            else if(selftest_phase==53) queued=dev_test_click(window,505,220);
-            else if(selftest_phase==54) queued=dev_test_key(window,SDLK_T);
-            else if(selftest_phase==55) queued=dev_test_key(window,SDLK_S);
-            else if(selftest_phase==56) queued=dev_test_key(window,SDLK_F1);
-            else if(selftest_phase==57) queued=dev_test_click(window,900,370);
-            else if(selftest_phase==58) queued=dev_test_key(window,SDLK_L);
-            else if(selftest_phase==59) queued=dev_test_key(window,SDLK_F1);
-            else if(selftest_phase==60) queued=dev_test_click(window,50,670) && dev_test_click(window,1000,300);
-            else if(selftest_phase==61) queued=dev_test_key(window,SDLK_TAB);
-            else if(selftest_phase==62) queued=dev_test_click(window,50,390) && dev_test_click(window,1100,400);
-            else if(selftest_phase==63) queued=dev_test_click(window,50,510) && dev_test_click(window,1000,500);
-            else if(selftest_phase==64) queued=dev_test_click_count(window,1000,500,2);
-            else if(selftest_phase==65) { trace.count=3; trace.samples[0]=(SpiceSample){0,0}; trace.samples[1]=(SpiceSample){1,2}; trace.samples[2]=(SpiceSample){2,3}; trace_index=0; trace_valid=1; trace_snapshot=bench; sim_running=0; queued=dev_test_key(window,SDLK_SPACE); }
-            else if(selftest_phase==66) queued=dev_test_key(window,SDLK_SPACE);
-            else if(selftest_phase==67) queued=dev_test_key(window,SDLK_SPACE);
-            else if(selftest_phase==68) { trace_play_started=SDL_GetTicks()-6000; queued=dev_test_key(window,SDLK_UNKNOWN); }
-            else if(selftest_phase==69) queued=dev_test_key(window,SDLK_UNKNOWN);
-            else if(selftest_phase==70) { bench_add(&bench,PART_LED,1200,500); trace_snapshot=bench; trace_valid=1; trace_index=0; trace.leds_on[0]=UINT64_C(1)<<7; trace.leds_on[1]=0; sim_running=0; queued=dev_test_key(window,SDLK_UNKNOWN); }
-            else if(selftest_phase==71) { trace_index=1; queued=dev_test_key(window,SDLK_UNKNOWN); }
-            else if(selftest_phase==72) queued=dev_test_key(window,SDLK_UNKNOWN);
-            else if(selftest_phase==73) queued=dev_test_click(window,50,600) && dev_test_click(window,750,550);
-            else if(selftest_phase==74) queued=dev_test_click(window,50,670) && dev_test_click(window,750,450);
-            else if(selftest_phase==75) queued=dev_test_key(window,SDLK_F2);
-            else if(selftest_phase==76) queued=dev_test_key(window,SDLK_F2);
-            else if(selftest_phase==77) queued=dev_test_key(window,SDLK_F2);
-            else if(selftest_phase==78) queued=dev_test_key(window,SDLK_Z);
-            if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
+            if(app.selftest_phase==0) queued=dev_test_click(window,50,150) && dev_test_click(window,400,250);
+            else if(app.selftest_phase==1) queued=dev_test_click(window,50,438) && dev_test_click(window,600,250);
+            else if(app.selftest_phase==2) queued=dev_test_click(window,351,250) && dev_test_click(window,450,180) && dev_test_click(window,551,250);
+            else if(app.selftest_phase==3) queued=dev_test_key(window,SDLK_Z);
+            else if(app.selftest_phase==4) queued=dev_test_key(window,SDLK_Y);
+            else if(app.selftest_phase==5) queued=dev_test_click(window,450,180) && dev_test_drag_finish(window,460,190);
+            else if(app.selftest_phase==6) queued=dev_test_key(window,SDLK_Z);
+            else if(app.selftest_phase==7) queued=dev_test_key(window,SDLK_Y);
+            else if(app.selftest_phase==8) queued=dev_test_click_count(window,460,190,2);
+            else if(app.selftest_phase==9) queued=dev_test_key(window,SDLK_Z);
+            else if(app.selftest_phase==10) queued=dev_test_wheel(window,400,250,1);
+            else if(app.selftest_phase==11) queued=dev_test_click(window,341.2f,250);
+            else if(app.selftest_phase==12) queued=dev_test_click(window,581.2f,250);
+            else if(app.selftest_phase==13) queued=dev_test_key(window,SDLK_Z);
+            else if(app.selftest_phase==14) queued=dev_test_key(window,SDLK_HOME);
+            else if(app.selftest_phase==15) queued=dev_test_pan(window);
+            else if(app.selftest_phase==16) queued=dev_test_click(window,451,290);
+            else if(app.selftest_phase==17) queued=dev_test_key(window,SDLK_ESCAPE);
+            else if(app.selftest_phase==18) queued=dev_test_key(window,SDLK_HOME);
+            else if(app.selftest_phase==19) queued=dev_test_click(window,50,366) && dev_test_click(window,850,430);
+            else if(app.selftest_phase==20) queued=dev_test_click(window,50,438) && dev_test_click(window,838,377);
+            else if(app.selftest_phase==21) queued=dev_test_key(window,SDLK_Z);
+            else if(app.selftest_phase==22) queued=dev_test_key(window,SDLK_Y);
+            else if(app.selftest_phase==23) queued=dev_test_click(window,836,375);
+            else if(app.selftest_phase==24) queued=dev_test_key(window,SDLK_R);
+            else if(app.selftest_phase==25) queued=dev_test_key(window,SDLK_Z);
+            else if(app.selftest_phase==26) queued=dev_test_key(window,SDLK_Y);
+            else if(app.selftest_phase==27) queued=dev_test_click(window,505,220);
+            else if(app.selftest_phase==28) queued=dev_test_key(window,SDLK_F1);
+            else if(app.selftest_phase==29) queued=dev_test_click(window,915,330);
+            else if(app.selftest_phase==30) queued=dev_test_key(window,SDLK_F1);
+            else if(app.selftest_phase==31) queued=dev_test_key(window,SDLK_Z);
+            else if(app.selftest_phase==32) queued=dev_test_key(window,SDLK_Y);
+            else if(app.selftest_phase==33) queued=dev_test_key(window,SDLK_F1);
+            else if(app.selftest_phase==34) queued=dev_test_click(window,900,405);
+            else if(app.selftest_phase==35) queued=dev_test_click(window,900,445);
+            else if(app.selftest_phase==36) queued=dev_test_key(window,SDLK_RETURN);
+            else if(app.selftest_phase==37) queued=dev_test_click(window,900,485);
+            else if(app.selftest_phase==38) queued=dev_test_key(window,SDLK_ESCAPE);
+            else if(app.selftest_phase==39) queued=dev_test_click(window,900,445);
+            else if(app.selftest_phase==40) queued=dev_test_replace_text(window,"2e-5");
+            else if(app.selftest_phase==41) queued=dev_test_click(window,900,445);
+            else if(app.selftest_phase==42) queued=dev_test_replace_text(window,"1e-9");
+            else if(app.selftest_phase==43) queued=dev_test_key(window,SDLK_ESCAPE);
+            else if(app.selftest_phase==44) { app.sim.trace.count=3; app.sim.trace.samples[0]=(SpiceSample){0,0}; app.sim.trace.samples[1]=(SpiceSample){1,2}; app.sim.trace.samples[2]=(SpiceSample){2,3}; app.sim.trace_index=0; app.sim.trace_valid=1; app.sim.trace_snapshot=app.bench; app.sim.sim_running=0; queued=dev_test_key(window,SDLK_F1); }
+            else if(app.selftest_phase==45) queued=dev_test_key(window,SDLK_N);
+            else if(app.selftest_phase==46) queued=dev_test_key(window,SDLK_B);
+            else if(app.selftest_phase==47) queued=dev_test_click(window,1219,500);
+            else if(app.selftest_phase==48) queued=dev_test_key(window,SDLK_N);
+            else if(app.selftest_phase==49) queued=dev_test_key(window,SDLK_B);
+            else if(app.selftest_phase==50) queued=dev_test_key(window,SDLK_F1);
+            else if(app.selftest_phase==51) queued=dev_test_click(window,900,370);
+            else if(app.selftest_phase==52) queued=dev_test_key(window,SDLK_F1);
+            else if(app.selftest_phase==53) queued=dev_test_click(window,505,220);
+            else if(app.selftest_phase==54) queued=dev_test_key(window,SDLK_T);
+            else if(app.selftest_phase==55) queued=dev_test_key(window,SDLK_S);
+            else if(app.selftest_phase==56) queued=dev_test_key(window,SDLK_F1);
+            else if(app.selftest_phase==57) queued=dev_test_click(window,900,370);
+            else if(app.selftest_phase==58) queued=dev_test_key(window,SDLK_L);
+            else if(app.selftest_phase==59) queued=dev_test_key(window,SDLK_F1);
+            else if(app.selftest_phase==60) queued=dev_test_click(window,50,670) && dev_test_click(window,1000,300);
+            else if(app.selftest_phase==61) queued=dev_test_key(window,SDLK_TAB);
+            else if(app.selftest_phase==62) queued=dev_test_click(window,50,390) && dev_test_click(window,1100,400);
+            else if(app.selftest_phase==63) queued=dev_test_click(window,50,510) && dev_test_click(window,1000,500);
+            else if(app.selftest_phase==64) queued=dev_test_click_count(window,1000,500,2);
+            else if(app.selftest_phase==65) { app.sim.trace.count=3; app.sim.trace.samples[0]=(SpiceSample){0,0}; app.sim.trace.samples[1]=(SpiceSample){1,2}; app.sim.trace.samples[2]=(SpiceSample){2,3}; app.sim.trace_index=0; app.sim.trace_valid=1; app.sim.trace_snapshot=app.bench; app.sim.sim_running=0; queued=dev_test_key(window,SDLK_SPACE); }
+            else if(app.selftest_phase==66) queued=dev_test_key(window,SDLK_SPACE);
+            else if(app.selftest_phase==67) queued=dev_test_key(window,SDLK_SPACE);
+            else if(app.selftest_phase==68) { app.sim.trace_play_started=SDL_GetTicks()-6000; queued=dev_test_key(window,SDLK_UNKNOWN); }
+            else if(app.selftest_phase==69) queued=dev_test_key(window,SDLK_UNKNOWN);
+            else if(app.selftest_phase==70) { bench_add(&app.bench,PART_LED,1200,500); app.sim.trace_snapshot=app.bench; app.sim.trace_valid=1; app.sim.trace_index=0; app.sim.trace.leds_on[0]=UINT64_C(1)<<7; app.sim.trace.leds_on[1]=0; app.sim.sim_running=0; queued=dev_test_key(window,SDLK_UNKNOWN); }
+            else if(app.selftest_phase==71) { app.sim.trace_index=1; queued=dev_test_key(window,SDLK_UNKNOWN); }
+            else if(app.selftest_phase==72) queued=dev_test_key(window,SDLK_UNKNOWN);
+            else if(app.selftest_phase==73) queued=dev_test_click(window,50,600) && dev_test_click(window,750,550);
+            else if(app.selftest_phase==74) queued=dev_test_click(window,50,670) && dev_test_click(window,750,450);
+            else if(app.selftest_phase==75) queued=dev_test_key(window,SDLK_F2);
+            else if(app.selftest_phase==76) queued=dev_test_key(window,SDLK_F2);
+            else if(app.selftest_phase==77) queued=dev_test_key(window,SDLK_F2);
+            else if(app.selftest_phase==78) queued=dev_test_key(window,SDLK_Z);
+            if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); app.exit_code=1; app.running=0; }
         }
         while(SDL_PollEvent(&e)) {
-            if(e.type==SDL_EVENT_QUIT) running=0;
-            else if(editing>=0 && e.type==SDL_EVENT_TEXT_INPUT) {
-                const char *p=e.text.text; size_t length=strlen(edit_text);
-                while(*p && length+1<sizeof(edit_text)) { if((unsigned char)*p>=32 && (unsigned char)*p<127) edit_text[length++]=*p; ++p; }
-                edit_text[length]='\0';
+            if(e.type==SDL_EVENT_QUIT) app.running=0;
+            else if(app.editing>=0 && e.type==SDL_EVENT_TEXT_INPUT) {
+                const char *p=e.text.text; size_t length=strlen(app.edit_text);
+                while(*p && length+1<sizeof(app.edit_text)) { if((unsigned char)*p>=32 && (unsigned char)*p<127) app.edit_text[length++]=*p; ++p; }
+                app.edit_text[length]='\0';
             }
-            else if(editing>=0 && e.type==SDL_EVENT_KEY_DOWN) {
-                if(e.key.key==SDLK_ESCAPE) { editing=-1; SDL_StopTextInput(window); status="Edicao cancelada."; }
-                else if(e.key.key==SDLK_BACKSPACE) { size_t length=strlen(edit_text); if(length) edit_text[length-1]='\0'; }
+            else if(app.editing>=0 && e.type==SDL_EVENT_KEY_DOWN) {
+                if(e.key.key==SDLK_ESCAPE) { app.editing=-1; SDL_StopTextInput(window); app.status="Edicao cancelada."; }
+                else if(e.key.key==SDLK_BACKSPACE) { size_t length=strlen(app.edit_text); if(length) app.edit_text[length-1]='\0'; }
                 else if(e.key.key==SDLK_RETURN || e.key.key==SDLK_KP_ENTER) {
                     double value;
-                    Workbench before=bench;
-                    if(editing>=WORKBENCH_MAX_COMPONENTS) {
-                        double step=transient_step,stop=transient_stop;
-                        int parsed=bench_parse_value(edit_text,&value);
-                        if(parsed && editing==WORKBENCH_MAX_COMPONENTS) step=value;
+                    Workbench before=app.bench;
+                    if(app.editing>=WORKBENCH_MAX_COMPONENTS) {
+                        double step=app.transient_step,stop=app.transient_stop;
+                        int parsed=bench_parse_value(app.edit_text,&value);
+                        if(parsed && app.editing==WORKBENCH_MAX_COMPONENTS) step=value;
                         else if(parsed) stop=value;
-                        if(parsed && step<=stop && stop/step<=500.0*(1.0+1e-12)) { transient_step=step; transient_stop=stop; editing=-1; SDL_StopTextInput(window); status="Parametro transitorio atualizado."; }
-                        else status="Use tempos positivos: passo <= duracao e duracao/passo <= 500.";
-                    } else if(bench_parse_value(edit_text,&value) && bench_set_value(&bench,editing,value)) { if(before.parts[editing].value!=value) bench_history_record(history,&before); editing=-1; SDL_StopTextInput(window); status="Valor alterado."; }
-                    else status="Valor invalido. Use um numero positivo entre 1e-12 e 1e12.";
+                        if(parsed && step<=stop && stop/step<=500.0*(1.0+1e-12)) { app.transient_step=step; app.transient_stop=stop; app.editing=-1; SDL_StopTextInput(window); app.status="Parametro transitorio atualizado."; }
+                        else app.status="Use tempos positivos: passo <= duracao e duracao/passo <= 500.";
+                    } else if(bench_parse_value(app.edit_text,&value) && bench_set_value(&app.bench,app.editing,value)) { if(before.parts[app.editing].value!=value) bench_history_record(app.history,&before); app.editing=-1; SDL_StopTextInput(window); app.status="Valor alterado."; }
+                    else app.status="Valor invalido. Use um numero positivo entre 1e-12 e 1e12.";
                 }
             }
-            else if(editing>=0 && (e.type==SDL_EVENT_MOUSE_BUTTON_DOWN || e.type==SDL_EVENT_MOUSE_MOTION)) { continue; }
+            else if(app.editing>=0 && (e.type==SDL_EVENT_MOUSE_BUTTON_DOWN || e.type==SDL_EVENT_MOUSE_MOTION)) { continue; }
             else if(e.type==SDL_EVENT_KEY_DOWN && !e.key.repeat) {
                 if(e.key.key==SDLK_F2) {
-                    Workbench example={0}; int choice=(example_index+1)%WORKBENCH_EXAMPLE_COUNT, example_selected;
+                    Workbench example={0}; int choice=(app.example_index+1)%WORKBENCH_EXAMPLE_COUNT, example_selected;
                     if(workbench_example_create(choice,&example,&example_selected)) {
-                        bench_history_record(history,&bench); bench=example; example_index=choice; selected=example_selected; selected_wire=-1;
-                        dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; placing=-1; settings=0; view=(BenchView){1,0,0};
-                        trace_valid=0; dc_valid=0; dc_wire_valid=0; memset(leds,0,sizeof(leds));
-                        probe_pin=choice>0?2:0; probe_current=0; transient_step=1e-5; transient_stop=.005;
-                        status=workbench_example_name(choice);
-                    } else status="Falha ao preparar exemplo.";
+                        bench_history_record(app.history,&app.bench); app.bench=example; app.example_index=choice; app.selected=example_selected; app.selected_wire=-1;
+                        app.dragging=-1; app.drag_wire=-1; app.pending.component=-1; app.route_count=0; app.placing=-1; app.settings=0; app.view=(BenchView){1,0,0};
+                        app.sim.trace_valid=0; app.sim.dc_valid=0; app.sim.dc_wire_valid=0; memset(app.leds,0,sizeof(app.leds));
+                        app.probe_pin=choice>0?2:0; app.probe_current=0; app.transient_step=1e-5; app.transient_stop=.005;
+                        app.status=workbench_example_name(choice);
+                    } else app.status="Falha ao preparar exemplo.";
                     continue;
                 }
-                if(e.key.key==SDLK_TAB) { palette_page=1-palette_page; placing=-1; status=palette_page?"Biblioteca de portas logicas.":"Biblioteca de componentes."; continue; }
-                if(e.key.key==SDLK_F1) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
-                if(e.key.key==SDLK_HOME) { view=(BenchView){1,0,0}; status="Vista restaurada."; continue; }
+                if(e.key.key==SDLK_TAB) { app.palette_page=1-app.palette_page; app.placing=-1; app.status=app.palette_page?"Biblioteca de portas logicas.":"Biblioteca de componentes."; continue; }
+                if(e.key.key==SDLK_F1) { app.settings=!app.settings; app.dragging=-1; app.drag_wire=-1; continue; }
+                if(e.key.key==SDLK_HOME) { app.view=(BenchView){1,0,0}; app.status="Vista restaurada."; continue; }
                 if((e.key.mod & SDL_KMOD_CTRL) && (e.key.key==SDLK_Z || e.key.key==SDLK_Y)) {
-                    int changed=e.key.key==SDLK_Z?bench_history_undo(history,&bench):bench_history_redo(history,&bench);
-                    if(changed) { selected=-1; selected_wire=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; memset(leds,0,sizeof(leds)); status=e.key.key==SDLK_Z?"Acao desfeita.":"Acao refeita."; }
-                    else status="Nenhuma acao disponivel.";
+                    int changed=e.key.key==SDLK_Z?bench_history_undo(app.history,&app.bench):bench_history_redo(app.history,&app.bench);
+                    if(changed) { app.selected=-1; app.selected_wire=-1; app.dragging=-1; app.drag_wire=-1; app.pending.component=-1; app.route_count=0; memset(app.leds,0,sizeof(app.leds)); app.status=e.key.key==SDLK_Z?"Acao desfeita.":"Acao refeita."; }
+                    else app.status="Nenhuma acao disponivel.";
                     continue;
                 }
-                if(e.key.key==SDLK_ESCAPE) { pending.component=-1; route_count=0; placing=-1; dragging=-1; drag_wire=-1; status="Selecao cancelada."; }
+                if(e.key.key==SDLK_ESCAPE) { app.pending.component=-1; app.route_count=0; app.placing=-1; app.dragging=-1; app.drag_wire=-1; app.status="Selecao cancelada."; }
                 else if(e.key.key==SDLK_SPACE) {
-                    sim_running=!sim_running;
-                    if(trace_valid && sim_running) {
-                        if(trace_index>=trace.count-1) trace_index=0;
-                        trace_play_start_index=trace_index; trace_play_started=SDL_GetTicks();
-                        status="Reproducao da curva: intervalo completo em 5 s reais.";
-                        if(trace_automatic) status="Simulacao em execucao: o circuito e calculado automaticamente.";
-                    } else if(trace_valid) status="Reproducao pausada; B/N percorrem as amostras.";
-                    else if(auto_enabled) status=sim_running?"Simulacao em execucao: o circuito e calculado automaticamente.":"Simulacao pausada. Espaco ou o botao de play continua.";
-                    else status=sim_running?"Simulacao executando.":"Simulacao pausada.";
+                    app.sim.sim_running=!app.sim.sim_running;
+                    if(app.sim.trace_valid && app.sim.sim_running) {
+                        if(app.sim.trace_index>=app.sim.trace.count-1) app.sim.trace_index=0;
+                        app.sim.trace_play_start_index=app.sim.trace_index; app.sim.trace_play_started=SDL_GetTicks();
+                        app.status="Reproducao da curva: intervalo completo em 5 s reais.";
+                        if(app.sim.trace_automatic) app.status="Simulacao em execucao: o circuito e calculado automaticamente.";
+                    } else if(app.sim.trace_valid) app.status="Reproducao pausada; B/N percorrem as amostras.";
+                    else if(app.sim.auto_enabled) app.status=app.sim.sim_running?"Simulacao em execucao: o circuito e calculado automaticamente.":"Simulacao pausada. Espaco ou o botao de play continua.";
+                    else app.status=app.sim.sim_running?"Simulacao executando.":"Simulacao pausada.";
                 }
-                else if(e.key.key==SDLK_P && auto_enabled) {
-                    auto_requested_valid=0; bench_changed_at=0; sim_running=1;
-                    status="Recalculando o circuito...";
+                else if(e.key.key==SDLK_P && app.sim.auto_enabled) {
+                    app.sim.auto_requested_valid=0; app.sim.bench_changed_at=0; app.sim.sim_running=1;
+                    app.status="Recalculando o circuito...";
                 }
-                else if(e.key.key==SDLK_R && selected>=0) {
-                    Workbench before=bench;
-                    if(bench_rotate_part(&bench,selected)) { bench_snap_to_breadboard(&bench,selected); bench_history_record(history,&before); dragging=-1; pending.component=-1; route_count=0; status="Componente girado 90 graus."; }
-                    else status="Esta placa ainda nao gira.";
+                else if(e.key.key==SDLK_R && app.selected>=0) {
+                    Workbench before=app.bench;
+                    if(bench_rotate_part(&app.bench,app.selected)) { bench_snap_to_breadboard(&app.bench,app.selected); bench_history_record(app.history,&before); app.dragging=-1; app.pending.component=-1; app.route_count=0; app.status="Componente girado 90 graus."; }
+                    else app.status="Esta placa ainda nao gira.";
                 }
-                else if(e.key.key==SDLK_G && trace_valid) { show_trace=!show_trace; status=show_trace?"Grafico visivel.":"Grafico oculto; pressione G para mostrar."; }
-                else if(e.key.key==SDLK_T && selected_wire>=0 && selected_wire<bench.wire_count) {
-                    if(dc_job.thread) status="Analise em andamento.";
-                    else if(spice_job_start_transient_wire(&dc_job,&bench,ngspice,selected_wire,transient_step,transient_stop)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando corrente transitoria do fio..."; }
-                    else status="Falha ao iniciar tarefa de analise.";
+                else if(e.key.key==SDLK_G && app.sim.trace_valid) { app.show_trace=!app.show_trace; app.status=app.show_trace?"Grafico visivel.":"Grafico oculto; pressione G para mostrar."; }
+                else if(e.key.key==SDLK_T && app.selected_wire>=0 && app.selected_wire<app.bench.wire_count) {
+                    if(app.dc_job.thread) app.status="Analise em andamento.";
+                    else if(spice_job_start_transient_wire(&app.dc_job,&app.bench,app.ngspice,app.selected_wire,app.transient_step,app.transient_stop)) { app.sim.trace_valid=0; app.sim.dc_valid=0; app.sim.dc_wire_valid=0; app.status="Calculando corrente transitoria do fio..."; }
+                    else app.status="Falha ao iniciar tarefa de analise.";
                 }
-                else if(e.key.key==SDLK_T && selected>=0 && bench.parts[selected].type!=PART_BREADBOARD) {
-                    if(dc_job.thread) status="Analise em andamento.";
-                    else if(!probe_current && probe_pin>=bench_pin_count(bench.parts[selected].type)) status="Terminal indisponivel para este componente.";
-                    else if(probe_current && (is_gate(bench.parts[selected].type) || bench.parts[selected].type==PART_74HC00)) status="Corrente interna da porta nao disponivel.";
-                    else if(probe_current && bench.parts[selected].type==PART_SWITCH) status="Corrente transitoria indisponivel para interruptor ideal.";
-                    else if(show_current?spice_job_start_transient_instrumented(&dc_job,&bench,ngspice,probe_current?2:1,(Pin){selected,probe_current?0:probe_pin},transient_step,transient_stop):probe_current?spice_job_start_transient_current(&dc_job,&bench,ngspice,selected,transient_step,transient_stop):spice_job_start_transient(&dc_job,&bench,ngspice,(Pin){selected,probe_pin},transient_step,transient_stop)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Calculando transitorio selecionado..."; }
-                    else status="Falha ao iniciar tarefa de analise.";
+                else if(e.key.key==SDLK_T && app.selected>=0 && app.bench.parts[app.selected].type!=PART_BREADBOARD) {
+                    if(app.dc_job.thread) app.status="Analise em andamento.";
+                    else if(!app.probe_current && app.probe_pin>=bench_pin_count(app.bench.parts[app.selected].type)) app.status="Terminal indisponivel para este componente.";
+                    else if(app.probe_current && (is_gate(app.bench.parts[app.selected].type) || app.bench.parts[app.selected].type==PART_74HC00)) app.status="Corrente interna da porta nao disponivel.";
+                    else if(app.probe_current && app.bench.parts[app.selected].type==PART_SWITCH) app.status="Corrente transitoria indisponivel para interruptor ideal.";
+                    else if(app.show_current?spice_job_start_transient_instrumented(&app.dc_job,&app.bench,app.ngspice,app.probe_current?2:1,(Pin){app.selected,app.probe_current?0:app.probe_pin},app.transient_step,app.transient_stop):app.probe_current?spice_job_start_transient_current(&app.dc_job,&app.bench,app.ngspice,app.selected,app.transient_step,app.transient_stop):spice_job_start_transient(&app.dc_job,&app.bench,app.ngspice,(Pin){app.selected,app.probe_pin},app.transient_step,app.transient_stop)) { app.sim.trace_valid=0; app.sim.dc_valid=0; app.sim.dc_wire_valid=0; app.status="Calculando transitorio selecionado..."; }
+                    else app.status="Falha ao iniciar tarefa de analise.";
                 }
-                else if((e.key.key==SDLK_N || e.key.key==SDLK_B) && !sim_running && trace_valid) {
-                    if(e.key.key==SDLK_N && trace_index+1<trace.count) ++trace_index;
-                    if(e.key.key==SDLK_B && trace_index>0) --trace_index;
-                    snprintf(trace_status,sizeof(trace_status),trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).":trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].value,trace_index+1,trace.count); status=trace_status;
+                else if((e.key.key==SDLK_N || e.key.key==SDLK_B) && !app.sim.sim_running && app.sim.trace_valid) {
+                    if(e.key.key==SDLK_N && app.sim.trace_index+1<app.sim.trace.count) ++app.sim.trace_index;
+                    if(e.key.key==SDLK_B && app.sim.trace_index>0) --app.sim.trace_index;
+                    snprintf(app.sim.trace_status,sizeof(app.sim.trace_status),app.sim.trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).":app.sim.trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",app.sim.trace.samples[app.sim.trace_index].time,app.sim.trace.samples[app.sim.trace_index].value,app.sim.trace_index+1,app.sim.trace.count); app.status=app.sim.trace_status;
                 }
-                else if(e.key.key==SDLK_N && !sim_running) { if(bench_boolean_supported(&bench)) { bench_simulate(&bench,leds); status="Um passo executado."; } else status="Calculo eletrico ainda indisponivel."; }
+                else if(e.key.key==SDLK_N && !app.sim.sim_running) { if(bench_boolean_supported(&app.bench)) { bench_simulate(&app.bench,app.leds); app.status="Um passo executado."; } else app.status="Calculo eletrico ainda indisponivel."; }
                 else if(e.key.key==SDLK_P) {
-                    if(dc_job.thread) status="Analise em andamento.";
-                    else if((show_current?spice_job_start_wires:spice_job_start)(&dc_job,&bench,ngspice)) { trace_valid=0; dc_valid=0; dc_wire_valid=0; status="Analisando ponto DC..."; }
-                    else status="Falha ao iniciar tarefa de analise.";
+                    if(app.dc_job.thread) app.status="Analise em andamento.";
+                    else if((app.show_current?spice_job_start_wires:spice_job_start)(&app.dc_job,&app.bench,app.ngspice)) { app.sim.trace_valid=0; app.sim.dc_valid=0; app.sim.dc_wire_valid=0; app.status="Analisando ponto DC..."; }
+                    else app.status="Falha ao iniciar tarefa de analise.";
                 }
-                else if(e.key.key==SDLK_E && selected>=0) {
-                    PartType type=bench.parts[selected].type;
+                else if(e.key.key==SDLK_E && app.selected>=0) {
+                    PartType type=app.bench.parts[app.selected].type;
                     if(type==PART_SOURCE || type==PART_RESISTOR || type==PART_CAPACITOR || type==PART_INDUCTOR || type==PART_CLOCK) {
-                        if(SDL_StartTextInput(window)) { editing=selected; snprintf(edit_text,sizeof(edit_text),"%.9g",bench.parts[selected].value); status="Digite o valor em unidades SI; Enter confirma, Esc cancela."; }
-                        else status="Nao foi possivel iniciar edicao de texto.";
-                    } else status="Este componente nao possui valor editavel.";
+                        if(SDL_StartTextInput(window)) { app.editing=app.selected; snprintf(app.edit_text,sizeof(app.edit_text),"%.9g",app.bench.parts[app.selected].value); app.status="Digite o valor em unidades SI; Enter confirma, Esc cancela."; }
+                        else app.status="Nao foi possivel iniciar edicao de texto.";
+                    } else app.status="Este componente nao possui valor editavel.";
                 }
-                else if(selected>=0 && (e.key.key==SDLK_EQUALS || e.key.key==SDLK_PLUS || e.key.key==SDLK_MINUS)) {
+                else if(app.selected>=0 && (e.key.key==SDLK_EQUALS || e.key.key==SDLK_PLUS || e.key.key==SDLK_MINUS)) {
                     double scale=e.key.key==SDLK_MINUS?.5:2.0;
-                    Workbench before=bench;
-                    if(bench_set_value(&bench,selected,bench.parts[selected].value*scale)) { bench_history_record(history,&before); status="Valor alterado."; }
-                    else status="Valor nao editavel ou fora do limite.";
+                    Workbench before=app.bench;
+                    if(bench_set_value(&app.bench,app.selected,app.bench.parts[app.selected].value*scale)) { bench_history_record(app.history,&before); app.status="Valor alterado."; }
+                    else app.status="Valor nao editavel ou fora do limite.";
                 }
                 else if(e.key.key==SDLK_S) {
-                    WorkbenchSettings saved={show_grid,show_handles,round_wires,show_current,wire_color,probe_pin,probe_current,transient_step,transient_stop};
-                    status=workbench_save_project(selftest?"build/gui-settings-test.elec":"bancada.elec",&bench,&saved)?"Salvo em bancada.elec.":"Falha ao salvar.";
+                    WorkbenchSettings saved={app.show_grid,app.show_handles,app.round_wires,app.show_current,app.wire_color,app.probe_pin,app.probe_current,app.transient_step,app.transient_stop};
+                    app.status=workbench_save_project(app.selftest?"build/gui-settings-test.elec":"bancada.elec",&app.bench,&saved)?"Salvo em bancada.elec.":"Falha ao salvar.";
                 }
                 else if(e.key.key==SDLK_L) {
-                    Workbench before=bench; WorkbenchSettings saved;
-                    if(workbench_load_project(selftest?"build/gui-settings-test.elec":"bancada.elec",&bench,&saved)) {
-                        bench_history_record(history,&before); selected=-1; selected_wire=-1; dragging=-1; drag_wire=-1; pending.component=-1; route_count=0;
-                        show_grid=saved.show_grid; show_handles=saved.show_handles; round_wires=saved.round_wires; show_current=saved.show_current; wire_color=saved.wire_color;
-                        probe_pin=saved.probe_pin; probe_current=saved.probe_current; transient_step=saved.transient_step; transient_stop=saved.transient_stop;
-                        dc_valid=0; dc_wire_valid=0; trace_valid=0; memset(leds,0,sizeof(leds)); bench_simulate(&bench,leds); status="Bancada e configuracoes carregadas.";
-                    } else status="Falha ao carregar; bancada preservada.";
+                    Workbench before=app.bench; WorkbenchSettings saved;
+                    if(workbench_load_project(app.selftest?"build/gui-settings-test.elec":"bancada.elec",&app.bench,&saved)) {
+                        bench_history_record(app.history,&before); app.selected=-1; app.selected_wire=-1; app.dragging=-1; app.drag_wire=-1; app.pending.component=-1; app.route_count=0;
+                        app.show_grid=saved.show_grid; app.show_handles=saved.show_handles; app.round_wires=saved.round_wires; app.show_current=saved.show_current; app.wire_color=saved.wire_color;
+                        app.probe_pin=saved.probe_pin; app.probe_current=saved.probe_current; app.transient_step=saved.transient_step; app.transient_stop=saved.transient_stop;
+                        app.sim.dc_valid=0; app.sim.dc_wire_valid=0; app.sim.trace_valid=0; memset(app.leds,0,sizeof(app.leds)); bench_simulate(&app.bench,app.leds); app.status="Bancada e configuracoes carregadas.";
+                    } else app.status="Falha ao carregar; bancada preservada.";
                 }
-                else if(e.key.key==SDLK_DELETE && selected>=0) { bench_history_record(history,&bench); bench_remove(&bench,selected); selected=-1; selected_wire=-1; pending.component=-1; memset(leds,0,sizeof(leds)); status="Componente e seus fios removidos."; }
-                else if(e.key.key==SDLK_DELETE && selected_wire>=0 && selected_wire<bench.wire_count) { bench_history_record(history,&bench); memmove(&bench.wires[selected_wire],&bench.wires[selected_wire+1],(size_t)(bench.wire_count-selected_wire-1)*sizeof(Wire)); --bench.wire_count; selected_wire=-1; status="Fio removido."; }
-            } else if(e.type==SDL_EVENT_MOUSE_WHEEL && !settings && editing<0) {
+                else if(e.key.key==SDLK_DELETE && app.selected>=0) { bench_history_record(app.history,&app.bench); bench_remove(&app.bench,app.selected); app.selected=-1; app.selected_wire=-1; app.pending.component=-1; memset(app.leds,0,sizeof(app.leds)); app.status="Componente e seus fios removidos."; }
+                else if(e.key.key==SDLK_DELETE && app.selected_wire>=0 && app.selected_wire<app.bench.wire_count) { bench_history_record(app.history,&app.bench); memmove(&app.bench.wires[app.selected_wire],&app.bench.wires[app.selected_wire+1],(size_t)(app.bench.wire_count-app.selected_wire-1)*sizeof(Wire)); --app.bench.wire_count; app.selected_wire=-1; app.status="Fio removido."; }
+            } else if(e.type==SDL_EVENT_MOUSE_WHEEL && !app.settings && app.editing<0) {
                 int w,h; float x,y,direction=e.wheel.direction==SDL_MOUSEWHEEL_FLIPPED?-e.wheel.y:e.wheel.y;
                 SDL_GetWindowSize(window,&w,&h);
-                if(w>0 && h>0) { x=e.wheel.mouse_x*1280.0f/w; y=e.wheel.mouse_y*720.0f/h; if(x>=220 && y>=70 && y<660 && direction!=0) bench_view_zoom_at(&view,direction>0?1.2f:1.0f/1.2f,x,y); }
-            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_RIGHT && !settings && editing<0) {
+                if(w>0 && h>0) { x=e.wheel.mouse_x*1280.0f/w; y=e.wheel.mouse_y*720.0f/h; if(x>=220 && y>=70 && y<660 && direction!=0) bench_view_zoom_at(&app.view,direction>0?1.2f:1.0f/1.2f,x,y); }
+            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_RIGHT && !app.settings && app.editing<0) {
                 /* Right click rotates the part under the cursor, the same as selecting it and pressing R. */
                 int w,h,hit; float x,y; SDL_GetWindowSize(window,&w,&h);
                 if(w<=0 || h<=0) continue;
                 x=e.button.x*1280.0f/w; y=e.button.y*720.0f/h;
                 if(x<220 || y<70 || y>660) continue;
-                bench_view_to_world(&view,x,y,&x,&y);
-                hit=part_at(&bench,x,y);
-                if(hit>=0 && bench.parts[hit].type!=PART_BREADBOARD) {
+                bench_view_to_world(&app.view,x,y,&x,&y);
+                hit=part_at(&app.bench,x,y);
+                if(hit>=0 && app.bench.parts[hit].type!=PART_BREADBOARD) {
                     SDL_Event shortcut={0};
-                    selected=hit; selected_wire=-1;
+                    app.selected=hit; app.selected_wire=-1;
                     shortcut.type=SDL_EVENT_KEY_DOWN; shortcut.key.key=SDLK_R; SDL_PushEvent(&shortcut);
                 }
-            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_MIDDLE && !settings && editing<0) {
+            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_MIDDLE && !app.settings && app.editing<0) {
                 int w,h; SDL_GetWindowSize(window,&w,&h);
-                if(w>0 && h>0 && e.button.x*1280.0f/w>=220 && e.button.y*720.0f/h>=70 && e.button.y*720.0f/h<660) panning=1;
-            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_MIDDLE) panning=0;
-            else if(e.type==SDL_EVENT_MOUSE_MOTION && panning && editing<0) {
-                int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0 && h>0) { view.pan_x+=e.motion.xrel*1280.0f/w; view.pan_y+=e.motion.yrel*720.0f/h; }
+                if(w>0 && h>0 && e.button.x*1280.0f/w>=220 && e.button.y*720.0f/h>=70 && e.button.y*720.0f/h<660) app.panning=1;
+            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_MIDDLE) app.panning=0;
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && app.panning && app.editing<0) {
+                int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0 && h>0) { app.view.pan_x+=e.motion.xrel*1280.0f/w; app.view.pan_y+=e.motion.yrel*720.0f/h; }
             } else if(e.type==SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button==SDL_BUTTON_LEFT) {
                 int w,h,hit=-1,hitpin=-1; float x,y; SDL_GetWindowSize(window,&w,&h); if(w<=0||h<=0) continue;
                 x=e.button.x*1280.0f/w; y=e.button.y*720.0f/h;
                 if(x>=700 && x<850 && y<68) { SDL_Event shortcut={0}; shortcut.type=SDL_EVENT_KEY_DOWN; shortcut.key.key=SDLK_F2; SDL_PushEvent(&shortcut); continue; }
-                if(x>=880 && x<1030 && y<68) { settings=!settings; dragging=-1; drag_wire=-1; continue; }
+                if(x>=880 && x<1030 && y<68) { app.settings=!app.settings; app.dragging=-1; app.drag_wire=-1; continue; }
                 if(x>=PLAY_BUTTON_X && y<68) { SDL_Event shortcut={0}; shortcut.type=SDL_EVENT_KEY_DOWN; shortcut.key.key=SDLK_SPACE; SDL_PushEvent(&shortcut); continue; }
-                if(!settings && selected>=0 && bench.parts[selected].type!=PART_BREADBOARD && x>=ROTATE_BUTTON_X && x<ROTATE_BUTTON_X+72 && y>=86 && y<112) {
+                if(!app.settings && app.selected>=0 && app.bench.parts[app.selected].type!=PART_BREADBOARD && x>=ROTATE_BUTTON_X && x<ROTATE_BUTTON_X+72 && y>=86 && y<112) {
                     SDL_Event shortcut={0}; shortcut.type=SDL_EVENT_KEY_DOWN; shortcut.key.key=SDLK_R; SDL_PushEvent(&shortcut); continue;
                 }
-                if(settings) {
+                if(app.settings) {
                     if(x>850 && x<1240) {
-                        if(y>=120 && y<160) show_grid=!show_grid;
-                        else if(y>=160 && y<200) show_handles=!show_handles;
-                        else if(y>=200 && y<240) round_wires=!round_wires;
-                        else if(y>=240 && y<280) { show_current=!show_current; if(show_current && trace_valid && !trace.measures_wires) status="Pressione T para medir correntes transitorias dos fios."; else if(show_current && !dc_wire_valid && !trace_valid) status="Pressione P ou T para medir correntes dos fios."; }
-                        else if(y>=354 && y<390) probe_current=!probe_current;
-                        else if(y>=390 && y<425) probe_pin=(probe_pin+1)%((selected>=0 && bench.parts[selected].type==PART_74HC00)?14:3);
+                        if(y>=120 && y<160) app.show_grid=!app.show_grid;
+                        else if(y>=160 && y<200) app.show_handles=!app.show_handles;
+                        else if(y>=200 && y<240) app.round_wires=!app.round_wires;
+                        else if(y>=240 && y<280) { app.show_current=!app.show_current; if(app.show_current && app.sim.trace_valid && !app.sim.trace.measures_wires) app.status="Pressione T para medir correntes transitorias dos fios."; else if(app.show_current && !app.sim.dc_wire_valid && !app.sim.trace_valid) app.status="Pressione P ou T para medir correntes dos fios."; }
+                        else if(y>=354 && y<390) app.probe_current=!app.probe_current;
+                        else if(y>=390 && y<425) app.probe_pin=(app.probe_pin+1)%((app.selected>=0 && app.bench.parts[app.selected].type==PART_74HC00)?14:3);
                         else if(y>=430 && y<465) {
-                            if(SDL_StartTextInput(window)) { editing=WORKBENCH_MAX_COMPONENTS; snprintf(edit_text,sizeof(edit_text),"%.9g",transient_step); }
+                            if(SDL_StartTextInput(window)) { app.editing=WORKBENCH_MAX_COMPONENTS; snprintf(app.edit_text,sizeof(app.edit_text),"%.9g",app.transient_step); }
                         }
                         else if(y>=470 && y<505) {
-                            if(SDL_StartTextInput(window)) { editing=WORKBENCH_MAX_COMPONENTS+1; snprintf(edit_text,sizeof(edit_text),"%.9g",transient_stop); }
+                            if(SDL_StartTextInput(window)) { app.editing=WORKBENCH_MAX_COMPONENTS+1; snprintf(app.edit_text,sizeof(app.edit_text),"%.9g",app.transient_stop); }
                         }
                         else if(y>=320 && y<352 && x>=860 && x<1160) {
                             int chosen=(int)((x-860)/50);
                             if(chosen>=0 && chosen<WIRE_COLOR_COUNT) {
-                                wire_color=chosen;
-                                if(selected_wire>=0 && selected_wire<bench.wire_count && bench.wires[selected_wire].color!=chosen) { bench_history_record(history,&bench); bench.wires[selected_wire].color=chosen; status="Cor do fio selecionado alterada."; }
-                                else status="Cor dos proximos fios selecionada.";
+                                app.wire_color=chosen;
+                                if(app.selected_wire>=0 && app.selected_wire<app.bench.wire_count && app.bench.wires[app.selected_wire].color!=chosen) { bench_history_record(app.history,&app.bench); app.bench.wires[app.selected_wire].color=chosen; app.status="Cor do fio selecionado alterada."; }
+                                else app.status="Cor dos proximos fios selecionada.";
                             }
                         }
                     }
                     continue;
                 }
-                if(trace_valid && show_trace && x>=840 && x<=1240 && y>=384 && y<=628) {
+                if(app.sim.trace_valid && app.show_trace && x>=840 && x<=1240 && y>=384 && y<=628) {
                     if(x>=918 && x<=1220 && y>=431 && y<=565) {
-                        trace_index=trace_nearest(&trace,(x-918)/302.0); sim_running=0;
-                        snprintf(trace_status,sizeof(trace_status),trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).":trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",trace.samples[trace_index].time,trace.samples[trace_index].value,trace_index+1,trace.count); status=trace_status;
+                        app.sim.trace_index=trace_nearest(&app.sim.trace,(x-918)/302.0); app.sim.sim_running=0;
+                        snprintf(app.sim.trace_status,sizeof(app.sim.trace_status),app.sim.trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).":app.sim.trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).":"Tensao: t=%.6g s; V=%.6g V (%d/%d).",app.sim.trace.samples[app.sim.trace_index].time,app.sim.trace.samples[app.sim.trace_index].value,app.sim.trace_index+1,app.sim.trace.count); app.status=app.sim.trace_status;
                     }
                     continue;
                 }
-                if(x<220 && y>=80 && y<125) { palette_page=1-palette_page; placing=-1; continue; }
-                if(x<220 && y>=140 && y<716) { int item=(int)((y-140)/72); if(item<(palette_page?8:8)) { placing=palette_part(palette_page,item); pending.component=-1; status="Clique na bancada para posicionar."; } continue; }
+                if(x<220 && y>=80 && y<125) { app.palette_page=1-app.palette_page; app.placing=-1; continue; }
+                if(x<220 && y>=140 && y<716) { int item=(int)((y-140)/72); if(item<(app.palette_page?8:8)) { app.placing=palette_part(app.palette_page,item); app.pending.component=-1; app.status="Clique na bancada para posicionar."; } continue; }
                 if(x<220||y<70||y>660) continue;
-                bench_view_to_world(&view,x,y,&x,&y);
-                if(pending.component<0 && placing<0 && show_handles) {
+                bench_view_to_world(&app.view,x,y,&x,&y);
+                if(app.pending.component<0 && app.placing<0 && app.show_handles) {
                     int k;
-                    for(i=0;i<bench.wire_count && drag_wire<0;++i) for(k=0;k<bench.wires[i].knee_count;++k) {
-                        WirePoint point=bench.wires[i].knees[k];
-                        if(fabsf(x-point.x)<8 && fabsf(y-point.y)<8) { drag_wire=i; drag_knee=k; break; }
+                    for(i=0;i<app.bench.wire_count && app.drag_wire<0;++i) for(k=0;k<app.bench.wires[i].knee_count;++k) {
+                        WirePoint point=app.bench.wires[i].knees[k];
+                        if(fabsf(x-point.x)<8 && fabsf(y-point.y)<8) { app.drag_wire=i; app.drag_knee=k; break; }
                     }
-                    if(drag_wire>=0) {
-                        if(e.button.clicks>=2) { Wire *wire=&bench.wires[drag_wire]; bench_history_record(history,&bench); memmove(&wire->knees[drag_knee],&wire->knees[drag_knee+1],(size_t)(wire->knee_count-drag_knee-1)*sizeof(WirePoint)); --wire->knee_count; drag_wire=-1; status="Joelho removido."; }
-                        else { move_recorded=0; status="Arraste o joelho; duplo clique remove."; }
+                    if(app.drag_wire>=0) {
+                        if(e.button.clicks>=2) { Wire *wire=&app.bench.wires[app.drag_wire]; bench_history_record(app.history,&app.bench); memmove(&wire->knees[app.drag_knee],&wire->knees[app.drag_knee+1],(size_t)(wire->knee_count-app.drag_knee-1)*sizeof(WirePoint)); --wire->knee_count; app.drag_wire=-1; app.status="Joelho removido."; }
+                        else { app.move_recorded=0; app.status="Arraste o joelho; duplo clique remove."; }
                         continue;
                     }
                 }
-                if(placing>=0) { Workbench before=bench; int added=bench_add(&bench,(PartType)placing,x,y); if(added>=0) { int snapped=bench_snap_to_breadboard(&bench,added); bench_history_record(history,&before); selected_wire=-1; status=snapped?"Componente encaixado na breadboard.":"Componente adicionado. Selecione terminais para ligar."; placing=-1; } else status="Limite de componentes atingido."; continue; }
-                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=bench.part_count-1;i>=0;--i) { int p,board=bench.parts[i].type==PART_BREADBOARD; float radius=board?4.0f:bench.parts[i].type==PART_74HC00?5.0f:12.0f; if(board!=pass) continue; for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float px,py; pin_xy(&bench.parts[i],p,&px,&py); if((x-px)*(x-px)+(y-py)*(y-py)<=radius*radius) { hit=i; hitpin=p; break; } } if(hit>=0) break; } }
-                if(hitpin>=0) { Pin clicked={hit,hitpin}; selected_wire=-1; if(pending.component<0) { pending=clicked; route_count=0; status="Clique para criar joelhos; termine em outro terminal."; } else if(pending.component==hit && pending.pin==hitpin) { pending.component=-1; route_count=0; status="Conexao cancelada."; } else { Workbench before=bench; int result=bench_toggle_wire(&bench,pending,clicked); if(result==1) { Wire *wire=&bench.wires[bench.wire_count-1]; wire->knee_count=route_count; wire->color=wire_color; memcpy(wire->knees,route,(size_t)route_count*sizeof(WirePoint)); } if(result) bench_history_record(history,&before); status=result==1?"Fio conectado.":result==2?"Fio removido.":"Nao foi possivel conectar."; pending.component=-1; route_count=0; } continue; }
-                if(pending.component>=0) { if(route_count<WIRE_MAX_KNEES) { route[route_count++]=(WirePoint){x,y}; status="Joelho adicionado; termine em um terminal."; } else status="Limite de 16 joelhos por fio."; continue; }
-                hit=part_at(&bench,x,y);
-                selected=hit; selected_wire=-1;
-                if(hit<0 || bench.parts[hit].type==PART_BREADBOARD) { selected_wire=hit_wire(&bench,x,y,7.0f/view.zoom,round_wires); if(selected_wire>=0) { selected=-1; wire_color=bench.wires[selected_wire].color; status="Fio selecionado; F1 abre as cores."; continue; } }
-                if(hit>=0) { if(e.button.clicks>=2 && (bench.parts[hit].type==PART_SOURCE || bench.parts[hit].type==PART_SWITCH || bench.parts[hit].type==PART_CLOCK)) { bench_history_record(history,&bench); bench.parts[hit].on=!bench.parts[hit].on; status="Estado alterado."; } else { dragging=hit; move_recorded=0; offset_x=x-bench.parts[hit].x; offset_y=y-bench.parts[hit].y; status="Arraste para mover; dois cliques alternam fonte ou chave."; } }
-                else { pending.component=-1; status="Bancada livre."; }
-            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { if(dragging>=0 && move_recorded && bench_snap_to_breadboard(&bench,dragging)) status="Componente encaixado na breadboard."; dragging=-1; drag_wire=-1; }
-            else if(e.type==SDL_EVENT_MOUSE_MOTION && drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && drag_wire<bench.wire_count) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; WirePoint *point=&bench.wires[drag_wire].knees[drag_knee]; bench_view_to_world(&view,x,y,&x,&y); if(point->x!=x || point->y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } *point=(WirePoint){x,y}; } } }
-            else if(e.type==SDL_EVENT_MOUSE_MOTION && dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; bench_view_to_world(&view,x,y,&x,&y); x-=offset_x; y-=offset_y; if(bench.parts[dragging].x!=x || bench.parts[dragging].y!=y) { if(!move_recorded) { bench_history_record(history,&bench); move_recorded=1; } bench.parts[dragging].x=x; bench.parts[dragging].y=y; } } }
+                if(app.placing>=0) { Workbench before=app.bench; int added=bench_add(&app.bench,(PartType)app.placing,x,y); if(added>=0) { int snapped=bench_snap_to_breadboard(&app.bench,added); bench_history_record(app.history,&before); app.selected_wire=-1; app.status=snapped?"Componente encaixado na breadboard.":"Componente adicionado. Selecione terminais para ligar."; app.placing=-1; } else app.status="Limite de componentes atingido."; continue; }
+                { int pass; for(pass=0;pass<2 && hit<0;++pass) for(i=app.bench.part_count-1;i>=0;--i) { int p,board=app.bench.parts[i].type==PART_BREADBOARD; float radius=board?4.0f:app.bench.parts[i].type==PART_74HC00?5.0f:12.0f; if(board!=pass) continue; for(p=0;p<bench_pin_count(app.bench.parts[i].type);++p) { float px,py; pin_xy(&app.bench.parts[i],p,&px,&py); if((x-px)*(x-px)+(y-py)*(y-py)<=radius*radius) { hit=i; hitpin=p; break; } } if(hit>=0) break; } }
+                if(hitpin>=0) { Pin clicked={hit,hitpin}; app.selected_wire=-1; if(app.pending.component<0) { app.pending=clicked; app.route_count=0; app.status="Clique para criar joelhos; termine em outro terminal."; } else if(app.pending.component==hit && app.pending.pin==hitpin) { app.pending.component=-1; app.route_count=0; app.status="Conexao cancelada."; } else { Workbench before=app.bench; int result=bench_toggle_wire(&app.bench,app.pending,clicked); if(result==1) { Wire *wire=&app.bench.wires[app.bench.wire_count-1]; wire->knee_count=app.route_count; wire->color=app.wire_color; memcpy(wire->knees,app.route,(size_t)app.route_count*sizeof(WirePoint)); } if(result) bench_history_record(app.history,&before); app.status=result==1?"Fio conectado.":result==2?"Fio removido.":"Nao foi possivel conectar."; app.pending.component=-1; app.route_count=0; } continue; }
+                if(app.pending.component>=0) { if(app.route_count<WIRE_MAX_KNEES) { app.route[app.route_count++]=(WirePoint){x,y}; app.status="Joelho adicionado; termine em um terminal."; } else app.status="Limite de 16 joelhos por fio."; continue; }
+                hit=part_at(&app.bench,x,y);
+                app.selected=hit; app.selected_wire=-1;
+                if(hit<0 || app.bench.parts[hit].type==PART_BREADBOARD) { app.selected_wire=hit_wire(&app.bench,x,y,7.0f/app.view.zoom,app.round_wires); if(app.selected_wire>=0) { app.selected=-1; app.wire_color=app.bench.wires[app.selected_wire].color; app.status="Fio selecionado; F1 abre as cores."; continue; } }
+                if(hit>=0) { if(e.button.clicks>=2 && (app.bench.parts[hit].type==PART_SOURCE || app.bench.parts[hit].type==PART_SWITCH || app.bench.parts[hit].type==PART_CLOCK)) { bench_history_record(app.history,&app.bench); app.bench.parts[hit].on=!app.bench.parts[hit].on; app.status="Estado alterado."; } else { app.dragging=hit; app.move_recorded=0; app.offset_x=x-app.bench.parts[hit].x; app.offset_y=y-app.bench.parts[hit].y; app.status="Arraste para mover; dois cliques alternam fonte ou chave."; } }
+                else { app.pending.component=-1; app.status="Bancada livre."; }
+            } else if(e.type==SDL_EVENT_MOUSE_BUTTON_UP && e.button.button==SDL_BUTTON_LEFT) { if(app.dragging>=0 && app.move_recorded && bench_snap_to_breadboard(&app.bench,app.dragging)) app.status="Componente encaixado na breadboard."; app.dragging=-1; app.drag_wire=-1; }
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && app.drag_wire>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0 && app.drag_wire<app.bench.wire_count) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; WirePoint *point=&app.bench.wires[app.drag_wire].knees[app.drag_knee]; bench_view_to_world(&app.view,x,y,&x,&y); if(point->x!=x || point->y!=y) { if(!app.move_recorded) { bench_history_record(app.history,&app.bench); app.move_recorded=1; } *point=(WirePoint){x,y}; } } }
+            else if(e.type==SDL_EVENT_MOUSE_MOTION && app.dragging>=0) { int w,h; SDL_GetWindowSize(window,&w,&h); if(w>0&&h>0) { float x=e.motion.x*1280.0f/w,y=e.motion.y*720.0f/h; bench_view_to_world(&app.view,x,y,&x,&y); x-=app.offset_x; y-=app.offset_y; if(app.bench.parts[app.dragging].x!=x || app.bench.parts[app.dragging].y!=y) { if(!app.move_recorded) { bench_history_record(app.history,&app.bench); app.move_recorded=1; } app.bench.parts[app.dragging].x=x; app.bench.parts[app.dragging].y=y; } } }
         }
-        if(selftest) {
+        if(app.selftest) {
             int valid=1;
-            if(selftest_phase==0) valid=bench.part_count==1 && bench.parts[0].type==PART_SOURCE;
-            else if(selftest_phase==1) valid=bench.part_count==2 && bench.parts[1].type==PART_RESISTOR;
-            else if(selftest_phase==2) valid=bench.wire_count==1 && bench.wires[0].knee_count==1 && bench.wires[0].knees[0].x==450;
-            else if(selftest_phase==3) valid=bench.wire_count==0;
-            else if(selftest_phase==4) valid=bench.wire_count==1 && bench.wires[0].knee_count==1 && bench.wires[0].knees[0].y==180;
-            else if(selftest_phase==5) valid=bench.wires[0].knees[0].x==460 && bench.wires[0].knees[0].y==190;
-            else if(selftest_phase==6) valid=bench.wires[0].knees[0].x==450 && bench.wires[0].knees[0].y==180;
-            else if(selftest_phase==7) valid=bench.wires[0].knees[0].x==460 && bench.wires[0].knees[0].y==190;
-            else if(selftest_phase==8) valid=bench.wires[0].knee_count==0;
-            else if(selftest_phase==9) valid=bench.wires[0].knee_count==1 && bench.wires[0].knees[0].x==460;
-            else if(selftest_phase==10) valid=fabsf(view.zoom-1.2f)<.001f;
-            else if(selftest_phase==11) valid=pending.component==0 && pending.pin==0;
-            else if(selftest_phase==12) valid=bench.wire_count==0;
-            else if(selftest_phase==13) valid=bench.wire_count==1;
-            else if(selftest_phase==14) valid=view.zoom==1 && view.pan_x==0 && view.pan_y==0;
-            else if(selftest_phase==15) valid=view.pan_x==100 && view.pan_y==40;
-            else if(selftest_phase==16) valid=pending.component==0 && pending.pin==0;
-            else if(selftest_phase==17) valid=pending.component<0;
-            else if(selftest_phase==18) valid=view.zoom==1 && view.pan_x==0 && view.pan_y==0;
-            else if(selftest_phase==19) valid=bench.part_count==3 && bench.parts[2].type==PART_BREADBOARD;
-            else if(selftest_phase==20 || selftest_phase==22) { Pin a,b; valid=bench.part_count==4 && bench.parts[3].type==PART_RESISTOR && bench_find_contact(&bench,3,0,&a) && bench_find_contact(&bench,3,1,&b) && a.component==2 && b.component==2; }
-            else if(selftest_phase==21) valid=bench.part_count==3;
-            else if(selftest_phase==23) valid=selected==3;
-            else if(selftest_phase==24) valid=bench.parts[3].rotation==1;
-            else if(selftest_phase==25) valid=bench.parts[3].rotation==0;
-            else if(selftest_phase==26) valid=bench.parts[3].rotation==1;
-            else if(selftest_phase==27) valid=selected_wire==0;
-            else if(selftest_phase==28) valid=settings==1;
-            else if(selftest_phase==29) valid=bench.wires[0].color==1;
-            else if(selftest_phase==30) valid=settings==0;
-            else if(selftest_phase==31) valid=bench.wires[0].color==0;
-            else if(selftest_phase==32) valid=bench.wires[0].color==1;
-            else if(selftest_phase==33) valid=settings==1;
-            else if(selftest_phase==34) valid=probe_pin==1;
-            else if(selftest_phase==35) valid=editing==WORKBENCH_MAX_COMPONENTS;
-            else if(selftest_phase==36) valid=editing<0 && transient_step==1e-5;
-            else if(selftest_phase==37) valid=editing==WORKBENCH_MAX_COMPONENTS+1;
-            else if(selftest_phase==38) valid=editing<0 && transient_stop==.005;
-            else if(selftest_phase==39) valid=editing==WORKBENCH_MAX_COMPONENTS;
-            else if(selftest_phase==40) valid=editing<0 && transient_step==2e-5;
-            else if(selftest_phase==41) valid=editing==WORKBENCH_MAX_COMPONENTS;
-            else if(selftest_phase==42) valid=editing==WORKBENCH_MAX_COMPONENTS && transient_step==2e-5;
-            else if(selftest_phase==43) valid=editing<0 && transient_step==2e-5;
-            else if(selftest_phase==44) valid=trace_valid && !settings && trace_index==0;
-            else if(selftest_phase==45) valid=trace_index==1;
-            else if(selftest_phase==46) valid=trace_index==0;
-            else if(selftest_phase==47) valid=trace_index==2;
-            else if(selftest_phase==48) valid=trace_index==2;
-            else if(selftest_phase==49) valid=trace_index==1;
-            else if(selftest_phase==50) valid=settings==1;
-            else if(selftest_phase==51) valid=probe_current==1;
-            else if(selftest_phase==52) valid=settings==0 && probe_current==1;
-            else if(selftest_phase==53) valid=selected_wire==0;
-            else if(selftest_phase==54) valid=dc_job.transient==3;
-            else if(selftest_phase==55) valid=strcmp(status,"Salvo em bancada.elec.")==0;
-            else if(selftest_phase==56) valid=settings==1;
-            else if(selftest_phase==57) valid=probe_current==0;
-            else if(selftest_phase==58) valid=probe_current==1 && probe_pin==1 && transient_step==2e-5 && wire_color==1;
-            else if(selftest_phase==59) valid=settings==0;
-            else if(selftest_phase==60) valid=bench.part_count==5 && bench.parts[4].type==PART_AND && bench_pin_count(PART_AND)==3;
-            else if(selftest_phase==61) valid=palette_page==1;
-            else if(selftest_phase==62) valid=bench.part_count==6 && bench.parts[5].type==PART_XOR;
-            else if(selftest_phase==63) valid=bench.part_count==7 && bench.parts[6].type==PART_CLOCK && bench.parts[6].value==1000 && bench.parts[6].on;
-            else if(selftest_phase==64) valid=bench.parts[6].on==0;
-            else if(selftest_phase==65) valid=trace_valid && sim_running && trace_index==0;
-            else if(selftest_phase==66) valid=trace_valid && !sim_running;
-            else if(selftest_phase==67 || selftest_phase==68) valid=trace_valid && sim_running;
-            else if(selftest_phase==69) valid=trace_valid && !sim_running && trace_index==trace.count-1;
-            else if(selftest_phase==70) valid=bench.part_count==8 && bench.parts[7].type==PART_LED;
-            else if(selftest_phase==71) valid=leds[7]==1;
-            else if(selftest_phase==72) valid=leds[7]==0;
-            else if(selftest_phase==73) valid=bench.part_count==9 && bench.parts[8].type==PART_DFF;
-            else if(selftest_phase==74) valid=bench.part_count==10 && bench.parts[9].type==PART_74HC00;
-            else if(selftest_phase==75) valid=bench.part_count==4 && bench.parts[1].type==PART_BREADBOARD;
-            else if(selftest_phase==76) valid=bench.part_count==5 && bench.parts[2].type==PART_DFF && probe_pin==2;
-            else if(selftest_phase==77) valid=bench.part_count==6 && bench.parts[2].type==PART_74HC00 && probe_pin==2;
-            else if(selftest_phase==78) valid=bench.part_count==5 && bench.parts[2].type==PART_DFF;
-            if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==79) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(app.selftest_phase==0) valid=app.bench.part_count==1 && app.bench.parts[0].type==PART_SOURCE;
+            else if(app.selftest_phase==1) valid=app.bench.part_count==2 && app.bench.parts[1].type==PART_RESISTOR;
+            else if(app.selftest_phase==2) valid=app.bench.wire_count==1 && app.bench.wires[0].knee_count==1 && app.bench.wires[0].knees[0].x==450;
+            else if(app.selftest_phase==3) valid=app.bench.wire_count==0;
+            else if(app.selftest_phase==4) valid=app.bench.wire_count==1 && app.bench.wires[0].knee_count==1 && app.bench.wires[0].knees[0].y==180;
+            else if(app.selftest_phase==5) valid=app.bench.wires[0].knees[0].x==460 && app.bench.wires[0].knees[0].y==190;
+            else if(app.selftest_phase==6) valid=app.bench.wires[0].knees[0].x==450 && app.bench.wires[0].knees[0].y==180;
+            else if(app.selftest_phase==7) valid=app.bench.wires[0].knees[0].x==460 && app.bench.wires[0].knees[0].y==190;
+            else if(app.selftest_phase==8) valid=app.bench.wires[0].knee_count==0;
+            else if(app.selftest_phase==9) valid=app.bench.wires[0].knee_count==1 && app.bench.wires[0].knees[0].x==460;
+            else if(app.selftest_phase==10) valid=fabsf(app.view.zoom-1.2f)<.001f;
+            else if(app.selftest_phase==11) valid=app.pending.component==0 && app.pending.pin==0;
+            else if(app.selftest_phase==12) valid=app.bench.wire_count==0;
+            else if(app.selftest_phase==13) valid=app.bench.wire_count==1;
+            else if(app.selftest_phase==14) valid=app.view.zoom==1 && app.view.pan_x==0 && app.view.pan_y==0;
+            else if(app.selftest_phase==15) valid=app.view.pan_x==100 && app.view.pan_y==40;
+            else if(app.selftest_phase==16) valid=app.pending.component==0 && app.pending.pin==0;
+            else if(app.selftest_phase==17) valid=app.pending.component<0;
+            else if(app.selftest_phase==18) valid=app.view.zoom==1 && app.view.pan_x==0 && app.view.pan_y==0;
+            else if(app.selftest_phase==19) valid=app.bench.part_count==3 && app.bench.parts[2].type==PART_BREADBOARD;
+            else if(app.selftest_phase==20 || app.selftest_phase==22) { Pin a,b; valid=app.bench.part_count==4 && app.bench.parts[3].type==PART_RESISTOR && bench_find_contact(&app.bench,3,0,&a) && bench_find_contact(&app.bench,3,1,&b) && a.component==2 && b.component==2; }
+            else if(app.selftest_phase==21) valid=app.bench.part_count==3;
+            else if(app.selftest_phase==23) valid=app.selected==3;
+            else if(app.selftest_phase==24) valid=app.bench.parts[3].rotation==1;
+            else if(app.selftest_phase==25) valid=app.bench.parts[3].rotation==0;
+            else if(app.selftest_phase==26) valid=app.bench.parts[3].rotation==1;
+            else if(app.selftest_phase==27) valid=app.selected_wire==0;
+            else if(app.selftest_phase==28) valid=app.settings==1;
+            else if(app.selftest_phase==29) valid=app.bench.wires[0].color==1;
+            else if(app.selftest_phase==30) valid=app.settings==0;
+            else if(app.selftest_phase==31) valid=app.bench.wires[0].color==0;
+            else if(app.selftest_phase==32) valid=app.bench.wires[0].color==1;
+            else if(app.selftest_phase==33) valid=app.settings==1;
+            else if(app.selftest_phase==34) valid=app.probe_pin==1;
+            else if(app.selftest_phase==35) valid=app.editing==WORKBENCH_MAX_COMPONENTS;
+            else if(app.selftest_phase==36) valid=app.editing<0 && app.transient_step==1e-5;
+            else if(app.selftest_phase==37) valid=app.editing==WORKBENCH_MAX_COMPONENTS+1;
+            else if(app.selftest_phase==38) valid=app.editing<0 && app.transient_stop==.005;
+            else if(app.selftest_phase==39) valid=app.editing==WORKBENCH_MAX_COMPONENTS;
+            else if(app.selftest_phase==40) valid=app.editing<0 && app.transient_step==2e-5;
+            else if(app.selftest_phase==41) valid=app.editing==WORKBENCH_MAX_COMPONENTS;
+            else if(app.selftest_phase==42) valid=app.editing==WORKBENCH_MAX_COMPONENTS && app.transient_step==2e-5;
+            else if(app.selftest_phase==43) valid=app.editing<0 && app.transient_step==2e-5;
+            else if(app.selftest_phase==44) valid=app.sim.trace_valid && !app.settings && app.sim.trace_index==0;
+            else if(app.selftest_phase==45) valid=app.sim.trace_index==1;
+            else if(app.selftest_phase==46) valid=app.sim.trace_index==0;
+            else if(app.selftest_phase==47) valid=app.sim.trace_index==2;
+            else if(app.selftest_phase==48) valid=app.sim.trace_index==2;
+            else if(app.selftest_phase==49) valid=app.sim.trace_index==1;
+            else if(app.selftest_phase==50) valid=app.settings==1;
+            else if(app.selftest_phase==51) valid=app.probe_current==1;
+            else if(app.selftest_phase==52) valid=app.settings==0 && app.probe_current==1;
+            else if(app.selftest_phase==53) valid=app.selected_wire==0;
+            else if(app.selftest_phase==54) valid=app.dc_job.transient==3;
+            else if(app.selftest_phase==55) valid=strcmp(app.status,"Salvo em bancada.elec.")==0;
+            else if(app.selftest_phase==56) valid=app.settings==1;
+            else if(app.selftest_phase==57) valid=app.probe_current==0;
+            else if(app.selftest_phase==58) valid=app.probe_current==1 && app.probe_pin==1 && app.transient_step==2e-5 && app.wire_color==1;
+            else if(app.selftest_phase==59) valid=app.settings==0;
+            else if(app.selftest_phase==60) valid=app.bench.part_count==5 && app.bench.parts[4].type==PART_AND && bench_pin_count(PART_AND)==3;
+            else if(app.selftest_phase==61) valid=app.palette_page==1;
+            else if(app.selftest_phase==62) valid=app.bench.part_count==6 && app.bench.parts[5].type==PART_XOR;
+            else if(app.selftest_phase==63) valid=app.bench.part_count==7 && app.bench.parts[6].type==PART_CLOCK && app.bench.parts[6].value==1000 && app.bench.parts[6].on;
+            else if(app.selftest_phase==64) valid=app.bench.parts[6].on==0;
+            else if(app.selftest_phase==65) valid=app.sim.trace_valid && app.sim.sim_running && app.sim.trace_index==0;
+            else if(app.selftest_phase==66) valid=app.sim.trace_valid && !app.sim.sim_running;
+            else if(app.selftest_phase==67 || app.selftest_phase==68) valid=app.sim.trace_valid && app.sim.sim_running;
+            else if(app.selftest_phase==69) valid=app.sim.trace_valid && !app.sim.sim_running && app.sim.trace_index==app.sim.trace.count-1;
+            else if(app.selftest_phase==70) valid=app.bench.part_count==8 && app.bench.parts[7].type==PART_LED;
+            else if(app.selftest_phase==71) valid=app.leds[7]==1;
+            else if(app.selftest_phase==72) valid=app.leds[7]==0;
+            else if(app.selftest_phase==73) valid=app.bench.part_count==9 && app.bench.parts[8].type==PART_DFF;
+            else if(app.selftest_phase==74) valid=app.bench.part_count==10 && app.bench.parts[9].type==PART_74HC00;
+            else if(app.selftest_phase==75) valid=app.bench.part_count==4 && app.bench.parts[1].type==PART_BREADBOARD;
+            else if(app.selftest_phase==76) valid=app.bench.part_count==5 && app.bench.parts[2].type==PART_DFF && app.probe_pin==2;
+            else if(app.selftest_phase==77) valid=app.bench.part_count==6 && app.bench.parts[2].type==PART_74HC00 && app.probe_pin==2;
+            else if(app.selftest_phase==78) valid=app.bench.part_count==5 && app.bench.parts[2].type==PART_DFF;
+            if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",app.selftest_phase); app.exit_code=1; app.running=0; }
+            if(++app.selftest_phase==79) { if(!app.exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); app.running=0; }
         }
-        if(spice_job_poll(&dc_job)) {
-            if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) {
+        if(spice_job_poll(&app.dc_job)) {
+            if(memcmp(&app.dc_job.snapshot,&app.bench,sizeof(app.bench))!=0) {
                 /* An automatic result for an older assembly is simply dropped; a newer analysis follows. */
-                if(!dc_job.automatic) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
+                if(!app.dc_job.automatic) { app.sim.dc_valid=0; app.status="Montagem mudou durante analise; resultado descartado."; }
             }
-            else if(dc_job.automatic) {
-                const SimAutoResult *r=&dc_job.auto_result;
-                result_shape=dc_job.snapshot;
-                memcpy(burnt,r->burnt,sizeof(burnt));
-                memcpy(burn_reason,r->burn_reason,sizeof(burn_reason));
-                memcpy(burn_value,r->burn_value,sizeof(burn_value));
-                burnt_count=r->burnt_count;
-                auto_failed=!dc_job.success;
-                if(auto_failed) {
-                    dc_valid=0; dc_wire_valid=0; trace_valid=0;
-                    snprintf(auto_status,sizeof(auto_status),"Nao foi possivel calcular: %s",r->message);
-                    status=auto_status;
+            else if(app.dc_job.automatic) {
+                const SimAutoResult *r=&app.dc_job.auto_result;
+                app.sim.result_shape=app.dc_job.snapshot;
+                memcpy(app.sim.burnt,r->burnt,sizeof(app.sim.burnt));
+                memcpy(app.sim.burn_reason,r->burn_reason,sizeof(app.sim.burn_reason));
+                memcpy(app.sim.burn_value,r->burn_value,sizeof(app.sim.burn_value));
+                app.sim.burnt_count=r->burnt_count;
+                app.sim.auto_failed=!app.dc_job.success;
+                if(app.sim.auto_failed) {
+                    app.sim.dc_valid=0; app.sim.dc_wire_valid=0; app.sim.trace_valid=0;
+                    snprintf(app.sim.auto_status,sizeof(app.sim.auto_status),"Nao foi possivel calcular: %s",r->message);
+                    app.status=app.sim.auto_status;
                 } else {
                     const char *burn_text;
                     if(r->has_trace) {
-                        if(!trace_valid || !trace_automatic) show_trace=0;
-                        trace=dc_job.trace; trace_valid=1; trace_snapshot=dc_job.snapshot; trace_index=0;
-                        trace_pin=dc_job.probe.pin; trace_current=0; trace_wire=-1;
-                        trace_periodic=r->periodic; trace_automatic=1;
-                        trace_play_start_index=0; trace_play_started=SDL_GetTicks();
-                        dc_valid=0; dc_wire_valid=0;
+                        if(!app.sim.trace_valid || !app.sim.trace_automatic) app.show_trace=0;
+                        app.sim.trace=app.dc_job.trace; app.sim.trace_valid=1; app.sim.trace_snapshot=app.dc_job.snapshot; app.sim.trace_index=0;
+                        app.sim.trace_pin=app.dc_job.probe.pin; app.sim.trace_current=0; app.sim.trace_wire=-1;
+                        app.sim.trace_periodic=r->periodic; app.sim.trace_automatic=1;
+                        app.sim.trace_play_start_index=0; app.sim.trace_play_started=SDL_GetTicks();
+                        app.sim.dc_valid=0; app.sim.dc_wire_valid=0;
                     } else {
-                        trace_valid=0; trace_automatic=0;
-                        dc_valid=1; dc_snapshot=dc_job.snapshot; dc_current=r->source_current;
-                        memcpy(dc_led_currents,r->currents,sizeof(dc_led_currents));
-                        dc_wire_valid=r->measures_wires;
-                        if(dc_wire_valid) memcpy(dc_wire_currents,r->wire_currents,sizeof(dc_wire_currents));
+                        app.sim.trace_valid=0; app.sim.trace_automatic=0;
+                        app.sim.dc_valid=1; app.sim.dc_snapshot=app.dc_job.snapshot; app.sim.dc_current=r->source_current;
+                        memcpy(app.sim.dc_led_currents,r->currents,sizeof(app.sim.dc_led_currents));
+                        app.sim.dc_wire_valid=r->measures_wires;
+                        if(app.sim.dc_wire_valid) memcpy(app.sim.dc_wire_currents,r->wire_currents,sizeof(app.sim.dc_wire_currents));
                     }
-                    burn_text=burn_message(auto_status,sizeof(auto_status),&bench,burnt,burn_reason,burn_value);
-                    if(burn_text) status=burn_text;
-                    else { snprintf(auto_status,sizeof(auto_status),"%s",r->message); status=auto_status; }
+                    burn_text=burn_message(app.sim.auto_status,sizeof(app.sim.auto_status),&app.bench,app.sim.burnt,app.sim.burn_reason,app.sim.burn_value);
+                    if(burn_text) app.status=burn_text;
+                    else { snprintf(app.sim.auto_status,sizeof(app.sim.auto_status),"%s",r->message); app.status=app.sim.auto_status; }
                 }
             }
-            else if(dc_job.transient) {
-                trace_automatic=0; trace_periodic=sim_auto_is_periodic(&dc_job.snapshot);
-                trace_valid=dc_job.success; trace_index=0; trace_pin=dc_job.probe.pin; trace_current=dc_job.transient==3?2:dc_job.transient==2?1:0; trace_wire=trace_current==2?dc_job.probe.component:-1; trace_snapshot=dc_job.snapshot;
-                if(trace_valid) { trace=dc_job.trace; show_trace=1; sim_running=0; snprintf(trace_status,sizeof(trace_status),trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (1/%d).":trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (1/%d).":"Tensao: t=%.6g s; V=%.6g V (1/%d).",trace.samples[0].time,trace.samples[0].value,trace.count); status=trace_status; }
-                else { memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
+            else if(app.dc_job.transient) {
+                app.sim.trace_automatic=0; app.sim.trace_periodic=sim_auto_is_periodic(&app.dc_job.snapshot);
+                app.sim.trace_valid=app.dc_job.success; app.sim.trace_index=0; app.sim.trace_pin=app.dc_job.probe.pin; app.sim.trace_current=app.dc_job.transient==3?2:app.dc_job.transient==2?1:0; app.sim.trace_wire=app.sim.trace_current==2?app.dc_job.probe.component:-1; app.sim.trace_snapshot=app.dc_job.snapshot;
+                if(app.sim.trace_valid) { app.sim.trace=app.dc_job.trace; app.show_trace=1; app.sim.sim_running=0; snprintf(app.sim.trace_status,sizeof(app.sim.trace_status),app.sim.trace_current==2?"Corrente fio A -> B: t=%.6g s; I=%.6g A (1/%d).":app.sim.trace_current?"Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (1/%d).":"Tensao: t=%.6g s; V=%.6g V (1/%d).",app.sim.trace.samples[0].time,app.sim.trace.samples[0].value,app.sim.trace.count); app.status=app.sim.trace_status; }
+                else { memcpy(app.sim.dc_status,app.dc_job.message,sizeof(app.sim.dc_status)); app.status=app.sim.dc_status; }
             }
-            else { dc_valid=dc_job.success; dc_wire_valid=dc_job.success && dc_job.measures_wires; dc_snapshot=dc_job.snapshot; dc_current=dc_job.current; memcpy(dc_led_currents,dc_job.led_currents,sizeof(dc_led_currents)); if(dc_wire_valid) memcpy(dc_wire_currents,dc_job.wire_currents,sizeof(dc_wire_currents)); memcpy(dc_status,dc_job.message,sizeof(dc_status)); status=dc_status; }
+            else { app.sim.dc_valid=app.dc_job.success; app.sim.dc_wire_valid=app.dc_job.success && app.dc_job.measures_wires; app.sim.dc_snapshot=app.dc_job.snapshot; app.sim.dc_current=app.dc_job.current; memcpy(app.sim.dc_led_currents,app.dc_job.led_currents,sizeof(app.sim.dc_led_currents)); if(app.sim.dc_wire_valid) memcpy(app.sim.dc_wire_currents,app.dc_job.wire_currents,sizeof(app.sim.dc_wire_currents)); memcpy(app.sim.dc_status,app.dc_job.message,sizeof(app.sim.dc_status)); app.status=app.sim.dc_status; }
         }
         /* Automatic analysis: once the assembly has been still for a moment, recalculate whatever changed. */
-        if(memcmp(&frame_bench,&bench,sizeof(bench))!=0) { frame_bench=bench; bench_changed_at=SDL_GetTicks(); }
-        if(auto_enabled && sim_running && !dc_job.thread && SDL_GetTicks()-bench_changed_at>=AUTO_DEBOUNCE_MS) {
-            int dirty=!auto_requested_valid || memcmp(&auto_requested,&bench,sizeof(bench))!=0;
-            dirty=dirty || auto_show_current!=show_current || auto_step!=transient_step || auto_stop!=transient_stop;
+        if(memcmp(&app.sim.frame_bench,&app.bench,sizeof(app.bench))!=0) { app.sim.frame_bench=app.bench; app.sim.bench_changed_at=SDL_GetTicks(); }
+        if(app.sim.auto_enabled && app.sim.sim_running && !app.dc_job.thread && SDL_GetTicks()-app.sim.bench_changed_at>=AUTO_DEBOUNCE_MS) {
+            int dirty=!app.sim.auto_requested_valid || memcmp(&app.sim.auto_requested,&app.bench,sizeof(app.bench))!=0;
+            dirty=dirty || app.sim.auto_show_current!=app.show_current || app.sim.auto_step!=app.transient_step || app.sim.auto_stop!=app.transient_stop;
             if(dirty) {
-                SimAutoOptions options={show_current,auto_probe(&bench,selected,probe_pin),transient_step,transient_stop,burn_limits_default()};
-                auto_requested=bench; auto_requested_valid=1;
-                auto_show_current=show_current; auto_step=transient_step; auto_stop=transient_stop;
-                if(!spice_job_start_auto(&dc_job,&bench,ngspice,&options)) { auto_failed=1; status="Falha ao iniciar o calculo automatico."; }
+                SimAutoOptions options={app.show_current,auto_probe(&app.bench,app.selected,app.probe_pin),app.transient_step,app.transient_stop,burn_limits_default()};
+                app.sim.auto_requested=app.bench; app.sim.auto_requested_valid=1;
+                app.sim.auto_show_current=app.show_current; app.sim.auto_step=app.transient_step; app.sim.auto_stop=app.transient_stop;
+                if(!spice_job_start_auto(&app.dc_job,&app.bench,app.ngspice,&options)) { app.sim.auto_failed=1; app.status="Falha ao iniciar o calculo automatico."; }
             }
         }
         {
             /* Electrical results belong only to the exact assembly that produced them. */
-            int keep=auto_enabled && memcmp(&result_shape,&bench,sizeof(bench))==0;
-            if(!keep && burnt_count && memcmp(&result_shape,&bench,sizeof(bench))!=0) { memset(burnt,0,sizeof(burnt)); burnt_count=0; }
+            int keep=app.sim.auto_enabled && memcmp(&app.sim.result_shape,&app.bench,sizeof(app.bench))==0;
+            if(!keep && app.sim.burnt_count && memcmp(&app.sim.result_shape,&app.bench,sizeof(app.bench))!=0) { memset(app.sim.burnt,0,sizeof(app.sim.burnt)); app.sim.burnt_count=0; }
             const char *paused_text="Pausado: a montagem mudou; aperte play para calcular.";
-            if(!keep && trace_valid && memcmp(&trace_snapshot,&bench,sizeof(bench))!=0) {
-                trace_valid=0;
-                if(!auto_enabled) status="Montagem alterada; transitorio descartado.";
-                else if(!sim_running) status=paused_text;
+            if(!keep && app.sim.trace_valid && memcmp(&app.sim.trace_snapshot,&app.bench,sizeof(app.bench))!=0) {
+                app.sim.trace_valid=0;
+                if(!app.sim.auto_enabled) app.status="Montagem alterada; transitorio descartado.";
+                else if(!app.sim.sim_running) app.status=paused_text;
             }
-            if(!keep && dc_valid && memcmp(&dc_snapshot,&bench,sizeof(bench))!=0) {
-                dc_valid=0;
-                if(!auto_enabled) status="Montagem alterada; pressione P para recalcular.";
-                else if(!sim_running) status=paused_text;
+            if(!keep && app.sim.dc_valid && memcmp(&app.sim.dc_snapshot,&app.bench,sizeof(app.bench))!=0) {
+                app.sim.dc_valid=0;
+                if(!app.sim.auto_enabled) app.status="Montagem alterada; pressione P para recalcular.";
+                else if(!app.sim.sim_running) app.status=paused_text;
             }
         }
-        if(trace_valid && sim_running) {
-            int finished=0, index=spice_trace_replay_index(&trace,trace_play_start_index,SDL_GetTicks()-trace_play_started,&finished);
-            if(index<0) { sim_running=0; status="Nao foi possivel reproduzir a curva."; }
+        if(app.sim.trace_valid && app.sim.sim_running) {
+            int finished=0, index=spice_trace_replay_index(&app.sim.trace,app.sim.trace_play_start_index,SDL_GetTicks()-app.sim.trace_play_started,&finished);
+            if(index<0) { app.sim.sim_running=0; app.status="Nao foi possivel reproduzir a curva."; }
             else {
-                trace_index=index;
-                if(finished && trace_periodic) { trace_index=0; trace_play_start_index=0; trace_play_started=SDL_GetTicks(); }
-                else if(finished && !trace_automatic) { sim_running=0; status="Fim da curva; Espaco reinicia, B volta."; }
+                app.sim.trace_index=index;
+                if(finished && app.sim.trace_periodic) { app.sim.trace_index=0; app.sim.trace_play_start_index=0; app.sim.trace_play_started=SDL_GetTicks(); }
+                else if(finished && !app.sim.trace_automatic) { app.sim.sim_running=0; app.status="Fim da curva; Espaco reinicia, B volta."; }
                 /* An automatic, non-repeating curve (RC charging, for example) holds its final state. */
             }
         }
-        if(trace_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && ((trace.leds_on[trace_index]>>i)&1); }
-        else if(dc_valid) { for(i=0;i<bench.part_count;++i) leds[i]=bench.parts[i].type==PART_LED && dc_led_currents[i]>=1e-6; }
-        else if(auto_enabled && !auto_failed) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=sim_running?0:-1; }
-        else if(!bench_boolean_supported(&bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) leds[i]=-1; }
-        else if(sim_running) bench_simulate(&bench,leds);
-        for(i=0;i<bench.part_count;++i) if(burnt[i] && bench.parts[i].type==PART_LED) leds[i]=2;
+        if(app.sim.trace_valid) { for(i=0;i<app.bench.part_count;++i) app.leds[i]=app.bench.parts[i].type==PART_LED && ((app.sim.trace.leds_on[app.sim.trace_index]>>i)&1); }
+        else if(app.sim.dc_valid) { for(i=0;i<app.bench.part_count;++i) app.leds[i]=app.bench.parts[i].type==PART_LED && app.sim.dc_led_currents[i]>=1e-6; }
+        else if(app.sim.auto_enabled && !app.sim.auto_failed) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) app.leds[i]=app.sim.sim_running?0:-1; }
+        else if(!bench_boolean_supported(&app.bench)) { for(i=0;i<WORKBENCH_MAX_COMPONENTS;++i) app.leds[i]=-1; }
+        else if(app.sim.sim_running) bench_simulate(&app.bench,app.leds);
+        for(i=0;i<app.bench.part_count;++i) if(app.sim.burnt[i] && app.bench.parts[i].type==PART_LED) app.leds[i]=2;
         SDL_GetWindowSizeInPixels(window,&width,&height); glViewport(0,0,width,height);
         glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,1280,720,0,-1,1); glMatrixMode(GL_MODELVIEW); glLoadIdentity();
         glClearColor(.92f,.94f,.95f,1); glClear(GL_COLOR_BUFFER_BIT);
         color(.97f,.98f,.98f); rect(0,0,1280,68); color(.11f,.2f,.27f); text(font,24,42,"ELECTRONICS  /  BANCADA EXPERIMENTAL");
         text(font,700,42,"Exemplos [F2]"); text(font,880,42,"Configuracoes [F1]");
-        play_button_draw(font,sim_running,dc_job.thread!=NULL,auto_failed,burnt_count);
-        color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,palette_page?"PORTAS [TAB]":"COMPONENTES [TAB]");
-        for(i=0;i<(palette_page?8:8);++i) { float y=140+i*72; PartType type=palette_part(palette_page,i); color(placing==(int)type?.79f:.92f,placing==(int)type?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,part_name(type)); color(type==PART_SOURCE?.2f:type==PART_SWITCH?.38f:.84f,type==PART_SOURCE?.54f:.42f,type==PART_LED?.28f:.6f); circle(42,y+31,13); }
+        play_button_draw(font,app.sim.sim_running,app.dc_job.thread!=NULL,app.sim.auto_failed,app.sim.burnt_count);
+        color(.98f,.985f,.99f); rect(0,68,220,652); color(.17f,.24f,.29f); text(font,22,108,app.palette_page?"PORTAS [TAB]":"COMPONENTES [TAB]");
+        for(i=0;i<(app.palette_page?8:8);++i) { float y=140+i*72; PartType type=palette_part(app.palette_page,i); color(app.placing==(int)type?.79f:.92f,app.placing==(int)type?.9f:.94f,.96f); rect(14,y,192,62); color(.16f,.22f,.26f); text(font,76,y+36,part_name(type)); color(type==PART_SOURCE?.2f:type==PART_SWITCH?.38f:.84f,type==PART_SOURCE?.54f:.42f,type==PART_LED?.28f:.6f); circle(42,y+31,13); }
         glEnable(GL_SCISSOR_TEST);
         glScissor((int)(width*220.0/1280), (int)(height*60.0/720), (int)(width*1060.0/1280), (int)(height*590.0/720));
-        glPushMatrix(); glTranslatef(220+view.pan_x,70+view.pan_y,0); glScalef(view.zoom,view.zoom,1); glTranslatef(-220,-70,0);
+        glPushMatrix(); glTranslatef(220+app.view.pan_x,70+app.view.pan_y,0); glScalef(app.view.zoom,app.view.zoom,1); glTranslatef(-220,-70,0);
         color(.85f,.88f,.89f); glLineWidth(1);
-        if(show_grid) {
+        if(app.show_grid) {
             /* Cover the whole visible area at any zoom; widen the spacing when lines would crowd together. */
             float left,top,right,bottom,spacing=24.0f,gx,gy;
-            bench_view_to_world(&view,220,60,&left,&top);
-            bench_view_to_world(&view,1280,660,&right,&bottom);
-            while(spacing*view.zoom<10.0f) spacing*=2.0f;
+            bench_view_to_world(&app.view,220,60,&left,&top);
+            bench_view_to_world(&app.view,1280,660,&right,&bottom);
+            while(spacing*app.view.zoom<10.0f) spacing*=2.0f;
             for(gx=floorf(left/spacing)*spacing;gx<=right;gx+=spacing) line(gx,top,gx,bottom);
             for(gy=floorf((top-20.0f)/spacing)*spacing+20.0f;gy<=bottom;gy+=spacing) line(left,gy,right,gy);
         }
-        for(i=0;i<bench.part_count;++i) if(bench.parts[i].type==PART_BREADBOARD) {
-            int p; part_draw(&bench.parts[i],selected==i,leds[i]);
-            for(p=0;p<bench_pin_count(PART_BREADBOARD);++p) { float x,y; pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,3.0f); if(pending.component==i && pending.pin==p) { color(1,.7f,.2f); circle(x,y,3.0f); } }
+        for(i=0;i<app.bench.part_count;++i) if(app.bench.parts[i].type==PART_BREADBOARD) {
+            int p; part_draw(&app.bench.parts[i],app.selected==i,app.leds[i]);
+            for(p=0;p<bench_pin_count(PART_BREADBOARD);++p) { float x,y; pin_xy(&app.bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,3.0f); if(app.pending.component==i && app.pending.pin==p) { color(1,.7f,.2f); circle(x,y,3.0f); } }
         }
         color(.25f,.45f,.57f); glLineWidth(3);
-        for(i=0;i<bench.wire_count;++i) {
-            WirePoint start,end,path[WIRE_PATH_CAPACITY]; int k,count,pass; Wire *w=&bench.wires[i];
-            pin_xy(&bench.parts[w->a.component],w->a.pin,&start.x,&start.y); pin_xy(&bench.parts[w->b.component],w->b.pin,&end.x,&end.y);
-            count=wire_path(w,start,end,round_wires?18.0f:0.0f,path);
-            if(i==selected_wire) { color(.15f,.49f,.9f); glLineWidth(10); glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd(); }
+        for(i=0;i<app.bench.wire_count;++i) {
+            WirePoint start,end,path[WIRE_PATH_CAPACITY]; int k,count,pass; Wire *w=&app.bench.wires[i];
+            pin_xy(&app.bench.parts[w->a.component],w->a.pin,&start.x,&start.y); pin_xy(&app.bench.parts[w->b.component],w->b.pin,&end.x,&end.y);
+            count=wire_path(w,start,end,app.round_wires?18.0f:0.0f,path);
+            if(i==app.selected_wire) { color(.15f,.49f,.9f); glLineWidth(10); glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd(); }
             for(pass=0;pass<3;++pass) {
                 float offset=pass==0?3.0f:0.0f;
                 if(pass==0) { color(.72f,.76f,.78f); glLineWidth(6); }
@@ -1002,24 +983,24 @@ int main(int argc, char **argv) {
                 else { color(wire_palette[w->color][0]*.65f+.25f,wire_palette[w->color][1]*.65f+.25f,wire_palette[w->color][2]*.65f+.25f); glLineWidth(2); }
                 glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x+offset,path[k].y+offset); glEnd();
             }
-            if(show_current && trace_valid && trace.measures_wires) {
+            if(app.show_current && app.sim.trace_valid && app.sim.trace.measures_wires) {
                 uint64_t bit=UINT64_C(1)<<(i%64);
-                int forward=(trace.wires_forward[trace_index][i/64]&bit)!=0, reverse=(trace.wires_reverse[trace_index][i/64]&bit)!=0;
+                int forward=(app.sim.trace.wires_forward[app.sim.trace_index][i/64]&bit)!=0, reverse=(app.sim.trace.wires_reverse[app.sim.trace_index][i/64]&bit)!=0;
                 if(forward || reverse) {
-                    int level=(trace.wire_levels[trace_index][i/4]>>((i%4)*2))&3;
+                    int level=(app.sim.trace.wire_levels[app.sim.trace_index][i/4]>>((i%4)*2))&3;
                     wire_current_style(level);
                     glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
                     wire_direction_marker(path,count,reverse);
                 }
             }
-            if(show_current && dc_valid && dc_wire_valid && spice_wire_current_level(dc_wire_currents[i])>0) {
+            if(app.show_current && app.sim.dc_valid && app.sim.dc_wire_valid && spice_wire_current_level(app.sim.dc_wire_currents[i])>0) {
                 float total=0, position; int segment;
-                wire_current_style(spice_wire_current_level(dc_wire_currents[i]));
+                wire_current_style(spice_wire_current_level(app.sim.dc_wire_currents[i]));
                 glBegin(GL_LINE_STRIP); for(k=0;k<count;++k) glVertex2f(path[k].x,path[k].y); glEnd();
                 for(k=1;k<count;++k) total+=hypotf(path[k].x-path[k-1].x,path[k].y-path[k-1].y);
                 if(total>0) {
-                    position=sim_running?fmodf((float)SDL_GetTicks()*.08f,total):0.0f;
-                    if(dc_wire_currents[i]<0) position=total-position;
+                    position=app.sim.sim_running?fmodf((float)SDL_GetTicks()*.08f,total):0.0f;
+                    if(app.sim.dc_wire_currents[i]<0) position=total-position;
                     for(segment=1;segment<count;++segment) {
                         float dx=path[segment].x-path[segment-1].x,dy=path[segment].y-path[segment-1].y, length=hypotf(dx,dy);
                         if(length>0 && position<=length) { color(1,.9f,.38f); circle(path[segment-1].x+dx*position/length,path[segment-1].y+dy*position/length,4); break; }
@@ -1028,109 +1009,109 @@ int main(int argc, char **argv) {
                 }
             }
         }
-        if(pending.component>=0) { float x,y; int k; pin_xy(&bench.parts[pending.component],pending.pin,&x,&y); color(.9f,.55f,.15f); for(k=0;k<route_count;++k) { line(x,y,route[k].x,route[k].y); x=route[k].x; y=route[k].y; } }
-        if(show_handles) for(i=0;i<bench.wire_count;++i) { int k; for(k=0;k<bench.wires[i].knee_count;++k) { WirePoint p=bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
+        if(app.pending.component>=0) { float x,y; int k; pin_xy(&app.bench.parts[app.pending.component],app.pending.pin,&x,&y); color(.9f,.55f,.15f); for(k=0;k<app.route_count;++k) { line(x,y,app.route[k].x,app.route[k].y); x=app.route[k].x; y=app.route[k].y; } }
+        if(app.show_handles) for(i=0;i<app.bench.wire_count;++i) { int k; for(k=0;k<app.bench.wires[i].knee_count;++k) { WirePoint p=app.bench.wires[i].knees[k]; color(.1f,.3f,.45f); rect(p.x-4,p.y-4,8,8); } }
         glLineWidth(1);
-        for(i=0;i<bench.part_count;++i) if(bench.parts[i].type!=PART_BREADBOARD) { int p; part_draw_oriented(&bench.parts[i],selected==i,leds[i]); for(p=0;p<bench_pin_count(bench.parts[i].type);++p) { float x,y; Pin contact; int snapped=bench_find_contact(&bench,i,p,&contact); pin_xy(&bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,bench.parts[i].type==PART_74HC00?4.0f:snapped?5.0f:8.0f); if(pending.component==i&&pending.pin==p) { color(1,.7f,.2f); circle(x,y,bench.parts[i].type==PART_74HC00?2.5f:snapped?3.0f:5.0f); } else if(snapped) { color(.18f,.78f,.46f); circle(x,y,bench.parts[i].type==PART_74HC00?2.5f:3.0f); } else { color(.93f,.95f,.96f); circle(x,y,bench.parts[i].type==PART_74HC00?2.5f:5.0f); } } }
-        for(i=0;i<bench.wire_count;++i) {
-            const Wire *wire=&bench.wires[i]; WirePoint start,end,path[WIRE_PATH_CAPACITY]; int count,k;
-            pin_xy(&bench.parts[wire->a.component],wire->a.pin,&start.x,&start.y);
-            pin_xy(&bench.parts[wire->b.component],wire->b.pin,&end.x,&end.y);
-            count=wire_path(wire,start,end,round_wires?18.0f:0.0f,path);
-            if(bench.parts[wire->a.component].type==PART_BREADBOARD)
+        for(i=0;i<app.bench.part_count;++i) if(app.bench.parts[i].type!=PART_BREADBOARD) { int p; part_draw_oriented(&app.bench.parts[i],app.selected==i,app.leds[i]); for(p=0;p<bench_pin_count(app.bench.parts[i].type);++p) { float x,y; Pin contact; int snapped=bench_find_contact(&app.bench,i,p,&contact); pin_xy(&app.bench.parts[i],p,&x,&y); color(.18f,.22f,.24f); circle(x,y,app.bench.parts[i].type==PART_74HC00?4.0f:snapped?5.0f:8.0f); if(app.pending.component==i&&app.pending.pin==p) { color(1,.7f,.2f); circle(x,y,app.bench.parts[i].type==PART_74HC00?2.5f:snapped?3.0f:5.0f); } else if(snapped) { color(.18f,.78f,.46f); circle(x,y,app.bench.parts[i].type==PART_74HC00?2.5f:3.0f); } else { color(.93f,.95f,.96f); circle(x,y,app.bench.parts[i].type==PART_74HC00?2.5f:5.0f); } } }
+        for(i=0;i<app.bench.wire_count;++i) {
+            const Wire *wire=&app.bench.wires[i]; WirePoint start,end,path[WIRE_PATH_CAPACITY]; int count,k;
+            pin_xy(&app.bench.parts[wire->a.component],wire->a.pin,&start.x,&start.y);
+            pin_xy(&app.bench.parts[wire->b.component],wire->b.pin,&end.x,&end.y);
+            count=wire_path(wire,start,end,app.round_wires?18.0f:0.0f,path);
+            if(app.bench.parts[wire->a.component].type==PART_BREADBOARD)
                 for(k=1;k<count;++k) if(hypotf(path[k].x-start.x,path[k].y-start.y)>.01f) { wire_contact_tip(start,path[k],wire->color); break; }
-            if(bench.parts[wire->b.component].type==PART_BREADBOARD)
+            if(app.bench.parts[wire->b.component].type==PART_BREADBOARD)
                 for(k=count-2;k>=0;--k) if(hypotf(path[k].x-end.x,path[k].y-end.y)>.01f) { wire_contact_tip(end,path[k],wire->color); break; }
         }
-        for(i=0;i<bench.part_count;++i) if(bench.parts[i].type==PART_74HC00) { color(.85f,.88f,.9f); text(font,bench.parts[i].x-32,bench.parts[i].y+5,"74HC00"); }
-        for(i=0;i<bench.part_count;++i) if(is_gate(bench.parts[i].type)) { color(.13f,.22f,.27f); text(font,bench.parts[i].x-25,bench.parts[i].y+45,part_name(bench.parts[i].type)+6); }
-        if(selected>=0 && (is_gate(bench.parts[selected].type) || bench.parts[selected].type==PART_CLOCK)) {
+        for(i=0;i<app.bench.part_count;++i) if(app.bench.parts[i].type==PART_74HC00) { color(.85f,.88f,.9f); text(font,app.bench.parts[i].x-32,app.bench.parts[i].y+5,"74HC00"); }
+        for(i=0;i<app.bench.part_count;++i) if(is_gate(app.bench.parts[i].type)) { color(.13f,.22f,.27f); text(font,app.bench.parts[i].x-25,app.bench.parts[i].y+45,part_name(app.bench.parts[i].type)+6); }
+        if(app.selected>=0 && (is_gate(app.bench.parts[app.selected].type) || app.bench.parts[app.selected].type==PART_CLOCK)) {
             int terminal; color(.10f,.25f,.36f);
-            for(terminal=0;terminal<bench_pin_count(bench.parts[selected].type);++terminal) { float x,y; char label[2]={bench.parts[selected].type==PART_DFF?"DCQ"[terminal]:(char)('1'+terminal),0}; pin_xy(&bench.parts[selected],terminal,&x,&y); text(font,x+8,y-8,label); }
+            for(terminal=0;terminal<bench_pin_count(app.bench.parts[app.selected].type);++terminal) { float x,y; char label[2]={app.bench.parts[app.selected].type==PART_DFF?"DCQ"[terminal]:(char)('1'+terminal),0}; pin_xy(&app.bench.parts[app.selected],terminal,&x,&y); text(font,x+8,y-8,label); }
         }
-        if(selected>=0 && bench.parts[selected].type==PART_74HC00) {
+        if(app.selected>=0 && app.bench.parts[app.selected].type==PART_74HC00) {
             static const int labels[]={0,6,7,13}; int n; color(.1f,.25f,.36f);
-            for(n=0;n<4;++n) { float x,y; char label[16]; pin_xy(&bench.parts[selected],labels[n],&x,&y); snprintf(label,sizeof(label),"%d",labels[n]+1); text(font,x-5,y+(labels[n]<7?-7:18),label); }
+            for(n=0;n<4;++n) { float x,y; char label[16]; pin_xy(&app.bench.parts[app.selected],labels[n],&x,&y); snprintf(label,sizeof(label),"%d",labels[n]+1); text(font,x-5,y+(labels[n]<7?-7:18),label); }
         }
-        if(trace_valid && trace_current==2 && trace_wire>=0 && trace_wire<bench.wire_count) {
-            Wire *wire=&bench.wires[trace_wire]; float ax,ay,bx,by;
-            pin_xy(&bench.parts[wire->a.component],wire->a.pin,&ax,&ay); pin_xy(&bench.parts[wire->b.component],wire->b.pin,&bx,&by);
+        if(app.sim.trace_valid && app.sim.trace_current==2 && app.sim.trace_wire>=0 && app.sim.trace_wire<app.bench.wire_count) {
+            Wire *wire=&app.bench.wires[app.sim.trace_wire]; float ax,ay,bx,by;
+            pin_xy(&app.bench.parts[wire->a.component],wire->a.pin,&ax,&ay); pin_xy(&app.bench.parts[wire->b.component],wire->b.pin,&bx,&by);
             color(.9f,.35f,.05f); circle(ax,ay,9); circle(bx,by,9); color(.12f,.16f,.19f); text(font,ax+10,ay-5,"A"); text(font,bx+10,by-5,"B");
         }
-        for(i=0;i<bench.part_count;++i) if(burnt[i]) burnt_draw(font,&bench.parts[i],SDL_GetTicks());
+        for(i=0;i<app.bench.part_count;++i) if(app.sim.burnt[i]) burnt_draw(font,&app.bench.parts[i],SDL_GetTicks());
         glPopMatrix(); glDisable(GL_SCISSOR_TEST);
-        if(selected>=0) {
-            Part *part=&bench.parts[selected]; char reading[120];
+        if(app.selected>=0) {
+            Part *part=&app.bench.parts[app.selected]; char reading[120];
             const char *unit=part->type==PART_SOURCE?"V":part->type==PART_RESISTOR?"ohm":part->type==PART_CAPACITOR?"F":part->type==PART_INDUCTOR?"H":part->type==PART_CLOCK?"Hz":NULL;
-            int shows_current=dc_valid && !burnt[selected] && (part->type==PART_LED || part->type==PART_RESISTOR);
-            color(.97f,.98f,.98f); rect(840,80,420,(shows_current || burnt[selected])?70:38); color(.14f,.22f,.28f);
+            int shows_current=app.sim.dc_valid && !app.sim.burnt[app.selected] && (part->type==PART_LED || part->type==PART_RESISTOR);
+            color(.97f,.98f,.98f); rect(840,80,420,(shows_current || app.sim.burnt[app.selected])?70:38); color(.14f,.22f,.28f);
             if(unit) { snprintf(reading,sizeof(reading),"Valor: %.5g %s  [E / + / -]",part->value,unit); text(font,850,105,reading); }
             else text(font,850,105,part->type==PART_LED?"LED generico":(is_gate(part->type) || part->type==PART_74HC00)?part_name(part->type):"Componente selecionado");
             if(part->type!=PART_BREADBOARD) {
                 color(.86f,.91f,.95f); rect(ROTATE_BUTTON_X,86,72,26);
                 color(.12f,.34f,.52f); text(font,ROTATE_BUTTON_X+8,105,"Girar R");
             }
-            if(burnt[selected]) {
+            if(app.sim.burnt[app.selected]) {
                 color(.72f,.12f,.08f);
-                if(burn_reason[selected]==BURN_SHORT) snprintf(reading,sizeof(reading),"QUEIMADO: curto-circuito nos terminais");
-                else if(burn_reason[selected]==BURN_OVERPOWER) snprintf(reading,sizeof(reading),"QUEIMADO: %.3g W (limite %.3g W)",burn_value[selected],burn_limits_default().resistor_max_power);
-                else snprintf(reading,sizeof(reading),"QUEIMADO: %.4g mA (limite %.3g mA)",burn_value[selected]*1000.0,burn_limits_default().led_max_current*1000.0);
+                if(app.sim.burn_reason[app.selected]==BURN_SHORT) snprintf(reading,sizeof(reading),"QUEIMADO: curto-circuito nos terminais");
+                else if(app.sim.burn_reason[app.selected]==BURN_OVERPOWER) snprintf(reading,sizeof(reading),"QUEIMADO: %.3g W (limite %.3g W)",app.sim.burn_value[app.selected],burn_limits_default().resistor_max_power);
+                else snprintf(reading,sizeof(reading),"QUEIMADO: %.4g mA (limite %.3g mA)",app.sim.burn_value[app.selected]*1000.0,burn_limits_default().led_max_current*1000.0);
                 text(font,850,137,reading);
             } else if(shows_current) {
-                snprintf(reading,sizeof(reading),"Corrente: %.5g mA (pino 1 -> 2)",dc_led_currents[selected]*1000.0);
+                snprintf(reading,sizeof(reading),"Corrente: %.5g mA (pino 1 -> 2)",app.sim.dc_led_currents[app.selected]*1000.0);
                 text(font,850,137,reading);
             }
         }
-        if(trace_valid && show_trace && !settings) trace_draw(font,&trace,trace_index,trace_pin,trace_current);
-        color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,status);
-        text(font,238,709,auto_enabled?"Espaco: executar/pausar | R ou botao direito: girar | Duplo clique: liga/desliga | E: valor | T: grafico | Delete: excluir"
+        if(app.sim.trace_valid && app.show_trace && !app.settings) trace_draw(font,&app.sim.trace,app.sim.trace_index,app.sim.trace_pin,app.sim.trace_current);
+        color(.97f,.98f,.98f); rect(220,660,1060,60); color(.2f,.26f,.3f); text(font,238,685,app.status);
+        text(font,238,709,app.sim.auto_enabled?"Espaco: executar/pausar | R ou botao direito: girar | Duplo clique: liga/desliga | E: valor | T: grafico | Delete: excluir"
                                       :"Terminais: fios | Duplo clique: alternar | P: DC | T: transitorio | Espaco/N: pausa/passo | Delete: excluir");
-        if(settings) {
+        if(app.settings) {
             int swatch;
             color(.62f,.68f,.72f); rect(846,90,400,558);
             color(.98f,.98f,.99f); rect(840,84,400,558);
             color(.14f,.22f,.28f); text(font,860,112,"CONFIGURACOES DE VISUALIZACAO");
-            text(font,860,148,show_grid?"[x] Grade":"[ ] Grade");
-            text(font,860,188,show_handles?"[x] Pontos de controle dos fios":"[ ] Pontos de controle dos fios");
-            text(font,860,228,round_wires?"[x] Curvas arredondadas":"[ ] Curvas arredondadas");
-            text(font,860,268,show_current?"[x] Visualizar corrente nos fios":"[ ] Visualizar corrente nos fios");
-            text(font,860,309,selected_wire>=0?"COR DO FIO SELECIONADO":"COR DO PROXIMO FIO");
+            text(font,860,148,app.show_grid?"[x] Grade":"[ ] Grade");
+            text(font,860,188,app.show_handles?"[x] Pontos de controle dos fios":"[ ] Pontos de controle dos fios");
+            text(font,860,228,app.round_wires?"[x] Curvas arredondadas":"[ ] Curvas arredondadas");
+            text(font,860,268,app.show_current?"[x] Visualizar corrente nos fios":"[ ] Visualizar corrente nos fios");
+            text(font,860,309,app.selected_wire>=0?"COR DO FIO SELECIONADO":"COR DO PROXIMO FIO");
             for(swatch=0;swatch<WIRE_COLOR_COUNT;++swatch) {
                 float sx=860+swatch*50; color(.2f,.25f,.29f); rect(sx-2,318,36,30);
                 color(wire_palette[swatch][0],wire_palette[swatch][1],wire_palette[swatch][2]); rect(sx,320,32,26);
-                if(swatch==wire_color) { color(1,.8f,.15f); glLineWidth(2); glBegin(GL_LINE_LOOP); glVertex2f(sx-3,317); glVertex2f(sx+35,317); glVertex2f(sx+35,349); glVertex2f(sx-3,349); glEnd(); glLineWidth(1); }
+                if(swatch==app.wire_color) { color(1,.8f,.15f); glLineWidth(2); glBegin(GL_LINE_LOOP); glVertex2f(sx-3,317); glVertex2f(sx+35,317); glVertex2f(sx+35,349); glVertex2f(sx-3,349); glEnd(); glLineWidth(1); }
             }
-            color(.14f,.22f,.28f); text(font,1170,340,wire_color_names[wire_color]);
+            color(.14f,.22f,.28f); text(font,1170,340,wire_color_names[app.wire_color]);
             { char setting[100];
-                text(font,860,377,probe_current?"Medida: CORRENTE (clique)":"Medida: TENSAO (clique)");
-                snprintf(setting,sizeof(setting),"Terminal de sondagem: %d (clique)",probe_pin+1); text(font,860,415,setting);
-                snprintf(setting,sizeof(setting),"Passo solicitado: %.6g s (clique)",transient_step); text(font,860,455,setting);
-                snprintf(setting,sizeof(setting),"Duracao: %.6g s (clique)",transient_stop); text(font,860,495,setting);
+                text(font,860,377,app.probe_current?"Medida: CORRENTE (clique)":"Medida: TENSAO (clique)");
+                snprintf(setting,sizeof(setting),"Terminal de sondagem: %d (clique)",app.probe_pin+1); text(font,860,415,setting);
+                snprintf(setting,sizeof(setting),"Passo solicitado: %.6g s (clique)",app.transient_step); text(font,860,455,setting);
+                snprintf(setting,sizeof(setting),"Duracao: %.6g s (clique)",app.transient_stop); text(font,860,495,setting);
             }
             text(font,860,535,"T: transitorio | Espaco: reproduzir | B/N: amostras");
             text(font,860,565,"1-100 uA | 100 uA-10 mA | >=10 mA");
             text(font,860,590,"Largura e cor indicam faixas de corrente");
             text(font,860,625,"F1 fecha este painel");
         }
-        if(editing>=0) {
+        if(app.editing>=0) {
             char reading[110];
             color(.62f,.68f,.72f); rect(446,268,400,146); color(.98f,.98f,.99f); rect(440,262,400,146);
-            color(.14f,.22f,.28f); text(font,460,294,editing>=WORKBENCH_MAX_COMPONENTS?"TEMPO EM SEGUNDOS":"VALOR EM UNIDADES SI");
-            snprintf(reading,sizeof(reading),"> %s_",edit_text); text(font,460,336,reading);
+            color(.14f,.22f,.28f); text(font,460,294,app.editing>=WORKBENCH_MAX_COMPONENTS?"TEMPO EM SEGUNDOS":"VALOR EM UNIDADES SI");
+            snprintf(reading,sizeof(reading),"> %s_",app.edit_text); text(font,460,336,reading);
             text(font,460,380,"Enter confirma | Esc cancela");
         }
         SDL_GL_SwapWindow(window);
-        if(capture) {
+        if(app.capture) {
             if (!dev_capture_save("build/bancada-capture.bmp", width, height)) {
                 fprintf(stderr, "Captura: %s\n", SDL_GetError());
-                exit_code = 1;
+                app.exit_code = 1;
             }
-            running = 0;
+            app.running = 0;
         }
     }
-    spice_job_join(&dc_job);
-    if(selftest) remove("build/gui-settings-test.elec");
-    free(history);
+    spice_job_join(&app.dc_job);
+    if(app.selftest) remove("build/gui-settings-test.elec");
+    free(app.history);
     if(font) glDeleteLists(font,128);
-    SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return exit_code;
+    SDL_GL_DestroyContext(context); SDL_DestroyWindow(window); SDL_Quit(); return app.exit_code;
 }

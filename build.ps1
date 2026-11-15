@@ -13,7 +13,7 @@ if (Test-Path (Join-Path $toolchain 'SDL3.dll')) {
         }
     }
 }
-& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/dev_capture.c src/workbench.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
+& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/app_state.c src/dev_capture.c src/workbench.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_sim_auto.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_sim_auto.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
