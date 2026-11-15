@@ -22,6 +22,7 @@ static void rect(float x, float y, float w, float h)
 }
 /* Theme affects interface surfaces and ink; physical parts and wire colors keep their palette. */
 static int dark_interface;
+static float drawing_scale = 1;
 static int interface_layer;
 static void color(float r, float g, float b)
 {
@@ -44,6 +45,23 @@ static void color(float r, float g, float b)
     }
     glColor3f(r, g, b);
 }
+typedef struct
+{
+    float r, g, b;
+} SurfaceColor;
+
+static void gradient_rect(float x, float y, float width, float height, SurfaceColor top, SurfaceColor bottom)
+{
+    glBegin(GL_QUADS);
+    color(top.r, top.g, top.b);
+    glVertex2f(x, y);
+    glVertex2f(x + width, y);
+    color(bottom.r, bottom.g, bottom.b);
+    glVertex2f(x + width, y + height);
+    glVertex2f(x, y + height);
+    glEnd();
+}
+
 static void line(float x, float y, float x2, float y2)
 {
     glBegin(GL_LINES);
@@ -173,6 +191,15 @@ static void name_text(GLuint font, float x, float y, const char *name, int maxim
         text(font, x, y, "[texto indisponivel]");
 }
 
+static void world_text(GLuint font, float x, float y, const char *label, float zoom)
+{
+    glPushMatrix();
+    glTranslatef(x, y, 0);
+    glScalef(1 / zoom, 1 / zoom, 1);
+    text(font, 0, 0, label);
+    glPopMatrix();
+}
+
 static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int pin, int current)
 {
     int i;
@@ -265,13 +292,33 @@ static void draw_part_board(const Part *p, int selected)
     }
 }
 
+static void ellipse(float x, float y, float radius_x, float radius_y)
+{
+    glPushMatrix();
+    glTranslatef(x, y, 0);
+    glScalef(radius_x, radius_y, 1);
+    circle(0, 0, 1);
+    glPopMatrix();
+}
+
+static SurfaceColor resistor_band(int digit)
+{
+    static const SurfaceColor colors[] = {{.08f,.08f,.08f}, {.38f,.18f,.08f}, {.8f,.08f,.05f},
+        {1,.38f,.03f}, {.95f,.77f,.02f}, {.08f,.46f,.16f}, {.06f,.28f,.75f}, {.48f,.13f,.63f},
+        {.44f,.46f,.47f}, {.94f,.94f,.9f}};
+    if (digit == -1)
+        return (SurfaceColor){.65f,.68f,.7f};
+    if (digit == -2)
+        return (SurfaceColor){.72f,.53f,.17f};
+    return colors[digit];
+}
+
 static void draw_part_source(const Part *p)
 {
     float x = p->x, y = p->y;
     color(.22f, .26f, .31f);
     rect(x - 40, y - 27, 80, 50);
-    color(.18f, .53f, .73f);
-    rect(x - 37, y - 25, 74, 45);
+    gradient_rect(x - 37, y - 25, 74, 45, (SurfaceColor){.27f,.62f,.79f}, (SurfaceColor){.12f,.38f,.57f});
     color(.9f, .95f, .97f);
     line(x - 22, y, x - 8, y);
     line(x - 15, y - 7, x - 15, y + 7);
@@ -335,12 +382,6 @@ static void draw_part_chip(const Part *p)
 static void draw_part_gate(const Part *p)
 {
     float x = p->x, y = p->y;
-    if (p->type != PART_NOT)
-    {
-        color(.68f, .71f, .73f);
-        rect(x - 51, y - 17, 26, 4);
-        rect(x - 51, y + 13, 26, 4);
-    }
     color(.16f, .19f, .22f);
     rect(x - 30, y - 24, 62, 50);
     color(.25f, .29f, .33f);
@@ -395,42 +436,75 @@ static void draw_part_gate(const Part *p)
 static void draw_part_resistor(const Part *p)
 {
     float x = p->x, y = p->y;
-    color(.73f, .60f, .40f);
-    rect(x - 18, y - 8, 36, 16);
-    color(.89f, .78f, .56f);
-    rect(x - 17, y - 10, 34, 15);
-    color(.4f, .21f, .12f);
-    rect(x - 11, y - 10, 3, 15);
-    color(.12f, .12f, .12f);
-    rect(x - 4, y - 10, 3, 15);
-    color(.8f, .25f, .13f);
-    rect(x + 3, y - 10, 3, 15);
-    color(.7f, .58f, .2f);
-    rect(x + 11, y - 10, 3, 15);
+    color(.65f, .48f, .28f);
+    ellipse(x - 16, y, 5, 8);
+    ellipse(x + 16, y, 5, 8);
+    gradient_rect(x - 16, y - 8, 32, 16, (SurfaceColor){.94f,.84f,.64f}, (SurfaceColor){.65f,.49f,.29f});
+    if (!isfinite(p->value) || p->value <= 0)
+        return;
+    int exponent = (int)floor(log10(p->value)) - 1;
+    int digits = (int)lround(p->value / pow(10, exponent));
+    if (digits == 100)
+    {
+        digits = 10;
+        ++exponent;
+    }
+    if (exponent < -2 || exponent > 9 || digits < 10 || digits > 99)
+        return;
+    int codes[] = {digits / 10, digits % 10, exponent, -2};
+    const float positions[] = {-11, -4, 3, 12};
+    for (int band = 0; band < 4; ++band)
+    {
+        SurfaceColor top = resistor_band(codes[band]);
+        SurfaceColor bottom = {top.r * .7f, top.g * .7f, top.b * .7f};
+        gradient_rect(x + positions[band], y - 8, 3, 16, top, bottom);
+    }
 }
 
 static void draw_part_capacitor(const Part *p)
 {
     float x = p->x, y = p->y;
-    color(.16f, .19f, .25f);
-    rect(x - 18, y - 23, 36, 46);
-    color(.25f, .31f, .42f);
-    rect(x - 18, y - 26, 36, 44);
-    color(.55f, .62f, .7f);
-    rect(x + 9, y - 22, 4, 34);
+    /* Non-polar film package: no misleading cathode stripe on an ideal non-polar capacitor. */
+    color(.08f, .16f, .31f);
+    rect(x - 18, y - 23, 38, 44);
+    gradient_rect(x - 18, y - 26, 34, 43, (SurfaceColor){.28f,.48f,.72f}, (SurfaceColor){.10f,.25f,.46f});
+    color(.43f, .62f, .81f);
+    glBegin(GL_QUADS);
+    glVertex2f(x - 18, y - 26);
+    glVertex2f(x - 13, y - 30);
+    glVertex2f(x + 20, y - 30);
+    glVertex2f(x + 16, y - 26);
+    glEnd();
+    color(.15f, .29f, .48f);
+    glBegin(GL_QUADS);
+    glVertex2f(x + 16, y - 26);
+    glVertex2f(x + 20, y - 30);
+    glVertex2f(x + 20, y + 17);
+    glVertex2f(x + 16, y + 17);
+    glEnd();
 }
 
 static void draw_part_inductor(const Part *p)
 {
     float x = p->x, y = p->y;
-    int coil;
-    color(.25f, .2f, .16f);
-    rect(x - 31, y - 13, 62, 26);
-    color(.66f, .36f, .18f);
-    rect(x - 29, y - 15, 58, 23);
-    color(.94f, .65f, .35f);
-    for (coil = 0; coil < 6; ++coil)
-        rect(x - 26 + coil * 9, y - 14, 3, 21);
+    color(.16f, .18f, .19f);
+    rect(x - 28, y - 10, 56, 20);
+    ellipse(x - 28, y, 6, 10);
+    ellipse(x + 28, y, 6, 10);
+    for (int winding = 0; winding < 7; ++winding)
+    {
+        float center = x - 24 + winding * 8;
+        glBegin(GL_QUAD_STRIP);
+        for (int step = 0; step <= 32; ++step)
+        {
+            float angle = (float)(step * 6.283185307179586 / 32);
+            float light = .65f + .25f * cosf(angle - .8f);
+            color(light, light * .57f, light * .25f);
+            glVertex2f(center + cosf(angle) * 4, y + sinf(angle) * 14);
+            glVertex2f(center + cosf(angle) * 2, y + sinf(angle) * 11);
+        }
+        glEnd();
+    }
 }
 
 static void draw_part_led(const Part *p, int led, float brightness)
@@ -442,10 +516,10 @@ static void draw_part_led(const Part *p, int led, float brightness)
     glRotatef(-p->rotation * 90.0f, 0, 0, 1);
     glTranslatef(-x, -y, 0);
     color(.38f, .08f, .07f);
-    circle(x, y + 7, 17);
-    rect(x - 14, y - 12, 28, 20);
+    ellipse(x, y + 9, 17, 5);
+    rect(x - 14, y - 12, 28, 21);
     color(.75f, .75f, .72f);
-    rect(x - 16, y + 9, 32, 5);
+    ellipse(x, y + 8, 16, 4);
     /* led: -1 unknown, 0 off, 1 lit, 2 burnt */
     if (led == 2)
     {
@@ -481,14 +555,19 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
         draw_part_board(p, selected);
         return;
     }
-    color(.68f, .71f, .73f);
-    if (!bench_lead_count(p, 0))
-        rect(x - 51, y - 3, 102, 6);
-    color(.72f, .74f, .76f);
-    if (p->type == PART_SOURCE || p->type == PART_SWITCH || p->type == PART_CLOCK)
-        rect(x - 39, y - 23, 82, 50);
-    else if (p->type != PART_LED && p->type != PART_POTENTIOMETER)
-        rect(x - 19, y - 11, 40, 24);
+    if (is_gate(p->type))
+    {
+        Part nominal = *p;
+        nominal.rotation = 0;
+        nominal.scale = 1;
+        for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
+        {
+            float px, py;
+            bench_pin_position(&nominal, pin, &px, &py);
+            color(.68f, .71f, .73f);
+            rect(px < x ? x - 51 : x + 23, py - 2, 28, 4);
+        }
+    }
     if (p->type == PART_SOURCE)
     {
         draw_part_source(p);
@@ -568,27 +647,48 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
 
 static float lead_corner_radius = 18;
 
+typedef struct
+{
+    WirePoint previous;
+    float half_width;
+    int started;
+} LeadStroke;
+
 static void lead_vertex(void *context, WirePoint point, size_t slot)
 {
-    (void)context;
     (void)slot;
-    glVertex2f(point.x, point.y);
+    LeadStroke *stroke = context;
+    if (stroke->started)
+    {
+        float dx = point.x - stroke->previous.x, dy = point.y - stroke->previous.y;
+        float length = hypotf(dx, dy);
+        if (length > .00001f)
+        {
+            float nx = -dy * stroke->half_width / length, ny = dx * stroke->half_width / length;
+            color(.51f, .55f, .59f);
+            glVertex2f(stroke->previous.x + nx, stroke->previous.y + ny);
+            glVertex2f(point.x + nx, point.y + ny);
+            color(.88f, .9f, .92f);
+            glVertex2f(point.x - nx, point.y - ny);
+            glVertex2f(stroke->previous.x - nx, stroke->previous.y - ny);
+        }
+    }
+    stroke->previous = point;
+    stroke->started = 1;
 }
 
 static void draw_part_leads(const Part *part)
 {
-    color(.72f, .74f, .76f);
-    glLineWidth(3);
     for (int pin = 0; pin < bench_pin_count(part->type); ++pin)
     {
         size_t count = bench_lead_count(part, pin);
         if (!count)
             continue;
-        glBegin(GL_LINE_STRIP);
-        bench_lead_walk(part, pin, lead_corner_radius, lead_vertex, NULL);
+        LeadStroke stroke = {.half_width = fmaxf(.9f * bench_part_scale(part), .5f / drawing_scale)};
+        glBegin(GL_QUADS);
+        bench_lead_walk(part, pin, lead_corner_radius, lead_vertex, &stroke);
         glEnd();
     }
-    glLineWidth(1);
 }
 
 static void part_draw_oriented(const Part *part, int selected, int led, float brightness)
@@ -602,7 +702,9 @@ static void part_draw_oriented(const Part *part, int selected, int led, float br
     glRotatef((float)part->rotation * 90.0f, 0, 0, 1);
     float scale = bench_part_scale(part);
     glScalef(scale, scale, 1);
+    glLineWidth(fmaxf(1, drawing_scale * scale));
     part_draw(&local, selected, led, brightness);
+    glLineWidth(1);
     glPopMatrix();
 }
 
@@ -685,12 +787,17 @@ static void play_button_draw(GLuint font, int running, int busy, int failed, int
 static void draw_thumbnail(PartType type, float x, float y)
 {
     int previous_layer = interface_layer;
+    float previous_scale = drawing_scale;
     interface_layer = 0;
     Part preview = {0};
     preview.type = type;
     preview.on = 1;
     preview.board_layout = 1;
+    preview.control = .5;
+    const ComponentInfo *info = component_info(type);
+    preview.value = info && info->primary ? info->primary->initial : 0;
     float scale = type == PART_BREADBOARD ? .09f : .42f;
+    drawing_scale = scale;
     glPushMatrix();
     glTranslatef(x, y, 0);
     glScalef(scale, scale, 1);
@@ -719,6 +826,7 @@ static void draw_thumbnail(PartType type, float x, float y)
         }
     glPopMatrix();
     interface_layer = previous_layer;
+    drawing_scale = previous_scale;
 }
 
 static void draw_chrome(const AppState *app, GLuint font, int width, int height)
@@ -1034,8 +1142,8 @@ static void draw_workspace_parts(const AppState *app)
                     inner_radius = 2.5f;
                 }
                 float terminal_scale = fminf(1, bench_part_scale(&app->bench.parts[i]));
-                outer_radius *= terminal_scale;
-                inner_radius *= terminal_scale;
+                outer_radius = fmaxf(3, outer_radius * terminal_scale) / app->view.zoom;
+                inner_radius = fmaxf(1.5f, inner_radius * terminal_scale) / app->view.zoom;
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
                 color(.18f, .22f, .24f);
                 circle(x, y, outer_radius);
@@ -1047,7 +1155,7 @@ static void draw_workspace_parts(const AppState *app)
                 else if (snapped)
                 {
                     color(.18f, .78f, .46f);
-                    circle(x, y, fminf(inner_radius, 3.0f * terminal_scale));
+                    circle(x, y, inner_radius);
                 }
                 else
                 {
@@ -1139,7 +1247,7 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
         {
             char label[] = {pin_role_symbol(info->role), 0};
             if (part->rotation % 2)
-                text(font, x + (x < part->x ? -16 : 10), y + 5, label);
+                world_text(font, x + (x < part->x ? -16 : 10) / app->view.zoom, y + 5 / app->view.zoom, label, app->view.zoom);
             else
                 text(font, x - 4, y + (y < part->y ? -9 : 20), label);
         }
@@ -1157,10 +1265,10 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
                 float label_y = y + (pin ? 24 : -14) / app->view.zoom;
                 line(x, y, x + (pin ? 6 : -6) / app->view.zoom,
                      y + (pin ? 14 : -8) / app->view.zoom);
-                text(font, label_x, label_y, label);
+                world_text(font, label_x, label_y, label, app->view.zoom);
             }
             else
-                text(font, x + 8, y - 10, label);
+                world_text(font, x + 8 / app->view.zoom, y - 10 / app->view.zoom, label, app->view.zoom);
         }
     }
 }
@@ -1181,7 +1289,9 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
                 color(.76f, .82f, .88f);
             else
                 color(.13f, .22f, .27f);
-            text(font, app->bench.parts[i].x - 25, app->bench.parts[i].y + 45, part_name(app->bench.parts[i].type) + 6);
+            world_text(font, app->bench.parts[i].x - 25 / app->view.zoom,
+                       app->bench.parts[i].y + 35 * bench_part_scale(&app->bench.parts[i]) + 18 / app->view.zoom,
+                       part_name(app->bench.parts[i].type) + 6, app->view.zoom);
         }
     draw_selected_pin_labels(app, font);
 }
@@ -1621,6 +1731,7 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
     app_text_utf8_set_size(app->gui_font_size);
     dark_interface = app->dark_theme;
+    drawing_scale = app->view.zoom;
     lead_corner_radius = app->round_wires ? 18 : 0;
     interface_layer = 1;
     draw_chrome(app, font, width, height);

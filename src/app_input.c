@@ -700,7 +700,7 @@ static void input_place_part(AppState *app, float x, float y)
         app->status = "Limite de componentes atingido.";
 }
 
-static Pin input_pin_at(const Workbench *bench, float x, float y)
+static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int i = bench->part_count - 1; i >= 0; --i)
         if (bench->parts[i].group)
@@ -726,7 +726,7 @@ static Pin input_pin_at(const Workbench *bench, float x, float y)
                 radius = 4.0f;
             else if (component_has_flag(bench->parts[i].type, COMPONENT_QUAD_GATE))
                 radius = 5.0f;
-            radius *= fminf(1, bench_part_scale(&bench->parts[i]));
+            radius = fmaxf(4, radius * fminf(1, bench_part_scale(&bench->parts[i]))) / zoom;
             if (board != pass)
                 continue;
             for (p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
@@ -966,7 +966,7 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         input_place_part(app, x, y);
         return;
     }
-    Pin clicked = input_pin_at(&app->bench, x, y);
+    Pin clicked = input_pin_at(&app->bench, x, y, app->view.zoom);
     hitpin = clicked.pin;
     if (hitpin >= 0)
     {
@@ -1159,7 +1159,7 @@ static void input_refresh_hover(AppState *app)
         app->selecting_area || app->editor_confirm_close || app->panning || app->dragging >= 0 || app->drag_wire >= 0)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
-    app->hovered_pin = input_pin_at(&app->bench, x, y);
+    app->hovered_pin = input_pin_at(&app->bench, x, y, app->view.zoom);
 }
 
 /* Dispatch in priority order: text editing consumes input before workspace interaction. */

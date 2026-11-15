@@ -29,3 +29,13 @@ Nao substituir silenciosamente a fonte ajustavel por bateria de 9 V; os tres for
 solicitados sao tipos novos, com capturas de referencia proprias antes de modelar.
 Cada componente novo tambem deve entrar no capturador, em ambos os temas. Revisar silhueta,
 orientacao, polaridade, terminais e estados ativo/inativo antes de marcar como pronto.
+
+
+## Primeira correcao verificada
+Capturas apos ajustes em build/component-review/after. Terminais agora permanecem pequenos
+no zoom; perninhas tem espessura/material proporcional. Resistor axial arredondado com faixas
+nominais calculadas; capacitor nao polarizado com caixa de filme; indutor com ferrite/espiras.
+Fonte com faces graduadas; removidos backing cinza indevidos e falso pino central das portas.
+Anotacoes de pinos/portas usam fonte em tamanho de tela, evitando pixelizacao ao ampliar.
+AutotesteGUI183fases passou apos mudanca de marcador/hit testing. Comparacao visual revisada
+nos close-ups reais de resistor e indutor antes/depois; rodada completa continua registrada.
