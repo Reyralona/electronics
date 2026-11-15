@@ -254,31 +254,22 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     }
 }
 
-static void input_click(AppState *app, SDL_Window *window, const SDL_Event *event)
+static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
 {
-    int i;
-
-    int w, h, hit = -1, hitpin = -1;
-    float x, y;
-    SDL_GetWindowSize(window, &w, &h);
-    if (w <= 0 || h <= 0)
-        return;
-    x = event->button.x * 1280.0f / w;
-    y = event->button.y * 720.0f / h;
     if (x >= 700 && x < 850 && y < 68)
     {
         SDL_Event shortcut = {0};
         shortcut.type = SDL_EVENT_KEY_DOWN;
         shortcut.key.key = SDLK_F2;
         SDL_PushEvent(&shortcut);
-        return;
+        return 1;
     }
     if (x >= 880 && x < 1030 && y < 68)
     {
         app->settings = !app->settings;
         app->dragging = -1;
         app->drag_wire = -1;
-        return;
+        return 1;
     }
     if (x >= PLAY_BUTTON_X && y < 68)
     {
@@ -286,7 +277,7 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         shortcut.type = SDL_EVENT_KEY_DOWN;
         shortcut.key.key = SDLK_SPACE;
         SDL_PushEvent(&shortcut);
-        return;
+        return 1;
     }
     if (!app->settings && app->selected >= 0 && app->bench.parts[app->selected].type != PART_BREADBOARD &&
         x >= ROTATE_BUTTON_X && x < ROTATE_BUTTON_X + 72 && y >= 86 && y < 112)
@@ -295,12 +286,12 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         shortcut.type = SDL_EVENT_KEY_DOWN;
         shortcut.key.key = SDLK_R;
         SDL_PushEvent(&shortcut);
-        return;
+        return 1;
     }
     if (app->settings)
     {
         input_settings(app, window, x, y);
-        return;
+        return 1;
     }
     if (app->sim.trace_valid && app->show_trace && x >= 840 && x <= 1240 && y >= 384 && y <= 628)
     {
@@ -308,22 +299,24 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         {
             app->sim.trace_index = spice_trace_nearest(&app->sim.trace, (x - 918) / 302.0);
             app->sim.sim_running = 0;
-            snprintf(app->sim.trace_status, sizeof(app->sim.trace_status),
-                     app->sim.trace_current == 2 ? "Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d)."
-                     : app->sim.trace_current    ? "Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d)."
-                                                 : "Tensao: t=%.6g s; V=%.6g V (%d/%d).",
+            const char *format = "Tensao: t=%.6g s; V=%.6g V (%d/%d).";
+            if (app->sim.trace_current == 2)
+                format = "Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).";
+            else if (app->sim.trace_current)
+                format = "Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).";
+            snprintf(app->sim.trace_status, sizeof(app->sim.trace_status), format,
                      app->sim.trace.samples[app->sim.trace_index].time,
                      app->sim.trace.samples[app->sim.trace_index].value, app->sim.trace_index + 1,
                      app->sim.trace.count);
             app->status = app->sim.trace_status;
         }
-        return;
+        return 1;
     }
     if (x < 220 && y >= 80 && y < 125)
     {
         app->palette_page = 1 - app->palette_page;
         app->placing = -1;
-        return;
+        return 1;
     }
     if (x < 220 && y >= 140 && y < 716)
     {
@@ -334,11 +327,14 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
             app->pending.component = -1;
             app->status = "Clique na bancada para posicionar.";
         }
-        return;
+        return 1;
     }
-    if (x < 220 || y < 70 || y > 660)
-        return;
-    bench_view_to_world(&app->view, x, y, &x, &y);
+    return 0;
+}
+
+static int input_click_knee(AppState *app, float x, float y, int clicks)
+{
+    int i;
     if (app->pending.component < 0 && app->placing < 0 && app->show_handles)
     {
         int k;
@@ -355,7 +351,7 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
             }
         if (app->drag_wire >= 0)
         {
-            if (event->button.clicks >= 2)
+            if (clicks >= 2)
             {
                 Wire *wire = &app->bench.wires[app->drag_wire];
                 bench_history_record(app->history, &app->bench);
@@ -370,96 +366,103 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
                 app->move_recorded = 0;
                 app->status = "Arraste o joelho; duplo clique remove.";
             }
-            return;
+            return 1;
         }
     }
-    if (app->placing >= 0)
+    return 0;
+}
+
+static void input_place_part(AppState *app, float x, float y)
+{
+    Workbench before = app->bench;
+    int added = bench_add(&app->bench, (PartType)app->placing, x, y);
+    if (added >= 0)
+    {
+        int snapped = bench_snap_to_breadboard(&app->bench, added);
+        bench_history_record(app->history, &before);
+        app->selected_wire = -1;
+        app->status =
+            snapped ? "Componente encaixado na breadboard." : "Componente adicionado. Selecione terminais para ligar.";
+        app->placing = -1;
+    }
+    else
+        app->status = "Limite de componentes atingido.";
+}
+
+static Pin input_pin_at(const Workbench *bench, float x, float y)
+{
+    int i, hit = -1, hitpin = -1;
+    int pass;
+    for (pass = 0; pass < 2 && hit < 0; ++pass)
+        for (i = bench->part_count - 1; i >= 0; --i)
+        {
+            int p, board = bench->parts[i].type == PART_BREADBOARD;
+            float radius = 12.0f;
+            if (board)
+                radius = 4.0f;
+            else if (bench->parts[i].type == PART_74HC00)
+                radius = 5.0f;
+            if (board != pass)
+                continue;
+            for (p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
+            {
+                float px, py;
+                bench_pin_position(&bench->parts[i], p, &px, &py);
+                if ((x - px) * (x - px) + (y - py) * (y - py) <= radius * radius)
+                {
+                    hit = i;
+                    hitpin = p;
+                    break;
+                }
+            }
+            if (hit >= 0)
+                break;
+        }
+    return (Pin){hit, hitpin};
+}
+
+static void input_connect_pin(AppState *app, Pin clicked)
+{
+    app->selected_wire = -1;
+    if (app->pending.component < 0)
+    {
+        app->pending = clicked;
+        app->route_count = 0;
+        app->status = "Clique para criar joelhos; termine em outro terminal.";
+    }
+    else if (app->pending.component == clicked.component && app->pending.pin == clicked.pin)
+    {
+        app->pending.component = -1;
+        app->route_count = 0;
+        app->status = "Conexao cancelada.";
+    }
+    else
     {
         Workbench before = app->bench;
-        int added = bench_add(&app->bench, (PartType)app->placing, x, y);
-        if (added >= 0)
+        int result = bench_toggle_wire(&app->bench, app->pending, clicked);
+        if (result == 1)
         {
-            int snapped = bench_snap_to_breadboard(&app->bench, added);
+            Wire *wire = &app->bench.wires[app->bench.wire_count - 1];
+            wire->knee_count = app->route_count;
+            wire->color = app->wire_color;
+            memcpy(wire->knees, app->route, (size_t)app->route_count * sizeof(WirePoint));
+        }
+        if (result)
             bench_history_record(app->history, &before);
-            app->selected_wire = -1;
-            app->status = snapped ? "Componente encaixado na breadboard."
-                                  : "Componente adicionado. Selecione terminais para ligar.";
-            app->placing = -1;
-        }
+        if (result == 1)
+            app->status = "Fio conectado.";
+        else if (result == 2)
+            app->status = "Fio removido.";
         else
-            app->status = "Limite de componentes atingido.";
-        return;
+            app->status = "Nao foi possivel conectar.";
+        app->pending.component = -1;
+        app->route_count = 0;
     }
-    {
-        int pass;
-        for (pass = 0; pass < 2 && hit < 0; ++pass)
-            for (i = app->bench.part_count - 1; i >= 0; --i)
-            {
-                int p, board = app->bench.parts[i].type == PART_BREADBOARD;
-                float radius = board ? 4.0f : app->bench.parts[i].type == PART_74HC00 ? 5.0f : 12.0f;
-                if (board != pass)
-                    continue;
-                for (p = 0; p < bench_pin_count(app->bench.parts[i].type); ++p)
-                {
-                    float px, py;
-                    bench_pin_position(&app->bench.parts[i], p, &px, &py);
-                    if ((x - px) * (x - px) + (y - py) * (y - py) <= radius * radius)
-                    {
-                        hit = i;
-                        hitpin = p;
-                        break;
-                    }
-                }
-                if (hit >= 0)
-                    break;
-            }
-    }
-    if (hitpin >= 0)
-    {
-        Pin clicked = {hit, hitpin};
-        app->selected_wire = -1;
-        if (app->pending.component < 0)
-        {
-            app->pending = clicked;
-            app->route_count = 0;
-            app->status = "Clique para criar joelhos; termine em outro terminal.";
-        }
-        else if (app->pending.component == hit && app->pending.pin == hitpin)
-        {
-            app->pending.component = -1;
-            app->route_count = 0;
-            app->status = "Conexao cancelada.";
-        }
-        else
-        {
-            Workbench before = app->bench;
-            int result = bench_toggle_wire(&app->bench, app->pending, clicked);
-            if (result == 1)
-            {
-                Wire *wire = &app->bench.wires[app->bench.wire_count - 1];
-                wire->knee_count = app->route_count;
-                wire->color = app->wire_color;
-                memcpy(wire->knees, app->route, (size_t)app->route_count * sizeof(WirePoint));
-            }
-            if (result)
-                bench_history_record(app->history, &before);
-            app->status = result == 1 ? "Fio conectado." : result == 2 ? "Fio removido." : "Nao foi possivel conectar.";
-            app->pending.component = -1;
-            app->route_count = 0;
-        }
-        return;
-    }
-    if (app->pending.component >= 0)
-    {
-        if (app->route_count < WIRE_MAX_KNEES)
-        {
-            app->route[app->route_count++] = (WirePoint){x, y};
-            app->status = "Joelho adicionado; termine em um terminal.";
-        }
-        else
-            app->status = "Limite de 16 joelhos por fio.";
-        return;
-    }
+}
+
+static void input_select(AppState *app, float x, float y, int clicks)
+{
+    int hit;
     hit = part_at(&app->bench, x, y);
     app->selected = hit;
     app->selected_wire = -1;
@@ -476,9 +479,8 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     if (hit >= 0)
     {
-        if (event->button.clicks >= 2 &&
-            (app->bench.parts[hit].type == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
-             app->bench.parts[hit].type == PART_CLOCK))
+        if (clicks >= 2 && (app->bench.parts[hit].type == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
+                            app->bench.parts[hit].type == PART_CLOCK))
         {
             bench_history_record(app->history, &app->bench);
             app->bench.parts[hit].on = !app->bench.parts[hit].on;
@@ -498,6 +500,48 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         app->pending.component = -1;
         app->status = "Bancada livre.";
     }
+}
+
+static void input_click(AppState *app, SDL_Window *window, const SDL_Event *event)
+{
+    int w, h, hitpin = -1;
+    float x, y;
+    SDL_GetWindowSize(window, &w, &h);
+    if (w <= 0 || h <= 0)
+        return;
+    x = event->button.x * 1280.0f / w;
+    y = event->button.y * 720.0f / h;
+    if (input_click_controls(app, window, x, y))
+        return;
+    if (x < 220 || y < 70 || y > 660)
+        return;
+    bench_view_to_world(&app->view, x, y, &x, &y);
+    if (input_click_knee(app, x, y, event->button.clicks))
+        return;
+    if (app->placing >= 0)
+    {
+        input_place_part(app, x, y);
+        return;
+    }
+    Pin clicked = input_pin_at(&app->bench, x, y);
+    hitpin = clicked.pin;
+    if (hitpin >= 0)
+    {
+        input_connect_pin(app, clicked);
+        return;
+    }
+    if (app->pending.component >= 0)
+    {
+        if (app->route_count < WIRE_MAX_KNEES)
+        {
+            app->route[app->route_count++] = (WirePoint){x, y};
+            app->status = "Joelho adicionado; termine em um terminal.";
+        }
+        else
+            app->status = "Limite de 16 joelhos por fio.";
+        return;
+    }
+    input_select(app, x, y, event->button.clicks);
 }
 
 static void input_release(AppState *app, SDL_Window *window, const SDL_Event *event)

@@ -210,35 +210,237 @@ static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int p
     text(font, 856, 612, label);
 }
 
+static void draw_part_board(const Part *p, int selected)
+{
+    float x = p->x, y = p->y;
+    color(.67f, .70f, .72f);
+    rect(x - 224, y - 108, 454, 224);
+    color(.96f, .96f, .93f);
+    rect(x - 227, y - 112, 454, 224);
+    color(.80f, .19f, .17f);
+    rect(x - 215, y - 109, 430, 2);
+    rect(x - 215, y + 68, 430, 2);
+    color(.16f, .31f, .47f);
+    rect(x - 215, y - 72, 430, 2);
+    rect(x - 215, y + 107, 430, 2);
+    color(.84f, .85f, .82f);
+    rect(x - 218, y - 6, 436, 10);
+    if (selected)
+    {
+        color(.12f, .49f, .84f);
+        glLineWidth(2);
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(x - 230, y - 115);
+        glVertex2f(x + 230, y - 115);
+        glVertex2f(x + 230, y + 115);
+        glVertex2f(x - 230, y + 115);
+        glEnd();
+        glLineWidth(1);
+    }
+}
+
+static void draw_part_source(const Part *p)
+{
+    float x = p->x, y = p->y;
+    color(.22f, .26f, .31f);
+    rect(x - 40, y - 27, 80, 50);
+    color(.18f, .53f, .73f);
+    rect(x - 37, y - 25, 74, 45);
+    color(.9f, .95f, .97f);
+    line(x - 22, y, x - 8, y);
+    line(x - 15, y - 7, x - 15, y + 7);
+    line(x + 13, y, x + 27, y);
+    color(p->on ? .25f : .55f, p->on ? .9f : .55f, .34f);
+    circle(x + 25, y - 16, 4);
+}
+
+static void draw_part_switch(const Part *p)
+{
+    float x = p->x, y = p->y;
+    color(.23f, .25f, .27f);
+    rect(x - 36, y - 22, 72, 42);
+    color(.77f, .79f, .79f);
+    rect(x - 31, y - 17, 62, 30);
+    color(.2f, .22f, .24f);
+    circle(x - 17, y, 5);
+    circle(x + 17, y, 5);
+    glLineWidth(5);
+    line(x - 17, y, x + 17, p->on ? y : y - 13);
+    glLineWidth(1);
+}
+
+static void draw_part_clock(const Part *p)
+{
+    float x = p->x, y = p->y;
+    color(.18f, .23f, .28f);
+    rect(x - 34, y - 24, 68, 48);
+    color(.25f, .43f, .51f);
+    rect(x - 31, y - 26, 62, 44);
+    color(.85f, .95f, .92f);
+    line(x - 23, y + 8, x - 13, y + 8);
+    line(x - 13, y + 8, x - 13, y - 8);
+    line(x - 13, y - 8, x - 2, y - 8);
+    line(x - 2, y - 8, x - 2, y + 8);
+    line(x - 2, y + 8, x + 9, y + 8);
+    line(x + 9, y + 8, x + 9, y - 8);
+    line(x + 9, y - 8, x + 20, y - 8);
+    color(p->on ? .25f : .55f, p->on ? .9f : .55f, .34f);
+    circle(x + 23, y - 17, 3);
+}
+
+static void draw_part_chip(const Part *p)
+{
+    float x = p->x, y = p->y;
+    int leg;
+    color(.72f, .74f, .76f);
+    for (leg = 0; leg < 7; ++leg)
+    {
+        rect(x - 44 + leg * 14, y - 17, 4, 9);
+        rect(x - 44 + leg * 14, y + 8, 4, 9);
+    }
+    color(.14f, .16f, .18f);
+    rect(x - 49, y - 13, 98, 28);
+    color(.24f, .27f, .30f);
+    rect(x - 49, y - 16, 98, 26);
+    color(.72f, .76f, .78f);
+    circle(x - 40, y - 8, 3);
+}
+
+static void draw_part_gate(const Part *p)
+{
+    float x = p->x, y = p->y;
+    if (p->type != PART_NOT)
+    {
+        color(.68f, .71f, .73f);
+        rect(x - 51, y - 17, 26, 4);
+        rect(x - 51, y + 13, 26, 4);
+    }
+    color(.16f, .19f, .22f);
+    rect(x - 30, y - 24, 62, 50);
+    color(.25f, .29f, .33f);
+    rect(x - 30, y - 27, 60, 48);
+    color(.84f, .89f, .92f);
+    if (p->type == PART_DFF)
+    {
+        line(x - 17, y - 15, x + 17, y - 15);
+        line(x + 17, y - 15, x + 17, y + 15);
+        line(x + 17, y + 15, x - 17, y + 15);
+        line(x - 17, y + 15, x - 17, y - 15);
+        line(x - 17, y + 6, x - 9, y + 11);
+        line(x - 9, y + 11, x - 17, y + 15);
+    }
+    else if (p->type == PART_NOT)
+    {
+        line(x - 16, y - 13, x - 16, y + 13);
+        line(x - 16, y - 13, x + 18, y);
+        line(x + 18, y, x - 16, y + 13);
+    }
+    else if (p->type == PART_OR || p->type == PART_XOR)
+    {
+        line(x - 19, y - 13, x - 13, y);
+        line(x - 13, y, x - 19, y + 13);
+        line(x - 19, y - 13, x + 2, y - 11);
+        line(x + 2, y - 11, x + 20, y);
+        line(x + 20, y, x + 2, y + 11);
+        line(x + 2, y + 11, x - 19, y + 13);
+        if (p->type == PART_XOR)
+        {
+            line(x - 24, y - 13, x - 18, y);
+            line(x - 18, y, x - 24, y + 13);
+        }
+    }
+    else
+    {
+        line(x - 19, y - 13, x - 19, y + 13);
+        line(x - 19, y - 13, x + 2, y - 13);
+        line(x - 19, y + 13, x + 2, y + 13);
+        line(x + 2, y - 13, x + 14, y - 8);
+        line(x + 14, y - 8, x + 20, y);
+        line(x + 20, y, x + 14, y + 8);
+        line(x + 14, y + 8, x + 2, y + 13);
+    }
+    if (p->type == PART_NAND || p->type == PART_NOT)
+    {
+        color(.84f, .89f, .92f);
+        circle(x + 23, y, 3);
+    }
+}
+
+static void draw_part_resistor(const Part *p)
+{
+    float x = p->x, y = p->y;
+    color(.73f, .60f, .40f);
+    rect(x - 18, y - 8, 36, 16);
+    color(.89f, .78f, .56f);
+    rect(x - 17, y - 10, 34, 15);
+    color(.4f, .21f, .12f);
+    rect(x - 11, y - 10, 3, 15);
+    color(.12f, .12f, .12f);
+    rect(x - 4, y - 10, 3, 15);
+    color(.8f, .25f, .13f);
+    rect(x + 3, y - 10, 3, 15);
+    color(.7f, .58f, .2f);
+    rect(x + 11, y - 10, 3, 15);
+}
+
+static void draw_part_capacitor(const Part *p)
+{
+    float x = p->x, y = p->y;
+    color(.16f, .19f, .25f);
+    rect(x - 18, y - 23, 36, 46);
+    color(.25f, .31f, .42f);
+    rect(x - 18, y - 26, 36, 44);
+    color(.55f, .62f, .7f);
+    rect(x + 9, y - 22, 4, 34);
+}
+
+static void draw_part_inductor(const Part *p)
+{
+    float x = p->x, y = p->y;
+    int coil;
+    color(.25f, .2f, .16f);
+    rect(x - 31, y - 13, 62, 26);
+    color(.66f, .36f, .18f);
+    rect(x - 29, y - 15, 58, 23);
+    color(.94f, .65f, .35f);
+    for (coil = 0; coil < 6; ++coil)
+        rect(x - 26 + coil * 9, y - 14, 3, 21);
+}
+
+static void draw_part_led(const Part *p, int led)
+{
+    float x = p->x, y = p->y;
+    color(.75f, .75f, .72f);
+    rect(x - 16, y + 5, 32, 7);
+    /* led: -1 unknown, 0 off, 1 lit, 2 burnt */
+    if (led == 2)
+    {
+        color(.22f, .14f, .10f);
+        circle(x, y - 3, 13);
+        color(.40f, .30f, .24f);
+        circle(x - 4, y - 7, 3);
+    }
+    else
+    {
+        if (led < 0)
+            color(.48f, .48f, .48f);
+        else
+            color(led ? 1.0f : .6f, led ? .28f : .12f, led ? .24f : .14f);
+        circle(x, y - 3, 13);
+        if (led < 0)
+            color(.7f, .7f, .7f);
+        else
+            color(led ? 1.0f : .8f, led ? .63f : .28f, led ? .55f : .27f);
+        circle(x - 4, y - 7, 4);
+    }
+}
+
 static void part_draw(const Part *p, int selected, int led)
 {
     float x = p->x, y = p->y;
     if (p->type == PART_BREADBOARD)
     {
-        color(.67f, .70f, .72f);
-        rect(x - 224, y - 108, 454, 224);
-        color(.96f, .96f, .93f);
-        rect(x - 227, y - 112, 454, 224);
-        color(.80f, .19f, .17f);
-        rect(x - 215, y - 109, 430, 2);
-        rect(x - 215, y + 68, 430, 2);
-        color(.16f, .31f, .47f);
-        rect(x - 215, y - 72, 430, 2);
-        rect(x - 215, y + 107, 430, 2);
-        color(.84f, .85f, .82f);
-        rect(x - 218, y - 6, 436, 10);
-        if (selected)
-        {
-            color(.12f, .49f, .84f);
-            glLineWidth(2);
-            glBegin(GL_LINE_LOOP);
-            glVertex2f(x - 230, y - 115);
-            glVertex2f(x + 230, y - 115);
-            glVertex2f(x + 230, y + 115);
-            glVertex2f(x - 230, y + 115);
-            glEnd();
-            glLineWidth(1);
-        }
+        draw_part_board(p, selected);
         return;
     }
     color(.68f, .71f, .73f);
@@ -250,181 +452,39 @@ static void part_draw(const Part *p, int selected, int led)
         rect(x - 19, y - 11, 40, 24);
     if (p->type == PART_SOURCE)
     {
-        color(.22f, .26f, .31f);
-        rect(x - 40, y - 27, 80, 50);
-        color(.18f, .53f, .73f);
-        rect(x - 37, y - 25, 74, 45);
-        color(.9f, .95f, .97f);
-        line(x - 22, y, x - 8, y);
-        line(x - 15, y - 7, x - 15, y + 7);
-        line(x + 13, y, x + 27, y);
-        color(p->on ? .25f : .55f, p->on ? .9f : .55f, .34f);
-        circle(x + 25, y - 16, 4);
+        draw_part_source(p);
     }
     else if (p->type == PART_SWITCH)
     {
-        color(.23f, .25f, .27f);
-        rect(x - 36, y - 22, 72, 42);
-        color(.77f, .79f, .79f);
-        rect(x - 31, y - 17, 62, 30);
-        color(.2f, .22f, .24f);
-        circle(x - 17, y, 5);
-        circle(x + 17, y, 5);
-        glLineWidth(5);
-        line(x - 17, y, x + 17, p->on ? y : y - 13);
-        glLineWidth(1);
+        draw_part_switch(p);
     }
     else if (p->type == PART_CLOCK)
     {
-        color(.18f, .23f, .28f);
-        rect(x - 34, y - 24, 68, 48);
-        color(.25f, .43f, .51f);
-        rect(x - 31, y - 26, 62, 44);
-        color(.85f, .95f, .92f);
-        line(x - 23, y + 8, x - 13, y + 8);
-        line(x - 13, y + 8, x - 13, y - 8);
-        line(x - 13, y - 8, x - 2, y - 8);
-        line(x - 2, y - 8, x - 2, y + 8);
-        line(x - 2, y + 8, x + 9, y + 8);
-        line(x + 9, y + 8, x + 9, y - 8);
-        line(x + 9, y - 8, x + 20, y - 8);
-        color(p->on ? .25f : .55f, p->on ? .9f : .55f, .34f);
-        circle(x + 23, y - 17, 3);
+        draw_part_clock(p);
     }
     else if (p->type == PART_74HC00)
     {
-        int leg;
-        color(.72f, .74f, .76f);
-        for (leg = 0; leg < 7; ++leg)
-        {
-            rect(x - 44 + leg * 14, y - 17, 4, 9);
-            rect(x - 44 + leg * 14, y + 8, 4, 9);
-        }
-        color(.14f, .16f, .18f);
-        rect(x - 49, y - 13, 98, 28);
-        color(.24f, .27f, .30f);
-        rect(x - 49, y - 16, 98, 26);
-        color(.72f, .76f, .78f);
-        circle(x - 40, y - 8, 3);
+        draw_part_chip(p);
     }
     else if (is_gate(p->type))
     {
-        if (p->type != PART_NOT)
-        {
-            color(.68f, .71f, .73f);
-            rect(x - 51, y - 17, 26, 4);
-            rect(x - 51, y + 13, 26, 4);
-        }
-        color(.16f, .19f, .22f);
-        rect(x - 30, y - 24, 62, 50);
-        color(.25f, .29f, .33f);
-        rect(x - 30, y - 27, 60, 48);
-        color(.84f, .89f, .92f);
-        if (p->type == PART_DFF)
-        {
-            line(x - 17, y - 15, x + 17, y - 15);
-            line(x + 17, y - 15, x + 17, y + 15);
-            line(x + 17, y + 15, x - 17, y + 15);
-            line(x - 17, y + 15, x - 17, y - 15);
-            line(x - 17, y + 6, x - 9, y + 11);
-            line(x - 9, y + 11, x - 17, y + 15);
-        }
-        else if (p->type == PART_NOT)
-        {
-            line(x - 16, y - 13, x - 16, y + 13);
-            line(x - 16, y - 13, x + 18, y);
-            line(x + 18, y, x - 16, y + 13);
-        }
-        else if (p->type == PART_OR || p->type == PART_XOR)
-        {
-            line(x - 19, y - 13, x - 13, y);
-            line(x - 13, y, x - 19, y + 13);
-            line(x - 19, y - 13, x + 2, y - 11);
-            line(x + 2, y - 11, x + 20, y);
-            line(x + 20, y, x + 2, y + 11);
-            line(x + 2, y + 11, x - 19, y + 13);
-            if (p->type == PART_XOR)
-            {
-                line(x - 24, y - 13, x - 18, y);
-                line(x - 18, y, x - 24, y + 13);
-            }
-        }
-        else
-        {
-            line(x - 19, y - 13, x - 19, y + 13);
-            line(x - 19, y - 13, x + 2, y - 13);
-            line(x - 19, y + 13, x + 2, y + 13);
-            line(x + 2, y - 13, x + 14, y - 8);
-            line(x + 14, y - 8, x + 20, y);
-            line(x + 20, y, x + 14, y + 8);
-            line(x + 14, y + 8, x + 2, y + 13);
-        }
-        if (p->type == PART_NAND || p->type == PART_NOT)
-        {
-            color(.84f, .89f, .92f);
-            circle(x + 23, y, 3);
-        }
+        draw_part_gate(p);
     }
     else if (p->type == PART_RESISTOR)
     {
-        color(.73f, .60f, .40f);
-        rect(x - 18, y - 8, 36, 16);
-        color(.89f, .78f, .56f);
-        rect(x - 17, y - 10, 34, 15);
-        color(.4f, .21f, .12f);
-        rect(x - 11, y - 10, 3, 15);
-        color(.12f, .12f, .12f);
-        rect(x - 4, y - 10, 3, 15);
-        color(.8f, .25f, .13f);
-        rect(x + 3, y - 10, 3, 15);
-        color(.7f, .58f, .2f);
-        rect(x + 11, y - 10, 3, 15);
+        draw_part_resistor(p);
     }
     else if (p->type == PART_CAPACITOR)
     {
-        color(.16f, .19f, .25f);
-        rect(x - 18, y - 23, 36, 46);
-        color(.25f, .31f, .42f);
-        rect(x - 18, y - 26, 36, 44);
-        color(.55f, .62f, .7f);
-        rect(x + 9, y - 22, 4, 34);
+        draw_part_capacitor(p);
     }
     else if (p->type == PART_INDUCTOR)
     {
-        int coil;
-        color(.25f, .2f, .16f);
-        rect(x - 31, y - 13, 62, 26);
-        color(.66f, .36f, .18f);
-        rect(x - 29, y - 15, 58, 23);
-        color(.94f, .65f, .35f);
-        for (coil = 0; coil < 6; ++coil)
-            rect(x - 26 + coil * 9, y - 14, 3, 21);
+        draw_part_inductor(p);
     }
     else
     {
-        color(.75f, .75f, .72f);
-        rect(x - 16, y + 5, 32, 7);
-        /* led: -1 unknown, 0 off, 1 lit, 2 burnt */
-        if (led == 2)
-        {
-            color(.22f, .14f, .10f);
-            circle(x, y - 3, 13);
-            color(.40f, .30f, .24f);
-            circle(x - 4, y - 7, 3);
-        }
-        else
-        {
-            if (led < 0)
-                color(.48f, .48f, .48f);
-            else
-                color(led ? 1.0f : .6f, led ? .28f : .12f, led ? .24f : .14f);
-            circle(x, y - 3, 13);
-            if (led < 0)
-                color(.7f, .7f, .7f);
-            else
-                color(led ? 1.0f : .8f, led ? .63f : .28f, led ? .55f : .27f);
-            circle(x - 4, y - 7, 4);
-        }
+        draw_part_led(p, led);
     }
     if (selected)
     {
@@ -567,16 +627,8 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     }
 }
 
-static void draw_workspace(const AppState *app, GLuint font, int width, int height)
+static void draw_workspace_grid(const AppState *app)
 {
-    int i;
-    glEnable(GL_SCISSOR_TEST);
-    glScissor((int)(width * 220.0 / 1280), (int)(height * 60.0 / 720), (int)(width * 1060.0 / 1280),
-              (int)(height * 590.0 / 720));
-    glPushMatrix();
-    glTranslatef(220 + app->view.pan_x, 70 + app->view.pan_y, 0);
-    glScalef(app->view.zoom, app->view.zoom, 1);
-    glTranslatef(-220, -70, 0);
     color(.85f, .88f, .89f);
     glLineWidth(1);
     if (app->show_grid)
@@ -592,6 +644,11 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
         for (gy = floorf((top - 20.0f) / spacing) * spacing + 20.0f; gy <= bottom; gy += spacing)
             line(left, gy, right, gy);
     }
+}
+
+static void draw_workspace_boards(const AppState *app)
+{
+    int i;
     for (i = 0; i < app->bench.part_count; ++i)
         if (app->bench.parts[i].type == PART_BREADBOARD)
         {
@@ -610,6 +667,11 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
                 }
             }
         }
+}
+
+static void draw_workspace_wires(const AppState *app)
+{
+    int i;
     color(.25f, .45f, .57f);
     glLineWidth(3);
     for (i = 0; i < app->bench.wire_count; ++i)
@@ -702,6 +764,11 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
             }
         }
     }
+}
+
+static void draw_workspace_route(const AppState *app)
+{
+    int i;
     if (app->pending.component >= 0)
     {
         float x, y;
@@ -726,6 +793,11 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
                 rect(p.x - 4, p.y - 4, 8, 8);
             }
         }
+}
+
+static void draw_workspace_parts(const AppState *app)
+{
+    int i;
     glLineWidth(1);
     for (i = 0; i < app->bench.part_count; ++i)
         if (app->bench.parts[i].type != PART_BREADBOARD)
@@ -737,13 +809,20 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
                 float x, y;
                 Pin contact;
                 int snapped = bench_find_contact(&app->bench, i, p, &contact);
+                float outer_radius = snapped ? 5.0f : 8.0f;
+                float inner_radius = snapped ? 3.0f : 5.0f;
+                if (app->bench.parts[i].type == PART_74HC00)
+                {
+                    outer_radius = 4.0f;
+                    inner_radius = 2.5f;
+                }
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
                 color(.18f, .22f, .24f);
-                circle(x, y, app->bench.parts[i].type == PART_74HC00 ? 4.0f : snapped ? 5.0f : 8.0f);
+                circle(x, y, outer_radius);
                 if (app->pending.component == i && app->pending.pin == p)
                 {
                     color(1, .7f, .2f);
-                    circle(x, y, app->bench.parts[i].type == PART_74HC00 ? 2.5f : snapped ? 3.0f : 5.0f);
+                    circle(x, y, inner_radius);
                 }
                 else if (snapped)
                 {
@@ -757,6 +836,11 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
                 }
             }
         }
+}
+
+static void draw_workspace_contacts(const AppState *app)
+{
+    int i;
     for (i = 0; i < app->bench.wire_count; ++i)
     {
         const Wire *wire = &app->bench.wires[i];
@@ -780,6 +864,11 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
                     break;
                 }
     }
+}
+
+static void draw_workspace_labels(const AppState *app, GLuint font)
+{
+    int i;
     for (i = 0; i < app->bench.part_count; ++i)
         if (app->bench.parts[i].type == PART_74HC00)
         {
@@ -820,6 +909,10 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
             text(font, x - 5, y + (labels[n] < 7 ? -7 : 18), label);
         }
     }
+}
+
+static void draw_workspace_probe(const AppState *app, GLuint font)
+{
     if (app->sim.trace_valid && app->sim.trace_current == 2 && app->sim.trace_wire >= 0 &&
         app->sim.trace_wire < app->bench.wire_count)
     {
@@ -834,9 +927,34 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
         text(font, ax + 10, ay - 5, "A");
         text(font, bx + 10, by - 5, "B");
     }
+}
+
+static void draw_workspace_burns(const AppState *app, GLuint font)
+{
+    int i;
     for (i = 0; i < app->bench.part_count; ++i)
         if (app->sim.burnt[i])
             burnt_draw(font, &app->bench.parts[i], SDL_GetTicks());
+}
+
+static void draw_workspace(const AppState *app, GLuint font, int width, int height)
+{
+    glEnable(GL_SCISSOR_TEST);
+    glScissor((int)(width * 220.0 / 1280), (int)(height * 60.0 / 720), (int)(width * 1060.0 / 1280),
+              (int)(height * 590.0 / 720));
+    glPushMatrix();
+    glTranslatef(220 + app->view.pan_x, 70 + app->view.pan_y, 0);
+    glScalef(app->view.zoom, app->view.zoom, 1);
+    glTranslatef(-220, -70, 0);
+    draw_workspace_grid(app);
+    draw_workspace_boards(app);
+    draw_workspace_wires(app);
+    draw_workspace_route(app);
+    draw_workspace_parts(app);
+    draw_workspace_contacts(app);
+    draw_workspace_labels(app, font);
+    draw_workspace_probe(app, font);
+    draw_workspace_burns(app, font);
     glPopMatrix();
     glDisable(GL_SCISSOR_TEST);
 }
