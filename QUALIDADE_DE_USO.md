@@ -135,3 +135,8 @@ pontos de controle estao visiveis. Terminais flexiveis e seu modo dedicado ainda
 compartilhada. Resistor reduzido pode ocupar furos vizinhos. Parametros eletricos sao preservados.
 Pecas novas mantem tamanho anterior; presets proporcionais e calibracao fisica ainda precisam
 ser definidos. Terminais dobraveis e modo dedicado continuam pendentes.
+
+
+Pedido de 15/11/2026: visualizar corrente NAO deve mudar a cor escolhida para os fios. Cores sao
+identidade da montagem. A 0.24.1 preserva a paleta em DC/transiente e usa setas claras contornadas,
+com tamanho por faixa, e marcador DC neutro. Nao sobrepor faixa vermelha/laranja ao trajeto inteiro.

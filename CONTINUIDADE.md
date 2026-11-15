@@ -364,3 +364,17 @@ segura uma atribuicao de Part quando terminais possuirem memoria. Copias de Part
 render/hit testing podem ser views emprestadas, nunca destruidas como proprietarias.
 Ainda tratar falha dos chamadores de bench_history_record/bench_replace antes de adicionar
 alocacao ao modelo. Dobra continua pendente; executavel canonico/sessao do usuario preservados.
+
+
+## Cor dos fios corrigida - 0.24.1
+Pedido do usuario: nao recolorir fios ao mostrar corrente. Removida sobreposicao de linha de
+wire_current_style em DC/transiente; paleta original preservada. wire_direction_marker recebe
+nivel medido, usa tamanho da seta e branco contornado; ponto DC tambem neutro. Legenda atualizada.
+Capturas current-colors-off.bmp/current-colors-on.bmp/current-colors-trace.bmp revisadas; pixels
+azul (500,301), vermelho (400,151), verde (650,220) identicos ligado/desligado. Suite completa e
+146 fases GUI passaram: ./build.ps1 -OutputName bancada-next -GuiTests.
+Incrementos preparatorios de snapshots/caminhos dinamicos integrados junto desta correcao;
+NAO significam terminais flexiveis prontos. Faltam 14 copias locais UI, lifecycle de Part, falhas
+de historico/publicacao e integracao final. Retomar dai em branch nova apos integrar esta.
+Sessao do usuario deve ser preservada. Nao substituir bancada.exe se estiver aberto; binario
+verificado em bancada-next.exe. Meta 1.0 permanece ativa com instrumentos/backend/catalogo etc.

@@ -192,3 +192,12 @@
 - Testes: resistor entre furos adjacentes, rotacoes/inversa, rejeicao, persistencia e bloco com
   resistor reduzido validado com ngspice; GUI ampliada de 138 para 146 fases.
 - Dobra dos terminais, presets fisicos e demais criterios 1.0 continuam pendentes.
+
+
+## 0.24.1 - 15/11/2026
+- Corrente preserva a cor dos fios em DC e transientes. Setas neutras indicam sentido e faixa;
+  ponto animado DC neutro. Removida sobreposicao vermelha/laranja que ocultava a paleta.
+- Capturas DC desligado/ligado com fios azul/vermelho/verde e transiente revisadas; amostras de
+  pixels nos tres fios conservaram RGB. Suite completa e 146 fases GUI passaram.
+- Integrada preparacao interna de caminhos dinamicos e ciclos de vida de snapshots, historico,
+  workers, clipboard e packing. Terminais flexiveis ainda NAO integrados nem entregues.

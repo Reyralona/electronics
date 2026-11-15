@@ -234,3 +234,9 @@ Tamanho e geometria visual: nao altera resistencia/capacitancia, modelo eletrico
 Ao redimensionar, confira encaixes: os furos/terminais mudam de lugar; fios explicitos conservam
 identidade dos pinos. A geometria ainda nao possui unidade fisica calibrada, presets proporcionais
 por componente nem terminais dobraveis. O corpo compacto dos blocos continua com tamanho proprio.
+
+
+### Corrente sem alterar as cores dos fios (0.24.1)
+Ativar Visualizar corrente preserva as cores da montagem. Setas claras com contorno mostram o
+sentido convencional; o tamanho indica a faixa de corrente calculada. O ponto animado em DC e
+um indicador neutro, com velocidade apenas ilustrativa. Isso vale para DC e transientes.
