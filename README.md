@@ -206,3 +206,12 @@ historico proprios. **Renomear** (F4) aceita acentos; **Salvar modelo** grava a 
 **Voltar** (Esc) preserva a bancada e oferece salvar modelo, descartar ou cancelar se necessario.
 Formato 17 conserva nomes e le formatos 1-16. Limites atuais: nomes de 127 bytes UTF-8, um nivel,
 oito modelos, 64 pecas e 128 fios. Instrumentos com pontas ainda estao pendentes.
+
+
+### Grid e alinhamento (0.22.0)
+F1 abre Alinhamento e encaixe: espacamento configuravel de 1 a 10000 unidades da montagem,
+encaixe na grade e na breadboard independentes. Alt suspende encaixe durante posicionamento e
+arraste. Ocultar a grade apenas oculta linhas. Zoom muda a densidade visual, preservando snap.
+Mover selecoes e chips preserva a geometria interna. Os furos da breadboard tem prioridade para
+pecas individuais. Preferencias acompanham arquivos e slots no formato 18; leitura 1-17 mantida.
+Ainda pendentes: escala fisica ajustavel, terminais flexiveis e insercao de joelho por duplo clique.

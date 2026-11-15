@@ -112,3 +112,15 @@ arraste com controle claro. Preferencias devem ser salvas e independentes do zoo
 Verificar com montagem resistor/LED/breadboard, terminais dobrados ligados aos furos corretos,
 zoom/rotacao, salvar/reabrir, desfazer/refazer e ausencia de confusao com ligacao de fios.
 Ainda nao implementado: requer comparacao tecnica antes de mudar arquitetura/geometria.
+
+
+Pedido adicional de 15/11/2026: duplo clique em trecho de fio ou terminal flexivel adiciona
+joelho no ponto indicado, preservando ordem do caminho; duplo clique em joelho existente remove.
+Priorizar joelho existente para evitar adicionar e apagar no mesmo gesto. Clique simples segue
+selecionando/arrastando; feedback deve explicar a acao. Incluir undo, persistencia, zoom e curvas
+nos testes. Remocao por duplo clique em fios ja existe; insercao por trecho ainda pendente.
+
+
+Grid 0.22.0: controles de espacamento, encaixe e breadboard em F1; Alt suspende; preferencias
+persistidas. Verificados posicionamento, arraste, suspensao e salvar/carregar por eventos GUI.
+Colagem/preview ainda precisam refletir encaixe; redimensionamento e dobra continuam pendentes.

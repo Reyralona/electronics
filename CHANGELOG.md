@@ -165,3 +165,12 @@
 - Formato 17 com nomes, leitura retrocompativel 1-16 e cache de texto Unicode via GDI/OpenGL.
 - Testes de isolamento assincrono e referencia eletrica; GUI ampliada de 106 para 121 fases.
 - Limites dinamicos, instrumentos com pontas e demais criterios da 1.0 continuam pendentes.
+
+
+## 0.22.0 - 15/11/2026
+- Grid configuravel com encaixe opcional, suspensao por Alt e controle separado da breadboard.
+- Coordenadas do mundo compartilhadas pelo desenho e encaixe, sem depender do zoom.
+- Prioridade da breadboard para pecas individuais; movimento de grupos preserva distancias.
+- Formato 18 conserva preferencias de alinhamento e continua lendo formatos 1-17.
+- Testes puros de grid, persistencia invalida/antiga e consulta de breadboard sem mutacao;
+  suite completa e 132 fases graficas passaram. Painel revisado em capture-grid-settings.bmp.

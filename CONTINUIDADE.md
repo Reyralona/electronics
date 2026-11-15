@@ -256,3 +256,17 @@ Compilacao estrita do app e test_workbench_grid passaram. Ainda NAO ha controles
 proximo: preferencias por contexto e persistencia (novo formato 18 se necessario), controles
 visiveis, Alt suspende encaixe, prioridade da breadboard, uma translacao para grupos e testes GUI.
 Nao publicar como funcionalidade concluida; manter exe canonico 0.21.0 ate verificar incremento.
+
+
+## Grid configuravel verificado - 0.22.0
+Controles visiveis no painel F1, espacamento 1-10000, snap de grade padrao desligado, breadboard
+padrao ligado, Alt suspende ambos. Snap em coordenadas do mundo; corpo do chip serve de ancora,
+grupos recebem uma translacao. Pecas individuais consultam breadboard antes da grade, sem mutar
+modelo durante consulta (bench_breadboard_snap_position). Editor herda preferencias e as mantem
+independentes da bancada. Formato 18 grava grid; nomes continuam formato 17, IDs ainda numericos.
+Futuro formato textual de IDs deve ser 19 ou posterior. Suite completa e 132 fases GUI passaram;
+preview capture-grid-settings.bmp revisado. ./build.ps1 -OutputName bancada-next -GuiTests.
+Ainda falta ajustar fluxo de colagem/preview ao grid, alem de escala/terminais flexiveis. Novo
+pedido: duplo clique em trecho adiciona joelho; em joelho remove. Priorizar implementacao comum
+para fios/terminais, com ordem do caminho, curvas, undo e persistencia. Instrumentos seguem
+pendentes. Meta 1.0 permanece ativa.
