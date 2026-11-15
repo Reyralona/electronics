@@ -40,3 +40,10 @@ Incremento 0.27.0: perninhas flexiveis, contato direto e backend transiente pers
 implementados e testados para RC/DFF/botoes/fontes/valores. Ainda ha reinicio ao mudar topologia
 ou frequencia, vetores crescentes no solver e catalogo/instrumentos/limites de capacidade pendentes.
 Esta versao NAO satisfaz os criterios1.0. Ver README e CONTINUIDADE para comportamento atual.
+
+
+Pedido ampliado de 15/11/2026: revisar close-ups de todos os componentes nao-CI, ampliar analogicos,
+sensores com estimulos controlaveis, atuadores, baterias, instrumentos, reles, transistores e todos
+os CIs do catalogo Tinkercad verificavel. Sete segmentos/LCD internos precisam poder aparecer no
+exterior de chips personalizados. Lista integral e aceite em CATALOGO_COMPONENTES.md; itens ainda
+nao implementados permanecem explicitamente pendentes.

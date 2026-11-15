@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include "workbench.h"
+#include "component_registry.h"
 #include "workbench_file.h"
 #include "workbench_examples.h"
 #include "spice_process.h"
@@ -64,6 +65,16 @@ static void set_window_icon(SDL_Window *window)
 
 int main(int argc, char **argv)
 {
+    if (argc > 1 && !strcmp(argv[1], "--list-components"))
+    {
+        for (size_t i = 0; i < component_registry_count(); ++i)
+        {
+            const ComponentInfo *info = component_info((PartType)i);
+            if (info)
+                printf("%s|%s|%u\n", info->id, info->display_name, info->flags);
+        }
+        return 0;
+    }
     SDL_Window *window;
     SDL_GLContext context;
     GLuint font;

@@ -1,4 +1,5 @@
 #include "dev_scenarios.h"
+#include "component_registry.h"
 #include "dev_capture.h"
 #include "app_editor.h"
 #include "workbench_group_name.h"
@@ -9,8 +10,49 @@
 #include <string.h>
 #include <math.h>
 
+static int component_closeup(AppState *app, const char *argument)
+{
+    const char *id = NULL;
+    int dark = 0;
+    if (!strncmp(argument, "--capture-component=", 20))
+        id = argument + 20;
+    else if (!strncmp(argument, "--capture-component-dark=", 25))
+    {
+        id = argument + 25;
+        dark = 1;
+    }
+    if (!id)
+        return 0;
+    const ComponentInfo *info = component_by_id(id);
+    if (!info)
+    {
+        fprintf(stderr, "Componente desconhecido para close-up: %s\n", id);
+        return -1;
+    }
+    bench_snapshot_clear(&app->bench);
+    if (bench_add(&app->bench, info->type, 750, 365) < 0)
+        return -1;
+    float zoom = info->type == PART_BREADBOARD ? 1.8f : 7;
+    app->view = (BenchView){zoom, 530 * (1 - zoom), 295 * (1 - zoom)};
+    app->selected = -1;
+    app->dark_theme = dark;
+    app->show_grid = 0;
+    app->show_handles = 0;
+    app->sim.sim_running = 0;
+    snprintf(app->selection_status, sizeof(app->selection_status), "Revisao visual: %s | zoom %.1fx | modelo nominal.",
+             info->display_name, zoom);
+    app->status = app->selection_status;
+    return 1;
+}
+
 int dev_scenario_prepare(AppState *app, int argc, char **argv)
 {
+    if (argc > 1)
+    {
+        int closeup = component_closeup(app, argv[1]);
+        if (closeup)
+            return closeup < 0;
+    }
     if (argc > 1 && !strcmp(argv[1], "--capture-dark"))
     {
         app->dark_theme = 1;

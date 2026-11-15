@@ -25,6 +25,8 @@ int dev_capture_requested(const char *argument)
     };
     if (!argument)
         return 0;
+    if (!strncmp(argument, "--capture-component=", 20) || !strncmp(argument, "--capture-component-dark=", 25))
+        return 1;
     for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); ++i)
     {
         if (strcmp(argument, modes[i]) == 0)

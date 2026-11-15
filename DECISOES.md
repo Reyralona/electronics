@@ -340,3 +340,17 @@ no header causou0xC0000005 neste runtime. Chamadas removidas; nao reintroduzir a
 na declaracao do header, sem validar binario/API. Host isolado conteve a falha. Caminho validado
 usa ngSpice_Init padrao e carrega digital.cm explicitamente. Configuracao externa do ngspice
 ainda precisa de tratamento deterministico antes da1.0. Falhas de host agora reportam exitcode.
+
+
+## Continuidade, imagens e catalogo ampliado (15/11/2026)
+Fato experimental: build/probe_restore.py mostrou Q=0 ao restaurar d_dff(ic=1) com D=0/CLK=1.
+Portanto transportar apenas Q nao conserva a memoria; nao anunciar migracao de topologia baseada
+nessa aproximacao. Alternativas: conservar sessao atual com conectividade parametrizada ou
+reproduzir historico eletrico em grafo ampliado; migracao parcial C/L/Q exige tratar bordas e
+atrasos digitais. Decisao pendente de prova numerica, preservando o backend atual verificavel.
+Fontes oficiais consultadas: ngspice manual (event history, IC e shared API),
+https://ngspice.sourceforge.io/docs/ngspice-manual.pdf, e https://www.tinkercad.com/circuits.
+Para a revisao visual: capturador por ID, sem modificar limites de zoom do usuario. Desenho nativo
+OpenGL e preferido a sprites raster por manter terminais editaveis, cores e zoom independentes.
+Inventario integral e ordem de trabalho em CATALOGO_COMPONENTES.md. Sensores devem atuar sobre
+parametros/modelos eletricos; sliders nao devem forcar arbitrariamente o estado de saidas.
