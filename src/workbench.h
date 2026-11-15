@@ -6,15 +6,53 @@
 #define WORKBENCH_MAX_PINS 420
 #define BREADBOARD_PINS 420
 
-typedef enum { PART_SOURCE, PART_SWITCH, PART_LED, PART_BREADBOARD, PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR, PART_AND, PART_NAND, PART_OR, PART_XOR, PART_NOT, PART_CLOCK, PART_DFF, PART_74HC00 } PartType;
-typedef struct { PartType type; float x, y; int on; double value; int rotation; int board_layout; } Part;
-typedef struct { int component, pin; } Pin;
-typedef struct { float x, y; } WirePoint;
+typedef enum
+{
+    PART_SOURCE,
+    PART_SWITCH,
+    PART_LED,
+    PART_BREADBOARD,
+    PART_RESISTOR,
+    PART_CAPACITOR,
+    PART_INDUCTOR,
+    PART_AND,
+    PART_NAND,
+    PART_OR,
+    PART_XOR,
+    PART_NOT,
+    PART_CLOCK,
+    PART_DFF,
+    PART_74HC00
+} PartType;
+typedef struct
+{
+    PartType type;
+    float x, y;
+    int on;
+    double value;
+    int rotation;
+    int board_layout;
+} Part;
+typedef struct
+{
+    int component, pin;
+} Pin;
+typedef struct
+{
+    float x, y;
+} WirePoint;
 #define WIRE_MAX_KNEES 16
 #define WIRE_PATH_CAPACITY (WIRE_MAX_KNEES * 9 + 2)
 #define WIRE_COLOR_COUNT 6
-typedef struct { Pin a, b; WirePoint knees[WIRE_MAX_KNEES]; int knee_count; int color; } Wire;
-typedef struct {
+typedef struct
+{
+    Pin a, b;
+    WirePoint knees[WIRE_MAX_KNEES];
+    int knee_count;
+    int color;
+} Wire;
+typedef struct
+{
     Part parts[WORKBENCH_MAX_COMPONENTS];
     Wire wires[WORKBENCH_MAX_WIRES];
     int part_count, wire_count;
