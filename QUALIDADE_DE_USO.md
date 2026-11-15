@@ -124,3 +124,8 @@ nos testes. Remocao por duplo clique em fios ja existe; insercao por trecho aind
 Grid 0.22.0: controles de espacamento, encaixe e breadboard em F1; Alt suspende; preferencias
 persistidas. Verificados posicionamento, arraste, suspensao e salvar/carregar por eventos GUI.
 Colagem/preview ainda precisam refletir encaixe; redimensionamento e dobra continuam pendentes.
+
+
+0.23.0: insercao por duplo clique em trecho de fio implementada, com projecao no caminho
+renderizado, ordem preservada e undo/persistencia. Joelho existente tem prioridade quando os
+pontos de controle estao visiveis. Terminais flexiveis e seu modo dedicado ainda pendentes.

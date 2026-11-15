@@ -174,3 +174,11 @@
 - Formato 18 conserva preferencias de alinhamento e continua lendo formatos 1-17.
 - Testes puros de grid, persistencia invalida/antiga e consulta de breadboard sem mutacao;
   suite completa e 132 fases graficas passaram. Painel revisado em capture-grid-settings.bmp.
+
+
+## 0.23.0 - 15/11/2026
+- Duplo clique em trecho de fio insere joelho; em ponto existente remove. Undo/redo e persistencia.
+- Hit testing e insercao compartilham caminho renderizado e identificam o trecho nas curvas.
+- Tolerancia dos joelhos passa a acompanhar zoom; inserir torna os pontos de controle visiveis.
+- Casos puros de projecao, ordem, curvas, rejeicao e capacidade; GUI cobre inserir/remover,
+  desfazer e salvar/reabrir. Modelo eletrico e formato 18 preservados.

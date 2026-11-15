@@ -215,3 +215,11 @@ arraste. Ocultar a grade apenas oculta linhas. Zoom muda a densidade visual, pre
 Mover selecoes e chips preserva a geometria interna. Os furos da breadboard tem prioridade para
 pecas individuais. Preferencias acompanham arquivos e slots no formato 18; leitura 1-17 mantida.
 Ainda pendentes: escala fisica ajustavel, terminais flexiveis e insercao de joelho por duplo clique.
+
+
+### Editar o caminho dos fios (0.23.0)
+Duplo clique em um trecho adiciona um joelho no ponto do caminho indicado. Arraste o joelho
+para dobrar o fio; duplo clique no joelho remove. Ctrl+Z/Ctrl+Y desfaz/refaz. A insercao respeita
+a ordem do caminho, inclusive curvas arredondadas, e conserva as conexoes eletricas. Os pontos
+acompanham salvar/carregar e chips. Limite atual de 16 joelhos por fio, com mensagem ao atingir.
+Terminais fisicos dos componentes ainda nao possuem dobra; essa parte continua pendente.

@@ -270,3 +270,16 @@ Ainda falta ajustar fluxo de colagem/preview ao grid, alem de escala/terminais f
 pedido: duplo clique em trecho adiciona joelho; em joelho remove. Priorizar implementacao comum
 para fios/terminais, com ordem do caminho, curvas, undo e persistencia. Instrumentos seguem
 pendentes. Meta 1.0 permanece ativa.
+
+
+## Insercao de joelhos em fios - 0.23.0
+wire_path_indexed compartilha desenho/proveniencia de trechos; wire_pick_segment projeta clique
+no trecho visivel mais proximo, com empate pela ordem. bench_insert_knee insere sem trocar
+terminais. input_click_knee tem prioridade sobre inserir, tolerancia acompanha zoom. Pontos
+ficam visiveis apos insercao. Sem nova dependencia nem formato; continua 18.
+Captura capture-knee-edit.bmp revisada (fio dobrado, controles e instrucao legiveis). Testes
+puros cobrem projecao, ordem, curvas, capacidade/rejeicao. GUI ampliada de 132 para 138 fases,
+incluindo inserir/remover/undo e salvar/reabrir. Suite completa passou com
+./build.ps1 -OutputName bancada-next -GuiTests.
+Proximo: geometria/escala e terminais flexiveis com modo explicito; depois instrumentos. Nao
+confundir joelhos de fio entregues com dobra de terminal ainda inexistente. Meta 1.0 ativa.
