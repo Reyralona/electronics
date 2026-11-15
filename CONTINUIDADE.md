@@ -312,3 +312,21 @@ capture-scale-preview.bmp revisada com rotulos sem sobreposicao.
 Nao muda padrao de tamanho das pecas novas nem calibra unidades fisicas. Proximo: terminais
 flexiveis, modo dedicado com duplo clique para joelhos, presets proporcionais e instrumentos.
 Meta 1.0 permanece ativa; nao marcar concluida.
+
+
+## Caminhos dinamicos - feature/flexible-terminals
+bench_path.c/h implementa pontos com crescimento dinamico, clone independente, clear e falhas
+com causa; overflow rejeitado sem mudar conteudo. Testes passam com 4096 pontos, clone/edicao
+independente, clear repetido, indices invalidos e coordenadas nao finitas. Nao introduzir ponteiros
+em Workbench/Part antes de migrar TODAS as copias por valor (historico, jobs, clipboard, packing,
+editor e temporarios transacionais) para ownership explicito. Workbench atual continua sem ponteiros.
+bench_polyline_pick aceita spans sem alocacao e e usado pelo wire_pick_segment; curva e desempate
+mantidos. Testes de cruzamentos e misses preservando resultado. Limite atual de fios AINDA 16;
+container dinamico nao significa que editor/solver ja foram migrados. Dobra de terminais ainda ausente.
+./build.ps1 -OutputName bancada-next -GuiTests passou com 146 fases;
+./tools/test-workbench-ngspice.ps1 passou. Capturas atuais --capture-knee-edit e
+--capture-scale identicas byte a byte aos previews revisados das versoes anteriores.
+Bancada do usuario aberta; NAO substituir/fechar. Capturas devem usar bancada-next conhecido:
+um binario canonico antigo pode ignorar modo novo e abrir janela normal. Processo de teste
+27452 foi identificado pela command line --capture-knee-edit e encerrado; sessao do usuario preservada.
+Versao publica permanece 0.24.0. Branch continua ativa para migrar snapshots e integrar terminais.

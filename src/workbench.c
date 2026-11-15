@@ -1,3 +1,4 @@
+#include "bench_path.h"
 #include "workbench.h"
 #include "component_registry.h"
 #include <string.h>
@@ -218,29 +219,12 @@ int wire_pick_segment(const Wire *wire, WirePoint start, WirePoint end, float ra
     WirePoint path[WIRE_PATH_CAPACITY];
     int slots[WIRE_PATH_CAPACITY];
     int count = wire_path_indexed(wire, start, end, radius, path, slots);
-    double best = (double)tolerance * tolerance;
-    int found = 0;
-    for (int i = 1; i < count; ++i)
-    {
-        double dx = (double)path[i].x - path[i - 1].x;
-        double dy = (double)path[i].y - path[i - 1].y;
-        double length = dx * dx + dy * dy;
-        double t = 0;
-        if (length > 0)
-            t = fmin(1, fmax(0, ((point.x - path[i - 1].x) * dx + (point.y - path[i - 1].y) * dy) / length));
-        WirePoint nearest = {(float)(path[i - 1].x + t * dx), (float)(path[i - 1].y + t * dy)};
-        double offset_x = (double)point.x - nearest.x;
-        double offset_y = (double)point.y - nearest.y;
-        double distance = offset_x * offset_x + offset_y * offset_y;
-        if (distance <= best && (!found || distance < best))
-        {
-            best = distance;
-            *slot = slots[i];
-            *projected = nearest;
-            found = 1;
-        }
-    }
-    return found;
+    BenchPathHit hit;
+    if (!bench_polyline_pick(path, (size_t)count, point, tolerance, &hit))
+        return 0;
+    *slot = slots[hit.segment + 1];
+    *projected = hit.point;
+    return 1;
 }
 
 int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point)
