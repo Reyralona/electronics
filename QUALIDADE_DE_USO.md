@@ -73,11 +73,13 @@ validacao antes de inclui-los como entregues.
 - Circuitos de referencia verificam tensao diferencial, corrente em serie e medidas de pulso;
   casos invalidos produzem causa visivel. Testes devem cobrir separacao entre contextos.
 
-## Estado em 0.19.0
+## Estado atual (0.20.0)
 
 Entregues: slots de montagem/configuracoes, miniaturas, selecao por area/clipboard e packing
-basico com instancias independentes e terminais P1..Pn. Pinos expostos ainda precisam de
-rotulos/funcao/direcao mais claros e de melhoria visual.
+basico com instancias independentes. A 0.20.0 acrescenta funcao/nome dos pinos ao registro,
+rotulos de selecao, ajuda ao apontar e terminais de blocos com circulos iguais aos demais.
+Portas de blocos mostram a funcao do terminal interno; classificacao personalizada e semantica
+especifica do circuito ainda precisam de suporte no editor.
 
 Pendentes: renomeacao, editor interno isolado, portas configuraveis, identificacao completa dos
 pinos e instrumentos com pontas. Ctrl+Shift+G atualmente desempacota na propria bancada e altera

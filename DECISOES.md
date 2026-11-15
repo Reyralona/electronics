@@ -145,3 +145,26 @@ leitura 1-16 nessa migracao. O primeiro nivel de encapsulamento foi validado com
 de breadboard. Encapsular blocos ja encapsulados e recusado com motivo, para evitar unir layouts
 internos de instancias antes de definir uma representacao hierarquica segura. Sem modelo eletrico
 simplificado novo. Conexoes de portas compactas sao explicitas; nao presumir encaixe em breadboard.
+
+
+## 15/11/2026 - funcao dos pinos no registro de componentes
+
+Fonte oficial consultada: [TI SNx4HC00, SCLS181H, tabela 5-1](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf),
+consulta em 15/11/2026. Fatos: no PDIP de 14 pinos, 1A/1B/1Y ficam em 1/2/3;
+3Y em 8, 3A/3B em 9/10; GND em 7 e VCC em 14. Rotulos dos demais componentes didaticos
+seguem o modelo existente do projeto, nao sao alegacoes de equivalencia com CIs comerciais.
+
+Comparacao: codificar funcao por cor/posicao no renderer duplicaria o modelo e confundiria
+polaridade construtiva com tensao medida. Adotados descritores de nome/funcao no registro,
+consultados pelo renderer e pela ajuda ao apontar. Passivos sao bidirecionais/sem polaridade;
+contatos de breadboard nao viram automaticamente terra ou neutro. Portas de blocos mostram
+funcao do terminal interno quando conhecida; classificacao personalizada continua pendente.
+O renderer permanece separado do registro. Nenhuma alteracao de modelo eletrico e necessaria.
+
+
+Registro inicial em 0.20.0: tabela C compilada foi escolhida em vez de manifesto externo neste
+incremento, para compartilhar metadados sem acrescentar parser/dependencia de arquivo ao runtime.
+IDs textuais ja existem na API; persistencia continua 16 para separar migracao de formato da
+refatoracao. Teste verifica o contrato historico dos codigos, nomes de IDs e funcoes de pinos.
+Padroes/faixas foram preservados. Isso nao conclui emissores locais, geometria ou parametros
+completos propostos em QUALIDADE_CODIGO.md. Nenhuma dependencia externa nova foi introduzida.

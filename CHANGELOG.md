@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.20.0
+
+- Registro inicial centraliza metadados, IDs, parametros primarios e funcoes dos pinos.
+- Rotulos/ajuda ao apontar distinguem entrada, saida, alimentacao, terra e terminais sem polaridade.
+- Terminais de blocos maiores e espacados; acao existente rotulada como desempacotar na bancada.
+- Requisitos de chips renomeaveis, editor isolado e instrumentos registrados em QUALIDADE_DE_USO.md.
+- Build estrito, teste do registro e 106 fases GUI passaram; capturas revisadas.
+- Formato segue 16; registro completo, editor isolado e instrumentos ainda pendentes.
+
 ## 0.19.0
 
 - Ctrl+G cria blocos compactos com terminais expostos; Ctrl+Shift+G restaura o interior.

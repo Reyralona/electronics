@@ -173,3 +173,27 @@ continua pendente e exigira outra versao de formato.
 Validacao: `./build.ps1 -GuiTests` inclui testes de packing com ngspice quando o runtime esta instalado,
 comparando DC e transiente RC antes/depois, contatos de fronteira e instancias independentes.
 O autoteste GUI possui 100 fases. `--capture-packed` gera uma cena para revisao visual.
+
+
+### Identificacao dos pinos e registro (0.20.0)
+
+Selecione uma peca para ver os rotulos dos terminais e aponte o mouse para um pino para ver seu
+nome e funcao. IN/I = entrada, OUT/O = saida, CLK/C = entrada de clock, V+/+ = alimentacao positiva,
+V- = retorno da fonte, G/GND = terra, A/K = anodo/catodo e IO/B = terminal passivo/bidirecional.
+Contatos de breadboard nao tem polaridade propria. Essas identificacoes descrevem o componente;
+nao sao leituras da tensao atual do no. O 74HC00 usa nomes/numero de pinos da ficha TI indicada em DECISOES.md.
+
+Blocos usam circulos de terminal maiores e espaco entre portas aumentado. A funcao mostrada em
+cada porta vem do componente interno ligado a ela; um terminal de resistor, por exemplo, continua
+bidirecional. Classificacao personalizada de portas pertence ao editor de chip ainda pendente.
+Ctrl+Shift+G esta rotulado como desempacotar na bancada, pois altera a montagem atual.
+O futuro editor isolado, renomeacao e instrumentos seguem os requisitos de QUALIDADE_DE_USO.md.
+
+component_registry.c concentra IDs estaveis, nomes, numero de pinos, capacidades, valor primario,
+unidades/faixas e funcao dos terminais. Os arquivos ainda usam o formato 16 com codigos numericos;
+a leitura possui um mapeamento historico independente da ordem atual do enum. Geometria, emissao
+SPICE e parametros completos de modelo ainda precisam migrar para descritores. Os limites numericos
+do parametro primario foram preservados e nao representam limites fisicos de todos os dispositivos.
+
+Build validado com a bancada antiga aberta: ./build.ps1 -OutputName bancada-next -GuiTests.
+Nesse caso, a copia testada e build/bancada-next.exe; a sessao existente nao e fechada nem substituida.

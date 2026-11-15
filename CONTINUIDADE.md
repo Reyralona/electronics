@@ -194,3 +194,28 @@ valores primarios e capacidades. Ainda em implementacao/teste; nao declarar a mi
 Compilacao canonica recusou escrita por bancada aberta; usar ./build.ps1 -OutputName bancada-next -GuiTests
 para preservar a sessao do usuario. Nao fechar o app do usuario para substituir o executavel.
 O novo registro deve sustentar rotulos/funcoes de pinos e o editor de blocos, nao apenas reorganizar tabelas.
+
+## Estado mais recente: 0.20.0 - registro inicial e clareza dos pinos
+15/11/2026: component_registry concentra IDs, nomes, contagens de pinos, capacidades, parametros
+primarios (chave/unidade/padrao/faixa) e nomes/funcoes dos terminais dos 15 tipos existentes.
+Consultas por tipo sao indexadas; mapeamento historico de codigos de arquivo e separado do enum.
+Workbench, validacao do netlist, persistencia antiga, palette e inspetor usam os descritores.
+Geometria, emissores SPICE e arrays completos de parametros ainda nao migraram. Arquivo continua 16;
+IDs/chaves registrados ainda NAO sao o novo formato de persistencia.
+
+Feature separada da refatoracao: rotulos por funcao na selecao; tooltip de pinagem; circulos de
+blocos com raio 8/5 igual aos terminais comuns; espacamento de portas 20 unidades. Funcoes herdadas
+do componente interno, sem inventar direcao para passivos. Pinos TI SN74HC00 conferidos na tabela
+5-1/SCLS181H em 15/11/2026; fonte em DECISOES.md. Hover consultado uma vez por quadro, mantendo
+processamento de todos os eventos de arraste. Texto agora diz desempacotar, nao editor isolado.
+
+Verificacao: ./build.ps1 -OutputName bancada-next -GuiTests passou (106 fases), alem do teste de
+registro sem SDL. Antes da feature, sete capturas do registro refatorado foram identicas a 0.19.0.
+Capturas finais capture-pins-preview.bmp, capture-pin-led-preview.bmp e capture-packed-preview.bmp
+em build/ revisadas. Instancia bancada.exe do usuario preservada; nao fechar para substituir build.
+
+PRIORIDADE do pedido recente: editor interno isolado e renomeacao de chips, seguido de instrumentos
+com pontas reais (multimetro e clock/pulso). Requisitos/aceites em QUALIDADE_DE_USO.md; consultar
+interior nao pode alterar bancada, historico ou estado externo. Desempacotar atual NAO satisfaz.
+Persistencia futura precisa preservar nomes/portas/contextos e leitura 1-16. Registro completo,
+capacidades dinamicas, passo real e catalogo continuam obrigatorios para a 1.0, ainda nao atendida.
