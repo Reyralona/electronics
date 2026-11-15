@@ -155,3 +155,13 @@
 ## 0.1.0
 
 - Circuito fixo didático e primeira janela SDL3/OpenGL.
+
+
+## 0.21.0 - 15/11/2026
+- Editor isolado para interior de blocos, com modelo, historico e simulacao independentes.
+- Renomeacao UTF-8, salvar modelo separado de aplicar a instancia, e confirmacao ao sair.
+- Aplicacao transacional com remapeamento de portas por proveniencia e undo; rejeita remover
+  terminal conectado em vez de reconectar silenciosamente a outro componente.
+- Formato 17 com nomes, leitura retrocompativel 1-16 e cache de texto Unicode via GDI/OpenGL.
+- Testes de isolamento assincrono e referencia eletrica; GUI ampliada de 106 para 121 fases.
+- Limites dinamicos, instrumentos com pontas e demais criterios da 1.0 continuam pendentes.

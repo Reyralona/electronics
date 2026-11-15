@@ -197,3 +197,12 @@ do parametro primario foram preservados e nao representam limites fisicos de tod
 
 Build validado com a bancada antiga aberta: ./build.ps1 -OutputName bancada-next -GuiTests.
 Nesse caso, a copia testada e build/bancada-next.exe; a sessao existente nao e fechada nem substituida.
+
+
+### Interior de chips (0.21.0)
+Selecione um bloco e use **Ver interior** (Enter). O editor isolado tem bancada, simulacao e
+historico proprios. **Renomear** (F4) aceita acentos; **Salvar modelo** grava a biblioteca;
+**Aplicar ao chip** altera somente a instancia aberta e permite Ctrl+Z na bancada externa.
+**Voltar** (Esc) preserva a bancada e oferece salvar modelo, descartar ou cancelar se necessario.
+Formato 17 conserva nomes e le formatos 1-16. Limites atuais: nomes de 127 bytes UTF-8, um nivel,
+oito modelos, 64 pecas e 128 fios. Instrumentos com pontas ainda estao pendentes.

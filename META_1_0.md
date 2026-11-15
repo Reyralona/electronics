@@ -29,3 +29,8 @@ integram esta meta. Exigem chips renomeaveis, portas/polaridade/funcoes legiveis
 claros, editor interno isolado que nao altera a bancada ao consultar e instrumentos com pontas
 posicionaveis (multimetro e medidor de clock/pulso). Packing basico e sondagem atual nao comprovam
 esses criterios. Capturas e circuitos de referencia devem verificar a experiencia e o modelo eletrico.
+
+
+Tambem obrigatorios (15/11/2026): escala/proporcoes ajustaveis, terminais dobraveis em modo
+explicito separado dos fios, e grid/encaixe configuraveis. Detalhes e verificacao em
+QUALIDADE_DE_USO.md; nao considerar entregues sem persistencia e montagem realista na breadboard.

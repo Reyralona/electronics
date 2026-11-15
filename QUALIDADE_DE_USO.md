@@ -84,3 +84,31 @@ especifica do circuito ainda precisam de suporte no editor.
 Pendentes: renomeacao, editor interno isolado, portas configuraveis, identificacao completa dos
 pinos e instrumentos com pontas. Ctrl+Shift+G atualmente desempacota na propria bancada e altera
 a montagem; essa operacao nao atende ao requisito de consultar o interior isoladamente.
+
+
+## Incremento do editor isolado (0.21.0)
+Ver interior/Enter abre copia independente, com cabecalho EDITOR ISOLADO. Renomear/F4 aceita
+acentos. Salvar modelo conserva o rascunho na biblioteca, sem modificar a bancada; Aplicar ao
+chip altera somente a instancia original, com undo. Voltar/Esc e fechar pedem decisao quando ha
+alteracoes nao salvas. Cancelar continua no editor; descartar preserva a montagem externa.
+Os testes verificam isolamento de modelo, historico, preferencias e resultados assincronos.
+Nomes persistem no formato 17, com leitura dos anteriores. Limite provisoriamente explicito de
+127 bytes UTF-8; nomes maiores precisam de armazenamento dinamico antes da 1.0.
+Ainda pendentes: configurar semantica/portas no editor, instrumentos com pontas e demais gates
+1.0. Desempacotar permanece operacao separada que altera a bancada.
+
+
+## Escala, terminais flexiveis e alinhamento (pedido de 15/11/2026)
+Requisitos obrigatorios: redimensionar componentes; corrigir proporcao padrao entre resistor e
+breadboard para permitir montagem plausivel; dobrar terminais como condutores fisicos, mantendo
+a identidade eletrica de cada pino. Nao confundir deformacao de terminal com criacao de fio.
+A interface deve apresentar modo explicito para editar terminais, com controles/atalhos distintos
+e feedback antes de arrastar. Ajuste visual nao altera resistencia, capacitancia ou outros
+parametros eletricos. Geometria ajustada deve participar de hit testing, encaixe, copia, undo,
+packing, editor isolado e persistencia, inclusive migracao de arquivos antigos.
+Grid configuravel: espacamento, visibilidade e encaixe opcionais; permitir alinhamento consistente
+e encaixe nos furos da breadboard. Mostrar configuracao e permitir suspender encaixe durante
+arraste com controle claro. Preferencias devem ser salvas e independentes do zoom.
+Verificar com montagem resistor/LED/breadboard, terminais dobrados ligados aos furos corretos,
+zoom/rotacao, salvar/reabrir, desfazer/refazer e ausencia de confusao com ligacao de fios.
+Ainda nao implementado: requer comparacao tecnica antes de mudar arquitetura/geometria.

@@ -219,3 +219,29 @@ com pontas reais (multimetro e clock/pulso). Requisitos/aceites em QUALIDADE_DE_
 interior nao pode alterar bancada, historico ou estado externo. Desempacotar atual NAO satisfaz.
 Persistencia futura precisa preservar nomes/portas/contextos e leitura 1-16. Registro completo,
 capacidades dinamicas, passo real e catalogo continuam obrigatorios para a 1.0, ainda nao atendida.
+
+
+## Editor isolado em validacao ? feature/isolated-chip-editor
+Implementacao transacional: AppState filho com bancada/historico/worker independentes. Abrir nao
+altera bancada externa; Aplicar publica apenas a instancia alvo com um undo. Salvar modelo grava
+biblioteca separadamente. Voltar/fechar com alteracoes pede salvar modelo, descartar ou cancelar.
+Nomes UTF-8 (127 bytes provisoriamente, rejeicao explicita), F4/botao Renomear e Enter/Ver interior.
+Persistencia agora formato 17 para nomes com comprimento em bytes; leitura 1-16 preservada.
+Tipos ainda sao codigos numericos; futuro formato com IDs deve ser 18 ou posterior.
+Testes novos: test_workbench_group_edit (inclui ngspice) e test_app_editor (isolamento de jobs,
+historico, cancelar, salvar e aplicar). Suite anterior de 106 fases passou com esta implementacao;
+GUI ampliada para 121 fases passou apos corrigir drenagem da fila SDL na troca de contexto.
+Capturas capture-editor-preview.bmp e capture-editor-name-preview.bmp revisadas: acentos e
+contexto isolado legiveis.
+Limites atuais: um nivel de editor, sem blocos aninhados, oito modelos, 64 pecas/128 fios.
+Excluir ou substituir membro ligado externamente rejeita Aplicar, preservando bancada; copiar
+remove proveniencia de portas para impedir reconexao silenciosa ao componente errado.
+Multimetro e medidor de clock/pulso ainda pendentes. Meta 1.0 continua ativa.
+C++ discutido com usuario: migracao gradual pode ajudar colecoes/ownership; nenhuma migracao
+foi iniciada. Concluir incremento isolado antes de misturar mudanca de linguagem.
+
+
+Novo requisito: escala ajustavel dos componentes, proporcao realista resistor/breadboard,
+terminais dobraveis em modo distinto de ligar fios e grid/encaixe configuraveis. Aceites duraveis
+em QUALIDADE_DE_USO.md. Geometria precisa persistir e funcionar em editor isolado, clipboard,
+historico e solver sem alterar parametros eletricos. Ainda nao implementado.
