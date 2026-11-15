@@ -79,10 +79,26 @@ static void test_leds(void)
     assert(leds[0] == 2);
 }
 
+static void test_probe_selection(void)
+{
+    Workbench bench = {0};
+    assert(bench_add(&bench, PART_SOURCE, 300, 200) == 0);
+    assert(bench_add(&bench, PART_LED, 500, 200) == 1);
+    Pin probe = sim_state_probe(&bench, 1, 1);
+    assert(probe.component == 1 && probe.pin == 1);
+    probe = sim_state_probe(&bench, 1, -1);
+    assert(probe.component == 0 && probe.pin == 0);
+    probe = sim_state_probe(&bench, 1, 100);
+    assert(probe.component == 0 && probe.pin == 0);
+    probe = sim_state_probe(&bench, 100, 0);
+    assert(probe.component == 0 && probe.pin == 0);
+}
+
 int main(void)
 {
     test_invalidation();
     test_playback();
     test_leds();
+    test_probe_selection();
     return 0;
 }
