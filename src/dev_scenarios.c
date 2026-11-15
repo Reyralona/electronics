@@ -96,6 +96,8 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         bench_add(&app->bench, PART_74HC32, 650, 590);
         bench_add(&app->bench, PART_74HC86, 900, 590);
         bench_add(&app->bench, PART_LED, 1000, 350);
+        bench_add(&app->bench, PART_LED, 1100, 460);
+        bench_rotate_part(&app->bench, 8);
         bench_toggle_wire(&app->bench, (Pin){2, 2}, (Pin){3, 0});
         bench_set_wire_color(&app->bench, 0, 3);
         app->selected = 0;

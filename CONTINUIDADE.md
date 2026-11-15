@@ -412,3 +412,8 @@ Capturas revisadas build/review-catalog.bmp, review-dark.bmp, review-packed.bmp;
 Tinkercad em build/visual-references, paginas6/7 do guia. Nova aparenciaLEDvertical,pot,botao revisada.
 Meta geral havia sido pausada pelo usuario; nao alterar status automaticamente. Pedidos posteriores
 sao tarefas autorizadas. Nao fechar processos do usuario para substituir executavel.
+
+
+Correcao 0.25.1: corpoLED mantido vertical independentemente da rotacao dos contatos.
+Captura build/review-upright-led.bmp revisada com LED0/90 graus. Compilacao estrita e171fasesGUI
+passaram novamente; modelo eletrico nao alterado desde suite completa0.25.0.

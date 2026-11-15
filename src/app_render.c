@@ -438,9 +438,16 @@ static void draw_part_led(const Part *p, int led, float brightness)
     float x = p->x, y = p->y;
     color(.75f, .75f, .72f);
     glLineWidth(3);
-    line(x - 49, y, x - 10, y + 18);
-    line(x + 49, y, x + 10, y + 18);
+    float angle = (float)(-p->rotation * 3.141592653589793 * .5);
+    float c = cosf(angle), s = sinf(angle);
+    line(x - 49, y, x - 10 * c - 18 * s, y - 10 * s + 18 * c);
+    line(x + 49, y, x + 10 * c - 18 * s, y + 10 * s + 18 * c);
     glLineWidth(1);
+    /* The leads follow package rotation; the standing lens keeps its projection. */
+    glPushMatrix();
+    glTranslatef(x, y, 0);
+    glRotatef(-p->rotation * 90.0f, 0, 0, 1);
+    glTranslatef(-x, -y, 0);
     color(.38f, .08f, .07f);
     circle(x, y + 7, 17);
     rect(x - 14, y - 12, 28, 20);
@@ -470,6 +477,7 @@ static void draw_part_led(const Part *p, int led, float brightness)
         circle(x - 4, y - 18, 4);
         rect(x - 8, y - 17, 3, 14);
     }
+    glPopMatrix();
 }
 
 static void part_draw(const Part *p, int selected, int led, float brightness)
@@ -486,7 +494,7 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     color(.72f, .74f, .76f);
     if (p->type == PART_SOURCE || p->type == PART_SWITCH || p->type == PART_CLOCK)
         rect(x - 39, y - 23, 82, 50);
-    else
+    else if (p->type != PART_LED && p->type != PART_POTENTIOMETER)
         rect(x - 19, y - 11, 40, 24);
     if (p->type == PART_SOURCE)
     {

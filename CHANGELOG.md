@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.25.1
+
+- Corpo do LED conserva projecao vertical ao girar; terminais e contatos acompanham a rotacao.
+- Compilacao estrita, 171 fases GUI e captura comparativa de LEDs em 0/90 graus revisadas.
+
+
 ## 0.25.0
 
 - Nome Bancada, icone de janela, fonte Segoe UI suavizada e tema escuro salvo.
