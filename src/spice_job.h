@@ -30,4 +30,6 @@ int spice_job_start_transient_instrumented(SpiceJob *job, const Workbench *bench
 /* Returns 1 after a finished job is joined; 0 otherwise. */
 int spice_job_poll(SpiceJob *job);
 void spice_job_join(SpiceJob *job);
+/* Joins before releasing the worker snapshot; poll/join preserve it for result inspection. */
+void spice_job_clear(SpiceJob *job);
 #endif

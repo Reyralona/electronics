@@ -6,10 +6,35 @@
 #include <errno.h>
 #include <stdlib.h>
 
+int bench_snapshot_clone(Workbench *destination, const Workbench *source)
+{
+    if (!destination || !source)
+        return 0;
+    if (destination != source)
+        *destination = *source;
+    return 1;
+}
+
+void bench_snapshot_clear(Workbench *snapshot)
+{
+    if (snapshot)
+        memset(snapshot, 0, sizeof(*snapshot));
+}
+
+void bench_snapshot_move(Workbench *destination, Workbench *source)
+{
+    if (!destination || !source || destination == source)
+        return;
+    bench_snapshot_clear(destination);
+    *destination = *source;
+    bench_snapshot_clear(source);
+}
+
 void bench_replace(Workbench *bench, const Workbench *replacement)
 {
     uint64_t revision = bench->revision + 1;
-    *bench = *replacement;
+    if (!bench_snapshot_clone(bench, replacement))
+        return;
     bench->revision = revision;
 }
 

@@ -116,6 +116,6 @@ int main(void)
     assert(app.bench.groups[1].active);
     remove("build/test-blocks/block-1.elec");
 
-    free(app.history);
+    app_state_dispose(&app);
     return 0;
 }

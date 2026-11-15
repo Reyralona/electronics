@@ -330,3 +330,19 @@ Bancada do usuario aberta; NAO substituir/fechar. Capturas devem usar bancada-ne
 um binario canonico antigo pode ignorar modo novo e abrir janela normal. Processo de teste
 27452 foi identificado pela command line --capture-knee-edit e encerrado; sessao do usuario preservada.
 Versao publica permanece 0.24.0. Branch continua ativa para migrar snapshots e integrar terminais.
+
+
+## Fronteiras de snapshots - feature/flexible-terminals
+bench_snapshot_clone/clear/move estabelecem ciclo de vida explicito, ainda com Workbench por
+valor e SEM ponteiros. Historico usa clone/transferencia/clear, prepara undo/redo antes de publicar
+revisao nova e limpa redo descartado/entradas consumidas. bench_history_record agora retorna int;
+chamadores ainda precisam tratar falha antes de introduzir alocacao dinamica em Workbench.
+SpiceJob clona snapshot ao iniciar; poll/join preservam dados para inspecao do resultado;
+spice_job_clear espera thread antes de limpar. app_state_dispose centraliza limpeza do contexto,
+historico, worker, bancada e clipboards; usado por janela/editor e testes de AppState.
+Suite completa e 146 fases GUI passaram. Testes adicionais cobrem clone/move/self-clone,
+limpeza repetida, revisao monotona e descarte de estados. Recompilados e executados depois:
+test_app_commands, test_app_simulation, test_workbench_revision e test_spice_job com ngspice; passaram.
+Ainda faltam snapshots locais de comandos/input, packing/clipboard, arquivos/exemplos e seu
+tratamento transacional de falha. NAO anexar caminhos dinamicos antes de completar essa auditoria.
+Dobra de terminais ainda indisponivel; versao publica continua 0.24.0. Branch mantida ativa.

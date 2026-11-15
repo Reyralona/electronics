@@ -90,6 +90,7 @@ static void test_replacement_and_history(void)
     assert(workbench_read(file, &bench));
     assert(bench.revision > replaced);
     fclose(file);
+    bench_history_clear(history);
     free(history);
 }
 
@@ -112,5 +113,20 @@ int main(void)
     test_wire_edits();
     test_replacement_and_history();
     test_snap();
+    {
+        Workbench original = {0}, copy = {0}, moved = {0};
+        bench_add(&original, PART_RESISTOR, 100, 200);
+        assert(bench_snapshot_clone(&copy, &original));
+        assert(copy.revision == original.revision);
+        bench_move_part(&copy, 0, 300, 400);
+        assert(original.parts[0].x == 100);
+        assert(bench_snapshot_clone(&copy, &copy));
+        bench_snapshot_move(&moved, &copy);
+        assert(moved.parts[0].x == 300 && copy.part_count == 0 && copy.revision == 0);
+        assert(!bench_snapshot_clone(&moved, NULL));
+        assert(moved.parts[0].x == 300);
+        bench_snapshot_clear(&moved);
+        bench_snapshot_clear(&moved);
+    }
     return 0;
 }

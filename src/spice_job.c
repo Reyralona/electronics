@@ -27,7 +27,11 @@ static int start_job(SpiceJob *job,const Workbench *bench,const char *executable
     if(!job || !bench || !executable || job->thread) return 0;
     length=strlen(executable);
     if(length>=sizeof(job->executable)) return 0;
-    job->snapshot=*bench;
+    if (!bench_snapshot_clone(&job->snapshot, bench))
+    {
+        snprintf(job->message, sizeof(job->message), "Nao foi possivel copiar a montagem para simulacao.");
+        return 0;
+    }
     job->automatic=automatic!=NULL;
     if(automatic) job->auto_options=*automatic;
     job->measures_wires=wires; job->transient=transient; job->probe=probe; job->step=step; job->stop=stop;
@@ -65,4 +69,12 @@ int spice_job_poll(SpiceJob *job)
     if(!job || !job->thread || !SDL_GetAtomicInt(&job->done)) return 0;
     spice_job_join(job);
     return 1;
+}
+
+void spice_job_clear(SpiceJob *job)
+{
+    if (!job)
+        return;
+    spice_job_join(job);
+    bench_snapshot_clear(&job->snapshot);
 }

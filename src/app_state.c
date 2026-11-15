@@ -33,3 +33,16 @@ void app_state_init(AppState *app)
     app->sim.sim_running = 1;
     app->sim.trace_wire = -1;
 }
+
+void app_state_dispose(AppState *app)
+{
+    if (!app)
+        return;
+    spice_job_clear(&app->dc_job);
+    bench_history_clear(app->history);
+    free(app->history);
+    app->history = NULL;
+    bench_snapshot_clear(&app->bench);
+    bench_snapshot_clear(&app->clipboard.bench);
+    bench_snapshot_clear(&app->library_template.bench);
+}

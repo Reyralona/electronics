@@ -63,6 +63,6 @@ int main(void)
     app_simulation_update(&app);
     assert(!sim_state_has_result(&app.sim, SIM_RESULT_TRACE));
     test_discard_after_undo(&app);
-    free(app.history);
+    app_state_dispose(&app);
     return 0;
 }

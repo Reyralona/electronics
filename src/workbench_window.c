@@ -60,7 +60,7 @@ int main(int argc, char **argv)
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
         fprintf(stderr, "SDL: %s\n", SDL_GetError());
-        free(app.history);
+        app_state_dispose(&app);
         return 1;
     }
     window = SDL_CreateWindow("Bancada experimental", 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "Janela: %s\n", SDL_GetError());
         SDL_Quit();
-        free(app.history);
+        app_state_dispose(&app);
         return 1;
     }
     context = SDL_GL_CreateContext(window);
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "OpenGL: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
         SDL_Quit();
-        free(app.history);
+        app_state_dispose(&app);
         return 1;
     }
     font = app_render_font_create();
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
         remove("build/gui-settings-test.elec");
         remove("build/test-blocks/block-1.elec");
     }
-    free(app.history);
+    app_state_dispose(&app);
     app_text_utf8_clear();
     if (font)
         glDeleteLists(font, 128);

@@ -46,7 +46,7 @@ AppState *app_editor_open(AppState *parent)
     int group = parent->bench.parts[parent->selected].group;
     if (!child->history || !bench_group_extract(&parent->bench, group, &child->bench))
     {
-        free(child->history);
+        app_state_dispose(child);
         free(child);
         parent->status = "Nao foi possivel copiar o interior para o editor isolado.";
         return NULL;
@@ -218,7 +218,7 @@ AppState *app_editor_dispose(AppState *active)
     app_packing_refresh(parent);
     if (active->editor_quit_requested)
         parent->running = 0;
-    free(active->history);
+    app_state_dispose(active);
     free(active);
     return parent;
 }

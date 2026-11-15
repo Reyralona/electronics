@@ -52,7 +52,9 @@ int main(int argc,char **argv)
         assert(job.success && job.trace.measures_wires && (job.trace.wires_forward[0][0]&1));
 
     }
-    spice_job_join(&job);
+    spice_job_clear(&job);
+    assert(!job.thread && job.snapshot.part_count == 0);
+    spice_job_clear(&job);
     SDL_Quit();
     return 0;
 }

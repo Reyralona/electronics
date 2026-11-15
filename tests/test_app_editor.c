@@ -84,6 +84,8 @@ int main(void)
     assert(root.bench.parts[1].value == 1000);
     assert(!strcmp(root.bench.groups[0].name, before.groups[0].name));
     remove("build/test-blocks/block-1.elec");
-    free(root.history);
+    app_state_dispose(&root);
+    assert(!root.history && root.bench.part_count == 0 && !root.dc_job.thread);
+    app_state_dispose(&root);
     return 0;
 }

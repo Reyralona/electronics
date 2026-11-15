@@ -61,4 +61,6 @@ typedef struct AppState
 } AppState;
 
 void app_state_init(AppState *app);
+/* End any editor child first; this releases this context only. */
+void app_state_dispose(AppState *app);
 #endif

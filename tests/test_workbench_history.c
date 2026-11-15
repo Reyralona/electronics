@@ -22,5 +22,14 @@ int main(void)
     assert(bench_history_redo(h,&b) && b.wires[0].knee_count==1);
     for(i=0;i<BENCH_HISTORY_LIMIT+2;++i) { bench_history_record(h,&b); b.parts[0].x++; }
     assert(h->undo_count==BENCH_HISTORY_LIMIT);
+    uint64_t revision = b.revision;
+    assert(bench_history_undo(h, &b) && b.revision > revision);
+    assert(h->undo[h->undo_count].part_count == 0);
+    assert(bench_history_record(h, &b));
+    assert(h->redo_count == 0 && h->redo[0].part_count == 0);
+    bench_history_clear(h);
+    assert(h->undo_count == 0 && h->redo_count == 0);
+    assert(!bench_history_undo(h, &b));
+    bench_history_clear(h);
     free(h); return 0;
 }

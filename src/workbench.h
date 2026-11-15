@@ -78,6 +78,11 @@ typedef struct
 } Workbench;
 
 void bench_replace(Workbench *bench, const Workbench *replacement);
+/* Snapshots preserve revision; publishing an edit uses bench_replace instead.
+ * Destinations must be zero-initialized or previously initialized snapshots. */
+int bench_snapshot_clone(Workbench *destination, const Workbench *source);
+void bench_snapshot_clear(Workbench *snapshot);
+void bench_snapshot_move(Workbench *destination, Workbench *source);
 float bench_part_scale(const Part *part);
 int bench_set_scale(Workbench *bench, int component, float scale);
 int bench_move_part(Workbench *bench, int component, float x, float y);
