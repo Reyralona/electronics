@@ -304,7 +304,7 @@ int main(int argc, char **argv) {
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0 || strcmp(argv[1],"--capture-dff")==0 || strcmp(argv[1],"--capture-ci")==0 || strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0);
+    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0 || strcmp(argv[1],"--capture-dff")==0 || strcmp(argv[1],"--capture-ci")==0 || strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0 || strcmp(argv[1],"--capture-example2")==0);
     if(argc>1 && strcmp(argv[1],"--capture-settings")==0) settings=1;
     if(capture) {
         bench_add(&bench,PART_SOURCE,360,220); bench_add(&bench,PART_LED,720,220); bench_add(&bench,PART_BREADBOARD,550,430);
@@ -354,8 +354,8 @@ int main(int argc, char **argv) {
         bench=(Workbench){0}; palette_page=1; bench_add(&bench,PART_BREADBOARD,650,380); bench_add(&bench,PART_74HC00,650,380);
         bench_snap_to_breadboard(&bench,1); selected=1; bench_view_zoom_at(&view,1.3f,650,380);
     }
-    if(capture && (strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0)) {
-        int which=strcmp(argv[1],"--capture-example1")==0;
+    if(capture && (strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0 || strcmp(argv[1],"--capture-example2")==0)) {
+        int which=strcmp(argv[1],"--capture-example2")==0?2:strcmp(argv[1],"--capture-example1")==0;
         if(!workbench_example_create(which,&bench,&selected)) { fprintf(stderr,"Falha no exemplo de captura.\n"); return 1; }
         probe_pin=which?2:0; status=workbench_example_name(which);
     }
@@ -486,7 +486,8 @@ int main(int argc, char **argv) {
             else if(selftest_phase==74) queued=test_click(window,50,670) && test_click(window,750,450);
             else if(selftest_phase==75) queued=test_key(window,SDLK_F2);
             else if(selftest_phase==76) queued=test_key(window,SDLK_F2);
-            else if(selftest_phase==77) queued=test_key(window,SDLK_Z);
+            else if(selftest_phase==77) queued=test_key(window,SDLK_F2);
+            else if(selftest_phase==78) queued=test_key(window,SDLK_Z);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -521,7 +522,7 @@ int main(int argc, char **argv) {
                         bench_history_record(history,&bench); bench=example; example_index=choice; selected=example_selected; selected_wire=-1;
                         dragging=-1; drag_wire=-1; pending.component=-1; route_count=0; placing=-1; settings=0; view=(BenchView){1,0,0};
                         trace_valid=0; dc_valid=0; dc_wire_valid=0; memset(leds,0,sizeof(leds));
-                        probe_pin=choice==1?2:0; probe_current=0; transient_step=1e-5; transient_stop=.005;
+                        probe_pin=choice>0?2:0; probe_current=0; transient_step=1e-5; transient_stop=.005;
                         status=workbench_example_name(choice);
                     } else status="Falha ao preparar exemplo.";
                     continue;
@@ -756,9 +757,10 @@ int main(int argc, char **argv) {
             else if(selftest_phase==74) valid=bench.part_count==10 && bench.parts[9].type==PART_74HC00;
             else if(selftest_phase==75) valid=bench.part_count==4 && bench.parts[1].type==PART_BREADBOARD;
             else if(selftest_phase==76) valid=bench.part_count==5 && bench.parts[2].type==PART_DFF && probe_pin==2;
-            else if(selftest_phase==77) valid=bench.part_count==4 && bench.parts[1].type==PART_BREADBOARD;
+            else if(selftest_phase==77) valid=bench.part_count==6 && bench.parts[2].type==PART_74HC00 && probe_pin==2;
+            else if(selftest_phase==78) valid=bench.part_count==5 && bench.parts[2].type==PART_DFF;
             if(!valid) { fprintf(stderr,"Autoteste de eventos falhou na fase %d.\n",selftest_phase); exit_code=1; running=0; }
-            if(++selftest_phase==78) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
+            if(++selftest_phase==79) { if(!exit_code) puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou."); running=0; }
         }
         if(spice_job_poll(&dc_job)) {
             if(memcmp(&dc_job.snapshot,&bench,sizeof(bench))!=0) { dc_valid=0; status="Montagem mudou durante analise; resultado descartado."; }
