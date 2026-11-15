@@ -1,3 +1,4 @@
+#include "bench_scope.h"
 #include "sim_auto.h"
 #include "netlist.h"
 #include <math.h>
@@ -51,22 +52,25 @@ int sim_auto_is_dynamic(const Workbench *bench)
     return 0;
 }
 
-void sim_auto_dc_equivalent(const Workbench *in, Workbench *out)
+int sim_auto_dc_equivalent(const Workbench *in, Workbench *out)
 {
     int i;
-    *out = *in;
+    if (!bench_snapshot_clone(out, in))
+        return 0;
     for (i = 0; i < out->part_count; ++i) {
         Part *part = &out->parts[i];
         if (part->type != PART_CLOCK) continue;
         part->type = PART_SOURCE;
         part->value = 5.0;
     }
+    return 1;
 }
 
-void sim_auto_open_parts(const Workbench *in, const unsigned char open[WORKBENCH_MAX_COMPONENTS], Workbench *out)
+int sim_auto_open_parts(const Workbench *in, const unsigned char open[WORKBENCH_MAX_COMPONENTS], Workbench *out)
 {
     int i;
-    *out = *in;
+    if (!bench_snapshot_clone(out, in))
+        return 0;
     for (i = 0; i < out->part_count; ++i) {
         Part *part = &out->parts[i];
         if (!open[i] || bench_pin_count(part->type) != 2) continue;
@@ -74,6 +78,7 @@ void sim_auto_open_parts(const Workbench *in, const unsigned char open[WORKBENCH
         part->value = SIM_AUTO_OPEN_OHMS;
         part->on = 0;
     }
+    return 1;
 }
 
 static int has_energized_source(const Workbench *bench)
@@ -158,7 +163,8 @@ static int run_transient(const Workbench *bench, const char *executable, const S
 int sim_auto_run(const Workbench *bench, const char *executable, const SimAutoOptions *options,
                  SimAutoResult *result, SpiceTrace *trace)
 {
-    Workbench dc, test;
+    Workbench dc BENCH_AUTO_CLEAR = {0};
+    Workbench test BENCH_AUTO_CLEAR = {0};
     unsigned char open[WORKBENCH_MAX_COMPONENTS] = {0};
     char message[128];
     int iteration, dynamic;
@@ -172,9 +178,17 @@ int sim_auto_run(const Workbench *bench, const char *executable, const SimAutoOp
         result->powered = has_energized_source(bench);
         return run_transient(bench, executable, options, result, trace);
     }
-    sim_auto_dc_equivalent(bench, &dc);
+    if (!sim_auto_dc_equivalent(bench, &dc))
+    {
+        snprintf(result->message, sizeof(result->message), "Memoria insuficiente para preparar simulacao.");
+        return 0;
+    }
     for (iteration = 0; iteration <= bench->part_count + 1; ++iteration) {
-        sim_auto_open_parts(&dc, open, &test);
+        if (!sim_auto_open_parts(&dc, open, &test))
+        {
+            snprintf(result->message, sizeof(result->message), "Memoria insuficiente para preparar simulacao.");
+            return 0;
+        }
         if (open_shorted_sources(&test, open, result)) continue;
         if (!has_energized_source(&test)) break;
         result->powered = 1;
@@ -193,7 +207,11 @@ int sim_auto_run(const Workbench *bench, const char *executable, const SimAutoOp
         return 1;
     }
     if (dynamic) {
-        sim_auto_open_parts(bench, open, &test);
+        if (!sim_auto_open_parts(bench, open, &test))
+        {
+            snprintf(result->message, sizeof(result->message), "Memoria insuficiente para preparar simulacao.");
+            return 0;
+        }
         return run_transient(&test, executable, options, result, trace);
     }
     result->has_dc = 1;

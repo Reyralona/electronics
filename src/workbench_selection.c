@@ -57,7 +57,12 @@ int bench_selection_copy(const Workbench *bench, const BenchSelection *selection
         if (selection->parts[i])
         {
             map[i] = copy.part_count;
-            copy.parts[copy.part_count++] = bench->parts[i];
+            if (!bench_part_clone(&copy.parts[copy.part_count], &bench->parts[i]))
+            {
+                bench_snapshot_clear(&copy);
+                return 0;
+            }
+            ++copy.part_count;
             if (bench->parts[i].group)
                 copy.groups[bench->parts[i].group - 1] = bench->groups[bench->parts[i].group - 1];
         }
@@ -132,7 +137,9 @@ static int paste_into(Workbench *bench, BenchSelection *selection, const BenchCl
         if (part.group)
             part.group = group_map[part.group - 1];
         selection->parts[bench->part_count] = 1;
-        bench->parts[bench->part_count++] = part;
+        if (!bench_part_clone(&bench->parts[bench->part_count], &part))
+            return 0;
+        ++bench->part_count;
     }
     for (int i = 0; i < copy->wire_count; ++i)
     {

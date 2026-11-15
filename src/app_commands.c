@@ -11,7 +11,7 @@
 
 static void command_example(AppState *app)
 {
-    Workbench example = {0};
+    Workbench example BENCH_AUTO_CLEAR = {0};
     int choice = (app->example_index + 1) % WORKBENCH_EXAMPLE_COUNT, example_selected;
     if (workbench_example_create(choice, &example, &example_selected))
     {
@@ -136,7 +136,12 @@ static void command_recalculate(AppState *app)
 
 static void command_rotate(AppState *app)
 {
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     if (bench_rotate_part(&app->bench, app->selected))
     {
         bench_snap_to_breadboard(&app->bench, app->selected);
@@ -266,7 +271,12 @@ static void command_edit_value(AppState *app, SDL_Window *window)
 static void command_scale_value(AppState *app, SDL_Keycode key)
 {
     double scale = key == SDLK_MINUS ? .5 : 2.0;
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     if (bench_set_value(&app->bench, app->selected, app->bench.parts[app->selected].value * scale))
     {
         bench_history_record(app->history, &before);
@@ -290,7 +300,12 @@ static void command_save(AppState *app)
 
 static void command_load(AppState *app)
 {
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     WorkbenchSettings saved;
     if (workbench_load_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved))
     {

@@ -42,7 +42,12 @@ static void input_insert_knee(AppState *app, float x, float y)
     if (!wire_pick_segment(wire, start, end, app->round_wires ? 18.0f : 0,
                            (WirePoint){x, y}, 7.0f / app->view.zoom, &slot, &projected))
         return;
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     if (!bench_insert_knee(&app->bench, index, slot, projected))
     {
         app->status = "Nao foi possivel inserir: limite atual de 16 joelhos por fio.";
@@ -174,7 +179,12 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
     else if (event->key.key == SDLK_RETURN || event->key.key == SDLK_KP_ENTER)
     {
         double value;
-        Workbench before = app->bench;
+        Workbench before BENCH_AUTO_CLEAR = {0};
+        if (!bench_snapshot_clone(&before, &app->bench))
+        {
+            app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+            return;
+        }
         if (app->editing == APP_EDIT_SCALE)
         {
             if (app->selected >= 0 && bench_parse_value(app->edit_text, &value) &&
@@ -594,7 +604,12 @@ static void input_snap_grid(const AppState *app, float *x, float *y)
 
 static void input_place_part(AppState *app, float x, float y)
 {
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     int added = bench_add(&app->bench, (PartType)app->placing, x, y);
     if (added >= 0)
     {
@@ -677,7 +692,12 @@ static void input_connect_pin(AppState *app, Pin clicked)
     }
     else
     {
-        Workbench before = app->bench;
+        Workbench before BENCH_AUTO_CLEAR = {0};
+        if (!bench_snapshot_clone(&before, &app->bench))
+        {
+            app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+            return;
+        }
         int result = bench_toggle_wire(&app->bench, app->pending, clicked);
         if (result == 1)
         {

@@ -23,7 +23,7 @@ void app_packing_refresh(AppState *app)
         snprintf(app->library_names[i], sizeof(app->library_names[i]), "Bloco %d", i + 1);
         if (app->library_available[i])
         {
-            Workbench candidate = {0};
+            Workbench candidate BENCH_AUTO_CLEAR = {0};
             WorkbenchSettings settings;
             if (workbench_load_project(path, &candidate, &settings) && candidate.part_count && candidate.parts[0].group)
                 memcpy(app->library_names[i], candidate.groups[candidate.parts[0].group - 1].name,
@@ -81,7 +81,12 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
         return 0;
     if (!bench_selection_count(&app->selection, &app->bench) && app->selected >= 0)
         app->selection.parts[app->selected] = 1;
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return 1;
+    }
     if (mod & SDL_KMOD_SHIFT)
     {
         if (bench_unpack_selection(&app->bench, &app->selection))
@@ -120,7 +125,7 @@ void app_packing_choose(AppState *app, int index)
         return;
     char path[128];
     WorkbenchSettings settings;
-    Workbench candidate = {0};
+    Workbench candidate BENCH_AUTO_CLEAR = {0};
     app->packed_placing = 0;
     block_path(app, index, path, sizeof(path));
     if (!workbench_load_project(path, &candidate, &settings) || !candidate.part_count || !candidate.parts[0].group)
@@ -134,7 +139,7 @@ void app_packing_choose(AppState *app, int index)
             app->status = "Biblioteca invalida: o arquivo precisa conter um unico bloco.";
             return;
         }
-    app->library_template.bench = candidate;
+    bench_snapshot_move(&app->library_template.bench, &candidate);
     app->library_template.valid = 1;
     app->library_index = index;
     app->packed_placing = 1;
@@ -146,7 +151,12 @@ void app_packing_choose(AppState *app, int index)
 
 void app_packing_place(AppState *app, float x, float y)
 {
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     const Workbench *model = &app->library_template.bench;
     int group = model->parts[0].group;
     if (group)

@@ -133,7 +133,12 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
         if (parent->parts[i].group != group)
         {
             map[i] = result.part_count;
-            result.parts[result.part_count++] = parent->parts[i];
+            if (!bench_part_clone(&result.parts[result.part_count], &parent->parts[i]))
+            {
+                snprintf(message, capacity, "Memoria insuficiente para preservar componentes externos.");
+                goto cleanup;
+            }
+            ++result.part_count;
         }
     }
     int offset = result.part_count;
@@ -149,7 +154,12 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
             map[part.edit_origin - 1] = result.part_count;
         part.edit_origin = 0;
         part.group = group;
-        result.parts[result.part_count++] = part;
+        if (!bench_part_clone(&result.parts[result.part_count], &part))
+        {
+            snprintf(message, capacity, "Memoria insuficiente para copiar componente do chip.");
+            goto cleanup;
+        }
+        ++result.part_count;
     }
     if (!copy_external_wires(parent, group, map, &result))
     {

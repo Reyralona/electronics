@@ -96,7 +96,12 @@ int app_editor_set_name(AppState *app, const char *name)
     else
     {
         int group = app->name_target_group;
-        Workbench before = app->bench;
+        Workbench before BENCH_AUTO_CLEAR = {0};
+        if (!bench_snapshot_clone(&before, &app->bench))
+        {
+            app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+            return 0;
+        }
         if (!bench_group_set_name(&app->bench, group, name))
         {
             app->status = "Selecione um bloco valido para renomear.";
@@ -133,7 +138,12 @@ int app_editor_begin_name(AppState *app, SDL_Window *window)
 
 int app_editor_save(AppState *app)
 {
-    Workbench model = app->bench;
+    Workbench model BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&model, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return 0;
+    }
     BenchSelection all = {0};
     for (int i = 0; i < model.part_count; ++i)
         all.parts[i] = 1;
@@ -165,7 +175,12 @@ int app_editor_apply(AppState *app)
         app->editor_close_requested = 1;
         return 1;
     }
-    Workbench before = parent->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &parent->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return 0;
+    }
     if (!bench_group_apply(&parent->bench, app->editor_group, app->editor_parent_revision, &app->bench,
                            app->editor_name, app->selection_status, sizeof(app->selection_status)))
     {

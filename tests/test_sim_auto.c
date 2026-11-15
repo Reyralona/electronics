@@ -30,7 +30,7 @@ static void test_limits(void)
 
 static void test_transforms(void)
 {
-    Workbench b = {0}, out;
+    Workbench b = {0}, out = {0};
     unsigned char open[WORKBENCH_MAX_COMPONENTS] = {0};
     assert(bench_add(&b, PART_CLOCK, 0, 0) == 0);
     assert(bench_add(&b, PART_LED, 0, 0) == 1);

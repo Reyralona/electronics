@@ -39,7 +39,12 @@ static void delete_selection(AppState *app)
 
 static void paste_selection(AppState *app)
 {
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     if (!bench_selection_paste(&app->bench, &app->selection, &app->clipboard, app->mouse_world.x, app->mouse_world.y))
     {
         app->status = app->clipboard.valid ? "Nao cabe: limite atual de 64 componentes ou 128 fios."
@@ -157,7 +162,12 @@ void app_projects_save(AppState *app)
 void app_projects_load(AppState *app)
 {
     char path[128];
-    Workbench before = app->bench;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        return;
+    }
     WorkbenchSettings settings;
     slot_path(app, app->save_slot, path, sizeof(path));
     if (!workbench_load_project(path, &app->bench, &settings))

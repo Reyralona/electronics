@@ -26,9 +26,9 @@ int sim_auto_is_dynamic(const Workbench *bench);
 /* Circuits with an active clock repeat; their playback loops. */
 int sim_auto_is_periodic(const Workbench *bench);
 /* Worst-case DC copy: active clocks become sources held at their high level (5 V). */
-void sim_auto_dc_equivalent(const Workbench *in, Workbench *out);
+int sim_auto_dc_equivalent(const Workbench *in, Workbench *out);
 /* Copy in which every marked part becomes an open circuit (a 1 GOhm resistor between its first two pins). */
-void sim_auto_open_parts(const Workbench *in, const unsigned char open[WORKBENCH_MAX_COMPONENTS], Workbench *out);
+int sim_auto_open_parts(const Workbench *in, const unsigned char open[WORKBENCH_MAX_COMPONENTS], Workbench *out);
 
 #define SIM_AUTO_OPEN_OHMS 1e9
 

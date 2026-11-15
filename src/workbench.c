@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-int bench_snapshot_clone(Workbench *destination, const Workbench *source)
+int bench_part_clone(Part *destination, const Part *source)
 {
     if (!destination || !source)
         return 0;
@@ -15,10 +15,46 @@ int bench_snapshot_clone(Workbench *destination, const Workbench *source)
     return 1;
 }
 
+void bench_part_clear(Part *part)
+{
+    if (part)
+        memset(part, 0, sizeof(*part));
+}
+
+void bench_part_move(Part *destination, Part *source)
+{
+    if (!destination || !source || destination == source)
+        return;
+    bench_part_clear(destination);
+    *destination = *source;
+    memset(source, 0, sizeof(*source));
+}
+
+int bench_snapshot_clone(Workbench *destination, const Workbench *source)
+{
+    if (!destination || !source || source->part_count < 0 || source->part_count > WORKBENCH_MAX_COMPONENTS)
+        return 0;
+    if (destination == source)
+        return 1;
+    Workbench copy = *source;
+    memset(copy.parts, 0, sizeof(copy.parts));
+    for (int i = 0; i < source->part_count; ++i)
+        if (!bench_part_clone(&copy.parts[i], &source->parts[i]))
+        {
+            bench_snapshot_clear(&copy);
+            return 0;
+        }
+    bench_snapshot_move(destination, &copy);
+    return 1;
+}
+
 void bench_snapshot_clear(Workbench *snapshot)
 {
-    if (snapshot)
-        memset(snapshot, 0, sizeof(*snapshot));
+    if (!snapshot)
+        return;
+    for (int i = 0; i < snapshot->part_count && i < WORKBENCH_MAX_COMPONENTS; ++i)
+        bench_part_clear(&snapshot->parts[i]);
+    memset(snapshot, 0, sizeof(*snapshot));
 }
 
 void bench_snapshot_move(Workbench *destination, Workbench *source)
@@ -27,7 +63,7 @@ void bench_snapshot_move(Workbench *destination, Workbench *source)
         return;
     bench_snapshot_clear(destination);
     *destination = *source;
-    bench_snapshot_clear(source);
+    memset(source, 0, sizeof(*source));
 }
 
 int bench_replace(Workbench *bench, const Workbench *replacement)
@@ -548,7 +584,9 @@ void bench_remove(Workbench *b, int index)
                 --w->b.component;
         }
     }
-    memmove(&b->parts[index], &b->parts[index + 1], (size_t)(b->part_count - index - 1) * sizeof(Part));
+    bench_part_clear(&b->parts[index]);
+    for (int part = index + 1; part < b->part_count; ++part)
+        bench_part_move(&b->parts[part - 1], &b->parts[part]);
     --b->part_count;
     if (removed_group)
     {
