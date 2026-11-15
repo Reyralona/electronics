@@ -222,3 +222,15 @@ trecho de entrada, segunda ao de saida. Empates deterministas pela ordem do cami
 biblioteca ou mudanca de modelo eletrico. A implementacao segue a mesma geometria quadratica ja
 usada no desenho; testes devem cobrir linhas, curvas, cruzamentos, limites e undo/persistencia.
 API SDL de contagem de cliques ja usada para remocao; nao introduzir temporizador paralelo.
+
+
+## 15/11/2026 - Geometria local antes de escala e terminais flexiveis
+Fato observado: bench_pin_position repete rotacao em tres ramos; desenho usa transformacao GL,
+hit testing reconstrui retangulos orientados. Alterar apenas glScale deixaria terminais e contatos
+fora do desenho. Alternativas: deformar coordenadas globais em cada consumidor (duplicacao e
+risco de perder pinagem ao girar) ou armazenar geometria local e transformar numa fronteira unica.
+Decisao: coordenadas locais para corpo/pinos/terminais, com transformacoes diretas e inversas
+puras no modelo. Rotacao de quartos de volta usa trocas/sinais exatos, sem trigonometria. Primeiro
+separar transformacao e preservar capturas/testes; escala e deformacao em commits funcionais
+posteriores, com persistencia e validacao. Breadboard conserva orientacao atual nao rotacionavel.
+Nenhuma nova dependencia ou escolha externa neste incremento; comparacao baseada no codigo.
