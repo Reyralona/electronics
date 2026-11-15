@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.17.0
+
+- Integracao revisada do trabalho do Claude: calculo automatico, executar/pausar, giro por mouse e grade com zoom/pan.
+- Portas didaticas, clock, flip-flop D e 74HC00 aproximado; tres exemplos F2, incluindo DIP na breadboard.
+- LEDs e correntes em fios acompanham amostras transitorias, com sentido e faixas de magnitude.
+- Sobrecarga estatica didatica reversivel; transientes nao usam inferencias de queima por equivalente DC.
+- Resultados obsoletos invalidados e causa de indisponibilidade das correntes preservada.
+- Primeira extracao de capturas/eventos de teste para dev_capture; imagem automatica identica antes/depois.
+- QUALIDADE_CODIGO.md e CONTINUIDADE.md orientam a continuidade; AGENTS.md referencia ambos.
+- Validacao: build estrito, autoteste GUI, testes de processo/job/exemplos, RC/RL e tabelas digitais com ngspice.
+- Ainda experimental: transientes em lote, capacidades fixas, catalogo parcial, sem modelo termico ou runtime distribuido.
+
+
 ## 0.16.0
 
 - Bancada com zoom, encaixe de componentes, rotação, breadboard ampliada com trilhos e fios coloridos.

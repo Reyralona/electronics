@@ -47,3 +47,5 @@ Fallback transititorio sem sensores preserva a causa da indisponibilidade de cor
 Regressoes: indutor diretamente na fonte gera transiente sem queima DC; caminhos ideais redundantes
 permitem a curva sem inventar correntes e apresentam aviso. test_sim_auto passou com ngspice.
 `tools/test-workbench-ngspice.ps1` e `tools/test-xspice-gates.ps1` passaram (RC, RL, fontes, LED e portas).
+
+Ponto de retorno: v0.17.0. Proxima prioridade: concluir extracao de cenarios/autoteste e introduzir AppState/SimState, mantendo capturas e testes. Nao retomar ampliando o monolito ou presumindo que o plano de qualidade ja foi concluido.
