@@ -211,3 +211,14 @@ no fim do arraste; grupos devem receber uma unica translacao para preservar geom
 Primeiro incremento: matematica pura validada e compartilhada por desenho/entrada; depois controles
 visiveis, persistencia retrocompativel e testes de GUI. Escala e terminais flexiveis continuam
 pendentes e nao devem ser simulados apenas mudando o zoom.
+
+
+## 15/11/2026 - Insercao de joelhos por trecho
+Comparacao tecnica: escolher trecho pela polilinha original ignora curva renderizada; gerar uma
+segunda aproximacao duplica geometria e pode escolher ramo errado em cruzamentos. Decisao:
+reutilizar wire_path com proveniencia de cada segmento renderizado; projetar o clique no segmento
+mais proximo e inserir antes/depois do canto correspondente. Primeira metade da curva pertence ao
+trecho de entrada, segunda ao de saida. Empates deterministas pela ordem do caminho. Sem nova
+biblioteca ou mudanca de modelo eletrico. A implementacao segue a mesma geometria quadratica ja
+usada no desenho; testes devem cobrir linhas, curvas, cruzamentos, limites e undo/persistencia.
+API SDL de contagem de cliques ja usada para remocao; nao introduzir temporizador paralelo.
