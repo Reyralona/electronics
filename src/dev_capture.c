@@ -7,35 +7,14 @@
 int dev_capture_requested(const char *argument)
 {
     static const char *modes[] = {
-        "--capture",
-        "--capture-settings",
-        "--capture-analog",
-        "--capture-dc",
-        "--capture-current",
-        "--capture-edit",
-        "--capture-zoom",
-        "--capture-snap",
-        "--capture-board",
-        "--capture-rotation",
-        "--capture-colors",
-        "--capture-trace",
-        "--capture-trace-current",
-        "--capture-trace-wire",
-        "--capture-and",
-        "--capture-logic",
-        "--capture-clock",
-        "--capture-play",
-        "--capture-led-on",
-        "--capture-led-off",
-        "--capture-dff",
-        "--capture-ci",
-        "--capture-example0",
-        "--capture-example1",
-        "--capture-example2",
-        "--capture-burn",
-        "--capture-auto",
-        "--capture-auto-clock",
-        "--capture-zoomout",
+        "--capture",          "--capture-settings",   "--capture-projects",      "--capture-selection",
+        "--capture-analog",   "--capture-dc",         "--capture-current",       "--capture-edit",
+        "--capture-zoom",     "--capture-snap",       "--capture-board",         "--capture-rotation",
+        "--capture-colors",   "--capture-trace",      "--capture-trace-current", "--capture-trace-wire",
+        "--capture-and",      "--capture-logic",      "--capture-clock",         "--capture-play",
+        "--capture-led-on",   "--capture-led-off",    "--capture-dff",           "--capture-ci",
+        "--capture-example0", "--capture-example1",   "--capture-example2",      "--capture-burn",
+        "--capture-auto",     "--capture-auto-clock", "--capture-zoomout",
     };
     if (!argument)
         return 0;
@@ -122,15 +101,19 @@ int dev_test_drag_finish(SDL_Window *window, float x, float y)
     event.button.button = SDL_BUTTON_LEFT;
     return SDL_PushEvent(&event);
 }
-int dev_test_key(SDL_Window *window, SDL_Keycode key)
+int dev_test_shortcut(SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
     SDL_Event event;
     SDL_zero(event);
     event.type = SDL_EVENT_KEY_DOWN;
     event.key.windowID = SDL_GetWindowID(window);
     event.key.key = key;
-    event.key.mod = SDL_KMOD_CTRL;
+    event.key.mod = mod;
     return SDL_PushEvent(&event);
+}
+int dev_test_key(SDL_Window *window, SDL_Keycode key)
+{
+    return dev_test_shortcut(window, key, (key == SDLK_Z || key == SDLK_Y) ? SDL_KMOD_CTRL : 0);
 }
 int dev_test_replace_text(SDL_Window *window, const char *value)
 {

@@ -4,6 +4,7 @@
 #include "spice_job.h"
 #include "workbench_history.h"
 #include "workbench_view.h"
+#include "workbench_selection.h"
 
 /* Owned by the application thread. The worker receives its own snapshot. */
 typedef struct
@@ -30,6 +31,12 @@ typedef struct
     int capture, auto_capture;
     char ngspice[1024];
     SimState sim;
+    BenchSelection selection;
+    BenchClipboard clipboard;
+    int selecting_area, projects_open, save_slot;
+    int saved_slots[9];
+    WirePoint area_start, area_end, mouse_world;
+    char selection_status[160];
 } AppState;
 
 void app_state_init(AppState *app);

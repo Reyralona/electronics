@@ -588,6 +588,42 @@ static void play_button_draw(GLuint font, int running, int busy, int failed, int
     text(font, x + 46, 40, label);
 }
 
+static void draw_thumbnail(PartType type, float x, float y)
+{
+    Part preview = {0};
+    preview.type = type;
+    preview.on = 1;
+    preview.board_layout = 1;
+    float scale = type == PART_BREADBOARD ? .09f : .42f;
+    glPushMatrix();
+    glTranslatef(x, y, 0);
+    glScalef(scale, scale, 1);
+    glLineWidth(1);
+    part_draw(&preview, 0, 0);
+    if (type == PART_BREADBOARD)
+    {
+        color(.18f, .22f, .24f);
+        glPointSize(1);
+        glBegin(GL_POINTS);
+        for (int pin = 0; pin < BREADBOARD_PINS; ++pin)
+        {
+            float px, py;
+            bench_pin_position(&preview, pin, &px, &py);
+            glVertex2f(px, py);
+        }
+        glEnd();
+    }
+    else
+        for (int pin = 0; pin < bench_pin_count(type); ++pin)
+        {
+            float px, py;
+            bench_pin_position(&preview, pin, &px, &py);
+            color(.2f, .24f, .26f);
+            circle(px, py, 4);
+        }
+    glPopMatrix();
+}
+
 static void draw_chrome(const AppState *app, GLuint font, int width, int height)
 {
     int i;
@@ -603,6 +639,7 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     rect(0, 0, 1280, 68);
     color(.11f, .2f, .27f);
     text(font, 24, 42, "ELECTRONICS  /  BANCADA EXPERIMENTAL");
+    text(font, 510, 42, "Projetos [F3]");
     text(font, 700, 42, "Exemplos [F2]");
     text(font, 880, 42, "Configuracoes [F1]");
     play_button_draw(font, app->sim.sim_running, app->dc_job.thread != NULL, app->sim.auto_failed,
@@ -610,7 +647,13 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     color(.98f, .985f, .99f);
     rect(0, 68, 220, 652);
     color(.17f, .24f, .29f);
-    text(font, 22, 108, app->palette_page ? "PORTAS [TAB]" : "COMPONENTES [TAB]");
+    color(app->palette_page == 0 ? .78f : .92f, .9f, .96f);
+    rect(14, 80, 92, 44);
+    color(app->palette_page == 1 ? .78f : .92f, .9f, .96f);
+    rect(114, 80, 92, 44);
+    color(.14f, .23f, .28f);
+    text(font, 22, 108, "Basicos");
+    text(font, 122, 108, "Digital");
     for (i = 0; i < (app->palette_page ? 8 : 8); ++i)
     {
         float y = 140 + i * 72;
@@ -619,11 +662,7 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
         rect(14, y, 192, 62);
         color(.16f, .22f, .26f);
         text(font, 76, y + 36, part_name(type));
-        color(type == PART_SOURCE   ? .2f
-              : type == PART_SWITCH ? .38f
-                                    : .84f,
-              type == PART_SOURCE ? .54f : .42f, type == PART_LED ? .28f : .6f);
-        circle(42, y + 31, 13);
+        draw_thumbnail(type, 42, y + 31);
     }
 }
 
@@ -653,7 +692,7 @@ static void draw_workspace_boards(const AppState *app)
         if (app->bench.parts[i].type == PART_BREADBOARD)
         {
             int p;
-            part_draw(&app->bench.parts[i], app->selected == i, app->leds[i]);
+            part_draw(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
             for (p = 0; p < bench_pin_count(PART_BREADBOARD); ++p)
             {
                 float x, y;
@@ -815,7 +854,7 @@ static void draw_workspace_parts(const AppState *app)
         if (app->bench.parts[i].type != PART_BREADBOARD)
         {
             int p;
-            part_draw_oriented(&app->bench.parts[i], app->selected == i, app->leds[i]);
+            part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
             for (p = 0; p < bench_pin_count(app->bench.parts[i].type); ++p)
             {
                 float x, y;
@@ -949,6 +988,21 @@ static void draw_workspace_burns(const AppState *app, GLuint font)
             burnt_draw(font, &app->bench.parts[i], SDL_GetTicks());
 }
 
+static void draw_selection_area(const AppState *app)
+{
+    if (!app->selecting_area)
+        return;
+    color(.12f, .45f, .86f);
+    glLineWidth(2);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(app->area_start.x, app->area_start.y);
+    glVertex2f(app->area_end.x, app->area_start.y);
+    glVertex2f(app->area_end.x, app->area_end.y);
+    glVertex2f(app->area_start.x, app->area_end.y);
+    glEnd();
+    glLineWidth(1);
+}
+
 static void draw_workspace(const AppState *app, GLuint font, int width, int height)
 {
     glEnable(GL_SCISSOR_TEST);
@@ -967,6 +1021,7 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
     draw_workspace_labels(app, font);
     draw_workspace_probe(app, font);
     draw_workspace_burns(app, font);
+    draw_selection_area(app);
     glPopMatrix();
     glDisable(GL_SCISSOR_TEST);
 }
@@ -1036,10 +1091,7 @@ static void draw_status(const AppState *app, GLuint font)
     color(.2f, .26f, .3f);
     text(font, 238, 685, app->status);
     text(font, 238, 709,
-         app->sim.auto_enabled ? "Espaco: executar/pausar | R ou botao direito: girar | Duplo clique: liga/desliga "
-                                 "| E: valor | T: grafico | Delete: excluir"
-                               : "Terminais: fios | Duplo clique: alternar | P: DC | T: transitorio | Espaco/N: "
-                                 "pausa/passo | Delete: excluir");
+         "Shift+arraste: area | Ctrl+C/X/V: copiar/recortar/colar | Delete: excluir | Ctrl+Z/Y: desfazer/refazer");
 }
 
 static void draw_settings(const AppState *app, GLuint font)
@@ -1115,6 +1167,37 @@ static void draw_value_editor(const AppState *app, GLuint font)
     }
 }
 
+static void draw_projects(const AppState *app, GLuint font)
+{
+    if (!app->projects_open)
+        return;
+    color(.35f, .4f, .44f);
+    rect(306, 136, 680, 438);
+    color(.97f, .98f, .99f);
+    rect(300, 130, 680, 438);
+    color(.12f, .22f, .29f);
+    text(font, 330, 165, "SAVE STATES  /  MONTAGEM E CONFIGURACOES");
+    text(font, 330, 188, "Escolha um slot. F3 ou Esc fecha.");
+    for (int i = 0; i < 9; ++i)
+    {
+        float x = 330 + (i % 3) * 200, y = 200 + (i / 3) * 90;
+        color(i == app->save_slot ? .76f : .9f, .9f, .96f);
+        rect(x, y, 180, 74);
+        color(.13f, .23f, .29f);
+        char label[64];
+        snprintf(label, sizeof(label), "Slot %d  %s", i + 1, app->saved_slots[i] ? "Gravado" : "Vazio");
+        text(font, x + 12, y + 30, label);
+        text(font, x + 12, y + 56, i == app->save_slot ? "SELECIONADO" : "Clique para escolher");
+    }
+    color(.76f, .9f, .82f);
+    rect(340, 500, 250, 45);
+    color(.78f, .88f, .97f);
+    rect(640, 500, 250, 45);
+    color(.12f, .22f, .29f);
+    text(font, 360, 529, "Salvar slot [Ctrl+S]");
+    text(font, 660, 529, "Carregar [Ctrl+L]");
+}
+
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
     draw_chrome(app, font, width, height);
@@ -1123,4 +1206,5 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_status(app, font);
     draw_settings(app, font);
     draw_value_editor(app, font);
+    draw_projects(app, font);
 }

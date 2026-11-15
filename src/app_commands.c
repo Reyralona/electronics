@@ -1,4 +1,5 @@
 #include "app_commands.h"
+#include "app_editing.h"
 #include "app_palette.h"
 #include "workbench_examples.h"
 #include "workbench_file.h"
@@ -13,6 +14,7 @@ static void command_example(AppState *app)
     {
         bench_history_record(app->history, &app->bench);
         bench_replace(&app->bench, &example);
+        bench_selection_clear(&app->selection);
         app->example_index = choice;
         app->selected = example_selected;
         app->selected_wire = -1;
@@ -65,6 +67,7 @@ static void command_history(AppState *app, SDL_Keycode key)
         key == SDLK_Z ? bench_history_undo(app->history, &app->bench) : bench_history_redo(app->history, &app->bench);
     if (changed)
     {
+        bench_selection_clear(&app->selection);
         app->selected = -1;
         app->selected_wire = -1;
         app->dragging = -1;
@@ -81,6 +84,8 @@ static void command_history(AppState *app, SDL_Keycode key)
 
 static void command_cancel(AppState *app)
 {
+    app->selecting_area = 0;
+    bench_selection_clear(&app->selection);
     app->pending.component = -1;
     app->route_count = 0;
     app->placing = -1;
@@ -279,6 +284,7 @@ static void command_load(AppState *app)
     if (workbench_load_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved))
     {
         bench_history_record(app->history, &before);
+        bench_selection_clear(&app->selection);
         app->selected = -1;
         app->selected_wire = -1;
         app->dragging = -1;
@@ -307,6 +313,7 @@ static void command_delete_part(AppState *app)
 {
     bench_history_record(app->history, &app->bench);
     bench_remove(&app->bench, app->selected);
+    bench_selection_clear(&app->selection);
     app->selected = -1;
     app->selected_wire = -1;
     app->pending.component = -1;
@@ -349,6 +356,8 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
 
 void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
+    if (app_editing_key(app, key, mod))
+        return;
     if ((mod & SDL_KMOD_CTRL) && (key == SDLK_Z || key == SDLK_Y))
     {
         command_history(app, key);

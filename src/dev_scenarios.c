@@ -8,6 +8,8 @@
 
 int dev_scenario_prepare(AppState *app, int argc, char **argv)
 {
+    if (argc > 1 && strcmp(argv[1], "--capture-projects") == 0)
+        app->projects_open = 1;
     if (argc > 1 && strcmp(argv[1], "--capture-settings") == 0)
         app->settings = 1;
     if (app->capture)
@@ -173,6 +175,14 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     }
     if (app->capture && strcmp(argv[1], "--capture-zoomout") == 0)
         bench_view_zoom_at(&app->view, .3f, 750, 365);
+    if (argc > 1 && strcmp(argv[1], "--capture-selection") == 0)
+    {
+        app->selecting_area = 1;
+        app->area_start = (WirePoint){280, 150};
+        app->area_end = (WirePoint){800, 490};
+        bench_selection_rect(&app->selection, &app->bench, app->area_start, app->area_end);
+        app->status = "Selecao por area: Ctrl+C/X/V, Delete e arraste em grupo.";
+    }
     return 0;
 }
 
@@ -538,6 +548,22 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_F2);
     else if (app->selftest_phase == 78)
         queued = dev_test_key(window, SDLK_Z);
+    else if (app->selftest_phase == 79)
+        queued = dev_test_click(window, 250, 150);
+    else if (app->selftest_phase == 80)
+        queued = dev_test_drag_finish(window, 1040, 600);
+    else if (app->selftest_phase == 81)
+        queued = dev_test_shortcut(window, SDLK_C, SDL_KMOD_CTRL) && dev_test_shortcut(window, SDLK_V, SDL_KMOD_CTRL);
+    else if (app->selftest_phase == 82)
+        queued = dev_test_key(window, SDLK_DELETE);
+    else if (app->selftest_phase == 83 || app->selftest_phase == 84)
+        queued = dev_test_key(window, SDLK_Z);
+    else if (app->selftest_phase == 85)
+        queued = dev_test_key(window, SDLK_F3);
+    else if (app->selftest_phase == 86)
+        queued = dev_test_click(window, 800, 410);
+    else if (app->selftest_phase == 87)
+        queued = dev_test_key(window, SDLK_ESCAPE);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -713,13 +739,27 @@ void dev_scenario_validate(AppState *app)
         valid = app->bench.part_count == 6 && app->bench.parts[2].type == PART_74HC00 && app->probe_pin == 2;
     else if (app->selftest_phase == 78)
         valid = app->bench.part_count == 5 && app->bench.parts[2].type == PART_DFF;
+    else if (app->selftest_phase == 79)
+        valid = app->selecting_area;
+    else if (app->selftest_phase == 80)
+        valid = !app->selecting_area && bench_selection_count(&app->selection, &app->bench) == 5;
+    else if (app->selftest_phase == 81 || app->selftest_phase == 83)
+        valid = app->bench.part_count == 10 && app->bench.wire_count == 12;
+    else if (app->selftest_phase == 82 || app->selftest_phase == 84)
+        valid = app->bench.part_count == 5 && app->bench.wire_count == 6;
+    else if (app->selftest_phase == 85)
+        valid = app->projects_open;
+    else if (app->selftest_phase == 86)
+        valid = app->save_slot == 8;
+    else if (app->selftest_phase == 87)
+        valid = !app->projects_open;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d.\n", app->selftest_phase);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 79)
+    if (++app->selftest_phase == 88)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

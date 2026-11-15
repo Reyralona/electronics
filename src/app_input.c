@@ -1,5 +1,6 @@
 #include "app_input.h"
 #include "app_commands.h"
+#include "app_editing.h"
 #include "app_layout.h"
 #include "app_palette.h"
 #include "workbench_file.h"
@@ -255,8 +256,34 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     }
 }
 
+static int input_projects(AppState *app, float x, float y)
+{
+    if (x >= 500 && x < 680 && y < 68)
+    {
+        app_editing_key(app, SDLK_F3, 0);
+        return 1;
+    }
+    if (!app->projects_open)
+        return 0;
+    if (x >= 330 && x < 930 && y >= 200 && y < 470)
+    {
+        int column = (int)((x - 330) / 200), row = (int)((y - 200) / 90);
+        app->save_slot = row * 3 + column;
+    }
+    if (y >= 500 && y < 545)
+    {
+        if (x >= 340 && x < 590)
+            app_projects_save(app);
+        else if (x >= 640 && x < 890)
+            app_projects_load(app);
+    }
+    return 1;
+}
+
 static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
 {
+    if (input_projects(app, x, y))
+        return 1;
     if (x >= 700 && x < 850 && y < 68)
     {
         SDL_Event shortcut = {0};
@@ -316,7 +343,7 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
     }
     if (x < 220 && y >= 80 && y < 125)
     {
-        app->palette_page = 1 - app->palette_page;
+        app->palette_page = x >= 110;
         app->placing = -1;
         return 1;
     }
@@ -462,6 +489,10 @@ static void input_select(AppState *app, float x, float y, int clicks)
 {
     int hit;
     hit = part_at(&app->bench, x, y);
+    if (hit < 0 || !app->selection.parts[hit])
+        bench_selection_clear(&app->selection);
+    if (hit >= 0)
+        app->selection.parts[hit] = 1;
     app->selected = hit;
     app->selected_wire = -1;
     if (hit < 0 || app->bench.parts[hit].type == PART_BREADBOARD)
@@ -496,7 +527,10 @@ static void input_select(AppState *app, float x, float y, int clicks)
     else
     {
         app->pending.component = -1;
-        app->status = "Bancada livre.";
+        app->selecting_area = 1;
+        app->area_start = (WirePoint){x, y};
+        app->area_end = app->area_start;
+        app->status = "Arraste para selecionar uma area. Ctrl+C/X/V; Delete remove.";
     }
 }
 
@@ -514,6 +548,17 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     if (x < 220 || y < 70 || y > 660)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
+    if (SDL_GetModState() & SDL_KMOD_SHIFT)
+    {
+        app->selecting_area = 1;
+        app->area_start = (WirePoint){x, y};
+        app->area_end = app->area_start;
+        app->dragging = -1;
+        app->drag_wire = -1;
+        app->pending.component = -1;
+        app->placing = -1;
+        return;
+    }
     if (input_click_knee(app, x, y, event->button.clicks))
         return;
     if (app->placing >= 0)
@@ -547,7 +592,9 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
     (void)window;
     (void)event;
 
-    if (app->dragging >= 0 && app->move_recorded && bench_snap_to_breadboard(&app->bench, app->dragging))
+    app->selecting_area = 0;
+    if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
+        bench_snap_to_breadboard(&app->bench, app->dragging))
         app->status = "Componente encaixado na breadboard.";
     app->dragging = -1;
     app->drag_wire = -1;
@@ -593,9 +640,35 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
                 bench_history_record(app->history, &app->bench);
                 app->move_recorded = 1;
             }
-            bench_move_part(&app->bench, app->dragging, x, y);
+            if (bench_selection_count(&app->selection, &app->bench) > 1)
+                bench_selection_move(&app->bench, &app->selection, x - app->bench.parts[app->dragging].x,
+                                     y - app->bench.parts[app->dragging].y);
+            else
+                bench_move_part(&app->bench, app->dragging, x, y);
         }
     }
+}
+
+static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Event *event)
+{
+    int width, height;
+    SDL_GetWindowSize(window, &width, &height);
+    if (width <= 0 || height <= 0)
+        return;
+    float x = event->motion.x * 1280.0f / width, y = event->motion.y * 720.0f / height;
+    bench_view_to_world(&app->view, x, y, &app->mouse_world.x, &app->mouse_world.y);
+    if (!app->selecting_area)
+        return;
+    app->area_end = app->mouse_world;
+    bench_selection_rect(&app->selection, &app->bench, app->area_start, app->area_end);
+    app->selected = -1;
+    for (int i = 0; i < app->bench.part_count; ++i)
+        if (app->selection.parts[i])
+            app->selected = i;
+    snprintf(app->selection_status, sizeof(app->selection_status),
+             "%d componentes selecionados. Ctrl+C/X/V; Delete remove.",
+             bench_selection_count(&app->selection, &app->bench));
+    app->status = app->selection_status;
 }
 
 /* Dispatch in priority order: text editing consumes input before workspace interaction. */
@@ -604,6 +677,8 @@ void app_input_poll(AppState *app, SDL_Window *window)
     SDL_Event e;
     while (SDL_PollEvent(&e))
     {
+        if (e.type == SDL_EVENT_MOUSE_MOTION)
+            input_mouse_position(app, window, &e);
         if (e.type == SDL_EVENT_QUIT)
             app->running = 0;
         else if (app->editing >= 0 && e.type == SDL_EVENT_TEXT_INPUT)
@@ -622,6 +697,10 @@ void app_input_poll(AppState *app, SDL_Window *window)
         {
             app_commands_key(app, window, e.key.key, e.key.mod);
         }
+        else if (app->projects_open && e.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
+            continue;
+        else if (e.type == SDL_EVENT_MOUSE_MOTION && app->selecting_area)
+            continue;
         else if (e.type == SDL_EVENT_MOUSE_WHEEL && !app->settings && app->editing < 0)
         {
             input_zoom(app, window, &e);
