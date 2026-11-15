@@ -5,7 +5,8 @@
 #include "spice_process.h"
 
 /* Results and playback state. No renderer or window dependency. */
-typedef struct {
+typedef struct
+{
     int sim_running;
     int dc_wire_valid;
     Workbench dc_snapshot;

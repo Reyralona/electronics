@@ -61,3 +61,23 @@ falhas do solver mostram codigo Windows/saida. Preparacao nova testada em build/
 ./tools/test-runtime-isolated.ps1 -Root build/spice-quality-runtime/ucrt64 passou com PATH minimo.
 Ainda nao e pacote distribuivel: licencas e empacotamento final permanecem pendentes.
 Proxima tarefa continua sendo separar estado/cenarios da janela, seguindo QUALIDADE_CODIGO.md.
+
+## Estado mais recente: 0.17.2 - separacao da aplicacao
+AppState possui montagem, selecao, configuracoes, trabalho assincrono e SimState.
+SimState armazena resultados/reproducao sem SDL/OpenGL; ainda nao e uma maquina de estados consolidada.
+app_simulation.c separa polling, aceitacao de resultados, debounce, invalidacao, reproducao e LEDs.
+dev_scenarios.c contem cenarios de captura e todas as 79 fases do autoteste, fora de main.
+spice_trace_nearest passou ao modulo de curvas; selecao automatica de sonda esta em sim_state.c.
+.clang-format registra estilo de 120 colunas e instrucoes separadas; aplicado aos modulos extraidos e janela.
+Formatter local descartavel: build/format-tool/clang_format/data/bin/clang-format.exe (23.1.5).
+
+Verificacao: ./build.ps1 -GuiTests passou, incluindo test_app_simulation sem janela, DC/transiente
+obsoleto e selecao de amostras. test-runtime-isolated.ps1 passou. Captura NAND permanece identica
+(SHA256 3AC311CAD802DD3EE35FB5FE8298907906BDE2A2BEC184CEFBEE152D104B113C).
+Durante extracao houve falha reproduzivel de zoom sintetico (direcao invertida).
+Inicializacao explicita com SDL_zero e SDL_MOUSEWHEEL_NORMAL corrigiu; tres repeticoes passaram.
+Nao atribuir causa interna ao SDL sem evidencia adicional.
+
+Proximo: extrair entrada/desenho da janela e consolidar transicoes de SimState com testes sem janela.
+Ainda faltam revisoes de montagem em vez de memcmp, registro de componentes, capacidades dinamicas,
+parametros/logs inspecionaveis e backend de passo real. Meta 1.0 continua nao atendida.

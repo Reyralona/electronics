@@ -80,3 +80,11 @@ Integracao de 14/11/2026: adotada a revisao QUALIDADE_CODIGO.md como direcao inc
 A extracao inicial para dev_capture.c preservou a captura automatica byte a byte. Cenarios e fases ainda precisam sair de main. Fallback transititorio sem instrumentacao preserva a causa no status; teste com ciclo de fios ideais confirma curva valida sem correntes inventadas. Teste adicional confirma indutor diretamente na fonte sem queima baseada no equivalente DC.
 
 Correcao P0 em 14/11/2026: setup solicita ngspice, gcc-libs e libwinpthread explicitamente ao pacman, preservando verificacao de integridade e rejeitando runtime sem as quatro DLLs. Uma instalacao nova em build/spice-quality-runtime passou nos testes automaticos DC/transitorios e exemplos com PATH limitado ao Windows. Falhas do processo exibem codigo de saida, incluindo DLL ausente. Executavel canonico build/bancada.exe conforme politica incorporada de main.
+
+Refatoracao em 14/11/2026: AppState e SimState organizam dados; app_simulation separa o ciclo de atualizacao do desenho.
+Cenarios de captura e autoteste foram extraidos para dev_scenarios. Nenhum modelo eletrico foi alterado.
+A captura NAND permaneceu identica; teste sem janela cobre invalidacao de resultados e amostras de LED.
+Ao investigar evento sintetico de rolagem, consultado o [codigo oficial SDL 3.4.2](https://raw.githubusercontent.com/libsdl-org/SDL/release-3.4.2/src/events/SDL_events.c).
+A direcao passou a ser definida explicitamente como normal e a estrutura zerada; testes repetidos passaram.
+Essa verificacao nao identifica uma falha interna da biblioteca. A separacao de entrada/renderizacao e consolidacao
+completa de SimState continuam pendentes; nao considerar apenas o agrupamento de campos como conclusao da arquitetura.

@@ -6,7 +6,8 @@
 #include "workbench_view.h"
 
 /* Owned by the application thread. The worker receives its own snapshot. */
-typedef struct {
+typedef struct
+{
     Workbench bench;
     Pin pending;
     int selected, placing, dragging, running;
