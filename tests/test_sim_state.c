@@ -8,31 +8,31 @@ static void test_invalidation(void)
     Workbench bench = {0};
     assert(bench_add(&bench, PART_LED, 300, 200) == 0);
     sim.auto_enabled = 1;
-    sim.dc_valid = 1;
-    sim.dc_revision = bench.revision;
-    sim.result_revision = bench.revision;
+    sim_state_set_result(&sim, SIM_RESULT_DC, 1, bench.revision);
+
+    sim.burn_revision = bench.revision;
     sim.burnt_count = 1;
     sim.burnt[0] = 1;
     assert(sim_state_invalidate(&sim, &bench) == NULL);
-    assert(sim.dc_valid && sim.burnt_count == 1);
+    assert(sim_state_has_result(&sim, SIM_RESULT_DC) && sim.burnt_count == 1);
     assert(bench_move_part(&bench, 0, 310, 200));
     const char *message = sim_state_invalidate(&sim, &bench);
     assert(message && strstr(message, "Pausado"));
-    assert(!sim.dc_valid && !sim.burnt_count && !sim.burnt[0]);
+    assert(!sim_state_has_result(&sim, SIM_RESULT_DC) && !sim.burnt_count && !sim.burnt[0]);
 
-    sim.trace_valid = 1;
-    sim.trace_revision = bench.revision;
+    sim_state_set_result(&sim, SIM_RESULT_TRACE, 1, bench.revision);
+
     assert(sim_state_invalidate(&sim, &bench) == NULL);
     assert(bench_move_part(&bench, 0, 320, 200));
     sim.sim_running = 1;
     assert(sim_state_invalidate(&sim, &bench) == NULL);
-    assert(!sim.trace_valid);
+    assert(!sim_state_has_result(&sim, SIM_RESULT_TRACE));
 }
 
 static void test_playback(void)
 {
     static SimState sim;
-    sim.trace_valid = 1;
+    sim_state_set_result(&sim, SIM_RESULT_TRACE, 1, 0);
     sim.sim_running = 1;
     sim.trace.count = 3;
     sim.trace.samples[0] = (SpiceSample){0, 0};
@@ -66,11 +66,11 @@ static void test_leds(void)
     sim.auto_enabled = 1;
     sim_state_leds(&sim, &bench, leds);
     assert(leds[0] == -1);
-    sim.dc_valid = 1;
+    sim_state_set_result(&sim, SIM_RESULT_DC, 1, bench.revision);
     sim.dc_led_currents[0] = .003;
     sim_state_leds(&sim, &bench, leds);
     assert(leds[0] == 1);
-    sim.trace_valid = 1;
+    sim_state_set_result(&sim, SIM_RESULT_TRACE, 1, bench.revision);
     sim.trace.leds_on[0] = 0;
     sim_state_leds(&sim, &bench, leds);
     assert(leds[0] == 0);
@@ -94,8 +94,32 @@ static void test_probe_selection(void)
     assert(probe.component == 0 && probe.pin == 0);
 }
 
+static void test_result_transitions(void)
+{
+    static SimState sim;
+    assert(sim_state_has_result(&sim, SIM_RESULT_NONE));
+    sim_state_set_result(&sim, SIM_RESULT_DC, 1, 10);
+    sim.dc_wire_valid = 1;
+    assert(sim_state_has_result(&sim, SIM_RESULT_DC));
+    assert(!sim_state_has_result(&sim, SIM_RESULT_TRACE));
+    sim_state_set_result(&sim, SIM_RESULT_TRACE, 1, 11);
+    assert(sim_state_has_result(&sim, SIM_RESULT_TRACE) && sim.result_revision == 11);
+    assert(!sim_state_has_result(&sim, SIM_RESULT_DC) && !sim.dc_wire_valid);
+    sim_state_discard_result(&sim, SIM_RESULT_DC);
+    assert(sim_state_has_result(&sim, SIM_RESULT_TRACE));
+    sim_state_set_result(&sim, SIM_RESULT_TRACE, 0, 12);
+    assert(sim_state_has_result(&sim, SIM_RESULT_NONE));
+    sim_state_set_result(&sim, SIM_RESULT_DC, 1, 13);
+    sim_state_discard_result(&sim, SIM_RESULT_TRACE);
+    assert(sim_state_has_result(&sim, SIM_RESULT_DC));
+    sim.dc_wire_valid = 1;
+    sim_state_discard_result(&sim, SIM_RESULT_DC);
+    assert(sim_state_has_result(&sim, SIM_RESULT_NONE) && !sim.dc_wire_valid);
+}
+
 int main(void)
 {
+    test_result_transitions();
     test_invalidation();
     test_playback();
     test_leds();

@@ -206,17 +206,19 @@ int dev_scenario_analyze(AppState *app, char **argv)
         app->show_current = strcmp(argv[1], "--capture-current") == 0;
         if (app->show_current)
         {
-            app->sim.dc_valid =
-                spice_dc_analyze_wires(&app->bench, app->ngspice, &app->sim.dc_current, app->sim.dc_led_currents,
-                                       app->sim.dc_wire_currents, app->sim.dc_status, sizeof(app->sim.dc_status));
-            app->sim.dc_wire_valid = app->sim.dc_valid;
+            sim_state_set_result(&app->sim, SIM_RESULT_DC,
+                                 spice_dc_analyze_wires(&app->bench, app->ngspice, &app->sim.dc_current,
+                                                        app->sim.dc_led_currents, app->sim.dc_wire_currents,
+                                                        app->sim.dc_status, sizeof(app->sim.dc_status)),
+                                 app->bench.revision);
+            app->sim.dc_wire_valid = sim_state_has_result(&app->sim, SIM_RESULT_DC);
         }
         else
-            app->sim.dc_valid =
-                spice_dc_analyze(&app->bench, app->ngspice, &app->sim.dc_current, app->sim.dc_led_currents,
-                                 app->sim.dc_status, sizeof(app->sim.dc_status));
-        if (app->sim.dc_valid)
-            app->sim.dc_revision = app->bench.revision;
+            sim_state_set_result(&app->sim, SIM_RESULT_DC,
+                                 spice_dc_analyze(&app->bench, app->ngspice, &app->sim.dc_current,
+                                                  app->sim.dc_led_currents, app->sim.dc_status,
+                                                  sizeof(app->sim.dc_status)),
+                                 app->bench.revision);
         app->status = app->sim.dc_status;
     }
     if (app->capture && (strcmp(argv[1], "--capture-trace") == 0 || strcmp(argv[1], "--capture-trace-current") == 0 ||
@@ -239,7 +241,8 @@ int dev_scenario_analyze(AppState *app, char **argv)
             app->bench.wires[0].knees[0] = (WirePoint){311, 150};
             app->bench.wires[0].knees[1] = (WirePoint){501, 150};
         }
-        app->sim.trace_valid =
+        sim_state_set_result(
+            &app->sim, SIM_RESULT_TRACE,
             app->sim.trace_current == 2
                 ? spice_transient_wire(&app->bench, app->ngspice, 0, app->transient_step, app->transient_stop,
                                        &app->sim.trace, app->sim.dc_status, sizeof(app->sim.dc_status))
@@ -248,10 +251,11 @@ int dev_scenario_analyze(AppState *app, char **argv)
                                           &app->sim.trace, app->sim.dc_status, sizeof(app->sim.dc_status))
                 : spice_transient_analyze(&app->bench, app->ngspice, (Pin){2, 0}, app->transient_step,
                                           app->transient_stop, &app->sim.trace, app->sim.dc_status,
-                                          sizeof(app->sim.dc_status));
-        if (app->sim.trace_valid)
+                                          sizeof(app->sim.dc_status)),
+            app->bench.revision);
+        if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
         {
-            app->sim.trace_revision = app->bench.revision;
+
             app->sim.trace_index = app->sim.trace.count / 3;
             app->sim.sim_running = 0;
             app->status = "Sondagem RC calculada.";
@@ -285,15 +289,17 @@ int dev_scenario_analyze(AppState *app, char **argv)
         app->bench.wires[2].knees[0] = (WirePoint){849, 370};
         app->bench.wires[2].knees[1] = (WirePoint){449, 370};
         app->show_current = 1;
-        app->sim.trace_valid =
-            spice_transient_instrumented(&app->bench, app->ngspice, 1, (Pin){0, 0}, 1e-5, .002, &app->sim.trace,
-                                         app->sim.dc_status, sizeof(app->sim.dc_status));
-        if (!app->sim.trace_valid)
+        sim_state_set_result(&app->sim, SIM_RESULT_TRACE,
+                             spice_transient_instrumented(&app->bench, app->ngspice, 1, (Pin){0, 0}, 1e-5, .002,
+                                                          &app->sim.trace, app->sim.dc_status,
+                                                          sizeof(app->sim.dc_status)),
+                             app->bench.revision);
+        if (!sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
         {
             fprintf(stderr, "Captura LED: %s\n", app->sim.dc_status);
             return 1;
         }
-        app->sim.trace_revision = app->bench.revision;
+
         app->sim.trace_index =
             spice_trace_nearest(&app->sim.trace, strcmp(argv[1], "--capture-led-on") == 0 ? .125 : .375);
         app->sim.sim_running = 0;
@@ -315,14 +321,16 @@ int dev_scenario_analyze(AppState *app, char **argv)
         bench_toggle_wire(&app->bench, (Pin){2, 2}, (Pin){3, 0});
         bench_toggle_wire(&app->bench, (Pin){3, 1}, (Pin){4, 0});
         bench_toggle_wire(&app->bench, (Pin){4, 1}, (Pin){0, 1});
-        app->sim.trace_valid = spice_transient_analyze(&app->bench, app->ngspice, (Pin){2, 2}, 1e-5, .0035,
-                                                       &app->sim.trace, app->sim.dc_status, sizeof(app->sim.dc_status));
-        if (!app->sim.trace_valid)
+        sim_state_set_result(&app->sim, SIM_RESULT_TRACE,
+                             spice_transient_analyze(&app->bench, app->ngspice, (Pin){2, 2}, 1e-5, .0035,
+                                                     &app->sim.trace, app->sim.dc_status, sizeof(app->sim.dc_status)),
+                             app->bench.revision);
+        if (!sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
         {
             fprintf(stderr, "Captura DFF: %s\n", app->sim.dc_status);
             return 1;
         }
-        app->sim.trace_revision = app->bench.revision;
+
         app->sim.trace_index = spice_trace_nearest(&app->sim.trace, .43);
         app->sim.trace_pin = 2;
         app->sim.sim_running = 0;
@@ -432,8 +440,8 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->sim.trace.samples[1] = (SpiceSample){1, 2};
         app->sim.trace.samples[2] = (SpiceSample){2, 3};
         app->sim.trace_index = 0;
-        app->sim.trace_valid = 1;
-        app->sim.trace_revision = app->bench.revision;
+        sim_state_set_result(&app->sim, SIM_RESULT_TRACE, 1, app->bench.revision);
+
         app->sim.sim_running = 0;
         queued = dev_test_key(window, SDLK_F1);
     }
@@ -484,8 +492,8 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->sim.trace.samples[1] = (SpiceSample){1, 2};
         app->sim.trace.samples[2] = (SpiceSample){2, 3};
         app->sim.trace_index = 0;
-        app->sim.trace_valid = 1;
-        app->sim.trace_revision = app->bench.revision;
+        sim_state_set_result(&app->sim, SIM_RESULT_TRACE, 1, app->bench.revision);
+
         app->sim.sim_running = 0;
         queued = dev_test_key(window, SDLK_SPACE);
     }
@@ -503,8 +511,8 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 70)
     {
         bench_add(&app->bench, PART_LED, 1200, 500);
-        app->sim.trace_revision = app->bench.revision;
-        app->sim.trace_valid = 1;
+
+        sim_state_set_result(&app->sim, SIM_RESULT_TRACE, 1, app->bench.revision);
         app->sim.trace_index = 0;
         app->sim.trace.leds_on[0] = UINT64_C(1) << 7;
         app->sim.trace.leds_on[1] = 0;
@@ -636,7 +644,7 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 43)
         valid = app->editing < 0 && app->transient_step == 2e-5;
     else if (app->selftest_phase == 44)
-        valid = app->sim.trace_valid && !app->settings && app->sim.trace_index == 0;
+        valid = sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->settings && app->sim.trace_index == 0;
     else if (app->selftest_phase == 45)
         valid = app->sim.trace_index == 1;
     else if (app->selftest_phase == 46)
@@ -679,13 +687,14 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 64)
         valid = app->bench.parts[6].on == 0;
     else if (app->selftest_phase == 65)
-        valid = app->sim.trace_valid && app->sim.sim_running && app->sim.trace_index == 0;
+        valid = sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->sim.sim_running && app->sim.trace_index == 0;
     else if (app->selftest_phase == 66)
-        valid = app->sim.trace_valid && !app->sim.sim_running;
+        valid = sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.sim_running;
     else if (app->selftest_phase == 67 || app->selftest_phase == 68)
-        valid = app->sim.trace_valid && app->sim.sim_running;
+        valid = sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->sim.sim_running;
     else if (app->selftest_phase == 69)
-        valid = app->sim.trace_valid && !app->sim.sim_running && app->sim.trace_index == app->sim.trace.count - 1;
+        valid = sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.sim_running &&
+                app->sim.trace_index == app->sim.trace.count - 1;
     else if (app->selftest_phase == 70)
         valid = app->bench.part_count == 8 && app->bench.parts[7].type == PART_LED;
     else if (app->selftest_phase == 71)

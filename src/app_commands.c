@@ -23,9 +23,7 @@ static void command_example(AppState *app)
         app->placing = -1;
         app->settings = 0;
         app->view = (BenchView){1, 0, 0};
-        app->sim.trace_valid = 0;
-        app->sim.dc_valid = 0;
-        app->sim.dc_wire_valid = 0;
+        sim_state_clear_result(&app->sim);
         memset(app->leds, 0, sizeof(app->leds));
         app->probe_pin = choice > 0 ? 2 : 0;
         app->probe_current = 0;
@@ -94,7 +92,7 @@ static void command_cancel(AppState *app)
 static void command_playback(AppState *app)
 {
     app->sim.sim_running = !app->sim.sim_running;
-    if (app->sim.trace_valid && app->sim.sim_running)
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->sim.sim_running)
     {
         if (app->sim.trace_index >= app->sim.trace.count - 1)
             app->sim.trace_index = 0;
@@ -104,7 +102,7 @@ static void command_playback(AppState *app)
         if (app->sim.trace_automatic)
             app->status = "Simulacao em execucao: o circuito e calculado automaticamente.";
     }
-    else if (app->sim.trace_valid)
+    else if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
         app->status = "Reproducao pausada; B/N percorrem as amostras.";
     else if (app->sim.auto_enabled)
         app->status = app->sim.sim_running ? "Simulacao em execucao: o circuito e calculado automaticamente."
@@ -150,9 +148,7 @@ static void command_trace_wire(AppState *app)
     else if (spice_job_start_transient_wire(&app->dc_job, &app->bench, app->ngspice, app->selected_wire,
                                             app->transient_step, app->transient_stop))
     {
-        app->sim.trace_valid = 0;
-        app->sim.dc_valid = 0;
-        app->sim.dc_wire_valid = 0;
+        sim_state_clear_result(&app->sim);
         app->status = "Calculando corrente transitoria do fio...";
     }
     else
@@ -185,9 +181,7 @@ static void command_trace_part(AppState *app)
         app->status = "Corrente transitoria indisponivel para interruptor ideal.";
     else if (start_part_trace(app))
     {
-        app->sim.trace_valid = 0;
-        app->sim.dc_valid = 0;
-        app->sim.dc_wire_valid = 0;
+        sim_state_clear_result(&app->sim);
         app->status = "Calculando transitorio selecionado...";
     }
     else
@@ -228,9 +222,7 @@ static void command_dc(AppState *app)
         app->status = "Analise em andamento.";
     else if ((app->show_current ? spice_job_start_wires : spice_job_start)(&app->dc_job, &app->bench, app->ngspice))
     {
-        app->sim.trace_valid = 0;
-        app->sim.dc_valid = 0;
-        app->sim.dc_wire_valid = 0;
+        sim_state_clear_result(&app->sim);
         app->status = "Analisando ponto DC...";
     }
     else
@@ -302,9 +294,7 @@ static void command_load(AppState *app)
         app->probe_current = saved.probe_current;
         app->transient_step = saved.transient_step;
         app->transient_stop = saved.transient_stop;
-        app->sim.dc_valid = 0;
-        app->sim.dc_wire_valid = 0;
-        app->sim.trace_valid = 0;
+        sim_state_clear_result(&app->sim);
         memset(app->leds, 0, sizeof(app->leds));
         bench_simulate(&app->bench, app->leds);
         app->status = "Bancada e configuracoes carregadas.";
@@ -391,12 +381,12 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
             command_dc(app);
         return;
     case SDLK_G:
-        if (app->sim.trace_valid)
+        if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
             command_graph(app);
         return;
     case SDLK_N:
     case SDLK_B:
-        if (!app->sim.sim_running && app->sim.trace_valid)
+        if (!app->sim.sim_running && sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
             command_trace_step(app, key);
         else if (key == SDLK_N && !app->sim.sim_running)
             command_logic_step(app);

@@ -23,7 +23,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_sim_state.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_commands.c src/app_commands.c src/app_state.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_history.c src/spice_job.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_app_commands.exe -lSDL3
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_commands.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_state.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_history.c src/spice_job.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_app_commands.exe -lSDL3
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_app_commands.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

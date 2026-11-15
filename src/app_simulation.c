@@ -31,7 +31,7 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
 static void accept_automatic_result(AppState *app)
 {
     const SimAutoResult *r = &app->dc_job.auto_result;
-    app->sim.result_revision = app->dc_job.snapshot.revision;
+    app->sim.burn_revision = app->dc_job.snapshot.revision;
     memcpy(app->sim.burnt, r->burnt, sizeof(app->sim.burnt));
     memcpy(app->sim.burn_reason, r->burn_reason, sizeof(app->sim.burn_reason));
     memcpy(app->sim.burn_value, r->burn_value, sizeof(app->sim.burn_value));
@@ -39,9 +39,7 @@ static void accept_automatic_result(AppState *app)
     app->sim.auto_failed = !app->dc_job.success;
     if (app->sim.auto_failed)
     {
-        app->sim.dc_valid = 0;
-        app->sim.dc_wire_valid = 0;
-        app->sim.trace_valid = 0;
+        sim_state_clear_result(&app->sim);
         snprintf(app->sim.auto_status, sizeof(app->sim.auto_status), "Nao foi possivel calcular: %s", r->message);
         app->status = app->sim.auto_status;
     }
@@ -50,11 +48,11 @@ static void accept_automatic_result(AppState *app)
         const char *burn_text;
         if (r->has_trace)
         {
-            if (!app->sim.trace_valid || !app->sim.trace_automatic)
+            if (!sim_state_has_result(&app->sim, SIM_RESULT_TRACE) || !app->sim.trace_automatic)
                 app->show_trace = 0;
             app->sim.trace = app->dc_job.trace;
-            app->sim.trace_valid = 1;
-            app->sim.trace_revision = app->dc_job.snapshot.revision;
+            sim_state_set_result(&app->sim, SIM_RESULT_TRACE, 1, app->dc_job.snapshot.revision);
+
             app->sim.trace_index = 0;
             app->sim.trace_pin = app->dc_job.probe.pin;
             app->sim.trace_current = 0;
@@ -63,15 +61,15 @@ static void accept_automatic_result(AppState *app)
             app->sim.trace_automatic = 1;
             app->sim.trace_play_start_index = 0;
             app->sim.trace_play_started = SDL_GetTicks();
-            app->sim.dc_valid = 0;
+            sim_state_discard_result(&app->sim, SIM_RESULT_DC);
             app->sim.dc_wire_valid = 0;
         }
         else
         {
-            app->sim.trace_valid = 0;
+            sim_state_discard_result(&app->sim, SIM_RESULT_TRACE);
             app->sim.trace_automatic = 0;
-            app->sim.dc_valid = 1;
-            app->sim.dc_revision = app->dc_job.snapshot.revision;
+            sim_state_set_result(&app->sim, SIM_RESULT_DC, 1, app->dc_job.snapshot.revision);
+
             app->sim.dc_current = r->source_current;
             memcpy(app->sim.dc_led_currents, r->currents, sizeof(app->sim.dc_led_currents));
             app->sim.dc_wire_valid = r->measures_wires;
@@ -94,13 +92,13 @@ static void accept_transient_result(AppState *app)
 {
     app->sim.trace_automatic = 0;
     app->sim.trace_periodic = sim_auto_is_periodic(&app->dc_job.snapshot);
-    app->sim.trace_valid = app->dc_job.success;
+    sim_state_set_result(&app->sim, SIM_RESULT_TRACE, app->dc_job.success, app->dc_job.snapshot.revision);
     app->sim.trace_index = 0;
     app->sim.trace_pin = app->dc_job.probe.pin;
     app->sim.trace_current = app->dc_job.transient == 3 ? 2 : app->dc_job.transient == 2 ? 1 : 0;
     app->sim.trace_wire = app->sim.trace_current == 2 ? app->dc_job.probe.component : -1;
-    app->sim.trace_revision = app->dc_job.snapshot.revision;
-    if (app->sim.trace_valid)
+
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
     {
         app->sim.trace = app->dc_job.trace;
         app->show_trace = 1;
@@ -128,7 +126,7 @@ static void poll_result(AppState *app)
             /* An automatic result for an older assembly is simply dropped; a newer analysis follows. */
             if (!app->dc_job.automatic)
             {
-                app->sim.dc_valid = 0;
+                sim_state_discard_result(&app->sim, SIM_RESULT_DC);
                 app->status = "Montagem mudou durante analise; resultado descartado.";
             }
         }
@@ -142,9 +140,9 @@ static void poll_result(AppState *app)
         }
         else
         {
-            app->sim.dc_valid = app->dc_job.success;
+            sim_state_set_result(&app->sim, SIM_RESULT_DC, app->dc_job.success, app->dc_job.snapshot.revision);
             app->sim.dc_wire_valid = app->dc_job.success && app->dc_job.measures_wires;
-            app->sim.dc_revision = app->dc_job.snapshot.revision;
+
             app->sim.dc_current = app->dc_job.current;
             memcpy(app->sim.dc_led_currents, app->dc_job.led_currents, sizeof(app->sim.dc_led_currents));
             if (app->sim.dc_wire_valid)

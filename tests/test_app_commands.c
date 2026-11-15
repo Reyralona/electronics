@@ -46,7 +46,7 @@ int main(void)
     app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
     assert(app.bench.wire_count == wires);
 
-    app.sim.trace_valid = 1;
+    sim_state_set_result(&app.sim, SIM_RESULT_TRACE, 1, app.bench.revision);
     app.sim.trace.count = 2;
     app.sim.trace_index = 0;
     app.sim.sim_running = 0;

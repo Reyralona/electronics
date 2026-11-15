@@ -208,9 +208,10 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
         else if (y >= 240 && y < 280)
         {
             app->show_current = !app->show_current;
-            if (app->show_current && app->sim.trace_valid && !app->sim.trace.measures_wires)
+            if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_TRACE) &&
+                !app->sim.trace.measures_wires)
                 app->status = "Pressione T para medir correntes transitorias dos fios.";
-            else if (app->show_current && !app->sim.dc_wire_valid && !app->sim.trace_valid)
+            else if (app->show_current && !app->sim.dc_wire_valid && !sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
                 app->status = "Pressione P ou T para medir correntes dos fios.";
         }
         else if (y >= 354 && y < 390)
@@ -293,7 +294,8 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
         input_settings(app, window, x, y);
         return 1;
     }
-    if (app->sim.trace_valid && app->show_trace && x >= 840 && x <= 1240 && y >= 384 && y <= 628)
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace && x >= 840 && x <= 1240 && y >= 384 &&
+        y <= 628)
     {
         if (x >= 918 && x <= 1220 && y >= 431 && y <= 565)
         {

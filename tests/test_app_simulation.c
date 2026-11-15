@@ -23,7 +23,7 @@ static void test_discard_after_undo(AppState *app)
     assert(app->bench.parts[0].x == app->dc_job.snapshot.parts[0].x);
     assert(app->bench.revision != app->dc_job.snapshot.revision);
     app_simulation_update(app);
-    assert(!app->dc_job.thread && !app->sim.dc_valid);
+    assert(!app->dc_job.thread && !sim_state_has_result(&app->sim, SIM_RESULT_DC));
     assert(strstr(app->status, "descartado"));
 }
 
@@ -36,18 +36,18 @@ int main(void)
     assert(bench_add(&app.bench, PART_LED, 300, 200) == 0);
 
     /* The DC display uses only a result for the current assembly. */
-    app.sim.dc_revision = app.bench.revision;
-    app.sim.dc_valid = 1;
+
+    sim_state_set_result(&app.sim, SIM_RESULT_DC, 1, app.bench.revision);
     app.sim.dc_led_currents[0] = .003;
     app_simulation_update(&app);
-    assert(app.leds[0] == 1 && app.sim.dc_valid);
+    assert(app.leds[0] == 1 && sim_state_has_result(&app.sim, SIM_RESULT_DC));
     assert(bench_move_part(&app.bench, 0, app.bench.parts[0].x + 20, app.bench.parts[0].y));
     app_simulation_update(&app);
-    assert(!app.sim.dc_valid);
+    assert(!sim_state_has_result(&app.sim, SIM_RESULT_DC));
 
     /* Paused transient inspection displays the selected sample, without a window. */
-    app.sim.trace_revision = app.bench.revision;
-    app.sim.trace_valid = 1;
+
+    sim_state_set_result(&app.sim, SIM_RESULT_TRACE, 1, app.bench.revision);
     app.sim.trace.count = 2;
     app.sim.trace.samples[0] = (SpiceSample){0, 0};
     app.sim.trace.samples[1] = (SpiceSample){.001, 5};
@@ -61,7 +61,7 @@ int main(void)
     assert(app.leds[0] == 1);
     assert(bench_move_part(&app.bench, 0, app.bench.parts[0].x + 20, app.bench.parts[0].y));
     app_simulation_update(&app);
-    assert(!app.sim.trace_valid);
+    assert(!sim_state_has_result(&app.sim, SIM_RESULT_TRACE));
     test_discard_after_undo(&app);
     free(app.history);
     return 0;

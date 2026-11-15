@@ -672,7 +672,7 @@ static void draw_workspace_boards(const AppState *app)
 static void draw_wire_trace_current(const AppState *app, int i, const WirePoint *path, int count)
 {
     int k;
-    if (app->show_current && app->sim.trace_valid && app->sim.trace.measures_wires)
+    if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->sim.trace.measures_wires)
     {
         uint64_t bit = UINT64_C(1) << (i % 64);
         int forward = (app->sim.trace.wires_forward[app->sim.trace_index][i / 64] & bit) != 0,
@@ -693,7 +693,7 @@ static void draw_wire_trace_current(const AppState *app, int i, const WirePoint 
 static void draw_wire_dc_current(const AppState *app, int i, const WirePoint *path, int count)
 {
     int k;
-    if (app->show_current && app->sim.dc_valid && app->sim.dc_wire_valid &&
+    if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_DC) && app->sim.dc_wire_valid &&
         spice_wire_current_level(app->sim.dc_wire_currents[i]) > 0)
     {
         float total = 0, position;
@@ -925,7 +925,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
 
 static void draw_workspace_probe(const AppState *app, GLuint font)
 {
-    if (app->sim.trace_valid && app->sim.trace_current == 2 && app->sim.trace_wire >= 0 &&
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->sim.trace_current == 2 && app->sim.trace_wire >= 0 &&
         app->sim.trace_wire < app->bench.wire_count)
     {
         const Wire *wire = &app->bench.wires[app->sim.trace_wire];
@@ -983,7 +983,7 @@ static void draw_inspector(const AppState *app, GLuint font)
                            : part->type == PART_INDUCTOR  ? "H"
                            : part->type == PART_CLOCK     ? "Hz"
                                                           : NULL;
-        int shows_current = app->sim.dc_valid && !app->sim.burnt[app->selected] &&
+        int shows_current = sim_state_has_result(&app->sim, SIM_RESULT_DC) && !app->sim.burnt[app->selected] &&
                             (part->type == PART_LED || part->type == PART_RESISTOR);
         color(.97f, .98f, .98f);
         rect(840, 80, 420, (shows_current || app->sim.burnt[app->selected]) ? 70 : 38);
@@ -1029,7 +1029,7 @@ static void draw_inspector(const AppState *app, GLuint font)
 
 static void draw_status(const AppState *app, GLuint font)
 {
-    if (app->sim.trace_valid && app->show_trace && !app->settings)
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace && !app->settings)
         trace_draw(font, &app->sim.trace, app->sim.trace_index, app->sim.trace_pin, app->sim.trace_current);
     color(.97f, .98f, .98f);
     rect(220, 660, 1060, 60);
