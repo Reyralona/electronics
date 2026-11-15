@@ -22,3 +22,10 @@ Os blocos preservam componentes reais no solver; encapsulamento inicial em um ni
 automatico de portas compactas em breadboards. O formato 16 conserva grupos, mas ainda usa enums
 para tipos. Esses incrementos nao encerram o catalogo, os limites dinamicos, a instrumentacao
 inspecionavel nem o backend de passo real exigidos pela 1.0.
+
+
+Pedido de qualidade de uso em 15/11/2026: os criterios em [QUALIDADE_DE_USO.md](QUALIDADE_DE_USO.md)
+integram esta meta. Exigem chips renomeaveis, portas/polaridade/funcoes legiveis, terminais circulares
+claros, editor interno isolado que nao altera a bancada ao consultar e instrumentos com pontas
+posicionaveis (multimetro e medidor de clock/pulso). Packing basico e sondagem atual nao comprovam
+esses criterios. Capturas e circuitos de referencia devem verificar a experiencia e o modelo eletrico.

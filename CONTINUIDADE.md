@@ -181,3 +181,16 @@ Pedido recente do usuario (slots, thumbnails, selecao/copia e packing basico) im
 Meta 1.0 permanece ativa: registro/IDs estaveis, capacidades dinamicas, parametros/logs inspecionaveis,
 catalogo validado, passo real e distribuicao continuam pendentes. Proximo: retomar registro de
 componentes e preparar persistencia extensivel sem perder grupos ou formatos anteriores.
+
+## Novo pedido de UX do responsavel - 15/11/2026
+Requisitos duraveis em QUALIDADE_DE_USO.md, incorporados a META_1_0.md: renomear chips; direcao/
+funcao/polaridade legivel em todos os pinos; terminais circulares; multimetro com pontas fisicamente
+conectadas e medidor de clock/pulso; interior de chip em editor isolado com salvar/renomear/voltar.
+Consultar o interior NAO pode alterar a bancada. O desempacotamento Ctrl+Shift+G atual NAO satisfaz
+esse pedido. Acoes principais precisam ser intuitivas e visiveis, alem dos atalhos.
+
+Registro de componentes iniciado em refactor/component-registry: descritores de IDs, nomes, pinos,
+valores primarios e capacidades. Ainda em implementacao/teste; nao declarar a migracao pronta.
+Compilacao canonica recusou escrita por bancada aberta; usar ./build.ps1 -OutputName bancada-next -GuiTests
+para preservar a sessao do usuario. Nao fechar o app do usuario para substituir o executavel.
+O novo registro deve sustentar rotulos/funcoes de pinos e o editor de blocos, nao apenas reorganizar tabelas.

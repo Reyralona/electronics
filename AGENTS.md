@@ -10,3 +10,6 @@
 - Atualize esta nota apenas com contexto durável e conciso. Não inclua segredos ou dados de autenticação.
 
 - Leia `QUALIDADE_CODIGO.md` antes de alterar arquitetura; use `CONTINUIDADE.md` para o ponto de retomada. Refatoracao e funcionalidade em commits separados. Codigo novo: uma instrucao por linha, funcoes curtas, limites nomeados, causas de falha visiveis e modelo sem SDL/OpenGL.
+
+- Qualidade de uso e instrumentos: siga `QUALIDADE_DE_USO.md`. Interior de chip deve ser isolado;
+  consultar nao altera a bancada. Nomes, funcoes de pinos e acoes principais precisam ser claros na UI.
