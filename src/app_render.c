@@ -528,8 +528,7 @@ static void play_button_draw(GLuint font, int running, int busy, int failed, int
     text(font, x + 46, 40, label);
 }
 
-/* Topmost part under a world point; breadboards are only hit when nothing else is. */
-void app_render_draw(const AppState *app, GLuint font, int width, int height)
+static void draw_chrome(const AppState *app, GLuint font, int width, int height)
 {
     int i;
     glViewport(0, 0, width, height);
@@ -566,6 +565,11 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
               type == PART_SOURCE ? .54f : .42f, type == PART_LED ? .28f : .6f);
         circle(42, y + 31, 13);
     }
+}
+
+static void draw_workspace(const AppState *app, GLuint font, int width, int height)
+{
+    int i;
     glEnable(GL_SCISSOR_TEST);
     glScissor((int)(width * 220.0 / 1280), (int)(height * 60.0 / 720), (int)(width * 1060.0 / 1280),
               (int)(height * 590.0 / 720));
@@ -835,6 +839,10 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
             burnt_draw(font, &app->bench.parts[i], SDL_GetTicks());
     glPopMatrix();
     glDisable(GL_SCISSOR_TEST);
+}
+
+static void draw_inspector(const AppState *app, GLuint font)
+{
     if (app->selected >= 0)
     {
         const Part *part = &app->bench.parts[app->selected];
@@ -887,6 +895,10 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
             text(font, 850, 137, reading);
         }
     }
+}
+
+static void draw_status(const AppState *app, GLuint font)
+{
     if (app->sim.trace_valid && app->show_trace && !app->settings)
         trace_draw(font, &app->sim.trace, app->sim.trace_index, app->sim.trace_pin, app->sim.trace_current);
     color(.97f, .98f, .98f);
@@ -898,6 +910,10 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
                                  "| E: valor | T: grafico | Delete: excluir"
                                : "Terminais: fios | Duplo clique: alternar | P: DC | T: transitorio | Espaco/N: "
                                  "pausa/passo | Delete: excluir");
+}
+
+static void draw_settings(const AppState *app, GLuint font)
+{
     if (app->settings)
     {
         int swatch;
@@ -950,6 +966,10 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
         text(font, 860, 590, "Largura e cor indicam faixas de corrente");
         text(font, 860, 625, "F1 fecha este painel");
     }
+}
+
+static void draw_value_editor(const AppState *app, GLuint font)
+{
     if (app->editing >= 0)
     {
         char reading[110];
@@ -963,4 +983,14 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
         text(font, 460, 336, reading);
         text(font, 460, 380, "Enter confirma | Esc cancela");
     }
+}
+
+void app_render_draw(const AppState *app, GLuint font, int width, int height)
+{
+    draw_chrome(app, font, width, height);
+    draw_workspace(app, font, width, height);
+    draw_inspector(app, font);
+    draw_status(app, font);
+    draw_settings(app, font);
+    draw_value_editor(app, font);
 }
