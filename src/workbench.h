@@ -91,6 +91,7 @@ int bench_rotate_part(Workbench *bench, int component);
 int bench_parse_value(const char *text, double *value);
 void bench_pin_position(const Part *part, int pin, float *x, float *y);
 int bench_find_contact(const Workbench *bench, int component, int pin, Pin *contact);
+int bench_breadboard_snap_position(const Workbench *bench, const Part *part, float *x, float *y);
 int bench_snap_to_breadboard(Workbench *bench, int component);
 /* Returns 1 for added, 2 for removed, 0 for invalid/capacity. */
 int bench_toggle_wire(Workbench *bench, Pin a, Pin b);

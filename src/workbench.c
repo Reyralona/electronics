@@ -313,18 +313,18 @@ int bench_find_contact(const Workbench *b, int component, int pin, Pin *contact)
     return 0;
 }
 
-int bench_snap_to_breadboard(Workbench *b, int component)
+int bench_breadboard_snap_position(const Workbench *b, const Part *part, float *snapped_x, float *snapped_y)
 {
     int board, hole, pin, found = 0;
     float best = 64.0f, dx = 0, dy = 0;
-    if (!b || component < 0 || component >= b->part_count || b->parts[component].type == PART_BREADBOARD)
+    if (!b || !part || !snapped_x || !snapped_y || part->type == PART_BREADBOARD)
         return 0;
-    for (pin = 0; pin < bench_pin_count(b->parts[component].type); ++pin)
+    for (pin = 0; pin < bench_pin_count(part->type); ++pin)
     {
         float x, y;
-        bench_pin_position(&b->parts[component], pin, &x, &y);
+        bench_pin_position(part, pin, &x, &y);
         for (board = 0; board < b->part_count; ++board)
-            if (b->parts[board].type == PART_BREADBOARD && b->parts[board].group == b->parts[component].group)
+            if (b->parts[board].type == PART_BREADBOARD && b->parts[board].group == part->group)
             {
                 for (hole = 0; hole < BREADBOARD_PINS; ++hole)
                 {
@@ -343,9 +343,21 @@ int bench_snap_to_breadboard(Workbench *b, int component)
     }
     if (found)
     {
-        bench_move_part(b, component, b->parts[component].x + dx, b->parts[component].y + dy);
+        *snapped_x = part->x + dx;
+        *snapped_y = part->y + dy;
     }
     return found;
+}
+
+int bench_snap_to_breadboard(Workbench *b, int component)
+{
+    if (!b || component < 0 || component >= b->part_count)
+        return 0;
+    float x, y;
+    if (!bench_breadboard_snap_position(b, &b->parts[component], &x, &y))
+        return 0;
+    bench_move_part(b, component, x, y);
+    return 1;
 }
 
 static int pin_valid(const Workbench *b, Pin p)
