@@ -245,3 +245,14 @@ Novo requisito: escala ajustavel dos componentes, proporcao realista resistor/br
 terminais dobraveis em modo distinto de ligar fios e grid/encaixe configuraveis. Aceites duraveis
 em QUALIDADE_DE_USO.md. Geometria precisa persistir e funcionar em editor isolado, clipboard,
 historico e solver sem alterar parametros eletricos. Ainda nao implementado.
+
+
+## Grid: fundacao verificada na feature/configurable-grid
+workbench_grid.c/h fornece origem/espacamento, quantizacao em coordenadas do mundo e densidade
+visual separada do encaixe. Teste puro cobre negativos, empates, idempotencia, origem deslocada,
+zoom/densidade e entradas nao finitas. Integrado ao desenho com valores anteriores: captura
+--capture identica byte a byte a bancada.exe 0.21.0 (SHA256 27E67848...).
+Compilacao estrita do app e test_workbench_grid passaram. Ainda NAO ha controles de grid/snap;
+proximo: preferencias por contexto e persistencia (novo formato 18 se necessario), controles
+visiveis, Alt suspende encaixe, prioridade da breadboard, uma translacao para grupos e testes GUI.
+Nao publicar como funcionalidade concluida; manter exe canonico 0.21.0 ate verificar incremento.

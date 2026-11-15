@@ -13,7 +13,7 @@ if (Test-Path (Join-Path $toolchain 'SDL3.dll')) {
         }
     }
 }
-& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_render.c src/app_palette.c src/app_state.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench.c src/component_registry.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
+& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/workbench_grid.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_render.c src/app_palette.c src/app_state.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench.c src/component_registry.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_component_registry.c src/component_registry.c -o build/test_component_registry.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -75,6 +75,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_history.c src/workbench_history.c src/workbench.c src/component_registry.c -o build/test_workbench_history.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_workbench_history.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_grid.c src/workbench_grid.c -o build/test_workbench_grid.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_workbench_grid.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_view.c src/workbench_view.c -o build/test_workbench_view.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -1,3 +1,4 @@
+#include "workbench_grid.h"
 #include <windows.h>
 #include "app_render.h"
 #include "app_editor.h"
@@ -718,14 +719,16 @@ static void draw_workspace_grid(const AppState *app)
     if (app->show_grid)
     {
         /* Cover the whole visible area at any zoom; widen the spacing when lines would crowd together. */
-        float left, top, right, bottom, spacing = 24.0f, gx, gy;
+        float left, top, right, bottom, gx, gy;
+        BenchGrid grid = bench_grid_default();
+        float spacing = (float)bench_grid_display_spacing(&grid, app->view.zoom, 10);
         bench_view_to_world(&app->view, 220, 60, &left, &top);
         bench_view_to_world(&app->view, 1280, 660, &right, &bottom);
-        while (spacing * app->view.zoom < 10.0f)
-            spacing *= 2.0f;
+        if (spacing <= 0)
+            return;
         for (gx = floorf(left / spacing) * spacing; gx <= right; gx += spacing)
             line(gx, top, gx, bottom);
-        for (gy = floorf((top - 20.0f) / spacing) * spacing + 20.0f; gy <= bottom; gy += spacing)
+        for (gy = floorf((top - (float)grid.origin_y) / spacing) * spacing + (float)grid.origin_y; gy <= bottom; gy += spacing)
             line(left, gy, right, gy);
     }
 }
