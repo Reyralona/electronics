@@ -234,3 +234,19 @@ puras no modelo. Rotacao de quartos de volta usa trocas/sinais exatos, sem trigo
 separar transformacao e preservar capturas/testes; escala e deformacao em commits funcionais
 posteriores, com persistencia e validacao. Breadboard conserva orientacao atual nao rotacionavel.
 Nenhuma nova dependencia ou escolha externa neste incremento; comparacao baseada no codigo.
+
+
+## 15/11/2026 - Ownership dos caminhos flexiveis
+Fato: Workbench, clipboard, historico e jobs sao copiados por valor. Introduzir ponteiro de
+terminais em Part sem rever essas copias faria alias/double-free. Comparacao: arrays por todos
+os 420 pinos desperdicam memoria e adicionam limites; buffer global imutavel sem reclamacao
+acumula memoria; caminhos dinamicos com copia profunda e destruicao explicitas permitem crescer
+ate falha de memoria e compartilhar infraestrutura com fios. Escolhida terceira alternativa.
+Primeiro implementar/testar container de pontos independente; integrar somente apos trocar cada
+fronteira de snapshot por clone/clear transacional. Nao colocar ponteiros em Workbench ainda.
+A migracao para C++ pode facilitar ownership, mas nao e requisito para esse container C puro.
+Fato oficial: realloc pode mover armazenamento e preserva bloco original quando falha. Consulta
+15/11/2026: https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/realloc . Manter
+ponteiro antigo ate sucesso; verificar overflow antes de multiplicar capacidade por sizeof.
+Hipotese de modelo: deformacao geometrica nao modela plasticidade/esforco; comprimento fisico e
+limites mecanicos precisam ser definidos antes de apresentar a dobra como mecanica realista.
