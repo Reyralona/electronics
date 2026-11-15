@@ -6,6 +6,8 @@
 #define WORKBENCH_MAX_WIRES 128
 #define WORKBENCH_MAX_PINS 420
 #define BREADBOARD_PINS 420
+#define PART_SCALE_MIN 0.01f
+#define PART_SCALE_MAX 100.0f
 #define BENCH_GROUP_NAME_CAPACITY 128
 
 typedef enum
@@ -36,6 +38,7 @@ typedef struct
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
     uint64_t exposed[(WORKBENCH_MAX_PINS + 63) / 64];
+    float scale; /* 0 is the legacy/default identity scale. */
     int edit_origin; /* Transaction provenance; cleared by paste/import, never serialized. */
 } Part;
 typedef struct
@@ -75,6 +78,8 @@ typedef struct
 } Workbench;
 
 void bench_replace(Workbench *bench, const Workbench *replacement);
+float bench_part_scale(const Part *part);
+int bench_set_scale(Workbench *bench, int component, float scale);
 int bench_move_part(Workbench *bench, int component, float x, float y);
 int bench_set_on(Workbench *bench, int component, int on);
 int bench_set_wire_color(Workbench *bench, int wire, int color);

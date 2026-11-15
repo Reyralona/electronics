@@ -26,13 +26,13 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 18\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 19\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
         const Part *p = &b->parts[i];
-        if (fprintf(f, "%d %.9g %.9g %d %.17g %d %d\n", (int)p->type, p->x, p->y, p->on, p->value, p->rotation,
-                    p->board_layout) < 0)
+        if (fprintf(f, "%d %.9g %.9g %d %.17g %d %d %.9g\n", (int)p->type, p->x, p->y, p->on, p->value, p->rotation,
+                    p->board_layout, bench_part_scale(p)) < 0)
             return 0;
     }
     for (i = 0; i < b->wire_count; ++i)
@@ -67,7 +67,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         return 0;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 18) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 19) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         return 0;
     for (i = 0; i < parts; ++i)
@@ -111,6 +111,12 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
             if (fscanf(f, "%d", &layout) != 1 || layout < 0 || layout > 1 || (type != PART_BREADBOARD && layout != 0))
                 return 0;
             b.parts[i].board_layout = layout;
+        }
+        if (version >= 19)
+        {
+            float scale;
+            if (fscanf(f, "%f", &scale) != 1 || !bench_set_scale(&b, i, scale))
+                return 0;
         }
     }
     for (i = 0; i < wires; ++i)

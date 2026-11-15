@@ -172,5 +172,34 @@ int main(void)
             assert(restored.x == -49 && restored.y == 0);
         }
     }
+    {
+        Workbench scaled = {0};
+        bench_add(&scaled, PART_BREADBOARD, 550, 430);
+        int resistor = bench_add(&scaled, PART_RESISTOR, 0, 0);
+        double resistance = scaled.parts[resistor].value;
+        assert(bench_set_scale(&scaled, resistor, 1.0f / 7));
+        float hx, hy;
+        bench_pin_position(&scaled.parts[0], 0, &hx, &hy);
+        bench_move_part(&scaled, resistor, hx + 7, hy);
+        Pin contact;
+        assert(bench_find_contact(&scaled, resistor, 0, &contact) && contact.pin == 0);
+        assert(bench_find_contact(&scaled, resistor, 1, &contact) && contact.pin == 5);
+        assert(scaled.parts[resistor].value == resistance);
+        uint64_t revision = scaled.revision;
+        assert(!bench_set_scale(&scaled, resistor, 0));
+        assert(!bench_set_scale(&scaled, resistor, PART_SCALE_MAX + 1));
+        assert(scaled.revision == revision);
+        assert(bench_set_scale(&scaled, 0, .5f));
+        bench_pin_position(&scaled.parts[0], 0, &hx, &hy);
+        WirePoint local = bench_part_to_local(&scaled.parts[0], (WirePoint){hx, hy});
+        assert(local.x == -63 && local.y == -55);
+        for (int r = 0; r < 4; ++r)
+        {
+            scaled.parts[resistor].rotation = r;
+            WirePoint world = bench_part_to_world(&scaled.parts[resistor], (WirePoint){-49, 0});
+            local = bench_part_to_local(&scaled.parts[resistor], world);
+            assert(fabsf(local.x + 49) < .001f && fabsf(local.y) < .001f);
+        }
+    }
     return 0;
 }

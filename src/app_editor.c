@@ -16,6 +16,8 @@ static void fit_draft(AppState *app)
         const Part *part = &app->bench.parts[i];
         float width = part->type == PART_BREADBOARD ? 230 : 55;
         float height = part->type == PART_BREADBOARD ? 115 : 40;
+        width *= bench_part_scale(part);
+        height *= bench_part_scale(part);
         left = fminf(left, part->x - width);
         right = fmaxf(right, part->x + width);
         top = fminf(top, part->y - height);

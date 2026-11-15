@@ -78,6 +78,15 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             bench_toggle_wire(&app->bench, (Pin){3, 1}, (Pin){1, 0});
         }
     }
+    if (app->capture && !strcmp(argv[1], "--capture-scale"))
+    {
+        app->bench = (Workbench){0};
+        bench_add(&app->bench, PART_BREADBOARD, 550, 430);
+        bench_add(&app->bench, PART_RESISTOR, 550, 395);
+        bench_set_scale(&app->bench, 1, 1.0f / 7);
+        app->selected = 1;
+        app->status = "Resistor reduzido entre dois furos vizinhos. Selecione e clique em Tamanho para ajustar.";
+    }
     if (app->capture && !strcmp(argv[1], "--capture-knee-edit"))
     {
         bench_insert_knee(&app->bench, 0, 1, (WirePoint){500, 130});
@@ -742,6 +751,29 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_S);
     else if (app->selftest_phase == 137)
         queued = dev_test_key(window, SDLK_L);
+    else if (app->selftest_phase == 138)
+    {
+        app->bench = (Workbench){0};
+        app->view = (BenchView){1, 0, 0};
+        bench_add(&app->bench, PART_BREADBOARD, 550, 430);
+        bench_add(&app->bench, PART_RESISTOR, 650, 200);
+        app->selected = 1;
+        app->snap_board = 0;
+        app->snap_grid = 0;
+        queued = dev_test_click(window, 950, 167);
+    }
+    else if (app->selftest_phase == 139)
+        queued = dev_test_replace_text(window, "25");
+    else if (app->selftest_phase == 140)
+        queued = dev_test_click(window, 650, 200) && dev_test_drag_finish(window, 700, 250);
+    else if (app->selftest_phase == 141 || app->selftest_phase == 142)
+        queued = dev_test_key(window, SDLK_Z);
+    else if (app->selftest_phase == 143)
+        queued = dev_test_key(window, SDLK_Y);
+    else if (app->selftest_phase == 144)
+        queued = dev_test_key(window, SDLK_S);
+    else if (app->selftest_phase == 145)
+        queued = dev_test_key(window, SDLK_L);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1009,13 +1041,23 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 135 || app->selftest_phase == 137)
         valid = app->bench.wires[0].knee_count == 2 && app->bench.wires[0].knees[0].x == 500 &&
                 app->bench.wires[0].knees[1].x == 620;
+    else if (app->selftest_phase == 138)
+        valid = app->editing == APP_EDIT_SCALE;
+    else if (app->selftest_phase == 139 || app->selftest_phase == 143 || app->selftest_phase == 145)
+        valid = bench_part_scale(&app->bench.parts[1]) == .25f;
+    else if (app->selftest_phase == 140)
+        valid = app->bench.parts[1].x == 700 && app->bench.parts[1].y == 250;
+    else if (app->selftest_phase == 141)
+        valid = app->bench.parts[1].x == 650 && app->bench.parts[1].y == 200;
+    else if (app->selftest_phase == 142)
+        valid = bench_part_scale(&app->bench.parts[1]) == 1;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 138)
+    if (++app->selftest_phase == 146)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

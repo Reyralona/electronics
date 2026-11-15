@@ -219,5 +219,23 @@ int main(void)
         assert(settings.grid_spacing == before.grid_spacing && loaded.revision == before_bench.revision);
         fclose(file);
     }
+    {
+        Workbench scaled = {0};
+        bench_add(&scaled, PART_RESISTOR, 300, 300);
+        assert(bench_set_scale(&scaled, 0, .25f));
+        file = tmpfile();
+        assert(file && workbench_write(file, &scaled));
+        rewind(file);
+        assert(workbench_read(file, &loaded));
+        assert(bench_part_scale(&loaded.parts[0]) == .25f);
+        fclose(file);
+        file = tmpfile();
+        assert(file);
+        fputs("workbench 19\n1 0\n4 300 300 0 1000 0 0 nan\n", file);
+        rewind(file);
+        uint64_t revision = loaded.revision;
+        assert(!workbench_read(file, &loaded) && loaded.revision == revision);
+        fclose(file);
+    }
     return 0;
 }

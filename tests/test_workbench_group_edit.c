@@ -50,6 +50,7 @@ int main(int argc, char **argv)
     assert(draft.parts[0].edit_origin == 2 && draft.parts[1].edit_origin == 3);
     assert(!draft.parts[0].group && bench_pin_exposed(&draft.parts[0], 0));
     assert(bench_set_value(&draft, 0, 2200));
+    assert(bench_set_scale(&draft, 0, .25f));
     assert(memcmp(&before, &parent, sizeof(parent)) == 0);
     assert(!bench_group_apply(&parent, 1, parent.revision - 1, &draft, "Teste", message, sizeof(message)));
     assert(memcmp(&before, &parent, sizeof(parent)) == 0);
@@ -63,6 +64,7 @@ int main(int argc, char **argv)
     assert(memcmp(&before, &parent, sizeof(parent)) == 0);
     assert(bench_group_apply(&parent, 1, parent.revision, &draft, "Indicador editado", message, sizeof(message)));
     assert(parent.part_count == 4 && parent.parts[0].type == PART_SOURCE && parent.parts[1].value == 1000);
+    assert(bench_part_scale(&parent.parts[2]) == .25f);
     assert(parent.parts[2].value == 2200 && parent.parts[3].type == PART_LED);
     assert(parent.wires[0].a.component == 0 && parent.wires[0].b.component == 2);
     assert(parent.wires[1].a.component == 3 && parent.wires[1].b.component == 0);

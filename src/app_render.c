@@ -519,6 +519,8 @@ static void part_draw_oriented(const Part *part, int selected, int led)
     glPushMatrix();
     glTranslatef(part->x, part->y, 0);
     glRotatef((float)part->rotation * 90.0f, 0, 0, 1);
+    float scale = bench_part_scale(part);
+    glScalef(scale, scale, 1);
     part_draw(&local, selected, led);
     glPopMatrix();
 }
@@ -741,17 +743,18 @@ static void draw_workspace_boards(const AppState *app)
         if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_BREADBOARD)
         {
             int p;
-            part_draw(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
+            float hole_radius = 3 * fminf(1, bench_part_scale(&app->bench.parts[i]));
+            part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i]);
             for (p = 0; p < bench_pin_count(PART_BREADBOARD); ++p)
             {
                 float x, y;
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
                 color(.18f, .22f, .24f);
-                circle(x, y, 3.0f);
+                circle(x, y, hole_radius);
                 if (app->pending.component == i && app->pending.pin == p)
                 {
                     color(1, .7f, .2f);
-                    circle(x, y, 3.0f);
+                    circle(x, y, hole_radius);
                 }
             }
         }
@@ -920,6 +923,9 @@ static void draw_workspace_parts(const AppState *app)
                     outer_radius = 4.0f;
                     inner_radius = 2.5f;
                 }
+                float terminal_scale = fminf(1, bench_part_scale(&app->bench.parts[i]));
+                outer_radius *= terminal_scale;
+                inner_radius *= terminal_scale;
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
                 color(.18f, .22f, .24f);
                 circle(x, y, outer_radius);
@@ -931,12 +937,12 @@ static void draw_workspace_parts(const AppState *app)
                 else if (snapped)
                 {
                     color(.18f, .78f, .46f);
-                    circle(x, y, app->bench.parts[i].type == PART_74HC00 ? 2.5f : 3.0f);
+                    circle(x, y, fminf(inner_radius, 3.0f * terminal_scale));
                 }
                 else
                 {
                     color(.93f, .95f, .96f);
-                    circle(x, y, app->bench.parts[i].type == PART_74HC00 ? 2.5f : 5.0f);
+                    circle(x, y, inner_radius);
                 }
             }
         }
@@ -1021,7 +1027,16 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
                 snprintf(label, sizeof(label), "%s", info->name);
             else
                 snprintf(label, sizeof(label), "%s %s", info->name, marker);
-            text(font, x + 8, y - 10, label);
+            if (bench_part_scale(part) < .5f && bench_pin_count(part->type) == 2)
+            {
+                float label_x = x + (pin ? 8 : -40) / app->view.zoom;
+                float label_y = y + (pin ? 24 : -14) / app->view.zoom;
+                line(x, y, x + (pin ? 6 : -6) / app->view.zoom,
+                     y + (pin ? 14 : -8) / app->view.zoom);
+                text(font, label_x, label_y, label);
+            }
+            else
+                text(font, x + 8, y - 10, label);
         }
     }
 }
@@ -1204,6 +1219,11 @@ static void draw_inspector(const AppState *app, GLuint font)
                  part->type == PART_LED                               ? "LED generico"
                  : (is_gate(part->type) || part->type == PART_74HC00) ? part_name(part->type)
                                                                       : "Componente selecionado");
+        color(.86f, .91f, .95f);
+        rect(850, 154, 330, 28);
+        color(.12f, .34f, .52f);
+        snprintf(reading, sizeof(reading), "Tamanho: %.5g%% (clique)", bench_part_scale(part) * 100);
+        text(font, 860, 174, reading);
         if (part->type != PART_BREADBOARD)
         {
             color(.86f, .91f, .95f);
@@ -1326,6 +1346,8 @@ static void draw_value_editor(const AppState *app, GLuint font)
         const char *title = "VALOR EM UNIDADES SI";
         if (app->editing == APP_EDIT_GROUP_NAME)
             title = "NOME DO CHIP";
+        else if (app->editing == APP_EDIT_SCALE)
+            title = "TAMANHO EM PORCENTAGEM (1 A 10000)";
         else if (app->editing == APP_EDIT_GRID)
             title = "ESPACAMENTO DA GRADE (1 A 10000)";
         else if (app->editing >= WORKBENCH_MAX_COMPONENTS)

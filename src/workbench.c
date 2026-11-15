@@ -12,6 +12,24 @@ void bench_replace(Workbench *bench, const Workbench *replacement)
     bench->revision = revision;
 }
 
+float bench_part_scale(const Part *part)
+{
+    return part->scale == 0 ? 1 : part->scale;
+}
+
+int bench_set_scale(Workbench *bench, int component, float scale)
+{
+    if (!bench || component < 0 || component >= bench->part_count || !isfinite(scale) ||
+        scale < PART_SCALE_MIN || scale > PART_SCALE_MAX)
+        return 0;
+    if (bench_part_scale(&bench->parts[component]) != scale)
+    {
+        bench->parts[component].scale = scale;
+        ++bench->revision;
+    }
+    return 1;
+}
+
 int bench_move_part(Workbench *bench, int component, float x, float y)
 {
     if (!bench || component < 0 || component >= bench->part_count || !isfinite(x) || !isfinite(y))
@@ -253,6 +271,9 @@ int bench_board_group_first(int pin)
 
 WirePoint bench_part_to_world(const Part *part, WirePoint local)
 {
+    float scale = bench_part_scale(part);
+    local.x *= scale;
+    local.y *= scale;
     WirePoint rotated = local;
     int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
     switch (rotation)
@@ -272,7 +293,8 @@ WirePoint bench_part_to_world(const Part *part, WirePoint local)
 
 WirePoint bench_part_to_local(const Part *part, WirePoint world)
 {
-    WirePoint offset = {world.x - part->x, world.y - part->y};
+    float scale = bench_part_scale(part);
+    WirePoint offset = {(world.x - part->x) / scale, (world.y - part->y) / scale};
     int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
     switch (rotation)
     {

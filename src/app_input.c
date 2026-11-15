@@ -172,7 +172,21 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
     {
         double value;
         Workbench before = app->bench;
-        if (app->editing == APP_EDIT_GRID)
+        if (app->editing == APP_EDIT_SCALE)
+        {
+            if (app->selected >= 0 && bench_parse_value(app->edit_text, &value) &&
+                bench_set_scale(&app->bench, app->selected, (float)(value / 100)))
+            {
+                if (before.revision != app->bench.revision)
+                    bench_history_record(app->history, &before);
+                app->editing = -1;
+                SDL_StopTextInput(window);
+                app->status = "Tamanho atualizado. Posicione os terminais nos furos desejados; Ctrl+Z desfaz.";
+            }
+            else
+                app->status = "Use tamanho entre 1% e 10000%.";
+        }
+        else if (app->editing == APP_EDIT_GRID)
         {
             if (bench_parse_value(app->edit_text, &value) && value >= 1 && value <= 10000)
             {
@@ -380,6 +394,16 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
 {
     if (app_editor_click(app, window, x, y))
         return 1;
+    if (!app->settings && !app->projects_open && app->selected >= 0 &&
+        !app->bench.parts[app->selected].group && x >= 850 && x < 1180 && y >= 154 && y < 182)
+    {
+        if (SDL_StartTextInput(window))
+        {
+            app->editing = APP_EDIT_SCALE;
+            snprintf(app->edit_text, sizeof(app->edit_text), "%.6g", bench_part_scale(&app->bench.parts[app->selected]) * 100);
+        }
+        return 1;
+    }
     if (input_projects(app, x, y))
         return 1;
     if (x >= 700 && x < 850 && y < 68)
@@ -579,6 +603,7 @@ static Pin input_pin_at(const Workbench *bench, float x, float y)
                 radius = 4.0f;
             else if (bench->parts[i].type == PART_74HC00)
                 radius = 5.0f;
+            radius *= fminf(1, bench_part_scale(&bench->parts[i]));
             if (board != pass)
                 continue;
             for (p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
