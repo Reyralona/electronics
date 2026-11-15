@@ -13,6 +13,7 @@
 #include "workbench_history.h"
 #include "workbench_view.h"
 #include "sim_auto.h"
+#include "dev_capture.h"
 
 /* Delay after the last edit before the automatic analysis starts, so dragging does not flood the solver. */
 #define AUTO_DEBOUNCE_MS 120
@@ -132,59 +133,6 @@ static int trace_nearest(const SpiceTrace *trace,double fraction)
     return index;
 }
 
-static int test_click_count(SDL_Window *window,float x,float y,int clicks)
-{
-    SDL_Event event={0};
-    event.type=SDL_EVENT_MOUSE_BUTTON_DOWN;
-    event.button.windowID=SDL_GetWindowID(window);
-    event.button.button=SDL_BUTTON_LEFT;
-    event.button.clicks=(Uint8)clicks;
-    event.button.x=x; event.button.y=y;
-    return SDL_PushEvent(&event);
-}
-static int test_click(SDL_Window *window,float x,float y) { return test_click_count(window,x,y,1); }
-static int test_drag_finish(SDL_Window *window,float x,float y)
-{
-    SDL_Event event={0};
-    event.type=SDL_EVENT_MOUSE_MOTION; event.motion.windowID=SDL_GetWindowID(window); event.motion.x=x; event.motion.y=y;
-    if(!SDL_PushEvent(&event)) return 0;
-    SDL_zero(event); event.type=SDL_EVENT_MOUSE_BUTTON_UP; event.button.windowID=SDL_GetWindowID(window); event.button.button=SDL_BUTTON_LEFT;
-    return SDL_PushEvent(&event);
-}
-static int test_key(SDL_Window *window,SDL_Keycode key)
-{
-    SDL_Event event={0};
-    event.type=SDL_EVENT_KEY_DOWN;
-    event.key.windowID=SDL_GetWindowID(window);
-    event.key.key=key; event.key.mod=SDL_KMOD_CTRL;
-    return SDL_PushEvent(&event);
-}
-static int test_replace_text(SDL_Window *window,const char *value)
-{
-    SDL_Event event={0}; int i;
-    for(i=0;i<32;++i) if(!test_key(window,SDLK_BACKSPACE)) return 0;
-    event.type=SDL_EVENT_TEXT_INPUT; event.text.windowID=SDL_GetWindowID(window); event.text.text=value;
-    return SDL_PushEvent(&event) && test_key(window,SDLK_RETURN);
-}
-static int test_wheel(SDL_Window *window,float x,float y,float amount)
-{
-    SDL_Event event={0};
-    event.type=SDL_EVENT_MOUSE_WHEEL; event.wheel.windowID=SDL_GetWindowID(window);
-    event.wheel.mouse_x=x; event.wheel.mouse_y=y; event.wheel.y=amount;
-    return SDL_PushEvent(&event);
-}
-static int test_pan(SDL_Window *window)
-{
-    SDL_Event event={0};
-    event.type=SDL_EVENT_MOUSE_BUTTON_DOWN; event.button.windowID=SDL_GetWindowID(window);
-    event.button.button=SDL_BUTTON_MIDDLE; event.button.x=600; event.button.y=400;
-    if(!SDL_PushEvent(&event)) return 0;
-    SDL_zero(event); event.type=SDL_EVENT_MOUSE_MOTION; event.motion.windowID=SDL_GetWindowID(window);
-    event.motion.xrel=100; event.motion.yrel=40;
-    if(!SDL_PushEvent(&event)) return 0;
-    SDL_zero(event); event.type=SDL_EVENT_MOUSE_BUTTON_UP; event.button.windowID=SDL_GetWindowID(window); event.button.button=SDL_BUTTON_MIDDLE;
-    return SDL_PushEvent(&event);
-}
 static void pin_xy(const Part *p,int pin,float *x,float *y) {
     bench_pin_position(p,pin,x,y);
 }
@@ -408,8 +356,7 @@ int main(int argc, char **argv) {
     int editing=-1; char edit_text[64]={0};
     int selftest=argc>1 && strcmp(argv[1],"--self-test-history")==0, selftest_phase=0, exit_code=0;
     const char *status="Escolha um componente na biblioteca e clique na bancada.";
-    int capture=argc>1 && (strcmp(argv[1],"--capture")==0 || strcmp(argv[1],"--capture-settings")==0 || strcmp(argv[1],"--capture-analog")==0 || strcmp(argv[1],"--capture-dc")==0 || strcmp(argv[1],"--capture-current")==0 || strcmp(argv[1],"--capture-edit")==0 || strcmp(argv[1],"--capture-zoom")==0 || strcmp(argv[1],"--capture-snap")==0 || strcmp(argv[1],"--capture-board")==0 || strcmp(argv[1],"--capture-rotation")==0 || strcmp(argv[1],"--capture-colors")==0 || strcmp(argv[1],"--capture-trace")==0 || strcmp(argv[1],"--capture-trace-current")==0 || strcmp(argv[1],"--capture-trace-wire")==0 || strcmp(argv[1],"--capture-and")==0 || strcmp(argv[1],"--capture-logic")==0 || strcmp(argv[1],"--capture-clock")==0 || strcmp(argv[1],"--capture-play")==0 || strcmp(argv[1],"--capture-led-on")==0 || strcmp(argv[1],"--capture-led-off")==0 || strcmp(argv[1],"--capture-dff")==0 || strcmp(argv[1],"--capture-ci")==0 || strcmp(argv[1],"--capture-example0")==0 || strcmp(argv[1],"--capture-example1")==0
-        || strcmp(argv[1],"--capture-example2")==0 || strcmp(argv[1],"--capture-burn")==0 || strcmp(argv[1],"--capture-auto")==0 || strcmp(argv[1],"--capture-auto-clock")==0 || strcmp(argv[1],"--capture-zoomout")==0);
+    int capture=argc>1 && dev_capture_requested(argv[1]);
     /* Automatic analysis: on in normal use and in the --capture-auto* / --capture-burn modes; off in the scripted
        self-test and the older captures, which drive the analyses themselves. */
     int auto_capture=capture && (strcmp(argv[1],"--capture-burn")==0 || strncmp(argv[1],"--capture-auto",14)==0);
@@ -551,85 +498,85 @@ int main(int argc, char **argv) {
         SDL_Event e; int width,height,i;
         if(selftest) {
             int queued=1;
-            if(selftest_phase==0) queued=test_click(window,50,150) && test_click(window,400,250);
-            else if(selftest_phase==1) queued=test_click(window,50,438) && test_click(window,600,250);
-            else if(selftest_phase==2) queued=test_click(window,351,250) && test_click(window,450,180) && test_click(window,551,250);
-            else if(selftest_phase==3) queued=test_key(window,SDLK_Z);
-            else if(selftest_phase==4) queued=test_key(window,SDLK_Y);
-            else if(selftest_phase==5) queued=test_click(window,450,180) && test_drag_finish(window,460,190);
-            else if(selftest_phase==6) queued=test_key(window,SDLK_Z);
-            else if(selftest_phase==7) queued=test_key(window,SDLK_Y);
-            else if(selftest_phase==8) queued=test_click_count(window,460,190,2);
-            else if(selftest_phase==9) queued=test_key(window,SDLK_Z);
-            else if(selftest_phase==10) queued=test_wheel(window,400,250,1);
-            else if(selftest_phase==11) queued=test_click(window,341.2f,250);
-            else if(selftest_phase==12) queued=test_click(window,581.2f,250);
-            else if(selftest_phase==13) queued=test_key(window,SDLK_Z);
-            else if(selftest_phase==14) queued=test_key(window,SDLK_HOME);
-            else if(selftest_phase==15) queued=test_pan(window);
-            else if(selftest_phase==16) queued=test_click(window,451,290);
-            else if(selftest_phase==17) queued=test_key(window,SDLK_ESCAPE);
-            else if(selftest_phase==18) queued=test_key(window,SDLK_HOME);
-            else if(selftest_phase==19) queued=test_click(window,50,366) && test_click(window,850,430);
-            else if(selftest_phase==20) queued=test_click(window,50,438) && test_click(window,838,377);
-            else if(selftest_phase==21) queued=test_key(window,SDLK_Z);
-            else if(selftest_phase==22) queued=test_key(window,SDLK_Y);
-            else if(selftest_phase==23) queued=test_click(window,836,375);
-            else if(selftest_phase==24) queued=test_key(window,SDLK_R);
-            else if(selftest_phase==25) queued=test_key(window,SDLK_Z);
-            else if(selftest_phase==26) queued=test_key(window,SDLK_Y);
-            else if(selftest_phase==27) queued=test_click(window,505,220);
-            else if(selftest_phase==28) queued=test_key(window,SDLK_F1);
-            else if(selftest_phase==29) queued=test_click(window,915,330);
-            else if(selftest_phase==30) queued=test_key(window,SDLK_F1);
-            else if(selftest_phase==31) queued=test_key(window,SDLK_Z);
-            else if(selftest_phase==32) queued=test_key(window,SDLK_Y);
-            else if(selftest_phase==33) queued=test_key(window,SDLK_F1);
-            else if(selftest_phase==34) queued=test_click(window,900,405);
-            else if(selftest_phase==35) queued=test_click(window,900,445);
-            else if(selftest_phase==36) queued=test_key(window,SDLK_RETURN);
-            else if(selftest_phase==37) queued=test_click(window,900,485);
-            else if(selftest_phase==38) queued=test_key(window,SDLK_ESCAPE);
-            else if(selftest_phase==39) queued=test_click(window,900,445);
-            else if(selftest_phase==40) queued=test_replace_text(window,"2e-5");
-            else if(selftest_phase==41) queued=test_click(window,900,445);
-            else if(selftest_phase==42) queued=test_replace_text(window,"1e-9");
-            else if(selftest_phase==43) queued=test_key(window,SDLK_ESCAPE);
-            else if(selftest_phase==44) { trace.count=3; trace.samples[0]=(SpiceSample){0,0}; trace.samples[1]=(SpiceSample){1,2}; trace.samples[2]=(SpiceSample){2,3}; trace_index=0; trace_valid=1; trace_snapshot=bench; sim_running=0; queued=test_key(window,SDLK_F1); }
-            else if(selftest_phase==45) queued=test_key(window,SDLK_N);
-            else if(selftest_phase==46) queued=test_key(window,SDLK_B);
-            else if(selftest_phase==47) queued=test_click(window,1219,500);
-            else if(selftest_phase==48) queued=test_key(window,SDLK_N);
-            else if(selftest_phase==49) queued=test_key(window,SDLK_B);
-            else if(selftest_phase==50) queued=test_key(window,SDLK_F1);
-            else if(selftest_phase==51) queued=test_click(window,900,370);
-            else if(selftest_phase==52) queued=test_key(window,SDLK_F1);
-            else if(selftest_phase==53) queued=test_click(window,505,220);
-            else if(selftest_phase==54) queued=test_key(window,SDLK_T);
-            else if(selftest_phase==55) queued=test_key(window,SDLK_S);
-            else if(selftest_phase==56) queued=test_key(window,SDLK_F1);
-            else if(selftest_phase==57) queued=test_click(window,900,370);
-            else if(selftest_phase==58) queued=test_key(window,SDLK_L);
-            else if(selftest_phase==59) queued=test_key(window,SDLK_F1);
-            else if(selftest_phase==60) queued=test_click(window,50,670) && test_click(window,1000,300);
-            else if(selftest_phase==61) queued=test_key(window,SDLK_TAB);
-            else if(selftest_phase==62) queued=test_click(window,50,390) && test_click(window,1100,400);
-            else if(selftest_phase==63) queued=test_click(window,50,510) && test_click(window,1000,500);
-            else if(selftest_phase==64) queued=test_click_count(window,1000,500,2);
-            else if(selftest_phase==65) { trace.count=3; trace.samples[0]=(SpiceSample){0,0}; trace.samples[1]=(SpiceSample){1,2}; trace.samples[2]=(SpiceSample){2,3}; trace_index=0; trace_valid=1; trace_snapshot=bench; sim_running=0; queued=test_key(window,SDLK_SPACE); }
-            else if(selftest_phase==66) queued=test_key(window,SDLK_SPACE);
-            else if(selftest_phase==67) queued=test_key(window,SDLK_SPACE);
-            else if(selftest_phase==68) { trace_play_started=SDL_GetTicks()-6000; queued=test_key(window,SDLK_UNKNOWN); }
-            else if(selftest_phase==69) queued=test_key(window,SDLK_UNKNOWN);
-            else if(selftest_phase==70) { bench_add(&bench,PART_LED,1200,500); trace_snapshot=bench; trace_valid=1; trace_index=0; trace.leds_on[0]=UINT64_C(1)<<7; trace.leds_on[1]=0; sim_running=0; queued=test_key(window,SDLK_UNKNOWN); }
-            else if(selftest_phase==71) { trace_index=1; queued=test_key(window,SDLK_UNKNOWN); }
-            else if(selftest_phase==72) queued=test_key(window,SDLK_UNKNOWN);
-            else if(selftest_phase==73) queued=test_click(window,50,600) && test_click(window,750,550);
-            else if(selftest_phase==74) queued=test_click(window,50,670) && test_click(window,750,450);
-            else if(selftest_phase==75) queued=test_key(window,SDLK_F2);
-            else if(selftest_phase==76) queued=test_key(window,SDLK_F2);
-            else if(selftest_phase==77) queued=test_key(window,SDLK_F2);
-            else if(selftest_phase==78) queued=test_key(window,SDLK_Z);
+            if(selftest_phase==0) queued=dev_test_click(window,50,150) && dev_test_click(window,400,250);
+            else if(selftest_phase==1) queued=dev_test_click(window,50,438) && dev_test_click(window,600,250);
+            else if(selftest_phase==2) queued=dev_test_click(window,351,250) && dev_test_click(window,450,180) && dev_test_click(window,551,250);
+            else if(selftest_phase==3) queued=dev_test_key(window,SDLK_Z);
+            else if(selftest_phase==4) queued=dev_test_key(window,SDLK_Y);
+            else if(selftest_phase==5) queued=dev_test_click(window,450,180) && dev_test_drag_finish(window,460,190);
+            else if(selftest_phase==6) queued=dev_test_key(window,SDLK_Z);
+            else if(selftest_phase==7) queued=dev_test_key(window,SDLK_Y);
+            else if(selftest_phase==8) queued=dev_test_click_count(window,460,190,2);
+            else if(selftest_phase==9) queued=dev_test_key(window,SDLK_Z);
+            else if(selftest_phase==10) queued=dev_test_wheel(window,400,250,1);
+            else if(selftest_phase==11) queued=dev_test_click(window,341.2f,250);
+            else if(selftest_phase==12) queued=dev_test_click(window,581.2f,250);
+            else if(selftest_phase==13) queued=dev_test_key(window,SDLK_Z);
+            else if(selftest_phase==14) queued=dev_test_key(window,SDLK_HOME);
+            else if(selftest_phase==15) queued=dev_test_pan(window);
+            else if(selftest_phase==16) queued=dev_test_click(window,451,290);
+            else if(selftest_phase==17) queued=dev_test_key(window,SDLK_ESCAPE);
+            else if(selftest_phase==18) queued=dev_test_key(window,SDLK_HOME);
+            else if(selftest_phase==19) queued=dev_test_click(window,50,366) && dev_test_click(window,850,430);
+            else if(selftest_phase==20) queued=dev_test_click(window,50,438) && dev_test_click(window,838,377);
+            else if(selftest_phase==21) queued=dev_test_key(window,SDLK_Z);
+            else if(selftest_phase==22) queued=dev_test_key(window,SDLK_Y);
+            else if(selftest_phase==23) queued=dev_test_click(window,836,375);
+            else if(selftest_phase==24) queued=dev_test_key(window,SDLK_R);
+            else if(selftest_phase==25) queued=dev_test_key(window,SDLK_Z);
+            else if(selftest_phase==26) queued=dev_test_key(window,SDLK_Y);
+            else if(selftest_phase==27) queued=dev_test_click(window,505,220);
+            else if(selftest_phase==28) queued=dev_test_key(window,SDLK_F1);
+            else if(selftest_phase==29) queued=dev_test_click(window,915,330);
+            else if(selftest_phase==30) queued=dev_test_key(window,SDLK_F1);
+            else if(selftest_phase==31) queued=dev_test_key(window,SDLK_Z);
+            else if(selftest_phase==32) queued=dev_test_key(window,SDLK_Y);
+            else if(selftest_phase==33) queued=dev_test_key(window,SDLK_F1);
+            else if(selftest_phase==34) queued=dev_test_click(window,900,405);
+            else if(selftest_phase==35) queued=dev_test_click(window,900,445);
+            else if(selftest_phase==36) queued=dev_test_key(window,SDLK_RETURN);
+            else if(selftest_phase==37) queued=dev_test_click(window,900,485);
+            else if(selftest_phase==38) queued=dev_test_key(window,SDLK_ESCAPE);
+            else if(selftest_phase==39) queued=dev_test_click(window,900,445);
+            else if(selftest_phase==40) queued=dev_test_replace_text(window,"2e-5");
+            else if(selftest_phase==41) queued=dev_test_click(window,900,445);
+            else if(selftest_phase==42) queued=dev_test_replace_text(window,"1e-9");
+            else if(selftest_phase==43) queued=dev_test_key(window,SDLK_ESCAPE);
+            else if(selftest_phase==44) { trace.count=3; trace.samples[0]=(SpiceSample){0,0}; trace.samples[1]=(SpiceSample){1,2}; trace.samples[2]=(SpiceSample){2,3}; trace_index=0; trace_valid=1; trace_snapshot=bench; sim_running=0; queued=dev_test_key(window,SDLK_F1); }
+            else if(selftest_phase==45) queued=dev_test_key(window,SDLK_N);
+            else if(selftest_phase==46) queued=dev_test_key(window,SDLK_B);
+            else if(selftest_phase==47) queued=dev_test_click(window,1219,500);
+            else if(selftest_phase==48) queued=dev_test_key(window,SDLK_N);
+            else if(selftest_phase==49) queued=dev_test_key(window,SDLK_B);
+            else if(selftest_phase==50) queued=dev_test_key(window,SDLK_F1);
+            else if(selftest_phase==51) queued=dev_test_click(window,900,370);
+            else if(selftest_phase==52) queued=dev_test_key(window,SDLK_F1);
+            else if(selftest_phase==53) queued=dev_test_click(window,505,220);
+            else if(selftest_phase==54) queued=dev_test_key(window,SDLK_T);
+            else if(selftest_phase==55) queued=dev_test_key(window,SDLK_S);
+            else if(selftest_phase==56) queued=dev_test_key(window,SDLK_F1);
+            else if(selftest_phase==57) queued=dev_test_click(window,900,370);
+            else if(selftest_phase==58) queued=dev_test_key(window,SDLK_L);
+            else if(selftest_phase==59) queued=dev_test_key(window,SDLK_F1);
+            else if(selftest_phase==60) queued=dev_test_click(window,50,670) && dev_test_click(window,1000,300);
+            else if(selftest_phase==61) queued=dev_test_key(window,SDLK_TAB);
+            else if(selftest_phase==62) queued=dev_test_click(window,50,390) && dev_test_click(window,1100,400);
+            else if(selftest_phase==63) queued=dev_test_click(window,50,510) && dev_test_click(window,1000,500);
+            else if(selftest_phase==64) queued=dev_test_click_count(window,1000,500,2);
+            else if(selftest_phase==65) { trace.count=3; trace.samples[0]=(SpiceSample){0,0}; trace.samples[1]=(SpiceSample){1,2}; trace.samples[2]=(SpiceSample){2,3}; trace_index=0; trace_valid=1; trace_snapshot=bench; sim_running=0; queued=dev_test_key(window,SDLK_SPACE); }
+            else if(selftest_phase==66) queued=dev_test_key(window,SDLK_SPACE);
+            else if(selftest_phase==67) queued=dev_test_key(window,SDLK_SPACE);
+            else if(selftest_phase==68) { trace_play_started=SDL_GetTicks()-6000; queued=dev_test_key(window,SDLK_UNKNOWN); }
+            else if(selftest_phase==69) queued=dev_test_key(window,SDLK_UNKNOWN);
+            else if(selftest_phase==70) { bench_add(&bench,PART_LED,1200,500); trace_snapshot=bench; trace_valid=1; trace_index=0; trace.leds_on[0]=UINT64_C(1)<<7; trace.leds_on[1]=0; sim_running=0; queued=dev_test_key(window,SDLK_UNKNOWN); }
+            else if(selftest_phase==71) { trace_index=1; queued=dev_test_key(window,SDLK_UNKNOWN); }
+            else if(selftest_phase==72) queued=dev_test_key(window,SDLK_UNKNOWN);
+            else if(selftest_phase==73) queued=dev_test_click(window,50,600) && dev_test_click(window,750,550);
+            else if(selftest_phase==74) queued=dev_test_click(window,50,670) && dev_test_click(window,750,450);
+            else if(selftest_phase==75) queued=dev_test_key(window,SDLK_F2);
+            else if(selftest_phase==76) queued=dev_test_key(window,SDLK_F2);
+            else if(selftest_phase==77) queued=dev_test_key(window,SDLK_F2);
+            else if(selftest_phase==78) queued=dev_test_key(window,SDLK_Z);
             if(!queued) { fprintf(stderr,"Nao foi possivel inserir eventos de teste.\n"); exit_code=1; running=0; }
         }
         while(SDL_PollEvent(&e)) {
@@ -1175,15 +1122,11 @@ int main(int argc, char **argv) {
         }
         SDL_GL_SwapWindow(window);
         if(capture) {
-            unsigned char *pixels=malloc((size_t)width*height*3), *flipped=malloc((size_t)width*height*3);
-            if(pixels && flipped) {
-                int row; SDL_Surface *surface;
-                glReadBuffer(GL_FRONT); glPixelStorei(GL_PACK_ALIGNMENT,1); glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,pixels);
-                for(row=0;row<height;++row) memcpy(flipped+(size_t)row*width*3,pixels+(size_t)(height-row-1)*width*3,(size_t)width*3);
-                surface=SDL_CreateSurfaceFrom(width,height,SDL_PIXELFORMAT_RGB24,flipped,width*3);
-                if(surface) { if(!SDL_SaveBMP(surface,"build/bancada-capture.bmp")) fprintf(stderr,"Captura: %s\n",SDL_GetError()); SDL_DestroySurface(surface); }
+            if (!dev_capture_save("build/bancada-capture.bmp", width, height)) {
+                fprintf(stderr, "Captura: %s\n", SDL_GetError());
+                exit_code = 1;
             }
-            free(pixels); free(flipped); running=0;
+            running = 0;
         }
     }
     spice_job_join(&dc_job);

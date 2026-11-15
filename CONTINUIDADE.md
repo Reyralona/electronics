@@ -34,3 +34,10 @@ Calculo dinamico ainda em lote; repeticao da curva nao preserva estado continuo 
 Queima estatica e heuristica reversivel, nao previsao de dano fisico; parametros ainda nao editaveis.
 Fallback sem instrumentacao precisa comunicar indisponibilidade da corrente.
 Limites fixos, runtime nao empacotado e catalogo parcial continuam impedindo a meta 1.0.
+
+## Extracao inicial de desenvolvimento
+`dev_capture.c/.h` agora possui reconhecimento dos modos, injecao de eventos SDL e gravacao BMP.
+Cenarios e fases do autoteste ainda estao na janela; extracao completa permanece pendente.
+Build estrito e autoteste passaram apos a extracao. Captura --capture-auto identica antes/depois
+(SHA256 340A6047DFAF84EDB9DAE2B6F9CFC903621024FA2C002C36984E751E2E285C28).
+Captura do terceiro exemplo revisada em build/quality-nand.bmp.
