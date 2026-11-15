@@ -88,3 +88,26 @@ Ao investigar evento sintetico de rolagem, consultado o [codigo oficial SDL 3.4.
 A direcao passou a ser definida explicitamente como normal e a estrutura zerada; testes repetidos passaram.
 Essa verificacao nao identifica uma falha interna da biblioteca. A separacao de entrada/renderizacao e consolidacao
 completa de SimState continuam pendentes; nao considerar apenas o agrupamento de campos como conclusao da arquitetura.
+
+
+## 15/11/2026 - revisoes da montagem e validade de resultados
+
+Fatos locais: o ciclo comparava snapshots completos em app_simulation/sim_state; Workbench
+ocupava 21.512 bytes. O worker ja recebia sua copia isolada. Comparar hashes ainda exigiria
+percorrer os dados e introduziria a possibilidade de colisao; manter memcmp preservaria o custo
+por quadro. Adotado contador uint64_t por linha de edicao e APIs de mutacao no modelo.
+Mover, alternar, editar valores/fios/joelhos, carregar, substituir, desfazer e refazer atualizam a
+revisao. Operacoes sem alteracao e falhas nao atualizam; substituicoes sempre criam nova revisao.
+O contador nao integra o formato de projeto e nao volta ao valor antigo ao desfazer.
+
+Decisao: snapshots completos ficam no worker/historico, onde sao necessarios. A apresentacao
+armazena revisoes e um unico SimResultKind (nenhum/DC/transiente), com transicoes em SimState.
+Sensores de corrente sao metadados do resultado, nao outra fonte de validade. Inicializar Workbench
+com {0}; publicar substituicoes com bench_replace; editar montagens publicadas pelas APIs do modelo.
+Construtores podem preencher uma montagem temporaria antes de publica-la. O backend continua em lote.
+
+Evidencia: testes de mutacoes, no-op, invalidos, encaixe, carregamento, undo/redo e resultado
+pendente apos editar/desfazer. sizeof(SimState), medido com GCC UCRT64: 290.576 -> 183.040 bytes.
+Nao foi medido ganho de FPS; o ganho demonstrado e a memoria menor e a eliminacao das comparacoes
+integrais no ciclo. Nenhuma biblioteca/API externa nova; a comparacao e baseada no codigo local.
+Ainda pendentes: estado do ciclo completo de tarefas, cancelamento e backend de passo real.

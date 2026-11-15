@@ -115,3 +115,10 @@ despacha interacoes; `app_commands.c` executa atalhos de edicao; `app_render.c` 
 `sim_state.c` invalida resultados, avanca a reproducao e calcula a apresentacao dos LEDs sem
 SDL/OpenGL. `test_sim_state.exe` testa essas regras com tempo fornecido pelo teste, sem solver.
 A reproducao continua sendo de curvas calculadas em lote, com os limites eletricos documentados acima.
+
+
+Na 0.17.5, a validade de resultados usa um unico tipo (DC ou transiente) e revisoes da montagem.
+Desfazer/refazer e carregar criam novas revisoes: resultados de tarefas anteriores sao descartados,
+mesmo quando o conteudo e restaurado. As revisoes sao apenas de runtime e nao mudam o formato salvo.
+A verificacao de mudancas nao percorre mais a montagem inteira por quadro. Testes de revisoes e
+transicoes integram ./build.ps1; o modelo continua sem dependencia de janela ou renderer.

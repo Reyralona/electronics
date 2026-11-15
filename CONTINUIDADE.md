@@ -115,3 +115,24 @@ Proximo: representar validade por um estado unico, centralizar aceitacao/inicio/
 resultados e substituir comparacoes por revisoes de montagem. Depois, registro de componentes
 com IDs persistentes e migracao de formato, conforme QUALIDADE_CODIGO.md.
 Nao confundir reproducao de curva com backend de passo real. Meta 1.0 continua nao atendida.
+
+## Estado mais recente: 0.17.5 - revisoes e validade unica
+15/11/2026: Workbench tem revisao monotona de runtime. Edicoes da UI usam APIs do modelo;
+bench_replace preserva a linha de revisoes ao carregar/substituir/exemplificar/undo/redo.
+Nenhum memcmp da montagem permanece no ciclo app_simulation/sim_state; os cinco snapshots da
+apresentacao deram lugar a revisoes. Worker e historico conservam snapshots onde necessarios.
+SimResultKind substitui dc_valid/trace_valid; aceitar, descartar e limpar passam por SimState.
+O ciclo de vida completo da tarefa ainda usa campos de controle separados.
+
+Testes: ./build.ps1 -GuiTests passou; test_workbench_revision cobre alteracoes, no-op, entradas
+invalidas, encaixe e substituicoes. Teste com worker concluido simulado confirma descarte depois
+de editar/desfazer, mesmo com conteudo restaurado. Testes sem SDL confirmam exclusividade DC/curva.
+Comparadas dez capturas finais com a v0.17.4: exemplo NAND, configuracoes, zoom, analogico,
+DC, curva, LED ligado/desligado, DFF e calculo automatico; identicas byte a byte.
+sizeof medido: Workbench 21.512 -> 21.520 bytes; SimState 290.576 -> 183.040 bytes.
+Nao foi medido ganho de FPS. Formato de projeto continua 15; revisao nao e persistida.
+
+Proxima prioridade: registro de componentes e IDs estaveis, seguindo a arquitetura documentada,
+sem ampliar catalogo com switches espalhados. Ao tocar o ciclo de tarefas, consolidar causas de
+falha/estado ocupado e cancelamento. Capacidades dinamicas e backend de passo real permanecem
+obrigatorios para a 1.0. A meta continua ativa e nao atendida.

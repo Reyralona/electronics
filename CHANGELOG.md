@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.17.5
+
+- Revisoes monotonas substituem comparacoes integrais da montagem no ciclo de simulacao.
+- APIs de edicao atualizam a revisao; carregar, exemplos e undo/redo preservam sua continuidade.
+- Um unico tipo de resultado valido substitui flags independentes DC/transiente.
+- SimState passa de 290.576 para 183.040 bytes; sem alteracao dos modelos eletricos.
+- Testes de mutacao, revisoes, transicoes e resultado pendente apos undo; build estrito e GUI passaram.
+- Dez capturas finais identicas a 0.17.4. Registro de componentes e backend de passo real ainda pendentes.
+
 ## 0.17.4
 
 - Funcoes de entrada/desenho divididas por operacao e aparencia, todas abaixo de 100 linhas.
