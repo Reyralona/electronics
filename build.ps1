@@ -3,7 +3,22 @@ $ErrorActionPreference = 'Stop'
 $toolchain = 'C:\msys64\ucrt64\bin'
 if (Test-Path (Join-Path $toolchain 'gcc.exe')) { $env:Path = "$toolchain;$env:Path" }
 New-Item -ItemType Directory -Force build | Out-Null
-& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/workbench.c src/workbench_view.c src/workbench_file.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
+# Runtime DLLs: the app and ngspice must start outside this session, without MSYS2 on the PATH.
+$ngspiceBin = 'build/spice-local/ucrt64/bin'
+if (Test-Path (Join-Path $toolchain 'SDL3.dll')) {
+    if (!(Test-Path 'build/SDL3.dll')) { Copy-Item (Join-Path $toolchain 'SDL3.dll') 'build/' }
+    if (Test-Path $ngspiceBin) {
+        foreach ($dll in 'libgcc_s_seh-1.dll', 'libgomp-1.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll') {
+            if (!(Test-Path (Join-Path $ngspiceBin $dll))) { Copy-Item (Join-Path $toolchain $dll) $ngspiceBin }
+        }
+    }
+}
+& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/dev_capture.c src/workbench.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_history.c src/netlist.c src/spice_process.c src/spice_job.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_sim_auto.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_sim_auto.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$ngspiceExe = Join-Path $ngspiceBin 'ngspice_con.exe'
+if (Test-Path $ngspiceExe) { & ./build/test_sim_auto.exe $ngspiceExe } else { & ./build/test_sim_auto.exe }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench.c src/workbench.c -o build/test_workbench.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -25,11 +40,19 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_netlist.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_examples.c src/workbench_examples.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_workbench_examples.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_workbench_examples.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_trace.c src/spice_trace.c -o build/test_spice_trace.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_spice_trace.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_process.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_spice_process.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_spice_process.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_job.c src/spice_job.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_spice_job.exe -lSDL3
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_job.c src/spice_job.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c -o build/test_spice_job.exe -lSDL3
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_spice_job.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

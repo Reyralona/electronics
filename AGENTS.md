@@ -8,3 +8,5 @@
 - Antes de implementação ampla, registre uma comparação técnica revisável com fontes oficiais e datas de consulta. Separe fatos, hipóteses, recomendações e decisões pendentes.
 - Prefira incrementos pequenos e verificáveis; mantenha explícitos os limites do modelo elétrico. Registre decisões e comandos reais de execução e teste conforme surgirem.
 - Atualize esta nota apenas com contexto durável e conciso. Não inclua segredos ou dados de autenticação.
+
+- Leia `QUALIDADE_CODIGO.md` antes de alterar arquitetura; use `CONTINUIDADE.md` para o ponto de retomada. Refatoracao e funcionalidade em commits separados. Codigo novo: uma instrucao por linha, funcoes curtas, limites nomeados, causas de falha visiveis e modelo sem SDL/OpenGL.
