@@ -60,6 +60,10 @@ typedef struct
     float x, y;
 } WirePoint;
 
+typedef void (*BenchLeadVertex)(void *context, WirePoint point, size_t slot);
+void bench_lead_walk(const Part *part, int pin, float radius, BenchLeadVertex vertex, void *context);
+int bench_lead_pick(const Part *part, int pin, float radius, WirePoint point, float tolerance,
+                    size_t *slot, WirePoint *projected);
 size_t bench_lead_count(const Part *part, int pin);
 WirePoint bench_lead_point(const Part *part, int pin, size_t point);
 WirePoint bench_lead_anchor(const Part *part, int pin);

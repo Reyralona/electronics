@@ -566,6 +566,15 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     }
 }
 
+static float lead_corner_radius = 18;
+
+static void lead_vertex(void *context, WirePoint point, size_t slot)
+{
+    (void)context;
+    (void)slot;
+    glVertex2f(point.x, point.y);
+}
+
 static void draw_part_leads(const Part *part)
 {
     color(.72f, .74f, .76f);
@@ -575,13 +584,9 @@ static void draw_part_leads(const Part *part)
         size_t count = bench_lead_count(part, pin);
         if (!count)
             continue;
-        WirePoint previous = bench_lead_anchor(part, pin);
-        for (size_t point = 0; point < count; ++point)
-        {
-            WirePoint next = bench_lead_point(part, pin, point);
-            line(previous.x, previous.y, next.x, next.y);
-            previous = next;
-        }
+        glBegin(GL_LINE_STRIP);
+        bench_lead_walk(part, pin, lead_corner_radius, lead_vertex, NULL);
+        glEnd();
     }
     glLineWidth(1);
 }
@@ -1603,6 +1608,7 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
     app_text_utf8_set_size(app->gui_font_size);
     dark_interface = app->dark_theme;
+    lead_corner_radius = app->round_wires ? 18 : 0;
     interface_layer = 1;
     draw_chrome(app, font, width, height);
     interface_layer = 0;

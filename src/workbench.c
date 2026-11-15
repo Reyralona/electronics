@@ -503,6 +503,70 @@ WirePoint bench_lead_anchor(const Part *part, int pin)
     return bench_part_to_world(part, local);
 }
 
+void bench_lead_walk(const Part *part, int pin, float radius, BenchLeadVertex vertex, void *context)
+{
+    size_t count = bench_lead_count(part, pin);
+    if (!count || !vertex)
+        return;
+    vertex(context, bench_lead_anchor(part, pin), 0);
+    for (size_t corner = 0; corner + 1 < count; ++corner)
+    {
+        Wire bend = {0};
+        bend.knee_count = 1;
+        bend.knees[0] = bench_lead_point(part, pin, corner);
+        WirePoint previous = corner ? bench_lead_point(part, pin, corner - 1) : bench_lead_anchor(part, pin);
+        WirePoint next = bench_lead_point(part, pin, corner + 1);
+        WirePoint curve[WIRE_PATH_CAPACITY];
+        int vertices = wire_path(&bend, previous, next, radius, curve);
+        for (int i = 1; i + 1 < vertices; ++i)
+            vertex(context, curve[i], corner + (vertices > 3 && i > 5));
+    }
+    vertex(context, bench_lead_point(part, pin, count - 1), count - 1);
+}
+
+typedef struct
+{
+    WirePoint previous, query, projected;
+    float tolerance;
+    size_t slot;
+    double distance;
+    int started, found;
+} LeadPick;
+
+static void pick_lead_vertex(void *context, WirePoint point, size_t slot)
+{
+    LeadPick *pick = context;
+    if (pick->started)
+    {
+        WirePoint segment[] = {pick->previous, point};
+        BenchPathHit hit;
+        if (bench_polyline_pick(segment, 2, pick->query, pick->tolerance, &hit) &&
+            (!pick->found || hit.distance_squared < pick->distance))
+        {
+            pick->found = 1;
+            pick->distance = hit.distance_squared;
+            pick->projected = hit.point;
+            pick->slot = slot;
+        }
+    }
+    pick->previous = point;
+    pick->started = 1;
+}
+
+int bench_lead_pick(const Part *part, int pin, float radius, WirePoint point, float tolerance,
+                    size_t *slot, WirePoint *projected)
+{
+    if (!slot || !projected)
+        return 0;
+    LeadPick pick = {.query = point, .tolerance = tolerance};
+    bench_lead_walk(part, pin, radius, pick_lead_vertex, &pick);
+    if (!pick.found)
+        return 0;
+    *slot = pick.slot;
+    *projected = pick.projected;
+    return 1;
+}
+
 static int edit_lead(Workbench *bench, int component, int pin, size_t point, WirePoint world, int operation)
 {
     const float coordinate_limit = 100000;

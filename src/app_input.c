@@ -895,32 +895,26 @@ static int input_click_lead(AppState *app, float x, float y, int clicks)
             }
             if (clicks < 2)
                 continue;
-            WirePoint previous = bench_lead_anchor(part, pin);
-            for (size_t point = 0; point < count; ++point)
+            size_t slot;
+            WirePoint projected;
+            if (bench_lead_pick(part, pin, app->round_wires ? 18 : 0, (WirePoint){x, y}, tolerance, &slot, &projected))
             {
-                WirePoint p = bench_lead_point(part, pin, point);
-                WirePoint segment[] = {previous, p};
-                BenchPathHit hit;
-                if (bench_polyline_pick(segment, 2, (WirePoint){x, y}, tolerance, &hit))
+                Workbench before BENCH_AUTO_CLEAR = {0};
+                if (!bench_snapshot_clone(&before, &app->bench))
                 {
-                    Workbench before BENCH_AUTO_CLEAR = {0};
-                    if (!bench_snapshot_clone(&before, &app->bench))
-                    {
-                        app->status = "Memoria insuficiente para editar a perninha.";
-                        return 1;
-                    }
-                    if (!bench_lead_insert(&app->bench, i, pin, point, hit.point) ||
-                        !bench_history_record(app->history, &before))
-                    {
-                        bench_replace(&app->bench, &before);
-                        app->status = "Falha ao inserir joelho; perninha anterior preservada.";
-                    }
-                    else
-                        app->status = "Joelho da perninha adicionado. Alt+arraste para dobrar.";
-                    app->selected = i;
+                    app->status = "Memoria insuficiente para editar a perninha.";
                     return 1;
                 }
-                previous = p;
+                if (!bench_lead_insert(&app->bench, i, pin, slot, projected) ||
+                    !bench_history_record(app->history, &before))
+                {
+                    bench_replace(&app->bench, &before);
+                    app->status = "Falha ao inserir joelho; perninha anterior preservada.";
+                }
+                else
+                    app->status = "Joelho da perninha adicionado. Alt+arraste para dobrar.";
+                app->selected = i;
+                return 1;
             }
         }
     }

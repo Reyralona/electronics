@@ -7,6 +7,17 @@
 #include <math.h>
 #include <stdio.h>
 
+static void check_render_pick(void *context, WirePoint point, size_t ignored)
+{
+    (void)ignored;
+    const Part *part = context;
+    WirePoint projected;
+    size_t slot;
+    assert(bench_lead_pick(part, 0, 18, point, .001f, &slot, &projected));
+    assert(slot < bench_lead_count(part, 0));
+    assert(hypotf(projected.x - point.x, projected.y - point.y) < .002f);
+}
+
 int main(int argc, char **argv)
 {
     Workbench bench = {0}, saved = {0}, loaded = {0};
@@ -28,6 +39,7 @@ int main(int argc, char **argv)
     for (int i = 0; i < 40; ++i)
         assert(bench_lead_insert(&bench, 2, 0, (size_t)i, (WirePoint){600, 310 + i}));
     assert(bench_lead_count(&bench.parts[2], 0) == 41);
+    bench_lead_walk(&bench.parts[2], 0, 18, check_render_pick, &bench.parts[2]);
     assert(bench_lead_count(&saved.parts[2], 0) == 1);
     assert(bench_history_undo(history, &bench));
     assert(bench_lead_count(&bench.parts[2], 0) == 1);
