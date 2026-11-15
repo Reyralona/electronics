@@ -10,13 +10,21 @@ $stagingPath = "$targetPath.staging-$PID"
 $cachePath = "$targetPath.cache-$PID"
 if ((Test-Path -LiteralPath $stagingPath) -or (Test-Path -LiteralPath $cachePath)) { throw 'Diretório temporário já existe; escolha outro destino.' }
 New-Item -ItemType Directory -Path $stagingPath, $cachePath -Force | Out-Null
-& $pacman -Sw --noconfirm --cachedir $cachePath mingw-w64-ucrt-x86_64-ngspice
+# Explicit targets are downloaded even when these dependencies are installed in MSYS2 already.
+$packages = @('mingw-w64-ucrt-x86_64-ngspice', 'mingw-w64-ucrt-x86_64-gcc-libs',
+              'mingw-w64-ucrt-x86_64-libwinpthread')
+& $pacman -Sw --noconfirm --cachedir $cachePath @packages
 if ($LASTEXITCODE -ne 0) { throw 'Download ou verificação de integridade do pacman falhou.' }
 $archives = @(Get-ChildItem -LiteralPath $cachePath -Filter '*.pkg.tar.zst')
 if (!($archives | Where-Object { $_.Name -match '^mingw-w64-ucrt-x86_64-ngspice-' })) { throw 'O pacote do ngspice não foi baixado.' }
 foreach ($archive in $archives) {
     & $tar -xf $archive.FullName -C $stagingPath
     if ($LASTEXITCODE -ne 0) { throw "Falha ao extrair $($archive.Name)." }
+}
+foreach ($dll in 'libgcc_s_seh-1.dll', 'libgomp-1.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll') {
+    if (!(Test-Path -LiteralPath (Join-Path $stagingPath "ucrt64/bin/$dll"))) {
+        throw "Runtime incompleto: $dll ausente; instalacao nao publicada."
+    }
 }
 $initPath = Join-Path $stagingPath 'ucrt64/share/ngspice/scripts/spinit'
 if (!(Test-Path -LiteralPath $initPath)) { throw 'spinit não encontrado no pacote.' }

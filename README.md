@@ -105,3 +105,5 @@ Pressione **F2** ou clique em **Exemplos** no topo para alternar entre duas mont
 
 
 Integracao de qualidade: `./build.ps1 -OutputName bancada-quality -GuiTests` gera `build/bancada-quality.exe`. O botao executar/pausar controla o calculo automatico apos edicoes. F2 percorre tres exemplos, incluindo 74HC00 na breadboard. Indicacao de queima e uma heuristica reversivel apenas em circuitos estaticos; nao modela aquecimento nem dano fisico. Transientes continuam pre-calculados em lote. Veja `QUALIDADE_CODIGO.md` e `CONTINUIDADE.md` para arquitetura e proximos passos.
+
+Na versao 0.17.1, use `./build.ps1 -GuiTests` e abra **`build/bancada.exe`**. `tools/setup-ngspice.ps1` prepara tambem as DLLs do solver. `./tools/test-runtime-isolated.ps1` verifica a simulacao com PATH minimo; isso nao substitui o empacotamento final.

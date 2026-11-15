@@ -37,11 +37,11 @@ static int analyze(const Workbench *bench,const char *executable,double *current
     if(log==INVALID_HANDLE_VALUE) goto cleanup;
     si.cb=sizeof(si); si.dwFlags=STARTF_USESTDHANDLES; si.hStdOutput=log; si.hStdError=log; si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
     snprintf(command,sizeof(command),"\"%s\" -b \"%s\"",exe,input);
-    if(!CreateProcessA(exe,command,NULL,NULL,TRUE,CREATE_NO_WINDOW,NULL,NULL,&si,&pi)) { snprintf(message,capacity,"Falha ao iniciar ngspice."); goto cleanup; }
+    if(!CreateProcessA(exe,command,NULL,NULL,TRUE,CREATE_NO_WINDOW,NULL,NULL,&si,&pi)) { snprintf(message,capacity,"Falha ao iniciar ngspice (Windows %lu).",GetLastError()); goto cleanup; }
     if(WaitForSingleObject(pi.hProcess,10000)!=WAIT_OBJECT_0) { TerminateProcess(pi.hProcess,1); WaitForSingleObject(pi.hProcess,5000); snprintf(message,capacity,"Analise excedeu 10 segundos."); goto cleanup; }
     GetExitCodeProcess(pi.hProcess,&exit_code);
     CloseHandle(log); log=INVALID_HANDLE_VALUE;
-    if(exit_code!=0) { snprintf(message,capacity,"ngspice falhou."); goto cleanup; }
+    if(exit_code!=0) { snprintf(message,capacity,"ngspice falhou (0x%08lX)%s",exit_code,exit_code==0xC0000135UL?": DLL ausente.":"."); goto cleanup; }
     file=fopen(output,"r"); if(!file) goto cleanup;
     length=(DWORD)fread(buffer,1,buffer_capacity-1,file); buffer[length]='\0';
     if(!feof(file) || ferror(file) || strstr(buffer,"Error:") || strstr(buffer,"error:") || strstr(buffer,"Warning:") || strstr(buffer,"warning:") || strstr(buffer,"couldn't be loaded") || strstr(buffer,"singular matrix") || strstr(buffer,"convergence failed")) { snprintf(message,capacity,"Resultado SPICE invalido ou incompleto."); goto cleanup; }

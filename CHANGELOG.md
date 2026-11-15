@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.17.1
+
+- Preparacao do ngspice baixa explicitamente gcc-libs e libwinpthread e verifica as DLLs antes de publicar o runtime.
+- Falhas de processo mostram codigo Windows/saida; 0xC0000135 identifica DLL ausente.
+- Teste com instalacao nova e PATH minimo confirma DC, transientes e exemplos sem MSYS2 no PATH.
+- Executavel de uso: `build/bancada.exe`. Trabalho do outro worktree preservado.
+
+
 ## 0.17.0
 
 - Integracao revisada do trabalho do Claude: calculo automatico, executar/pausar, giro por mouse e grade com zoom/pan.

@@ -49,3 +49,15 @@ permitem a curva sem inventar correntes e apresentam aviso. test_sim_auto passou
 `tools/test-workbench-ngspice.ps1` e `tools/test-xspice-gates.ps1` passaram (RC, RL, fontes, LED e portas).
 
 Ponto de retorno: v0.17.0. Proxima prioridade: concluir extracao de cenarios/autoteste e introduzir AppState/SimState, mantendo capturas e testes. Nao retomar ampliando o monolito ou presumindo que o plano de qualidade ja foi concluido.
+
+## Estado mais recente: 0.17.1
+Ao integrar main foram encontrados mais commits documentais do Claude (ate 052b4af).
+Preservadas revisao P0 das DLLs e politica de branches curtas de VERSIONAMENTO.md.
+A tag v0.17.0 foi corrigida apos uma tentativa de fast-forward recusada; aponta ao merge validado.
+Branches de integracao concluidas foram apagadas; worktree electronics-claude segue intacto.
+Executavel canonico: build/bancada.exe, gerado por ./build.ps1 -GuiTests (passou).
+P0: setup-ngspice.ps1 baixa GCC runtime e winpthread explicitamente, verifica DLLs;
+falhas do solver mostram codigo Windows/saida. Preparacao nova testada em build/spice-quality-runtime.
+./tools/test-runtime-isolated.ps1 -Root build/spice-quality-runtime/ucrt64 passou com PATH minimo.
+Ainda nao e pacote distribuivel: licencas e empacotamento final permanecem pendentes.
+Proxima tarefa continua sendo separar estado/cenarios da janela, seguindo QUALIDADE_CODIGO.md.
