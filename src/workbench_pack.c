@@ -117,10 +117,14 @@ static int freeze_boundary_contacts(Workbench *bench, const BenchSelection *sele
         for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
         {
             Pin contact;
-            if (bench_find_contact(bench, i, p, &contact) &&
-                (selection->parts[i] != 0) != (selection->parts[contact.component] != 0) &&
-                !ensure_wire(bench, (Pin){i, p}, contact))
-                return 0;
+            int after = -1;
+            while (bench_find_contact_after(bench, i, p, after, &contact))
+            {
+                after = contact.component * WORKBENCH_MAX_PINS + contact.pin;
+                if ((selection->parts[i] != 0) != (selection->parts[contact.component] != 0) &&
+                    !ensure_wire(bench, (Pin){i, p}, contact))
+                    return 0;
+            }
         }
     return 1;
 }

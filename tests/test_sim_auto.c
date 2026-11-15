@@ -32,8 +32,8 @@ static void test_transforms(void)
 {
     Workbench b = {0}, out = {0};
     unsigned char open[WORKBENCH_MAX_COMPONENTS] = {0};
-    assert(bench_add(&b, PART_CLOCK, 0, 0) == 0);
-    assert(bench_add(&b, PART_LED, 0, 0) == 1);
+    assert(bench_add(&b, PART_CLOCK, 250 * b.part_count, 0) == 0);
+    assert(bench_add(&b, PART_LED, 250 * b.part_count, 0) == 1);
     assert(sim_auto_is_dynamic(&b) && sim_auto_is_periodic(&b));
     sim_auto_dc_equivalent(&b, &out);
     assert(out.parts[0].type == PART_SOURCE && out.parts[0].value == 5.0 && out.parts[0].on);
@@ -43,7 +43,7 @@ static void test_transforms(void)
     assert(out.parts[0].type == PART_CLOCK);
     b.parts[0].on = 0;
     assert(!sim_auto_is_periodic(&b) && !sim_auto_is_dynamic(&b));
-    assert(bench_add(&b, PART_CAPACITOR, 0, 0) == 2);
+    assert(bench_add(&b, PART_CAPACITOR, 250 * b.part_count, 0) == 2);
     assert(sim_auto_is_dynamic(&b) && !sim_auto_is_periodic(&b));
 }
 
@@ -51,8 +51,8 @@ static void test_shorts(void)
 {
     Workbench b = {0};
     unsigned char shorted[WORKBENCH_MAX_COMPONENTS];
-    assert(bench_add(&b, PART_SOURCE, 0, 0) == 0);
-    assert(bench_add(&b, PART_RESISTOR, 0, 0) == 1);
+    assert(bench_add(&b, PART_SOURCE, 250 * b.part_count, 0) == 0);
+    assert(bench_add(&b, PART_RESISTOR, 250 * b.part_count, 0) == 1);
     wire(&b, 0, 0, 1, 0);
     wire(&b, 1, 1, 0, 1);
     assert(netlist_shorted_sources(&b, shorted) == 0);
@@ -81,8 +81,8 @@ static void test_with_ngspice(const char *exe)
     Workbench b = {0};
 
     /* LED straight on 5 V burns; once open, no current flows. */
-    assert(bench_add(&b, PART_SOURCE, 0, 0) == 0);
-    assert(bench_add(&b, PART_LED, 0, 0) == 1);
+    assert(bench_add(&b, PART_SOURCE, 250 * b.part_count, 0) == 0);
+    assert(bench_add(&b, PART_LED, 250 * b.part_count, 0) == 1);
     wire(&b, 0, 0, 1, 0);
     wire(&b, 1, 1, 0, 1);
     run(&b, exe, &r, NULL);
@@ -90,7 +90,7 @@ static void test_with_ngspice(const char *exe)
     assert(r.has_dc && fabs(r.currents[1]) < 1e-6);
 
     /* Adding a 1 kOhm resistor fixes it: nothing burns and the LED conducts a few mA. */
-    assert(bench_add(&b, PART_RESISTOR, 0, 0) == 2);
+    assert(bench_add(&b, PART_RESISTOR, 250 * b.part_count, 0) == 2);
     b.wire_count = 0;
     wire(&b, 0, 0, 2, 0);
     wire(&b, 2, 1, 1, 0);
@@ -130,9 +130,9 @@ static void test_with_ngspice(const char *exe)
 
     /* A clock makes the circuit dynamic: a looping transient is produced. */
     memset(&b, 0, sizeof(b));
-    assert(bench_add(&b, PART_CLOCK, 0, 0) == 0);
-    assert(bench_add(&b, PART_RESISTOR, 0, 0) == 1);
-    assert(bench_add(&b, PART_LED, 0, 0) == 2);
+    assert(bench_add(&b, PART_CLOCK, 250 * b.part_count, 0) == 0);
+    assert(bench_add(&b, PART_RESISTOR, 250 * b.part_count, 0) == 1);
+    assert(bench_add(&b, PART_LED, 250 * b.part_count, 0) == 2);
     wire(&b, 0, 0, 1, 0);
     wire(&b, 1, 1, 2, 0);
     wire(&b, 2, 1, 0, 1);
@@ -147,10 +147,10 @@ static void test_with_ngspice(const char *exe)
 
     /* Redundant ideal wires do not hide why wire-current instrumentation was unavailable. */
     memset(&b, 0, sizeof(b));
-    assert(bench_add(&b, PART_CLOCK, 0, 0) == 0);
-    assert(bench_add(&b, PART_RESISTOR, 0, 0) == 1);
-    assert(bench_add(&b, PART_LED, 0, 0) == 2);
-    assert(bench_add(&b, PART_SWITCH, 0, 0) == 3);
+    assert(bench_add(&b, PART_CLOCK, 250 * b.part_count, 0) == 0);
+    assert(bench_add(&b, PART_RESISTOR, 250 * b.part_count, 0) == 1);
+    assert(bench_add(&b, PART_LED, 250 * b.part_count, 0) == 2);
+    assert(bench_add(&b, PART_SWITCH, 250 * b.part_count, 0) == 3);
     b.parts[3].on = 1;
     wire(&b, 0, 0, 1, 0);
     wire(&b, 1, 1, 2, 0);
@@ -166,8 +166,8 @@ static void test_with_ngspice(const char *exe)
 
     /* An inductor across a voltage source ramps current; it is not an immediate DC short. */
     memset(&b, 0, sizeof(b));
-    assert(bench_add(&b, PART_SOURCE, 0, 0) == 0);
-    assert(bench_add(&b, PART_INDUCTOR, 0, 0) == 1);
+    assert(bench_add(&b, PART_SOURCE, 250 * b.part_count, 0) == 0);
+    assert(bench_add(&b, PART_INDUCTOR, 250 * b.part_count, 0) == 1);
     wire(&b, 0, 0, 1, 0);
     wire(&b, 1, 1, 0, 1);
     run(&b, exe, &r, &trace);

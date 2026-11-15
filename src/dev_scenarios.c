@@ -85,6 +85,23 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
                 bench_set_wire_color(&app->bench, wire, wire == 0 ? 0 : wire == 1 ? 1 : 3);
         }
     }
+    if (app->capture && !strcmp(argv[1], "--capture-leads"))
+    {
+        bench_snapshot_clear(&app->bench);
+        bench_add(&app->bench, PART_SOURCE, 350, 300);
+        bench_add(&app->bench, PART_RESISTOR, 550, 300);
+        bench_add(&app->bench, PART_LED, 750, 300);
+        bench_lead_move(&app->bench, 1, 0, 0, (WirePoint){301, 300});
+        bench_lead_insert(&app->bench, 1, 0, 0, (WirePoint){450, 240});
+        bench_lead_move(&app->bench, 2, 0, 0, (WirePoint){599, 300});
+        bench_lead_insert(&app->bench, 2, 0, 0, (WirePoint){650, 360});
+        bench_lead_move(&app->bench, 2, 1, 0, (WirePoint){399, 300});
+        bench_lead_insert(&app->bench, 2, 1, 0, (WirePoint){820, 450});
+        bench_lead_insert(&app->bench, 2, 1, 1, (WirePoint){400, 450});
+        app->selected = 2;
+        app->dark_theme = 1;
+        app->status = "Sem fios: perninhas em contato fecham o circuito. Alt+arraste / Alt+duplo clique.";
+    }
     if (app->capture && !strcmp(argv[1], "--capture-catalog"))
     {
         app->bench = (Workbench){0};
@@ -903,6 +920,47 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         SDL_SetModState(SDL_KMOD_CTRL);
         queued = dev_test_key(window, SDLK_Z);
     }
+    else if (app->selftest_phase == 171)
+    {
+        bench_snapshot_clear(&app->bench);
+        bench_add(&app->bench, PART_LED, 500, 300);
+        bench_add(&app->bench, PART_RESISTOR, 800, 300);
+        app->selected = 0;
+        app->pending.component = -1;
+        app->placing = -1;
+        app->settings = 0;
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = dev_test_click(window, 451, 300) && dev_test_drag_finish(window, 600, 350);
+    }
+    else if (app->selftest_phase == 172)
+    {
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = dev_test_click_count(window, 545, 334, 2);
+    }
+    else if (app->selftest_phase == 173)
+    {
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = dev_test_click(window, 545, 334) && dev_test_drag_finish(window, 560, 400);
+    }
+    else if (app->selftest_phase == 174)
+    {
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = dev_test_click_count(window, 560, 400, 2);
+    }
+    else if (app->selftest_phase == 175)
+    {
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = dev_test_click(window, 600, 350) && dev_test_drag_finish(window, 753, 301);
+    }
+    else if (app->selftest_phase == 176 || app->selftest_phase == 177)
+    {
+        SDL_SetModState(SDL_KMOD_CTRL);
+        queued = dev_test_key(window, app->selftest_phase == 176 ? SDLK_Z : SDLK_Y);
+    }
+    else if (app->selftest_phase == 178)
+        queued = dev_test_key(window, SDLK_S);
+    else if (app->selftest_phase == 179)
+        queued = dev_test_key(window, SDLK_L);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1221,6 +1279,19 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 170)
         valid = bench_group_height(&app->bench, 1) == 74 &&
                 fabsf(bench_group_width(&app->bench, 1) - 107.8f) < .001f;
+    else if (app->selftest_phase == 171 || app->selftest_phase == 174 || app->selftest_phase == 176)
+        valid = bench_lead_count(&app->bench.parts[0], 0) == 1 &&
+                fabsf(bench_lead_point(&app->bench.parts[0], 0, 0).x - 600) < .01f;
+    else if (app->selftest_phase == 172)
+        valid = bench_lead_count(&app->bench.parts[0], 0) == 2;
+    else if (app->selftest_phase == 173)
+        valid = bench_lead_count(&app->bench.parts[0], 0) == 2 &&
+                fabsf(bench_lead_point(&app->bench.parts[0], 0, 0).y - 400) < .01f;
+    else if (app->selftest_phase == 175 || app->selftest_phase == 177 || app->selftest_phase == 179)
+    {
+        Pin contact;
+        valid = bench_find_contact(&app->bench, 0, 0, &contact) && contact.component == 1 && contact.pin == 0;
+    }
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1231,7 +1302,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 171)
+    if (++app->selftest_phase == 180)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

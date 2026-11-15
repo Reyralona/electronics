@@ -16,7 +16,8 @@
 typedef struct AppState
 {
     Workbench bench;
-    Pin pending, hovered_pin;
+    Pin pending, hovered_pin, drag_lead;
+    size_t drag_lead_point;
     uint64_t hover_revision;
     int selected, placing, dragging, running;
     WirePoint route[WIRE_MAX_KNEES];

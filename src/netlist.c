@@ -61,8 +61,12 @@ static void build_nets(const Workbench *b, int *parents, int unite_wires, int sh
         for (pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
         {
             Pin contact;
-            if (bench_find_contact(b, i, pin, &contact))
-                unite(parents, i * WORKBENCH_MAX_PINS + pin, pin_index(contact));
+            int after = -1;
+            while (bench_find_contact_after(b, i, pin, after, &contact))
+            {
+                after = pin_index(contact);
+                unite(parents, i * WORKBENCH_MAX_PINS + pin, after);
+            }
         }
     }
 }

@@ -28,9 +28,9 @@ int main(void)
     Workbench b = {0};
     int led[WORKBENCH_MAX_COMPONENTS];
     Pin sp = {0, 0}, sn = {0, 1}, a = {1, 0}, c = {1, 1}, sw0 = {2, 0}, sw1 = {2, 1};
-    assert(bench_add(&b, PART_SOURCE, 0, 0) == 0);
-    assert(bench_add(&b, PART_LED, 0, 0) == 1);
-    assert(bench_add(&b, PART_SWITCH, 0, 0) == 2);
+    assert(bench_add(&b, PART_SOURCE, 250 * b.part_count, 0) == 0);
+    assert(bench_add(&b, PART_LED, 250 * b.part_count, 0) == 1);
+    assert(bench_add(&b, PART_SWITCH, 250 * b.part_count, 0) == 2);
     assert(!bench_toggle_wire(&b, sp, sp));
     assert(bench_toggle_wire(&b, sp, sw0) == 1);
     assert(bench_toggle_wire(&b, sw1, a) == 1);
@@ -50,9 +50,9 @@ int main(void)
         Workbench bread = {0};
         Pin positive = {0, 0}, negative = {0, 1}, anode = {1, 0}, cathode = {1, 1};
         Pin hole0 = {2, 0}, hole4 = {2, 4}, other = {2, 5}, opposite = {2, 50};
-        assert(bench_add(&bread, PART_SOURCE, 0, 0) == 0);
-        assert(bench_add(&bread, PART_LED, 0, 0) == 1);
-        assert(bench_add(&bread, PART_BREADBOARD, 0, 0) == 2);
+        assert(bench_add(&bread, PART_SOURCE, 250 * bread.part_count, 0) == 0);
+        assert(bench_add(&bread, PART_LED, 250 * bread.part_count, 0) == 1);
+        assert(bench_add(&bread, PART_BREADBOARD, 250 * bread.part_count, 0) == 2);
         assert(bench_pin_count(PART_BREADBOARD) == 420);
         assert(bench_toggle_wire(&bread, positive, hole0));
         assert(bench_toggle_wire(&bread, hole4, anode));
@@ -175,7 +175,7 @@ int main(void)
     {
         Workbench scaled = {0};
         bench_add(&scaled, PART_BREADBOARD, 550, 430);
-        int resistor = bench_add(&scaled, PART_RESISTOR, 0, 0);
+        int resistor = bench_add(&scaled, PART_RESISTOR, 250 * scaled.part_count, 0);
         double resistance = scaled.parts[resistor].value;
         assert(bench_set_scale(&scaled, resistor, 1.0f / 7));
         float hx, hy;

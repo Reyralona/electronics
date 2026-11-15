@@ -264,3 +264,15 @@ parametros continuam iguais. Mudancas eletricas ainda iniciam nova analise batch
 capacitor, corrente de indutor e memoria de flip-flop NAO sao preservadas entre essas analises.
 Os slots guardam montagens/configuracoes, nao o instante eletrico. Terminais flexiveis pendentes.
 Formato atual 22, leitura retrocompativel 1-21. Captura --capture-catalog mostra novos componentes.
+
+
+## Perninhas flexiveis e contato direto (0.26.0)
+Segure Alt e arraste a bolinha do terminal para mover apenas a perninha. Alt+duplo clique
+no trajeto insere joelho; Alt+arraste move o joelho; Alt+duplo clique nele remove.
+O corpo permanece no lugar. Disponivel em LED, resistores, capacitores, indutores, fontes,
+interruptores, botoes, clocks e potenciometros; breadboard e pinos dos CIs permanecem rigidos.
+Terminais de pecas comuns coincidentes se conectam sem fio. A ponta encaixa em terminais
+proximos ao arrastar; cruzamento no meio de segmentos nao conecta. O encaixe da ponta da
+perninha e explicito mesmo com Alt pressionado (Alt suspende apenas o encaixe da grade/corpo).
+Caminhos de terminais sao dinamicos, conservados por undo/redo, clipboard, chips e slots.
+Formato 23 le versoes 1-22. Part possui geometria owned: codigo novo deve usar clone/clear.

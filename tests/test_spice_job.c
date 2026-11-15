@@ -12,8 +12,8 @@ int main(int argc,char **argv)
 {
     Workbench bench={0}; SpiceJob job={0};
     assert(SDL_Init(0));
-    assert(bench_add(&bench,PART_SOURCE,0,0)==0);
-    assert(bench_add(&bench,PART_RESISTOR,0,0)==1);
+    assert(bench_add(&bench, PART_SOURCE, 250 * bench.part_count, 0)==0);
+    assert(bench_add(&bench, PART_RESISTOR, 250 * bench.part_count, 0)==1);
     assert(bench_toggle_wire(&bench,(Pin){0,0},(Pin){1,0})==1);
     assert(bench_toggle_wire(&bench,(Pin){0,1},(Pin){1,1})==1);
     assert(spice_job_start(&job,&bench,"build/missing-ngspice.exe"));
@@ -32,7 +32,7 @@ int main(int argc,char **argv)
         assert(job.success && job.measures_wires);
         assert(fabs(job.wire_currents[0]-.005)<1e-7);
         assert(fabs(job.wire_currents[1]+.005)<1e-7);
-        assert(bench_add(&bench,PART_CAPACITOR,0,0)==2);
+        assert(bench_add(&bench, PART_CAPACITOR, 250 * bench.part_count, 0)==2);
         assert(bench_toggle_wire(&bench,(Pin){0,1},(Pin){1,1})==2);
         assert(bench_toggle_wire(&bench,(Pin){1,1},(Pin){2,0})==1);
         assert(bench_toggle_wire(&bench,(Pin){2,1},(Pin){0,1})==1);

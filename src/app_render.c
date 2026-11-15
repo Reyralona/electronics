@@ -436,13 +436,6 @@ static void draw_part_inductor(const Part *p)
 static void draw_part_led(const Part *p, int led, float brightness)
 {
     float x = p->x, y = p->y;
-    color(.75f, .75f, .72f);
-    glLineWidth(3);
-    float angle = (float)(-p->rotation * 3.141592653589793 * .5);
-    float c = cosf(angle), s = sinf(angle);
-    line(x - 49, y, x - 10 * c - 18 * s, y - 10 * s + 18 * c);
-    line(x + 49, y, x + 10 * c - 18 * s, y + 10 * s + 18 * c);
-    glLineWidth(1);
     /* The leads follow package rotation; the standing lens keeps its projection. */
     glPushMatrix();
     glTranslatef(x, y, 0);
@@ -489,7 +482,7 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
         return;
     }
     color(.68f, .71f, .73f);
-    if (p->type != PART_LED && p->type != PART_POTENTIOMETER)
+    if (!bench_lead_count(p, 0))
         rect(x - 51, y - 3, 102, 6);
     color(.72f, .74f, .76f);
     if (p->type == PART_SOURCE || p->type == PART_SWITCH || p->type == PART_CLOCK)
@@ -529,12 +522,6 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     }
     else if (p->type == PART_POTENTIOMETER)
     {
-        color(.65f, .67f, .69f);
-        glLineWidth(3);
-        line(x - 49, y, x - 18, y + 16);
-        line(x + 49, y, x + 18, y + 16);
-        line(x, y + 20, x, y + 49);
-        glLineWidth(1);
         color(.05f, .15f, .30f);
         circle(x, y + 5, 25);
         color(.10f, .35f, .65f);
@@ -579,8 +566,29 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     }
 }
 
+static void draw_part_leads(const Part *part)
+{
+    color(.72f, .74f, .76f);
+    glLineWidth(3);
+    for (int pin = 0; pin < bench_pin_count(part->type); ++pin)
+    {
+        size_t count = bench_lead_count(part, pin);
+        if (!count)
+            continue;
+        WirePoint previous = bench_lead_anchor(part, pin);
+        for (size_t point = 0; point < count; ++point)
+        {
+            WirePoint next = bench_lead_point(part, pin, point);
+            line(previous.x, previous.y, next.x, next.y);
+            previous = next;
+        }
+    }
+    glLineWidth(1);
+}
+
 static void part_draw_oriented(const Part *part, int selected, int led, float brightness)
 {
+    draw_part_leads(part);
     Part local = *part;
     local.x = 0;
     local.y = 0;
@@ -682,7 +690,7 @@ static void draw_thumbnail(PartType type, float x, float y)
     glTranslatef(x, y, 0);
     glScalef(scale, scale, 1);
     glLineWidth(1);
-    part_draw(&preview, 0, 0, 0);
+    part_draw_oriented(&preview, 0, 0, 0);
     if (type == PART_BREADBOARD)
     {
         color(.18f, .22f, .24f);
@@ -999,6 +1007,15 @@ static void draw_workspace_parts(const AppState *app)
         {
             int p;
             part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i], measured_led_brightness(app, i));
+            if (app->show_handles && app->selected == i)
+                for (int pin = 0; pin < bench_pin_count(app->bench.parts[i].type); ++pin)
+                    for (size_t point = 0; point + 1 < bench_lead_count(&app->bench.parts[i], pin); ++point)
+                    {
+                        WirePoint knee = bench_lead_point(&app->bench.parts[i], pin, point);
+                        color(.25f, .65f, .9f);
+                        float radius = 4 / app->view.zoom;
+                        rect(knee.x - radius, knee.y - radius, 2 * radius, 2 * radius);
+                    }
             for (p = 0; p < bench_pin_count(app->bench.parts[i].type); ++p)
             {
                 float x, y;
@@ -1335,6 +1352,8 @@ static void draw_inspector(const AppState *app, GLuint font)
         color(.12f, .34f, .52f);
         snprintf(reading, sizeof(reading), "Tamanho: %.5g%% [Ctrl+scroll]", bench_part_scale(part) * 100);
         text(font, 860, 174, reading);
+        if (bench_lead_count(part, 0))
+            text(font, 850, 235, "Perninhas: Alt+arraste / Alt+duplo clique");
         if (part->type == PART_POTENTIOMETER)
         {
             snprintf(reading, sizeof(reading), "Cursor: %.0f%% [Shift+scroll]", part->control * 100);

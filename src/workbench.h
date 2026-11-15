@@ -1,6 +1,7 @@
 #ifndef WORKBENCH_H
 #define WORKBENCH_H
 #include <stdint.h>
+#include <stddef.h>
 
 #define WORKBENCH_MAX_COMPONENTS 64
 #define WORKBENCH_MAX_WIRES 128
@@ -58,6 +59,10 @@ typedef struct
 {
     float x, y;
 } WirePoint;
+
+size_t bench_lead_count(const Part *part, int pin);
+WirePoint bench_lead_point(const Part *part, int pin, size_t point);
+WirePoint bench_lead_anchor(const Part *part, int pin);
 #define WIRE_MAX_KNEES 16
 #define WIRE_PATH_CAPACITY (WIRE_MAX_KNEES * 9 + 2)
 #define WIRE_COLOR_COUNT 6
@@ -87,6 +92,9 @@ typedef struct
     uint64_t revision;
 } Workbench;
 
+int bench_lead_move(Workbench *bench, int component, int pin, size_t point, WirePoint world);
+int bench_lead_insert(Workbench *bench, int component, int pin, size_t before, WirePoint world);
+int bench_lead_remove(Workbench *bench, int component, int pin, size_t point);
 int bench_replace(Workbench *bench, const Workbench *replacement);
 /* Snapshots preserve revision; publishing an edit uses bench_replace instead.
  * Destinations must be zero-initialized or previously initialized snapshots. */
@@ -119,6 +127,7 @@ int bench_parse_value(const char *text, double *value);
 WirePoint bench_part_to_world(const Part *part, WirePoint local);
 WirePoint bench_part_to_local(const Part *part, WirePoint world);
 void bench_pin_position(const Part *part, int pin, float *x, float *y);
+int bench_find_contact_after(const Workbench *bench, int component, int pin, int after, Pin *contact);
 int bench_find_contact(const Workbench *bench, int component, int pin, Pin *contact);
 int bench_breadboard_snap_position(const Workbench *bench, const Part *part, float *x, float *y);
 int bench_snap_to_breadboard(Workbench *bench, int component);

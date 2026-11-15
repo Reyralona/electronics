@@ -17,6 +17,22 @@ static int same_electrical_assembly(const Workbench *a, const Workbench *b)
         if (p->type == PART_BREADBOARD || p->type != q->type || p->on != q->on ||
             p->value != q->value || p->control != q->control)
             return 0;
+        for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
+        {
+            int after = -1;
+            for (;;)
+            {
+                Pin old_contact = {-1, -1}, new_contact = {-1, -1};
+                int old_found = bench_find_contact_after(a, i, pin, after, &old_contact);
+                int new_found = bench_find_contact_after(b, i, pin, after, &new_contact);
+                if (old_found != new_found || old_contact.component != new_contact.component ||
+                    old_contact.pin != new_contact.pin)
+                    return 0;
+                if (!old_found)
+                    break;
+                after = old_contact.component * WORKBENCH_MAX_PINS + old_contact.pin;
+            }
+        }
     }
     for (int i = 0; i < a->wire_count; ++i)
     {

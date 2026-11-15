@@ -460,16 +460,136 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
     }
 }
 
+static int lead_editable(const Part *part, int pin)
+{
+    return part && pin >= 0 && pin < bench_pin_count(part->type) && part->type != PART_BREADBOARD &&
+           !component_has_flag(part->type, COMPONENT_QUAD_GATE) &&
+           !component_has_flag(part->type, COMPONENT_GATE_SYMBOL);
+}
+
+size_t bench_lead_count(const Part *part, int pin)
+{
+    if (!lead_editable(part, pin))
+        return 0;
+    if (part->terminals && part->terminals->paths[pin].count)
+        return part->terminals->paths[pin].count;
+    return 1;
+}
+
+WirePoint bench_lead_point(const Part *part, int pin, size_t point)
+{
+    WirePoint local = {0};
+    if (!part || pin < 0 || pin >= bench_pin_count(part->type))
+        return local;
+    if (part->terminals && part->terminals->paths[pin].count > point)
+        local = part->terminals->paths[pin].points[point];
+    else
+        pin_local_position(part, pin, &local.x, &local.y);
+    return bench_part_to_world(part, local);
+}
+
+WirePoint bench_lead_anchor(const Part *part, int pin)
+{
+    WirePoint local;
+    pin_local_position(part, pin, &local.x, &local.y);
+    local.x *= .38f;
+    local.y *= .38f;
+    if (part->type == PART_LED)
+    {
+        float angle = (float)(-part->rotation * 3.141592653589793 * .5);
+        float c = cosf(angle), s = sinf(angle), x = pin ? 10 : -10;
+        local = (WirePoint){x * c - 18 * s, x * s + 18 * c};
+    }
+    return bench_part_to_world(part, local);
+}
+
+static int edit_lead(Workbench *bench, int component, int pin, size_t point, WirePoint world, int operation)
+{
+    const float coordinate_limit = 100000;
+    if (!bench || component < 0 || component >= bench->part_count ||
+        !lead_editable(&bench->parts[component], pin) || !isfinite(world.x) || !isfinite(world.y))
+        return 0;
+    Part *part = &bench->parts[component];
+    WirePoint local = bench_part_to_local(part, world);
+    if (fabsf(local.x) > coordinate_limit || fabsf(local.y) > coordinate_limit)
+        return 0;
+    BenchPath path = {0};
+    if (part->terminals && part->terminals->paths[pin].count)
+    {
+        if (bench_path_clone(&path, &part->terminals->paths[pin]) != BENCH_PATH_OK)
+            return 0;
+    }
+    else
+    {
+        WirePoint tip;
+        pin_local_position(part, pin, &tip.x, &tip.y);
+        if (bench_path_insert(&path, 0, tip) != BENCH_PATH_OK)
+            return 0;
+    }
+    BenchPathStatus status = BENCH_PATH_RANGE;
+    if (operation == 0)
+        status = bench_path_move(&path, point, local);
+    else if (operation == 1 && point < path.count)
+        status = bench_path_insert(&path, point, local);
+    else if (operation == 2 && point + 1 < path.count)
+        status = bench_path_remove(&path, point);
+    if (status != BENCH_PATH_OK)
+    {
+        bench_path_clear(&path);
+        return 0;
+    }
+    if (!part->terminals)
+    {
+        struct BenchTerminals *geometry = calloc(1, sizeof(*geometry));
+        if (geometry)
+        {
+            geometry->pin_count = (size_t)bench_pin_count(part->type);
+            geometry->paths = calloc(geometry->pin_count, sizeof(BenchPath));
+        }
+        if (!geometry || !geometry->paths)
+        {
+            free(geometry);
+            bench_path_clear(&path);
+            return 0;
+        }
+        part->terminals = geometry;
+    }
+    bench_path_clear(&part->terminals->paths[pin]);
+    part->terminals->paths[pin] = path;
+    ++bench->revision;
+    return 1;
+}
+
+int bench_lead_move(Workbench *bench, int component, int pin, size_t point, WirePoint world)
+{
+    return edit_lead(bench, component, pin, point, world, 0);
+}
+
+int bench_lead_insert(Workbench *bench, int component, int pin, size_t before, WirePoint world)
+{
+    return edit_lead(bench, component, pin, before, world, 1);
+}
+
+int bench_lead_remove(Workbench *bench, int component, int pin, size_t point)
+{
+    return edit_lead(bench, component, pin, point, (WirePoint){0}, 2);
+}
+
 void bench_pin_position(const Part *part, int pin, float *x, float *y)
 {
     WirePoint local;
     pin_local_position(part, pin, &local.x, &local.y);
+    if (part->terminals && (size_t)pin < part->terminals->pin_count && part->terminals->paths[pin].count)
+    {
+        const BenchPath *path = &part->terminals->paths[pin];
+        local = path->points[path->count - 1];
+    }
     WirePoint world = bench_part_to_world(part, local);
     *x = world.x;
     *y = world.y;
 }
 
-int bench_find_contact(const Workbench *b, int component, int pin, Pin *contact)
+int bench_find_contact_after(const Workbench *b, int component, int pin, int after, Pin *contact)
 {
     int board, hole;
     float x, y;
@@ -478,13 +598,14 @@ int bench_find_contact(const Workbench *b, int component, int pin, Pin *contact)
         return 0;
     bench_pin_position(&b->parts[component], pin, &x, &y);
     for (board = 0; board < b->part_count; ++board)
-        if (b->parts[board].type == PART_BREADBOARD && b->parts[board].group == b->parts[component].group)
+        if (board != component && b->parts[board].group == b->parts[component].group)
         {
-            for (hole = 0; hole < BREADBOARD_PINS; ++hole)
+            for (hole = 0; hole < bench_pin_count(b->parts[board].type); ++hole)
             {
                 float hx, hy;
                 bench_pin_position(&b->parts[board], hole, &hx, &hy);
-                if (fabsf(x - hx) < .01f && fabsf(y - hy) < .01f)
+                if (board * WORKBENCH_MAX_PINS + hole > after &&
+                    fabsf(x - hx) < .01f && fabsf(y - hy) < .01f)
                 {
                     *contact = (Pin){board, hole};
                     return 1;
@@ -492,6 +613,11 @@ int bench_find_contact(const Workbench *b, int component, int pin, Pin *contact)
             }
         }
     return 0;
+}
+
+int bench_find_contact(const Workbench *bench, int component, int pin, Pin *contact)
+{
+    return bench_find_contact_after(bench, component, pin, -1, contact);
 }
 
 int bench_breadboard_snap_position(const Workbench *b, const Part *part, float *snapped_x, float *snapped_y)
@@ -699,8 +825,12 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
             for (pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
             {
                 Pin contact;
-                if (bench_find_contact(b, i, pin, &contact))
-                    join(parent, i * WORKBENCH_MAX_PINS + pin, contact.component * WORKBENCH_MAX_PINS + contact.pin);
+                int after = -1;
+                while (bench_find_contact_after(b, i, pin, after, &contact))
+                {
+                    after = contact.component * WORKBENCH_MAX_PINS + contact.pin;
+                    join(parent, i * WORKBENCH_MAX_PINS + pin, after);
+                }
             }
         }
     for (i = 0; i < b->part_count; ++i)

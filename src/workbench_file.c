@@ -1,4 +1,6 @@
 #include "workbench_file.h"
+#include "bench_path.h"
+#include <stdlib.h>
 #include "workbench_pack_file.h"
 #include "component_registry.h"
 #include <math.h>
@@ -21,12 +23,84 @@ static int settings_valid(const WorkbenchSettings *s)
            s->transient_step <= s->transient_stop && s->transient_stop / s->transient_step <= 500.0 * (1.0 + 1e-12);
 }
 
+static int write_leads(FILE *file, const Workbench *bench)
+{
+    size_t records = 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].terminals)
+            for (size_t pin = 0; pin < bench->parts[i].terminals->pin_count; ++pin)
+                records += bench->parts[i].terminals->paths[pin].count != 0;
+    if (fprintf(file, "leads %zu\n", records) < 0)
+        return 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].terminals)
+            for (size_t pin = 0; pin < bench->parts[i].terminals->pin_count; ++pin)
+            {
+                const BenchPath *path = &bench->parts[i].terminals->paths[pin];
+                if (!path->count)
+                    continue;
+                if (fprintf(file, "lead %d %zu %zu", i, pin, path->count) < 0)
+                    return 0;
+                for (size_t point = 0; point < path->count; ++point)
+                    if (fprintf(file, " %.9g %.9g", path->points[point].x, path->points[point].y) < 0)
+                        return 0;
+                if (fputc('\n', file) == EOF)
+                    return 0;
+            }
+    return 1;
+}
+
+static int read_leads(FILE *file, Workbench *bench)
+{
+    char tag[32];
+    size_t records;
+    if (fscanf(file, "%31s %zu", tag, &records) != 2 || strcmp(tag, "leads") ||
+        records > (size_t)bench->part_count * WORKBENCH_MAX_PINS)
+        return 0;
+    for (size_t record = 0; record < records; ++record)
+    {
+        int component, pin;
+        size_t count;
+        if (fscanf(file, "%31s %d %d %zu", tag, &component, &pin, &count) != 4 || strcmp(tag, "lead") ||
+            component < 0 || component >= bench->part_count || !count ||
+            count > SIZE_MAX / sizeof(WirePoint) || !bench_lead_count(&bench->parts[component], pin))
+            return 0;
+        Part *part = &bench->parts[component];
+        if (!part->terminals)
+        {
+            part->terminals = calloc(1, sizeof(*part->terminals));
+            if (!part->terminals)
+                return 0;
+            part->terminals->pin_count = (size_t)bench_pin_count(part->type);
+            part->terminals->paths = calloc(part->terminals->pin_count, sizeof(BenchPath));
+            if (!part->terminals->paths)
+            {
+                free(part->terminals);
+                part->terminals = NULL;
+                return 0;
+            }
+        }
+        BenchPath *path = &part->terminals->paths[pin];
+        if (path->count || bench_path_reserve(path, count) != BENCH_PATH_OK)
+            return 0;
+        for (size_t point = 0; point < count; ++point)
+        {
+            WirePoint p;
+            if (fscanf(file, "%f %f", &p.x, &p.y) != 2 || !isfinite(p.x) || !isfinite(p.y) ||
+                fabsf(p.x) > 100000 || fabsf(p.y) > 100000)
+                return 0;
+            path->points[path->count++] = p;
+        }
+    }
+    return 1;
+}
+
 int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings *s)
 {
     int i, k;
     if (!f || !b || !settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 22\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 23\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -47,7 +121,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
         if (fputc('\n', f) == EOF)
             return 0;
     }
-    if (!bench_groups_write(f, b))
+    if (!bench_groups_write(f, b) || !write_leads(f, b))
         return 0;
     if (fprintf(f, "settings %d %d %d %d %d %d %d %.17g %.17g\n", s->show_grid, s->show_handles, s->round_wires,
                 s->show_current, s->wire_color, s->probe_pin, s->probe_current, s->transient_step,
@@ -70,7 +144,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 22) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 23) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -153,6 +227,8 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         }
     }
     if (version >= 16 && !bench_groups_read(f, &b, version))
+        goto cleanup;
+    if (version >= 23 && !read_leads(f, &b))
         goto cleanup;
     if (version >= 10)
     {

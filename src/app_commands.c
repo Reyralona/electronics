@@ -25,6 +25,7 @@ static void command_example(AppState *app)
         app->selected_wire = -1;
         app->dragging = -1;
         app->drag_wire = -1;
+    app->drag_lead.component = -1;
         app->pending.component = -1;
         app->route_count = 0;
         app->placing = -1;
@@ -61,6 +62,7 @@ static void command_settings(AppState *app)
     app->settings = !app->settings;
     app->dragging = -1;
     app->drag_wire = -1;
+    app->drag_lead.component = -1;
     return;
 }
 
@@ -83,6 +85,7 @@ static void command_history(AppState *app, SDL_Keycode key)
         app->selected_wire = -1;
         app->dragging = -1;
         app->drag_wire = -1;
+    app->drag_lead.component = -1;
         app->pending.component = -1;
         app->route_count = 0;
         memset(app->leds, 0, sizeof(app->leds));
@@ -103,6 +106,7 @@ static void command_cancel(AppState *app)
     app->placing = -1;
     app->dragging = -1;
     app->drag_wire = -1;
+    app->drag_lead.component = -1;
     app->status = "Selecao cancelada.";
 }
 
@@ -318,6 +322,7 @@ static void command_load(AppState *app)
         app->selected_wire = -1;
         app->dragging = -1;
         app->drag_wire = -1;
+    app->drag_lead.component = -1;
         app->pending.component = -1;
         app->route_count = 0;
         app->show_grid = saved.show_grid;

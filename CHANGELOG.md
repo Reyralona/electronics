@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.26.0
+
+- Perninhas com pontas e joelhos editaveis: Alt+arraste e Alt+duplo clique, sem mover o corpo.
+- Contato direto entre terminais de pecas comuns, com encaixe de pontas e feedback eletrico.
+- Geometria dinamica por pino, clone profundo, undo/redo, copy/paste, slots e formato23.
+- Testes ngspice fecham circuito sem fios; separacao de uma ponta interrompe corrente.
+- Suite completa e180fasesGUI passaram; captura --capture-leads revisada.
+- Continuidade eletrica permanece em implementacao; prova isolada preservou RC e DFF via resume.
+
+
 ## 0.25.1
 
 - Corpo do LED conserva projecao vertical ao girar; terminais e contatos acompanham a rotacao.

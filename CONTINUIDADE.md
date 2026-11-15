@@ -417,3 +417,23 @@ sao tarefas autorizadas. Nao fechar processos do usuario para substituir executa
 Correcao 0.25.1: corpoLED mantido vertical independentemente da rotacao dos contatos.
 Captura build/review-upright-led.bmp revisada com LED0/90 graus. Compilacao estrita e171fasesGUI
 passaram novamente; modelo eletrico nao alterado desde suite completa0.25.0.
+
+
+## Perninhas e contato direto 0.26.0
+Alt+arrastar terminal/joelho edita perna; Alt+duplo clique insere/remove joelhos.
+Part agora TEM BenchTerminals owned, BenchPath por pino. Todas copias owning devem usar
+bench_part_clone/snapshot_clone; views locais de renderer/snap sao emprestadas. Commit9fad6d7
+separou preparacao de ownership. bench_lead_* usa pontos locais e retorna pontos de mundo.
+Ponta arrastada encaixa em outro terminal (9px), contato exato usa tolerancia .01 unidades.
+bench_find_contact_after enumera TODOS contatos, usado por netlist/booleano/packing; contatos
+internos entre grupos distintos continuam isolados. Cachevisual compara todos contatos para
+nao conservar resultado quando uma ponta se desconecta. Arquivo23 grava leads apos groups.
+Test_leads verifica40joelhos, undo/redo profundo, arquivo, clipboard e corrente ngspice semfios.
+Fixtures eletricas antigas empilhavam pecas em0,0: separadas geometricamente para evitar novos
+curtos fisicos; sem mudar valores/ligacoes/asserts eletricos. Suite completa +180fasesGUI passaram.
+Captura build/review-leads.bmp revisada. BotaoAlt+duploclique consta no inspector.
+Experimento experiments/persistent_spice_probe.py rodou isolado na DLL local: RC2.499887V passou
+para0.919650V ao abrir alimentacao, DFFreteveQ quandoD mudou comclockalto e soalterou na borda.
+Esta prova NAO esta integrada aUI. Proxima tarefa: driver persistente nativo isolado por contexto,
+netlist com contatos/fontes alteraveis e schedulerqueavanca tempo semreiniciar. FontesOFF no
+backendbatchainda0V; naoanunciarcontinuidadeconcluida. Usuario pediu explicitamente continuar.

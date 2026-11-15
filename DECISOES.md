@@ -302,3 +302,18 @@ Referencia visual: capturas paginas 5/6 do guia oficial Tinkercad Circuits consu
 https://assets.ctfassets.net/jl5ii4oqrdmc/4sMFqe3rDlbUymJt0I4yh/85a4487f7fe274e74c19870ae4679fc1/tinkercad-guides_circuits-Printable.pdf.
 Visual proprio 2.5D. Brilho e curva visual sqrt(I/20mA) da corrente direta medida, limitada
 a 1; nao e modelo fotometrico nem rating do LED.
+
+
+## Perninhas e contato direto (15/11/2026)
+Pedido: reutilizar interacao dos fios, sem mecanica complexa. Comparacao: copiar arrays fixos de
+joelhos por pino versus BenchPath dinamico existente. Decisao: caminhos locais dinamicos por pino,
+criados sob demanda, clone profundo por Part e snapshots. Corpo permanece independente; ultimo
+ponto e o terminal eletrico. Alt+arrastar terminal edita perna, duplo clique no caminho insere
+joelho, duplo clique em joelho remove. Duplo clique nao exige modo global adicional.
+Contato direto: terminais coincidentes dentro da tolerancia geometrica existente (.01 unidades)
+formam o mesmo no, inclusive entre pecas; encaixe visual pode aproximar antes de publicar.
+Fato: coincidencia e conectividade ideal, nao solda nem resistencia de contato. Cruzar segmentos
+sem unir as pontas nao cria contato. Blocos distintos continuam isolados internamente.
+Continuidade: fonte oficial https://ngspice.sourceforge.io/shared.html consultada em 15/11/2026
+confirma parar, alterar parametros e retomar na mesma sessao. DLL por contexto/processo e a
+recomendacao para preservar estados e isolamento; somente reapresentar curvas nao atende.

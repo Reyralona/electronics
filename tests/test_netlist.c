@@ -6,9 +6,9 @@
 int main(void)
 {
     Workbench b={0}; FILE *f; char text[4096]; size_t n;
-    assert(bench_add(&b,PART_SOURCE,0,0)==0);
-    assert(bench_add(&b,PART_RESISTOR,0,0)==1);
-    assert(bench_add(&b,PART_BREADBOARD,0,0)==2);
+    assert(bench_add(&b, PART_SOURCE, 250 * b.part_count, 0)==0);
+    assert(bench_add(&b, PART_RESISTOR, 250 * b.part_count, 0)==1);
+    assert(bench_add(&b, PART_BREADBOARD, 250 * b.part_count, 0)==2);
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){2,0})==1);
     assert(bench_toggle_wire(&b,(Pin){2,4},(Pin){1,0})==1);
     assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){0,1})==1);
@@ -25,7 +25,7 @@ int main(void)
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){2,1})==1);
     f=tmpfile(); assert(f); assert(netlist_write_dc_instrumented(f,&b)==NETLIST_AMBIGUOUS_WIRES); fclose(f);
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){2,1})==2);
-    assert(bench_add(&b,PART_LED,0,0)==3);
+    assert(bench_add(&b, PART_LED, 250 * b.part_count, 0)==3);
     assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){0,1})==2);
     assert(bench_toggle_wire(&b,(Pin){1,1},(Pin){3,0})==1);
     assert(bench_toggle_wire(&b,(Pin){3,1},(Pin){0,1})==1);
@@ -36,16 +36,16 @@ int main(void)
     assert(bench_toggle_wire(&b,(Pin){3,0},(Pin){0,1})==1);
     f=fopen("build/netlist-led-reverse.cir","w"); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_OK); fclose(f);
     bench_remove(&b,3);
-    assert(bench_add(&b,PART_SOURCE,0,0)==3);
+    assert(bench_add(&b, PART_SOURCE, 250 * b.part_count, 0)==3);
     f=tmpfile(); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_OK); fclose(f);
     bench_remove(&b,3);
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){0,1})==1);
     f=tmpfile(); assert(f); assert(netlist_write_dc(f,&b)==NETLIST_INVALID); fclose(f);
     {
         Workbench series={0};
-        assert(bench_add(&series,PART_SOURCE,0,0)==0);
-        assert(bench_add(&series,PART_SOURCE,0,0)==1);
-        assert(bench_add(&series,PART_RESISTOR,0,0)==2);
+        assert(bench_add(&series, PART_SOURCE, 250 * series.part_count, 0)==0);
+        assert(bench_add(&series, PART_SOURCE, 250 * series.part_count, 0)==1);
+        assert(bench_add(&series, PART_RESISTOR, 250 * series.part_count, 0)==2);
         assert(bench_toggle_wire(&series,(Pin){0,0},(Pin){1,1})==1);
         assert(bench_toggle_wire(&series,(Pin){1,0},(Pin){2,0})==1);
         assert(bench_toggle_wire(&series,(Pin){2,1},(Pin){0,1})==1);
@@ -60,9 +60,9 @@ int main(void)
     }
     {
         Workbench rc={0};
-        assert(bench_add(&rc,PART_SOURCE,0,0)==0);
-        assert(bench_add(&rc,PART_RESISTOR,0,0)==1);
-        assert(bench_add(&rc,PART_CAPACITOR,0,0)==2);
+        assert(bench_add(&rc, PART_SOURCE, 250 * rc.part_count, 0)==0);
+        assert(bench_add(&rc, PART_RESISTOR, 250 * rc.part_count, 0)==1);
+        assert(bench_add(&rc, PART_CAPACITOR, 250 * rc.part_count, 0)==2);
         assert(bench_toggle_wire(&rc,(Pin){0,0},(Pin){1,0})==1);
         assert(bench_toggle_wire(&rc,(Pin){1,1},(Pin){2,0})==1);
         assert(bench_toggle_wire(&rc,(Pin){2,1},(Pin){0,1})==1);
@@ -72,7 +72,7 @@ int main(void)
         assert(netlist_write_transient(f,&rc,(Pin){2,0},0,.005)==NETLIST_INVALID);
         assert(netlist_write_transient(f,&rc,(Pin){2,99},.00001,.005)==NETLIST_INVALID); fclose(f);
         bench_remove(&rc,2);
-        assert(bench_add(&rc,PART_INDUCTOR,0,0)==2);
+        assert(bench_add(&rc, PART_INDUCTOR, 250 * rc.part_count, 0)==2);
         assert(bench_toggle_wire(&rc,(Pin){1,1},(Pin){2,0})==1);
         assert(bench_toggle_wire(&rc,(Pin){2,1},(Pin){0,1})==1);
         f=fopen("build/netlist-rl.cir","w"); assert(f);

@@ -1,4 +1,5 @@
 #include "bench_scope.h"
+#include "bench_path.h"
 #include "component_registry.h"
 #include "workbench_grid.h"
 #include "app_input.h"
@@ -848,6 +849,84 @@ static void input_select(AppState *app, float x, float y, int clicks)
     }
 }
 
+static int input_click_lead(AppState *app, float x, float y, int clicks)
+{
+    float tolerance = 8 / app->view.zoom;
+    for (int i = app->bench.part_count - 1; i >= 0; --i)
+    {
+        const Part *part = &app->bench.parts[i];
+        if (part->group)
+            continue;
+        for (int pin = 0; pin < bench_pin_count(part->type); ++pin)
+        {
+            size_t count = bench_lead_count(part, pin);
+            for (size_t point = 0; point < count; ++point)
+            {
+                WirePoint p = bench_lead_point(part, pin, point);
+                if (hypotf(x - p.x, y - p.y) > tolerance)
+                    continue;
+                app->selected = i;
+                app->pending.component = -1;
+                if (clicks >= 2 && point + 1 < count)
+                {
+                    Workbench before BENCH_AUTO_CLEAR = {0};
+                    if (!bench_snapshot_clone(&before, &app->bench))
+                    {
+                        app->status = "Memoria insuficiente para editar a perninha.";
+                        return 1;
+                    }
+                    if (!bench_lead_remove(&app->bench, i, pin, point) ||
+                        !bench_history_record(app->history, &before))
+                    {
+                        bench_replace(&app->bench, &before);
+                        app->status = "Falha ao remover joelho; perninha anterior preservada.";
+                    }
+                    else
+                        app->status = "Joelho da perninha removido. Ctrl+Z desfaz.";
+                }
+                else
+                {
+                    app->drag_lead = (Pin){i, pin};
+                    app->drag_lead_point = point;
+                    app->move_recorded = 0;
+                    app->status = "Arraste a perninha; Alt+duplo clique insere/remove joelho.";
+                }
+                return 1;
+            }
+            if (clicks < 2)
+                continue;
+            WirePoint previous = bench_lead_anchor(part, pin);
+            for (size_t point = 0; point < count; ++point)
+            {
+                WirePoint p = bench_lead_point(part, pin, point);
+                WirePoint segment[] = {previous, p};
+                BenchPathHit hit;
+                if (bench_polyline_pick(segment, 2, (WirePoint){x, y}, tolerance, &hit))
+                {
+                    Workbench before BENCH_AUTO_CLEAR = {0};
+                    if (!bench_snapshot_clone(&before, &app->bench))
+                    {
+                        app->status = "Memoria insuficiente para editar a perninha.";
+                        return 1;
+                    }
+                    if (!bench_lead_insert(&app->bench, i, pin, point, hit.point) ||
+                        !bench_history_record(app->history, &before))
+                    {
+                        bench_replace(&app->bench, &before);
+                        app->status = "Falha ao inserir joelho; perninha anterior preservada.";
+                    }
+                    else
+                        app->status = "Joelho da perninha adicionado. Alt+arraste para dobrar.";
+                    app->selected = i;
+                    return 1;
+                }
+                previous = p;
+            }
+        }
+    }
+    return 0;
+}
+
 static void input_click(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
     int w, h, hitpin = -1;
@@ -875,6 +954,8 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     if (SDL_GetModState() & SDL_KMOD_ALT)
     {
+        if (input_click_lead(app, x, y, event->button.clicks))
+            return;
         input_select(app, x, y, 1);
         return;
     }
@@ -921,12 +1002,62 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
         app->bench.parts[app->held_button].type == PART_BUTTON)
         bench_set_on(&app->bench, app->held_button, 0);
     app->held_button = -1;
+    app->drag_lead.component = -1;
     app->selecting_area = 0;
     if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
         !app->bench.parts[app->dragging].group && app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, app->dragging))
         app->status = "Componente encaixado na breadboard.";
     app->dragging = -1;
     app->drag_wire = -1;
+}
+
+static WirePoint snap_lead_tip(const AppState *app, int component, WirePoint point)
+{
+    float best = 9 / app->view.zoom;
+    WirePoint result = point;
+    for (int i = 0; i < app->bench.part_count; ++i)
+    {
+        if (i == component || app->bench.parts[i].group != app->bench.parts[component].group)
+            continue;
+        for (int pin = 0; pin < bench_pin_count(app->bench.parts[i].type); ++pin)
+        {
+            WirePoint target;
+            bench_pin_position(&app->bench.parts[i], pin, &target.x, &target.y);
+            float distance = hypotf(target.x - point.x, target.y - point.y);
+            if (distance < best)
+            {
+                best = distance;
+                result = target;
+            }
+        }
+    }
+    return result;
+}
+
+static void input_drag_lead(AppState *app, SDL_Window *window, const SDL_Event *event)
+{
+    int width, height;
+    SDL_GetWindowSize(window, &width, &height);
+    if (width <= 0 || height <= 0)
+        return;
+    int component = app->drag_lead.component, pin = app->drag_lead.pin;
+    if (component < 0 || component >= app->bench.part_count)
+        return;
+    WirePoint world = {event->motion.x * 1280.0f / width, event->motion.y * 720.0f / height};
+    bench_view_to_world(&app->view, world.x, world.y, &world.x, &world.y);
+    if (app->drag_lead_point + 1 == bench_lead_count(&app->bench.parts[component], pin))
+        world = snap_lead_tip(app, component, world);
+    if (!app->move_recorded)
+    {
+        if (!bench_history_record(app->history, &app->bench))
+        {
+            app->status = "Historico indisponivel; perninha preservada.";
+            return;
+        }
+        app->move_recorded = 1;
+    }
+    if (!bench_lead_move(&app->bench, component, pin, app->drag_lead_point, world))
+        app->status = "Falha ao mover perninha: coordenadas invalidas ou memoria insuficiente.";
 }
 
 static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *event)
@@ -1099,6 +1230,10 @@ void app_input_poll(AppState *app, SDL_Window *window)
         else if (e.type == SDL_EVENT_MOUSE_BUTTON_UP && e.button.button == SDL_BUTTON_LEFT)
         {
             input_release(app, window, &e);
+        }
+        else if (e.type == SDL_EVENT_MOUSE_MOTION && app->drag_lead.component >= 0)
+        {
+            input_drag_lead(app, window, &e);
         }
         else if (e.type == SDL_EVENT_MOUSE_MOTION && app->drag_wire >= 0)
         {
