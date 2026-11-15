@@ -251,107 +251,102 @@ int bench_board_group_first(int pin)
     return pin < 300 ? (pin / 5) * 5 : 300 + ((pin - 300) / 30) * 30;
 }
 
-void bench_pin_position(const Part *p, int pin, float *x, float *y)
+WirePoint bench_part_to_world(const Part *part, WirePoint local)
+{
+    WirePoint rotated = local;
+    int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
+    switch (rotation)
+    {
+    case 1:
+        rotated = (WirePoint){-local.y, local.x};
+        break;
+    case 2:
+        rotated = (WirePoint){-local.x, -local.y};
+        break;
+    case 3:
+        rotated = (WirePoint){local.y, -local.x};
+        break;
+    }
+    return (WirePoint){part->x + rotated.x, part->y + rotated.y};
+}
+
+WirePoint bench_part_to_local(const Part *part, WirePoint world)
+{
+    WirePoint offset = {world.x - part->x, world.y - part->y};
+    int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
+    switch (rotation)
+    {
+    case 1:
+        return (WirePoint){offset.y, -offset.x};
+    case 2:
+        return (WirePoint){-offset.x, -offset.y};
+    case 3:
+        return (WirePoint){-offset.y, offset.x};
+    default:
+        return offset;
+    }
+}
+
+static void pin_local_position(const Part *p, int pin, float *x, float *y)
 {
     if (p->type == PART_BREADBOARD)
     {
         int group = pin / 5, row = pin % 5;
         if (group < 20)
         {
-            *x = p->x - 63.0f + (group % 10) * 14.0f;
-            *y = p->y + (p->board_layout ? (group < 10 ? -55.0f : 15.0f) : (group < 10 ? -39.0f : 11.0f)) +
+            *x = -63.0f + (group % 10) * 14.0f;
+            *y = (p->board_layout ? (group < 10 ? -55.0f : 15.0f) : (group < 10 ? -39.0f : 11.0f)) +
                  row * (p->board_layout ? 10.0f : 7.0f);
         }
         else if (group < 36)
         {
             int extra = (group - 20) % 8;
-            *x = p->x + (extra < 4 ? -119.0f + extra * 14.0f : 77.0f + (extra - 4) * 14.0f);
-            *y = p->y + (p->board_layout ? (group < 28 ? -55.0f : 15.0f) : (group < 28 ? -39.0f : 11.0f)) +
+            *x = (extra < 4 ? -119.0f + extra * 14.0f : 77.0f + (extra - 4) * 14.0f);
+            *y = (p->board_layout ? (group < 28 ? -55.0f : 15.0f) : (group < 28 ? -39.0f : 11.0f)) +
                  row * (p->board_layout ? 10.0f : 7.0f);
         }
         else if (pin < 300)
         {
             int extra = (group - 36) % 12;
-            *x = p->x + (extra < 6 ? -203.0f + extra * 14.0f : 133.0f + (extra - 6) * 14.0f);
-            *y = p->y + (p->board_layout ? (group < 48 ? -55.0f : 15.0f) : (group < 48 ? -39.0f : 11.0f)) +
+            *x = (extra < 6 ? -203.0f + extra * 14.0f : 133.0f + (extra - 6) * 14.0f);
+            *y = (p->board_layout ? (group < 48 ? -55.0f : 15.0f) : (group < 48 ? -39.0f : 11.0f)) +
                  row * (p->board_layout ? 10.0f : 7.0f);
         }
         else
         {
             int rail = (pin - 300) / 30, column = (pin - 300) % 30;
-            *x = p->x - 203.0f + column * 14.0f;
-            *y = p->y + (rail == 0 ? -98.0f : rail == 1 ? -82.0f : rail == 2 ? 78.0f : 94.0f);
+            *x = -203.0f + column * 14.0f;
+            *y = (rail == 0 ? -98.0f : rail == 1 ? -82.0f : rail == 2 ? 78.0f : 94.0f);
         }
     }
     else if (p->type == PART_74HC00)
     {
-        float dx = (float)((pin < 7 ? pin : 13 - pin) * 14 - 42), dy = pin < 7 ? -15.0f : 15.0f;
-        switch (p->rotation)
-        {
-        case 1:
-            *x = p->x - dy;
-            *y = p->y + dx;
-            break;
-        case 2:
-            *x = p->x - dx;
-            *y = p->y - dy;
-            break;
-        case 3:
-            *x = p->x + dy;
-            *y = p->y - dx;
-            break;
-        default:
-            *x = p->x + dx;
-            *y = p->y + dy;
-            break;
-        }
+        *x = (float)((pin < 7 ? pin : 13 - pin) * 14 - 42);
+        *y = pin < 7 ? -15.0f : 15.0f;
     }
     else if ((p->type >= PART_AND && p->type <= PART_XOR) || p->type == PART_DFF)
     {
-        float dx = pin == 2 ? 49.0f : -49.0f, dy = pin == 0 ? -15.0f : pin == 1 ? 15.0f : 0.0f;
-        switch (p->rotation)
-        {
-        case 1:
-            *x = p->x - dy;
-            *y = p->y + dx;
-            break;
-        case 2:
-            *x = p->x - dx;
-            *y = p->y - dy;
-            break;
-        case 3:
-            *x = p->x + dy;
-            *y = p->y - dx;
-            break;
-        default:
-            *x = p->x + dx;
-            *y = p->y + dy;
-            break;
-        }
+        *x = pin == 2 ? 49.0f : -49.0f;
+        *y = 0;
+        if (pin == 0)
+            *y = -15;
+        else if (pin == 1)
+            *y = 15;
     }
     else
     {
-        float distance = pin ? 49.0f : -49.0f;
-        switch (p->rotation)
-        {
-        case 1:
-            *x = p->x;
-            *y = p->y + distance;
-            break;
-        case 2:
-            *x = p->x - distance;
-            *y = p->y;
-            break;
-        case 3:
-            *x = p->x;
-            *y = p->y - distance;
-            break;
-        default:
-            *x = p->x + distance;
-            *y = p->y;
-            break;
-        }
+        *x = pin ? 49.0f : -49.0f;
+        *y = 0;
     }
+}
+
+void bench_pin_position(const Part *part, int pin, float *x, float *y)
+{
+    WirePoint local;
+    pin_local_position(part, pin, &local.x, &local.y);
+    WirePoint world = bench_part_to_world(part, local);
+    *x = world.x;
+    *y = world.y;
 }
 
 int bench_find_contact(const Workbench *b, int component, int pin, Pin *contact)

@@ -92,6 +92,8 @@ int bench_board_group_first(int pin);
 int bench_set_value(Workbench *bench, int component, double value);
 int bench_rotate_part(Workbench *bench, int component);
 int bench_parse_value(const char *text, double *value);
+WirePoint bench_part_to_world(const Part *part, WirePoint local);
+WirePoint bench_part_to_local(const Part *part, WirePoint world);
 void bench_pin_position(const Part *part, int pin, float *x, float *y);
 int bench_find_contact(const Workbench *bench, int component, int pin, Pin *contact);
 int bench_breadboard_snap_position(const Workbench *bench, const Part *part, float *x, float *y);

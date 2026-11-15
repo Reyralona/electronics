@@ -67,26 +67,22 @@ static int part_at(const Workbench *bench, float x, float y)
             const Part *part = &bench->parts[i];
             if (part->group)
                 continue;
-            int board = part->type == PART_BREADBOARD, vertical = part->rotation % 2, chip = part->type == PART_74HC00;
-            float hw, hh;
+            int board = part->type == PART_BREADBOARD;
             if (board != pass)
                 continue;
+            WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
+            float half_width = 44, half_height = 30;
             if (board)
             {
-                hw = 227.0f;
-                hh = 112.0f;
+                half_width = 227;
+                half_height = 112;
             }
-            else if (chip)
+            else if (part->type == PART_74HC00)
             {
-                hw = vertical ? 20.0f : 50.0f;
-                hh = vertical ? 50.0f : 20.0f;
+                half_width = 50;
+                half_height = 20;
             }
-            else
-            {
-                hw = vertical ? 30.0f : 44.0f;
-                hh = vertical ? 44.0f : 30.0f;
-            }
-            if (fabsf(x - part->x) < hw && fabsf(y - part->y) < hh)
+            if (fabsf(local.x) < half_width && fabsf(local.y) < half_height)
                 return i;
         }
     return -1;

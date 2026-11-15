@@ -283,3 +283,15 @@ incluindo inserir/remover/undo e salvar/reabrir. Suite completa passou com
 ./build.ps1 -OutputName bancada-next -GuiTests.
 Proximo: geometria/escala e terminais flexiveis com modo explicito; depois instrumentos. Nao
 confundir joelhos de fio entregues com dobra de terminal ainda inexistente. Meta 1.0 ativa.
+
+
+## Refatoracao geometrica verificada - refactor/component-geometry
+bench_part_to_world/bench_part_to_local centralizam quartos de volta e translacao. Pinos agora
+sao definidos em coordenadas locais; selecao do corpo usa inversa da mesma transformacao em vez
+de repetir retangulos orientados. Sem SDL/OpenGL no modelo. Breadboard conserva orientacao atual.
+Suite completa e 138 fases GUI passaram; capturas --capture, --capture-rotation e --capture-ci
+identicas byte a byte a 0.23.0. Testes verificam ida/volta e pinos em quatro rotacoes.
+Ainda nao implementa escala nem dobra; preparar campo de escala, persistencia, desenho e contatos
+como proximo incremento funcional separado. Caminhos flexiveis precisam de ownership explicito:
+nao adicionar ponteiros a Workbench sem revisar snapshots/historico/clipboard/jobs (copias por valor).
+Branch continua ativa; executavel canonico 0.23.0 preservado ate concluir incremento funcional.

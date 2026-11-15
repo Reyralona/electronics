@@ -158,5 +158,19 @@ int main(void)
         assert(!wire_pick_segment(&corner, (WirePoint){0, 0}, (WirePoint){100, 100},
                                   18, (WirePoint){500, 500}, 1, &slot, &projected));
     }
+    {
+        for (int rotation = 0; rotation < 4; ++rotation)
+        {
+            Part part = {.type = PART_RESISTOR, .x = 123, .y = -456, .rotation = rotation};
+            WirePoint local = {-17, 23};
+            WirePoint world = bench_part_to_world(&part, local);
+            WirePoint restored = bench_part_to_local(&part, world);
+            assert(restored.x == local.x && restored.y == local.y);
+            float x, y;
+            bench_pin_position(&part, 0, &x, &y);
+            restored = bench_part_to_local(&part, (WirePoint){x, y});
+            assert(restored.x == -49 && restored.y == 0);
+        }
+    }
     return 0;
 }
