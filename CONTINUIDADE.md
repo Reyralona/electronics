@@ -91,8 +91,27 @@ Comparacao local: manter eventos/desenho em main preservaria o acoplamento; extr
 preserva a ordem e permite validar comandos sem contexto OpenGL. Nenhuma dependencia nova.
 
 Verificacao: ./build.ps1 -GuiTests; captura --capture-example2 revisada visualmente e identica
-? referencia quality-nand.bmp (SHA256 3AC311CAD802DD3EE35FB5FE8298907906BDE2A2BEC184CEFBEE152D104B113C).
+a referencia quality-nand.bmp (SHA256 3AC311CAD802DD3EE35FB5FE8298907906BDE2A2BEC184CEFBEE152D104B113C).
 Teste de comandos cobre exemplos, valor, giro, exclusao de componente/fio, undo/redo e limites de reproducao.
 Ainda ha funcoes grandes: input_click, draw_workspace e part_draw. SimState ainda precisa consolidar
 transicoes; revisoes de montagem ainda usam memcmp. Esses itens antecedem ampliacao do catalogo.
 A meta 1.0 permanece ativa e nao atendida; modelos eletricos e limites existentes foram preservados.
+
+## Estado mais recente: 0.17.4 - funcoes focadas e transicoes sem janela
+15/11/2026: app_input separa controles, selecao, busca de terminais, joelhos, colocacao e conexao.
+app_render separa aparencias por tipo e passes de grade, placas, fios, contatos, rotulos e sondas.
+Todas as funcoes de entrada/desenho ficaram abaixo de 100 linhas; a maioria abaixo de 80.
+SimState agora executa invalidacao, reproducao e apresentacao de LEDs sem SDL/OpenGL.
+O chamador fornece tempo monotono; test_sim_state liga apenas sim_state, spice_trace e workbench.
+Ainda usa flags de validade e snapshots: isso nao encerra a consolidacao da maquina de estados.
+
+Verificacao: ./build.ps1 -GuiTests passou. Comparacao com executavel compilado dos fontes da
+v0.17.3: 16 capturas de montagem/configuracao/zoom/aparencias identicas. Mais seis modos de
+transiente/correntes/LED/DFF e o exemplo NAND identicos apos mover as transicoes.
+Teste de sonda negativa falhou antes da correcao e passou apos exigir probe_pin >= 0.
+Correcao em commit separado das refatoracoes. Nenhum modelo eletrico foi alterado.
+
+Proximo: representar validade por um estado unico, centralizar aceitacao/inicio/invalidation de
+resultados e substituir comparacoes por revisoes de montagem. Depois, registro de componentes
+com IDs persistentes e migracao de formato, conforme QUALIDADE_CODIGO.md.
+Nao confundir reproducao de curva com backend de passo real. Meta 1.0 continua nao atendida.

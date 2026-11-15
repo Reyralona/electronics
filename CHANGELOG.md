@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.17.4
+
+- Funcoes de entrada/desenho divididas por operacao e aparencia, todas abaixo de 100 linhas.
+- Invalidacao, reproducao e LEDs em SimState sem SDL/OpenGL; testes com tempo controlado.
+- Correcao: sonda com indice de pino negativo passa a usar a selecao automatica valida.
+- Build estrito e autoteste GUI passaram; capturas de montagem e transientes preservadas.
+- Validade ainda usa flags; revisoes, registro de componentes e backend de passo real permanecem pendentes.
+
 ## 0.17.3
 
 - Ciclo de vida da janela separado da entrada e do desenho; renderizacao recebe estado somente para leitura.
