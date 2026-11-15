@@ -62,5 +62,7 @@ int workbench_example_create(int index,Workbench *destination,int *selected)
            !connect(&b,(Pin){5,1},(Pin){1,383},2,ret,2)) return 0;
         selection=2;
     }
-    *destination=b; *selected=selection; return 1;
+    bench_replace(destination, &b);
+    *selected = selection;
+    return 1;
 }

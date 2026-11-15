@@ -17,7 +17,9 @@ int main(int argc,char **argv)
         assert(spice_dc_analyze(&b,argv[1],&current,values,message,sizeof(message)));
         assert(values[3]>.003 && values[3]<.004);
     }
+    uint64_t previous_revision = b.revision;
     assert(workbench_example_create(1,&b,&selected));
+    assert(b.revision > previous_revision);
     assert(b.part_count==5 && b.wire_count==6 && selected==2 && b.parts[2].type==PART_DFF);
     if(argc>1) {
         SpiceTrace trace={0}; char message[128]; int i,hold=0,low=0;
@@ -29,7 +31,9 @@ int main(int argc,char **argv)
         assert(trace.samples[hold].value>4.9 && trace.samples[low].value<.01);
         assert((trace.leds_on[hold]&(UINT64_C(1)<<4)) && !(trace.leds_on[low]&(UINT64_C(1)<<4)));
     }
+    previous_revision = b.revision;
     assert(workbench_example_create(2, &b, &selected));
+    assert(b.revision > previous_revision);
     assert(b.part_count == 6 && selected == 2 && b.parts[2].type == PART_74HC00);
     for (int pin = 0; pin < 14; ++pin) {
         Pin contact;
