@@ -14,3 +14,15 @@ int spice_trace_replay_index(const SpiceTrace *trace,int start_index,uint64_t el
     while(low<high) { int mid=low+(high-low+1)/2; if(trace->samples[mid].time<=target+(last-first)*1e-12) low=mid; else high=mid-1; }
     return low;
 }
+
+int spice_trace_nearest(const SpiceTrace *trace,double fraction)
+{
+    double target, best; int i,index=0;
+    if(fraction<0) fraction=0;
+    if(fraction>1) fraction=1;
+    target=trace->samples[0].time+(trace->samples[trace->count-1].time-trace->samples[0].time)*fraction;
+    best=fabs(trace->samples[0].time-target);
+    for(i=1;i<trace->count;++i) { double distance=fabs(trace->samples[i].time-target); if(distance<best) { best=distance; index=i; } }
+    return index;
+}
+

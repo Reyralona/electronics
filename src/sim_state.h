@@ -29,4 +29,5 @@ typedef struct {
     int burnt_count, trace_periodic, trace_automatic;
     char auto_status[200];
 } SimState;
+Pin sim_state_probe(const Workbench *bench, int selected, int probe_pin);
 #endif
