@@ -158,3 +158,14 @@ adotado: Bancada. Nao confundir lista maior de icones com componentes eletricame
   pinos reposicionados, undo e persistencia. Nao deformar o circuito interno para mudar encapsulamento.
 Estado 0.25.0: dimensoes por scroll e retencao de analise de movimentos sem breadboard implementadas.
 Persistencia de estado eletrico atraves de alteracoes e controles dimensionais com botoes ainda pendentes.
+
+
+## Estado 0.27.0
+Perninhas disponiveis com Alt+arraste e Alt+duplo clique, cantos iguais aos fios e controle
+independente do corpo. Pontas coincidentes de pecas comuns conectam sem fio. Undo/clipboard/slots
+conservam caminhos. CIs e breadboard mantem pinos rigidos.
+Continuidade implementada para movimentos sem mudar conexoes e alteracoes de controles/valores,
+com memoria de C/L e DFF no solver. Pause conserva estado; reinicio e explicito por Ctrl+Espaco.
+Slots continuam sendo montagem/configuracao e carregam estado inicial. Interior usa outro processo.
+Novas conexoes/frequencia ainda reiniciam estado; limitacao indicada no rodape. Instrumentos
+posicionaveis e escala integral da GUI continuam pendentes. Nao marcar 1.0.

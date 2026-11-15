@@ -446,7 +446,7 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
             app->probe_current = !app->probe_current;
         else if (y >= 390 && y < 425)
             app->probe_pin = (app->probe_pin + 1) %
-                             ((app->selected >= 0 && app->bench.parts[app->selected].type == PART_74HC00) ? 14 : 3);
+                             ((app->selected >= 0 && component_has_flag(app->bench.parts[app->selected].type, COMPONENT_QUAD_GATE)) ? 14 : 3);
         else if (y >= 430 && y < 465)
         {
             if (SDL_StartTextInput(window))

@@ -178,6 +178,7 @@ void app_projects_load(AppState *app)
         return;
     }
     bench_history_record(app->history, &before);
+    spice_job_request_reset(&app->dc_job);
     reset_interaction(app);
     bench_selection_clear(&app->selection);
     app->show_grid = settings.show_grid;

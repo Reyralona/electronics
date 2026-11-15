@@ -1,10 +1,24 @@
 # Histórico de versões
 
+## 0.27.0
+
+- Backend continuo ngspice em host nativo isolado por documento/contexto.
+- Carga do capacitor e memoria do DFF conservadas ao operar fontes, botoes, interruptores e valores.
+- Espaco pausa/continua; Ctrl+Espaco reinicia; slots/exemplos carregados com estado eletrico novo.
+- Tempo simulado e limite de reconexao/frequencia visiveis; curvaT manual identificada como analise separada.
+- Feedback de salvar/editar nao e sobrescrito por cada amostra automatica.
+- Perninhas com os mesmos cantos arredondados e hit testing dos fios; sondagem dos14 pinos dos novos CIs.
+- Suite completa,183 fases GUI, RC/DFF/botoes/protecao, isolamento de contextos, worker, play, pause e reset
+  e execucao nativa comPATH minimo passaram. Capturas de descarga e perninhas revisadas.
+- Novas conexoes/frequencia ainda reiniciam estado; memoria de vetores e configuracao ngspice
+  externa precisam evoluir antes da1.0. Arquivos continuam no formato 23.
+
+
 ## 0.26.0
 
 - Perninhas com pontas e joelhos editaveis: Alt+arraste e Alt+duplo clique, sem mover o corpo.
 - Contato direto entre terminais de pecas comuns, com encaixe de pontas e feedback eletrico.
-- Geometria dinamica por pino, clone profundo, undo/redo, copy/paste, slots e formato23.
+- Geometria dinamica por pino, clone profundo, undo/redo, copy/paste, slots e formato 23.
 - Testes ngspice fecham circuito sem fios; separacao de uma ponta interrompe corrente.
 - Suite completa e180fasesGUI passaram; captura --capture-leads revisada.
 - Continuidade eletrica permanece em implementacao; prova isolada preservou RC e DFF via resume.

@@ -276,3 +276,27 @@ proximos ao arrastar; cruzamento no meio de segmentos nao conecta. O encaixe da 
 perninha e explicito mesmo com Alt pressionado (Alt suspende apenas o encaixe da grade/corpo).
 Caminhos de terminais sao dinamicos, conservados por undo/redo, clipboard, chips e slots.
 Formato 23 le versoes 1-22. Part possui geometria owned: codigo novo deve usar clone/clear.
+
+
+## Continuidade eletrica (0.27.0)
+Circuitos com capacitor, indutor, clock ou DFF agora usam automaticamente uma sessao ngspice
+persistente, isolada num processo proprio. Mover pecas sem alterar conexoes, mudar valores,
+acionar interruptores/botoes e desligar/ligar fontes conserva carga e memoria digital.
+No backend continuo, fonte desligada abre o contato de alimentacao; capacitor pode descarregar
+pela carga restante. Espaco pausa/continua; Ctrl+Espaco reinicia explicitamente o estado eletrico.
+Carregar montagem/slot ou exemplo tambem inicia estado novo; slots nao guardam instantes eletricos.
+O rodape mostra segundos simulados. Ctrl+Z desfaz montagem, nao rebobina o tempo eletrico.
+
+O grafico manual T continua sendo uma analise separada a partir do estado inicial; sua reproducao
+nao altera a sessao corrente. P retorna ao calculo automatico. Para inspecionar com T, pause primeiro
+se houver tarefa em andamento. O editor de chip possui outra sessao e preserva a memoria externa.
+Entradas digitais desconectadas sao flutuantes: botoes que devem voltar a0 precisam de pull-down.
+
+Limites: novas conexoes, remocao/adicao de pecas ou mudanca de frequencia do clock reconstroem
+a sessao e reiniciam o estado, com aviso no rodape. Migracao de estado nesses casos e pendente.
+Contatos ao vivo usam1uOhm fechados/1TOhm abertos; modelos e protecao continuam didaticos.
+Vetores do solver crescem com duracao da sessao; sao liberados ao reiniciar/fechar o contexto.
+O passo solicitado e aplicado ao iniciar o transitorio; para trocar a resolucao, reinicie o estado.
+A interface e nativa C; nao depende de Python. Distribuir tambem spice-live-host.exe junto da
+Bancada e o runtime ngspice. Capturas: --capture-live-rc, --capture-live-off e --capture-leads.
+Perninhas agora compartilham tambem os cantos arredondados dos fios e a geometria de hit testing.

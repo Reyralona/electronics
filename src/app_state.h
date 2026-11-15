@@ -35,6 +35,7 @@ typedef struct AppState
     int dark_theme, gui_font_size;
     BenchHistory *history;
     int move_recorded;
+    uint64_t live_last_scheduled;
     BenchView view;
     int panning, editing;
     char edit_text[BENCH_GROUP_NAME_CAPACITY];

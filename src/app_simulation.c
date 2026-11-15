@@ -1,8 +1,11 @@
 #include "app_simulation.h"
+#include "spice_live.h"
 #include "spice_trace.h"
 #include <stdio.h>
 #include <string.h>
 #define AUTO_DEBOUNCE_MS 120
+#define LIVE_FRAME_INTERVAL_MS 16
+#define LIVE_FRAMES_PER_TRACE_SPAN 300.0
 
 /* Without a breadboard, explicit wire endpoints determine connectivity.
  * Moving bodies or wire knees then leaves the electrical system unchanged. */
@@ -48,7 +51,7 @@ static int same_electrical_assembly(const Workbench *a, const Workbench *b)
 static void retain_visual_edit_result(AppState *app)
 {
     uint64_t previous = app->dc_job.snapshot.revision;
-    if (!app->sim.auto_enabled || previous == app->bench.revision ||
+    if (!app->sim.auto_enabled || app->dc_job.live_reset_pending || previous == app->bench.revision ||
         !same_electrical_assembly(&app->dc_job.snapshot, &app->bench))
         return;
     /* Never mutate the snapshot while its worker owns it. */
@@ -90,6 +93,10 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
 static void accept_automatic_result(AppState *app)
 {
     const SimAutoResult *r = &app->dc_job.auto_result;
+    int was_live = app->sim.live_mode, was_failed = app->sim.auto_failed, had_burnt = app->sim.burnt_count;
+    app->sim.live_mode = app->dc_job.continuous;
+    if (app->dc_job.continuous && app->dc_job.success)
+        app->sim.live_time = spice_live_time(app->dc_job.live);
     app->sim.burn_revision = app->dc_job.snapshot.revision;
     memcpy(app->sim.burnt, r->burnt, sizeof(app->sim.burnt));
     memcpy(app->sim.burn_reason, r->burn_reason, sizeof(app->sim.burn_reason));
@@ -141,14 +148,26 @@ static void accept_automatic_result(AppState *app)
             app->status = burn_text;
         else
         {
-            snprintf(app->sim.auto_status, sizeof(app->sim.auto_status), "%s", r->message);
-            app->status = app->sim.auto_status;
+            if (!app->dc_job.continuous)
+            {
+                snprintf(app->sim.auto_status, sizeof(app->sim.auto_status), "%s", r->message);
+                app->status = app->sim.auto_status;
+            }
+            else if (spice_live_restarted(app->dc_job.live))
+                app->status = "Conexoes/frequencia alteradas: estado eletrico reiniciado.";
+            else if (app->dc_job.reset_live)
+                app->status = "Estado eletrico reiniciado; Espaco pausa/continua sem apagar a memoria.";
+            else if (!was_live || was_failed || had_burnt)
+                app->status = r->powered ? "Simulacao continua em execucao." :
+                                          "Alimentacao desligada; estado eletrico preservado.";
+            /* Steady live samples update the footer, preserving action/error feedback in the status line. */
         }
     }
 }
 
 static void accept_transient_result(AppState *app)
 {
+    app->sim.live_mode = 0;
     app->sim.trace_automatic = 0;
     app->sim.trace_periodic = sim_auto_is_periodic(&app->dc_job.snapshot);
     sim_state_set_result(&app->sim, SIM_RESULT_TRACE, app->dc_job.success, app->dc_job.snapshot.revision);
@@ -212,6 +231,16 @@ static void poll_result(AppState *app)
     }
 }
 
+static int needs_live_session(const Workbench *bench)
+{
+    if (sim_auto_is_dynamic(bench))
+        return 1;
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].type == PART_DFF || bench->parts[i].type == PART_CLOCK)
+            return 1;
+    return 0;
+}
+
 static void schedule_analysis(AppState *app)
 {
     /* Automatic analysis: once the assembly has been still for a moment, recalculate whatever changed. */
@@ -220,10 +249,17 @@ static void schedule_analysis(AppState *app)
         app->sim.frame_revision = app->bench.revision;
         app->sim.bench_changed_at = SDL_GetTicks();
     }
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic && app->show_trace &&
+        app->sim.result_revision == app->bench.revision)
+        return;
+    int continuous = needs_live_session(&app->bench);
     if (app->sim.auto_enabled && app->sim.sim_running && !app->dc_job.thread &&
-        SDL_GetTicks() - app->sim.bench_changed_at >= AUTO_DEBOUNCE_MS)
+        (continuous || SDL_GetTicks() - app->sim.bench_changed_at >= AUTO_DEBOUNCE_MS))
     {
         int dirty = !app->sim.auto_requested_valid || app->sim.requested_revision != app->bench.revision;
+        dirty = dirty || (continuous && SDL_GetTicks() - app->live_last_scheduled >= LIVE_FRAME_INTERVAL_MS);
+        if (app->sim.auto_failed && app->sim.auto_requested_valid && app->sim.requested_revision == app->bench.revision)
+            dirty = 0;
         dirty = dirty || app->sim.auto_show_current != app->show_current || app->sim.auto_step != app->transient_step ||
                 app->sim.auto_stop != app->transient_stop;
         if (dirty)
@@ -235,7 +271,14 @@ static void schedule_analysis(AppState *app)
             app->sim.auto_show_current = app->show_current;
             app->sim.auto_step = app->transient_step;
             app->sim.auto_stop = app->transient_stop;
-            if (!spice_job_start_auto(&app->dc_job, &app->bench, app->ngspice, &options))
+            int started;
+            if (continuous)
+                started = spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options,
+                                                app->transient_stop / LIVE_FRAMES_PER_TRACE_SPAN);
+            else
+                started = spice_job_start_auto(&app->dc_job, &app->bench, app->ngspice, &options);
+            app->live_last_scheduled = SDL_GetTicks();
+            if (!started)
             {
                 app->sim.auto_failed = 1;
                 app->status = "Falha ao iniciar o calculo automatico.";

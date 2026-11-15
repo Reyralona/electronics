@@ -15,6 +15,8 @@ typedef enum
 typedef struct
 {
     int sim_running;
+    int live_mode;
+    double live_time;
     int dc_wire_valid;
     SimResultKind result_kind;
     uint64_t result_revision;

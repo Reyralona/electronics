@@ -18,6 +18,7 @@ static void command_example(AppState *app)
     {
         bench_history_record(app->history, &app->bench);
         bench_replace(&app->bench, &example);
+        spice_job_request_reset(&app->dc_job);
         app->packed_placing = 0;
         bench_selection_clear(&app->selection);
         app->example_index = choice;
@@ -25,7 +26,7 @@ static void command_example(AppState *app)
         app->selected_wire = -1;
         app->dragging = -1;
         app->drag_wire = -1;
-    app->drag_lead.component = -1;
+        app->drag_lead.component = -1;
         app->pending.component = -1;
         app->route_count = 0;
         app->placing = -1;
@@ -85,7 +86,7 @@ static void command_history(AppState *app, SDL_Keycode key)
         app->selected_wire = -1;
         app->dragging = -1;
         app->drag_wire = -1;
-    app->drag_lead.component = -1;
+        app->drag_lead.component = -1;
         app->pending.component = -1;
         app->route_count = 0;
         memset(app->leds, 0, sizeof(app->leds));
@@ -134,6 +135,11 @@ static void command_playback(AppState *app)
 
 static void command_recalculate(AppState *app)
 {
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic)
+    {
+        sim_state_clear_result(&app->sim);
+        app->show_trace = 0;
+    }
     app->sim.auto_requested_valid = 0;
     app->sim.bench_changed_at = 0;
     app->sim.sim_running = 1;
@@ -201,7 +207,7 @@ static void command_trace_part(AppState *app)
     else if (!app->probe_current && app->probe_pin >= bench_pin_count(app->bench.parts[app->selected].type))
         app->status = "Terminal indisponivel para este componente.";
     else if (app->probe_current &&
-             (is_gate(app->bench.parts[app->selected].type) || app->bench.parts[app->selected].type == PART_74HC00))
+             (is_gate(app->bench.parts[app->selected].type) || component_has_flag(app->bench.parts[app->selected].type, COMPONENT_QUAD_GATE)))
         app->status = "Corrente interna da porta nao disponivel.";
     else if (app->probe_current && app->bench.parts[app->selected].type == PART_SWITCH)
         app->status = "Corrente transitoria indisponivel para interruptor ideal.";
@@ -315,6 +321,7 @@ static void command_load(AppState *app)
     WorkbenchSettings saved;
     if (workbench_load_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved))
     {
+        spice_job_request_reset(&app->dc_job);
         bench_history_record(app->history, &before);
         app->packed_placing = 0;
         bench_selection_clear(&app->selection);
@@ -322,7 +329,7 @@ static void command_load(AppState *app)
         app->selected_wire = -1;
         app->dragging = -1;
         app->drag_wire = -1;
-    app->drag_lead.component = -1;
+        app->drag_lead.component = -1;
         app->pending.component = -1;
         app->route_count = 0;
         app->show_grid = saved.show_grid;
@@ -430,7 +437,17 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
         command_cancel(app);
         return;
     case SDLK_SPACE:
-        command_playback(app);
+        if (mod & SDL_KMOD_CTRL)
+        {
+            spice_job_request_reset(&app->dc_job);
+            sim_state_clear_result(&app->sim);
+            app->sim.auto_requested_valid = 0;
+            app->sim.sim_running = 1;
+            app->show_trace = 0;
+            app->status = "Reiniciando o estado eletrico. Espaco apenas pausa/continua.";
+        }
+        else
+            command_playback(app);
         return;
     case SDLK_P:
         if (app->sim.auto_enabled)

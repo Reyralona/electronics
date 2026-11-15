@@ -85,6 +85,25 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
                 bench_set_wire_color(&app->bench, wire, wire == 0 ? 0 : wire == 1 ? 1 : 3);
         }
     }
+    if (app->capture && (!strcmp(argv[1], "--capture-live-rc") || !strcmp(argv[1], "--capture-live-off")))
+    {
+        bench_snapshot_clear(&app->bench);
+        bench_add(&app->bench, PART_SOURCE, 350, 300);
+        bench_add(&app->bench, PART_RESISTOR, 550, 300);
+        bench_add(&app->bench, PART_CAPACITOR, 750, 300);
+        bench_add(&app->bench, PART_RESISTOR, 1000, 300);
+        bench_toggle_wire(&app->bench, (Pin){0, 0}, (Pin){1, 0});
+        bench_toggle_wire(&app->bench, (Pin){1, 1}, (Pin){2, 0});
+        bench_toggle_wire(&app->bench, (Pin){2, 0}, (Pin){3, 0});
+        bench_toggle_wire(&app->bench, (Pin){2, 1}, (Pin){0, 1});
+        bench_toggle_wire(&app->bench, (Pin){3, 1}, (Pin){0, 1});
+        bench_set_wire_route(&app->bench, 0, (WirePoint[]){{301, 180}, {501, 180}}, 2);
+        bench_set_wire_route(&app->bench, 2, (WirePoint[]){{701, 200}, {951, 200}}, 2);
+        bench_set_wire_route(&app->bench, 3, (WirePoint[]){{799, 450}, {399, 450}}, 2);
+        bench_set_wire_route(&app->bench, 4, (WirePoint[]){{1049, 520}, {399, 520}}, 2);
+        app->selected = 3;
+        app->dark_theme = 1;
+    }
     if (app->capture && !strcmp(argv[1], "--capture-leads"))
     {
         bench_snapshot_clear(&app->bench);
@@ -287,6 +306,29 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
 
 int dev_scenario_analyze(AppState *app, char **argv)
 {
+    if (app->capture && (!strcmp(argv[1], "--capture-live-rc") || !strcmp(argv[1], "--capture-live-off")))
+    {
+        SimAutoOptions options = {1, {2, 0}, 1e-5, .005, burn_limits_default()};
+        if (!spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options, .005))
+            return 1;
+        while (!SDL_GetAtomicInt(&app->dc_job.done))
+            SDL_Delay(1);
+        if (!app->dc_job.success)
+        {
+            fprintf(stderr, "%s\n", app->dc_job.message);
+            return 1;
+        }
+        if (!strcmp(argv[1], "--capture-live-off"))
+        {
+            spice_job_poll(&app->dc_job);
+            bench_set_on(&app->bench, 0, 0);
+            if (!spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options, .001))
+                return 1;
+            while (!SDL_GetAtomicInt(&app->dc_job.done))
+                SDL_Delay(1);
+        }
+    }
+
     if (app->auto_capture)
     {
         /* Captures need the result in the first frame: start the analysis now and wait for it. */
@@ -961,6 +1003,21 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_S);
     else if (app->selftest_phase == 179)
         queued = dev_test_key(window, SDLK_L);
+    else if (app->selftest_phase == 180)
+    {
+        SDL_SetModState(SDL_KMOD_CTRL);
+        queued = dev_test_key(window, SDLK_SPACE);
+    }
+    else if (app->selftest_phase == 181)
+    {
+        int chip = bench_add(&app->bench, PART_74HC08, 800, 500);
+        app->selected = chip;
+        app->settings = 1;
+        app->probe_pin = 12;
+        queued = dev_test_click(window, 900, 410);
+    }
+    else if (app->selftest_phase == 182)
+        queued = dev_test_click(window, 900, 410);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1292,6 +1349,12 @@ void dev_scenario_validate(AppState *app)
         Pin contact;
         valid = bench_find_contact(&app->bench, 0, 0, &contact) && contact.component == 1 && contact.pin == 0;
     }
+    else if (app->selftest_phase == 180)
+        valid = app->dc_job.live_reset_pending && app->sim.sim_running && !app->sim.auto_requested_valid;
+    else if (app->selftest_phase == 181)
+        valid = app->probe_pin == 13;
+    else if (app->selftest_phase == 182)
+        valid = app->probe_pin == 0;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1302,7 +1365,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 180)
+    if (++app->selftest_phase == 183)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

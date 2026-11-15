@@ -437,3 +437,43 @@ para0.919650V ao abrir alimentacao, DFFreteveQ quandoD mudou comclockalto e soal
 Esta prova NAO esta integrada aUI. Proxima tarefa: driver persistente nativo isolado por contexto,
 netlist com contatos/fontes alteraveis e schedulerqueavanca tempo semreiniciar. FontesOFF no
 backendbatchainda0V; naoanunciarcontinuidadeconcluida. Usuario pediu explicitamente continuar.
+
+
+## Retomada 0.27.0 ? continuidade integrada
+
+spice_session.c dirige spice-live-host.exe via pipes. Cada SpiceLive possui um processo ngspice
+proprio, sem SDL no modelo; o host carrega a DLL e digital.cm do runtime local. spice_live.c
+mantem snapshot anterior, chave normalizada do netlist e tempo solicitado/acumulado.
+C/L/XSPICE conservam estado com alter/resume. Contatos Rpower/Rcontact usam 1 uOhm/1 TOhm;
+LEDs possuem resistencia de guarda para abrir a peca quando a protecao didatica atua.
+Somente topologia/frequencia nova reconstroi sessao. Valores, on/off, pot e movimentos sem
+mudanca de conexao nao reiniciam. Circuitos com C/L/clock/DFF usam o backend continuo;
+circuitos estaticos seguem batch. Nao afirmar continuidade irrestrita nem marcar 1.0.
+
+SpiceJob continuo reutiliza live e recebe span. Correntes instantaneas usam o display DC
+existente, sem reproduzir curvas antigas. Rodape mostra tempo. Resultado obsoleto e descartado
+por revisao, mas isso nao reinicia o solver. Falha nao gera tentativas em cada frame: P tenta
+recalcular e Ctrl+Espaco reinicia explicitamente. Erros preservam causa, log e exitcode.
+Pending reset pertence a UI; reset_live e imutavel durante cada job. Slots, exemplos e load
+pedem reset para o proximo job; salvar nao para nem zera. Editor possui outro host. Fonte OFF
+abre alimentacao: capacitor pode descarregar. T produz curva separada desde IC=0; P volta ao
+calculo ao vivo. Entradas digitais soltas precisam pull-down, validadas com botoes modelados.
+Amostras normais atualizam rodape sem sobrescrever feedback de salvar/editar. Falha, burn e
+reinicio podem emitir status. Passo solicitado entra no .tran inicial; mudar resolucao exige
+Ctrl+Espaco. Proximos trabalhos: migrar estado ao mudar topologia/frequencia, limitar vetores
+por streaming, instrumentos e catalogo. Vetores do solver crescem ate encerrar/reiniciar.
+
+Perninhas curvas usam bench_lead_walk/pick e wire_path por joelho, sem limite de 16 pontos.
+Renderer e hit testing compartilham amostragem. test_leads testa pontos desenhados e corrente
+sem fios contra ngspice. Sondagem dos novos CIs quad chega ao VCC/pino 14.
+Validacao: ./build.ps1 -OutputName bancada-next -GuiTests passou, com 183 fases. Testes nativos
+cobrem duas sessoes isoladas, RC, fonte OFF, switch, DFF, botoes e protecao. test_app_live cobre
+worker, feedback de salvar, pausa, movimento, bateria OFF e reset. PATH minimo tambem passou.
+Capturas revisadas: build/review-live-rc.bmp (2.4999 mA), review-live-off.bmp (0.91965 mA com
+fonte OFF), review-leads.bmp.
+
+Chamadas pre-init ngSpice_nospinit/nospiceinit causaram 0xC0000005 neste binario e foram
+removidas. O host conteve a falha. Nao reintroduzir API apenas pela declaracao do header;
+validar comportamento real. Isolamento de configuracao spinit externa continua pendente.
+Meta ampla permanece pausada conforme ultima ordem. As tarefas posteriores foram autorizadas.
+Nao alterar saves nem encerrar janelas do usuario para atualizar executavel. Tag 0.27.0.

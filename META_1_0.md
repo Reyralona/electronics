@@ -34,3 +34,9 @@ esses criterios. Capturas e circuitos de referencia devem verificar a experienci
 Tambem obrigatorios (15/11/2026): escala/proporcoes ajustaveis, terminais dobraveis em modo
 explicito separado dos fios, e grid/encaixe configuraveis. Detalhes e verificacao em
 QUALIDADE_DE_USO.md; nao considerar entregues sem persistencia e montagem realista na breadboard.
+
+
+Incremento 0.27.0: perninhas flexiveis, contato direto e backend transiente persistente por contexto
+implementados e testados para RC/DFF/botoes/fontes/valores. Ainda ha reinicio ao mudar topologia
+ou frequencia, vetores crescentes no solver e catalogo/instrumentos/limites de capacidade pendentes.
+Esta versao NAO satisfaz os criterios1.0. Ver README e CONTINUIDADE para comportamento atual.

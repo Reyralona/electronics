@@ -1,4 +1,5 @@
 #include "spice_job.h"
+#include "spice_live.h"
 #include "spice_process.h"
 #include <stdio.h>
 #include <string.h>
@@ -7,7 +8,28 @@ static int SDLCALL run_job(void *argument)
 {
     SpiceJob *job=argument;
     if(job->automatic) {
-        job->success=sim_auto_run(&job->snapshot,job->executable,&job->auto_options,&job->auto_result,&job->trace);
+        memset(&job->auto_result, 0, sizeof(job->auto_result));
+        if (job->continuous)
+        {
+            if (job->reset_live)
+            {
+                spice_live_destroy(job->live);
+                job->live = NULL;
+            }
+            if (!job->live)
+                job->live = spice_live_create();
+            job->success = job->live && spice_live_step(job->live, &job->snapshot, job->executable,
+                                                       &job->auto_options, job->live_span, &job->auto_result);
+            if (!job->live)
+                snprintf(job->auto_result.message, sizeof(job->auto_result.message), "Memoria insuficiente para simulacao continua.");
+        }
+        else
+        {
+            spice_live_destroy(job->live);
+            job->live = NULL;
+            job->success = sim_auto_run(&job->snapshot, job->executable, &job->auto_options,
+                                        &job->auto_result, &job->trace);
+        }
         snprintf(job->message,sizeof(job->message),"%s",job->auto_result.message);
     }
     else if(job->transient && job->measures_wires) job->success=spice_transient_instrumented(&job->snapshot,job->executable,job->transient,job->probe,job->step,job->stop,&job->trace,job->message,sizeof(job->message));
@@ -21,7 +43,7 @@ static int SDLCALL run_job(void *argument)
 }
 
 /* Every field the thread reads is written before the thread is created. */
-static int start_job(SpiceJob *job,const Workbench *bench,const char *executable,int wires,int transient,Pin probe,double step,double stop,const SimAutoOptions *automatic)
+static int start_job(SpiceJob *job,const Workbench *bench,const char *executable,int wires,int transient,Pin probe,double step,double stop,const SimAutoOptions *automatic,int continuous)
 {
     size_t length;
     if(!job || !bench || !executable || job->thread) return 0;
@@ -32,6 +54,10 @@ static int start_job(SpiceJob *job,const Workbench *bench,const char *executable
         snprintf(job->message, sizeof(job->message), "Nao foi possivel copiar a montagem para simulacao.");
         return 0;
     }
+    job->continuous = continuous;
+    job->reset_live = continuous && job->live_reset_pending;
+    if (continuous)
+        job->live_reset_pending = 0;
     job->automatic=automatic!=NULL;
     if(automatic) job->auto_options=*automatic;
     job->measures_wires=wires; job->transient=transient; job->probe=probe; job->step=step; job->stop=stop;
@@ -42,21 +68,37 @@ static int start_job(SpiceJob *job,const Workbench *bench,const char *executable
     return job->thread!=NULL;
 }
 
-int spice_job_start(SpiceJob *job,const Workbench *bench,const char *executable) { return start_job(job,bench,executable,0,0,(Pin){0,0},0,0,NULL); }
-int spice_job_start_wires(SpiceJob *job,const Workbench *bench,const char *executable) { return start_job(job,bench,executable,1,0,(Pin){0,0},0,0,NULL); }
+int spice_job_start(SpiceJob *job,const Workbench *bench,const char *executable) { return start_job(job,bench,executable,0,0,(Pin){0,0},0,0,NULL,0); }
+int spice_job_start_wires(SpiceJob *job,const Workbench *bench,const char *executable) { return start_job(job,bench,executable,1,0,(Pin){0,0},0,0,NULL,0); }
 
-int spice_job_start_transient(SpiceJob *job,const Workbench *bench,const char *executable,Pin probe,double step,double stop) { return start_job(job,bench,executable,0,1,probe,step,stop,NULL); }
+int spice_job_start_transient(SpiceJob *job,const Workbench *bench,const char *executable,Pin probe,double step,double stop) { return start_job(job,bench,executable,0,1,probe,step,stop,NULL,0); }
 
-int spice_job_start_transient_current(SpiceJob *job,const Workbench *bench,const char *executable,int component,double step,double stop) { return start_job(job,bench,executable,0,2,(Pin){component,0},step,stop,NULL); }
+int spice_job_start_transient_current(SpiceJob *job,const Workbench *bench,const char *executable,int component,double step,double stop) { return start_job(job,bench,executable,0,2,(Pin){component,0},step,stop,NULL,0); }
 
-int spice_job_start_transient_wire(SpiceJob *job,const Workbench *bench,const char *executable,int wire,double step,double stop) { return start_job(job,bench,executable,0,3,(Pin){wire,0},step,stop,NULL); }
+int spice_job_start_transient_wire(SpiceJob *job,const Workbench *bench,const char *executable,int wire,double step,double stop) { return start_job(job,bench,executable,0,3,(Pin){wire,0},step,stop,NULL,0); }
 
-int spice_job_start_transient_instrumented(SpiceJob *job,const Workbench *bench,const char *executable,int mode,Pin probe,double step,double stop) { if(mode<1 || mode>3) return 0; return start_job(job,bench,executable,1,mode,probe,step,stop,NULL); }
+int spice_job_start_transient_instrumented(SpiceJob *job,const Workbench *bench,const char *executable,int mode,Pin probe,double step,double stop) { if(mode<1 || mode>3) return 0; return start_job(job,bench,executable,1,mode,probe,step,stop,NULL,0); }
 
 int spice_job_start_auto(SpiceJob *job,const Workbench *bench,const char *executable,const SimAutoOptions *options)
 {
     if(!options) return 0;
-    return start_job(job,bench,executable,options->instrument_wires,0,options->probe,options->step,options->stop,options);
+    return start_job(job,bench,executable,options->instrument_wires,0,options->probe,options->step,options->stop,options,0);
+}
+
+void spice_job_request_reset(SpiceJob *job)
+{
+    if (job)
+        job->live_reset_pending = 1;
+}
+
+int spice_job_start_live(SpiceJob *job, const Workbench *bench, const char *executable,
+                         const SimAutoOptions *options, double span)
+{
+    if (!job || !options || job->thread)
+        return 0;
+    job->live_span = span;
+    return start_job(job, bench, executable, options->instrument_wires, 0, options->probe,
+                     options->step, options->stop, options, 1);
 }
 
 void spice_job_join(SpiceJob *job)
@@ -77,4 +119,6 @@ void spice_job_clear(SpiceJob *job)
         return;
     spice_job_join(job);
     bench_snapshot_clear(&job->snapshot);
+    spice_live_destroy(job->live);
+    job->live = NULL;
 }

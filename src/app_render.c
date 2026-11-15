@@ -1401,6 +1401,19 @@ static void draw_status(const AppState *app, GLuint font)
     rect(220, 660, 1060, 60);
     color(.2f, .26f, .3f);
     text(font, 238, 685, app->status);
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic && app->show_trace)
+    {
+        text(font, 238, 709, "Curva separada desde o estado inicial | Espaco: reproduzir | P: voltar ao calculo automatico.");
+        return;
+    }
+    if (app->sim.live_mode)
+    {
+        char time[180];
+        snprintf(time, sizeof(time), "Tempo: %.6g s | Ctrl+Espaco: reiniciar | Novas conexoes/frequencia reiniciam o tempo.",
+                 app->sim.live_time);
+        text(font, 238, 709, time);
+        return;
+    }
     text(font, 238, 709,
          "Shift+arraste: area | Ctrl+C/X/V: copiar/recortar/colar | Delete: excluir | Ctrl+G: bloco | Ctrl+Z/Y: "
          "historico");
