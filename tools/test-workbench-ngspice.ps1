@@ -2,7 +2,7 @@ param([string]$Root = 'build/spice-local/ucrt64')
 $ErrorActionPreference = 'Stop'
 $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
 $env:Path = "$(Join-Path $resolvedRoot 'bin');C:\msys64\ucrt64\bin;$env:Path"
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_netlist.c src/netlist.c src/workbench.c -o build/test_netlist.exe
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_netlist.c src/netlist.c src/workbench.c src/component_registry.c -o build/test_netlist.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_netlist.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

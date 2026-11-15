@@ -1,4 +1,5 @@
 #include "netlist.h"
+#include "component_registry.h"
 #include <math.h>
 #include <string.h>
 
@@ -107,9 +108,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
     for (i = 0; i < b->part_count; ++i)
     {
         PartType type = b->parts[i].type;
-        if ((type == PART_SOURCE || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ||
-             type == PART_CLOCK) &&
-            (!isfinite(b->parts[i].value) || b->parts[i].value < 1e-12 || b->parts[i].value > 1e12))
+        const ComponentInfo *info = component_info(type);
+        if (!info || (info->primary && !component_value_valid(type, b->parts[i].value)))
             return NETLIST_INVALID;
         switch (b->parts[i].type)
         {

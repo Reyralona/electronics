@@ -1,4 +1,5 @@
 #include "workbench.h"
+#include "component_registry.h"
 #include <string.h>
 #include <math.h>
 #include <errno.h>
@@ -173,15 +174,8 @@ int wire_path(const Wire *wire, WirePoint start, WirePoint end, float radius, Wi
 
 int bench_pin_count(PartType type)
 {
-    return type == PART_BREADBOARD                                        ? BREADBOARD_PINS
-           : type == PART_74HC00                                          ? 14
-           : ((type >= PART_AND && type <= PART_XOR) || type == PART_DFF) ? 3
-           : (type == PART_NOT || type == PART_CLOCK)
-               ? 2
-               : ((type >= PART_SOURCE && type <= PART_LED) || type == PART_RESISTOR || type == PART_CAPACITOR ||
-                          type == PART_INDUCTOR
-                      ? 2
-                      : 0);
+    const ComponentInfo *info = component_info(type);
+    return info ? info->pin_count : 0;
 }
 
 int bench_board_group_first(int pin)
@@ -365,35 +359,18 @@ static int same_pin(Pin a, Pin b)
     return a.component == b.component && a.pin == b.pin;
 }
 
-static double default_part_value(PartType type)
-{
-    switch (type)
-    {
-    case PART_SOURCE:
-        return 5.0;
-    case PART_RESISTOR:
-    case PART_CLOCK:
-        return 1000.0;
-    case PART_CAPACITOR:
-        return 1e-6;
-    case PART_INDUCTOR:
-        return .01;
-    default:
-        return 0.0;
-    }
-}
-
 int bench_add(Workbench *b, PartType type, float x, float y)
 {
     int id;
-    if (b->part_count >= WORKBENCH_MAX_COMPONENTS || bench_pin_count(type) == 0)
+    const ComponentInfo *info = component_info(type);
+    if (!b || !info || b->part_count >= WORKBENCH_MAX_COMPONENTS)
         return -1;
     id = b->part_count++;
     b->parts[id] = (Part){.type = type,
                           .x = x,
                           .y = y,
-                          .on = type == PART_SOURCE || type == PART_CLOCK,
-                          .value = default_part_value(type),
+                          .on = component_has_flag(type, COMPONENT_STARTS_ON),
+                          .value = info->primary ? info->primary->initial : 0,
                           .board_layout = type == PART_BREADBOARD};
     ++b->revision;
     return id;
@@ -401,7 +378,8 @@ int bench_add(Workbench *b, PartType type, float x, float y)
 
 int bench_rotate_part(Workbench *b, int component)
 {
-    if (!b || component < 0 || component >= b->part_count || b->parts[component].type == PART_BREADBOARD)
+    if (!b || component < 0 || component >= b->part_count ||
+        !component_has_flag(b->parts[component].type, COMPONENT_ROTATES))
         return 0;
     b->parts[component].rotation = (b->parts[component].rotation + 1) % 4;
     ++b->revision;
@@ -410,12 +388,7 @@ int bench_rotate_part(Workbench *b, int component)
 
 int bench_set_value(Workbench *b, int component, double value)
 {
-    PartType type;
-    if (!b || component < 0 || component >= b->part_count || !isfinite(value) || value < 1e-12 || value > 1e12)
-        return 0;
-    type = b->parts[component].type;
-    if (type != PART_SOURCE && type != PART_RESISTOR && type != PART_CAPACITOR && type != PART_INDUCTOR &&
-        type != PART_CLOCK)
+    if (!b || component < 0 || component >= b->part_count || !component_value_valid(b->parts[component].type, value))
         return 0;
     if (b->parts[component].value != value)
     {
@@ -495,10 +468,8 @@ static void join(int *parent, int a, int b)
 
 int bench_boolean_supported(const Workbench *b)
 {
-    int i;
-    for (i = 0; i < b->part_count; ++i)
-        if (b->parts[i].type == PART_RESISTOR || b->parts[i].type == PART_CAPACITOR ||
-            b->parts[i].type == PART_INDUCTOR || (b->parts[i].type >= PART_AND && b->parts[i].type <= PART_74HC00))
+    for (int i = 0; i < b->part_count; ++i)
+        if (!component_has_flag(b->parts[i].type, COMPONENT_CONNECTIVITY))
             return 0;
     return 1;
 }

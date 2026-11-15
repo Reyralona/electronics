@@ -2,6 +2,7 @@
 #include "app_render.h"
 #include "app_layout.h"
 #include "app_palette.h"
+#include "component_registry.h"
 #include "workbench_pack.h"
 #include <math.h>
 #include <stdio.h>
@@ -1123,12 +1124,8 @@ static void draw_inspector(const AppState *app, GLuint font)
     {
         const Part *part = &app->bench.parts[app->selected];
         char reading[120];
-        const char *unit = part->type == PART_SOURCE      ? "V"
-                           : part->type == PART_RESISTOR  ? "ohm"
-                           : part->type == PART_CAPACITOR ? "F"
-                           : part->type == PART_INDUCTOR  ? "H"
-                           : part->type == PART_CLOCK     ? "Hz"
-                                                          : NULL;
+        const ComponentInfo *info = component_info(part->type);
+        const char *unit = info && info->primary ? info->primary->unit : NULL;
         int shows_current = sim_state_has_result(&app->sim, SIM_RESULT_DC) && !app->sim.burnt[app->selected] &&
                             (part->type == PART_LED || part->type == PART_RESISTOR);
         color(.97f, .98f, .98f);

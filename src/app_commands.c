@@ -2,6 +2,7 @@
 #include "app_editing.h"
 #include "app_packing.h"
 #include "app_palette.h"
+#include "component_registry.h"
 #include "workbench_examples.h"
 #include "workbench_file.h"
 #include <stdio.h>
@@ -245,8 +246,8 @@ static void command_dc(AppState *app)
 static void command_edit_value(AppState *app, SDL_Window *window)
 {
     PartType type = app->bench.parts[app->selected].type;
-    if (type == PART_SOURCE || type == PART_RESISTOR || type == PART_CAPACITOR || type == PART_INDUCTOR ||
-        type == PART_CLOCK)
+    const ComponentInfo *info = component_info(type);
+    if (info && info->primary)
     {
         if (SDL_StartTextInput(window))
         {

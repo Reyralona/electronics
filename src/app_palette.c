@@ -1,8 +1,9 @@
 #include "app_palette.h"
+#include "component_registry.h"
 
 int is_gate(PartType type)
 {
-    return (type >= PART_AND && type <= PART_NOT) || type == PART_DFF;
+    return component_has_flag(type, COMPONENT_GATE_SYMBOL);
 }
 PartType palette_part(int page, int item)
 {
@@ -12,8 +13,6 @@ PartType palette_part(int page, int item)
 }
 const char *part_name(PartType type)
 {
-    static const char *names[] = {"Fonte",     "Interruptor", "LED",       "Breadboard", "Resistor",
-                                  "Capacitor", "Indutor",     "Porta AND", "Porta NAND", "Porta OR",
-                                  "Porta XOR", "Porta NOT",   "Clock",     "Bloco DFF",  "CI 74HC00"};
-    return names[type];
+    const ComponentInfo *info = component_info(type);
+    return info ? info->display_name : "Componente desconhecido";
 }
