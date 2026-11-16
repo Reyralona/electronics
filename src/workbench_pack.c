@@ -5,96 +5,9 @@
 #include <math.h>
 #include <string.h>
 
-int bench_pin_exposed(const Part *part, int pin)
-{
-    return pin >= 0 && pin < WORKBENCH_MAX_PINS && (part->exposed[pin / 64] & (UINT64_C(1) << (pin % 64))) != 0;
-}
-
 static void expose_pin(Part *part, int pin)
 {
     part->exposed[pin / 64] |= UINT64_C(1) << (pin % 64);
-}
-
-int bench_group_first(const Workbench *bench, int group)
-{
-    for (int i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].group == group)
-            return i;
-    return -1;
-}
-
-int bench_group_port(const Workbench *bench, int group, int index, Pin *pin)
-{
-    for (int i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].group == group)
-            for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
-                if (bench_pin_exposed(&bench->parts[i], p) && index-- == 0)
-                {
-                    *pin = (Pin){i, p};
-                    return 1;
-                }
-    return 0;
-}
-
-int bench_group_ports(const Workbench *bench, int group)
-{
-    int count = 0;
-    for (int i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].group == group)
-            for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
-                count += bench_pin_exposed(&bench->parts[i], p);
-    return count;
-}
-
-float bench_group_width(const Workbench *bench, int group)
-{
-    return bench->groups[group - 1].width > 0 ? bench->groups[group - 1].width : 98;
-}
-
-int bench_group_resize(Workbench *bench, int group, float width, float height)
-{
-    const float minimum_width = 64, minimum_height = 44, maximum_extent = 10000;
-    if (!bench || group < 1 || group > WORKBENCH_MAX_COMPONENTS || !bench->groups[group - 1].active ||
-        !isfinite(width) || !isfinite(height) || width < minimum_width || width > maximum_extent ||
-        height < minimum_height || height > maximum_extent)
-        return 0;
-    BenchGroup *package = &bench->groups[group - 1];
-    if (package->width != width || package->height != height)
-    {
-        package->width = width;
-        package->height = height;
-        ++bench->revision;
-    }
-    return 1;
-}
-
-float bench_group_height(const Workbench *bench, int group)
-{
-    int rows = (bench_group_ports(bench, group) + 1) / 2;
-    float minimum = rows > 2 ? rows * BENCH_GROUP_PIN_SPACING + 14.0f : 44.0f;
-    return fmaxf(minimum, bench->groups[group - 1].height);
-}
-
-void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y)
-{
-    const Part *part = &bench->parts[pin.component];
-    if (!part->group || !bench_pin_exposed(part, pin.pin))
-    {
-        bench_pin_position(part, pin.pin, x, y);
-        return;
-    }
-    int count = bench_group_ports(bench, part->group), index = 0;
-    for (int i = 0; i <= pin.component; ++i)
-        if (bench->parts[i].group == part->group)
-            for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
-                if (bench_pin_exposed(&bench->parts[i], p) && (i < pin.component || p < pin.pin))
-                    ++index;
-    int left = (count + 1) / 2, row = index < left ? index : index - left;
-    int rows = index < left ? left : count - left;
-    const BenchGroup *group = &bench->groups[part->group - 1];
-    float half_width = bench_group_width(bench, part->group) * .5f + 11;
-    *x = group->x + (index < left ? -half_width : half_width);
-    *y = group->y + (row - (rows - 1) * .5f) * BENCH_GROUP_PIN_SPACING;
 }
 
 static int same_pin(Pin a, Pin b)
