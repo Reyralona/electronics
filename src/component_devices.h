@@ -13,7 +13,6 @@ typedef struct
     float pins[COMPONENT_MAX_DEVICE_PINS][2]; /* local terminal positions */
     float half_width, half_height;           /* selectable body */
     int element_count;                       /* measured quantities exposed per instance */
-    const char *element_labels[COMPONENT_MAX_ELEMENTS];
     int mode_count;   /* > 1: double click cycles part->states through modes */
     int switch_count; /* > 0: part->states is a bit per independent contact */
 } ComponentDevice;
@@ -23,6 +22,8 @@ const ComponentDevice *component_device(PartType type);
 int component_element_vector(PartType type, int index, int element, char *vector, size_t capacity);
 int component_states_valid(PartType type, unsigned states);
 const char *component_mode_label(PartType type, unsigned states);
+/* Name of a measured element in the current language (NULL if it has none). */
+const char *component_element_label(PartType type, int element);
 /* Contact index (0-based) under a local x coordinate for switch banks, or -1. */
 int component_switch_at(PartType type, float local_x);
 #define COMPONENT_DIP_POSITIONS 4
