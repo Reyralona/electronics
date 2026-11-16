@@ -560,10 +560,16 @@ static void draw_part_led(const Part *p, int led, float brightness)
     glTranslatef(x, y, 0);
     glRotatef(-p->rotation * 90.0f, 0, 0, 1);
     glTranslatef(-x, -y, 0);
-    color(.38f, .08f, .07f);
+    /* Per color: dark rim, unlit lens and lit lens (Part.states, see component_led_color_name). */
+    static const float palette[COMPONENT_LED_COLORS][3][3] = {
+        {{.38f, .08f, .07f}, {.48f, .08f, .08f}, {1, .33f, .26f}},  {{.06f, .30f, .12f}, {.10f, .40f, .16f}, {.40f, 1, .45f}},
+        {{.06f, .14f, .40f}, {.10f, .20f, .52f}, {.40f, .62f, 1}},  {{.42f, .36f, .04f}, {.55f, .48f, .08f}, {1, .92f, .30f}},
+        {{.55f, .56f, .58f}, {.80f, .82f, .84f}, {1, 1, 1}},        {{.45f, .20f, .03f}, {.62f, .30f, .06f}, {1, .62f, .18f}}};
+    const float(*tone)[3] = palette[p->states < COMPONENT_LED_COLORS ? p->states : 0];
+    glColor3f(tone[0][0], tone[0][1], tone[0][2]);
     ellipse(x, y + 9, 17, 5);
     rect(x - 14, y - 12, 28, 21);
-    color(.55f, .09f, .08f);
+    glColor3f(tone[1][0] * 1.15f, tone[1][1] * 1.15f, tone[1][2] * 1.15f);
     ellipse(x, y + 8, 16, 4);
     /* led: -1 unknown, 0 off, 1 lit, 2 burnt */
     if (led == 2)
@@ -576,16 +582,13 @@ static void draw_part_led(const Part *p, int led, float brightness)
     }
     else
     {
-        if (led < 0)
-            color(.48f, .48f, .48f);
-        else
-            color(.48f + .52f * brightness, .08f + .25f * brightness, .08f + .18f * brightness);
+        float glow = led < 0 ? 0 : brightness;
+        glColor3f(tone[1][0] + (tone[2][0] - tone[1][0]) * glow, tone[1][1] + (tone[2][1] - tone[1][1]) * glow,
+                  tone[1][2] + (tone[2][2] - tone[1][2]) * glow);
         circle(x, y - 14, 13);
         rect(x - 13, y - 14, 26, 23);
-        if (led < 0)
-            color(.7f, .7f, .7f);
-        else
-            color(.72f + .28f * brightness, .24f + .50f * brightness, .22f + .40f * brightness);
+        glColor3f(fminf(1, tone[1][0] + .3f + .3f * glow), fminf(1, tone[1][1] + .3f + .3f * glow),
+                  fminf(1, tone[1][2] + .3f + .3f * glow));
         circle(x - 4, y - 18, 4);
         rect(x - 8, y - 17, 3, 14);
     }
@@ -1322,10 +1325,24 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
         color(.33f,.36f,.39f);
         for (int corner = 0; corner < 4; ++corner)
             circle(x + (corner % 2 ? 20 : -20), y + (corner / 2 ? 10 : -17), 2);
-        color(.15f, .17f, .19f);
-        circle(x, y - (p->on ? 1 : 6), 14);
-        color(.25f, .28f, .31f);
-        circle(x - 2, y - (p->on ? 3 : 8), 11);
+        /* Cap: raised with a drop shadow and highlight; pressed sinks into the bezel and darkens. */
+        float lift = p->on ? 0 : 4;
+        color(.10f, .11f, .12f);
+        circle(x, y - 4, 15.5f);
+        if (!p->on)
+        {
+            color(.06f, .07f, .08f);
+            circle(x + 1.5f, y - 1.5f, 13.5f);
+        }
+        color(p->on ? .12f : .20f, p->on ? .13f : .22f, p->on ? .15f : .25f);
+        circle(x, y - 4 - lift, p->on ? 12.5f : 13.5f);
+        color(p->on ? .18f : .32f, p->on ? .20f : .35f, p->on ? .22f : .39f);
+        circle(x - 2.5f, y - 6.5f - lift, p->on ? 8 : 9);
+        if (!p->on)
+        {
+            color(.55f, .58f, .62f);
+            ellipse(x - 5, y - 12 - lift, 3.5f, 2);
+        }
     }
     else if (p->type == PART_SWITCH)
     {
@@ -2132,9 +2149,13 @@ static void draw_workspace_route(const AppState *app)
                 continue;
             for (k = 0; k < app->bench.wires[i].knee_count; ++k)
             {
+                /* Screen-sized dots: visible as edit handles without hiding the wire at any zoom. */
                 WirePoint p = app->bench.wires[i].knees[k];
+                float radius = (app->selected_wire == i ? 3.5f : 2.2f) / app->view.zoom;
+                color(.85f, .88f, .92f);
+                circle(p.x, p.y, radius + .8f / app->view.zoom);
                 color(.1f, .3f, .45f);
-                rect(p.x - 4, p.y - 4, 8, 8);
+                circle(p.x, p.y, radius);
             }
         }
 }
@@ -2155,8 +2176,7 @@ static void draw_workspace_parts(const AppState *app)
                     {
                         WirePoint knee = bench_lead_point(&app->bench.parts[i], pin, point);
                         color(.25f, .65f, .9f);
-                        float radius = 4 / app->view.zoom;
-                        rect(knee.x - radius, knee.y - radius, 2 * radius, 2 * radius);
+                        circle(knee.x, knee.y, 2.8f / app->view.zoom);
                     }
             for (p = 0; p < bench_pin_count(app->bench.parts[i].type); ++p)
             {
@@ -2523,23 +2543,34 @@ static void draw_groups(const AppState *app, GLuint font)
                 lit |= app->leds[i] == 1 && app->bench.parts[i].type == PART_LED;
                 burnt |= app->sim.burnt[i];
             }
-        color(.65f, .69f, .72f);
-        rect(group->x - width * .5f + 3, group->y - height * .5f + 4, width, height);
-        color(burnt ? .45f : .16f, .2f, .25f);
-        rect(group->x - width * .5f, group->y - height * .5f, width, height);
-        color(selected ? .22f : .55f, .7f, .9f);
-        glLineWidth(selected ? 3 : 1);
-        glBegin(GL_LINE_LOOP);
-        glVertex2f(group->x - width * .5f - 1, group->y - height * .5f);
-        glVertex2f(group->x + width * .5f + 1, group->y - height * .5f);
-        glVertex2f(group->x + width * .5f + 1, group->y + height * .5f);
-        glVertex2f(group->x - width * .5f - 1, group->y + height * .5f);
-        glEnd();
-        glLineWidth(1);
+        /* Same package language as the DIP ICs: dark molded body, pin-1 notch, metal legs, small pads. */
+        float left = group->x - width * .5f, top = group->y - height * .5f;
+        glColor3f(.10f, .11f, .12f);
+        rect(left + 2, top + 3, width, height);
+        glColor3f(burnt ? .40f : .24f, burnt ? .16f : .27f, burnt ? .14f : .30f);
+        rect(left, top, width, height);
+        glColor3f(.18f, .20f, .22f);
+        rect(left, top + height - 4, width, 4);
+        glColor3f(.14f, .16f, .18f);
+        circle(left, group->y, 6);
+        glColor3f(.70f, .74f, .76f);
+        circle(left + 9, top + 9, 2.5f);
+        if (selected)
+        {
+            glColor3f(.12f, .49f, .84f);
+            glLineWidth(2);
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(left - 3, top - 3);
+            glVertex2f(left + width + 3, top - 3);
+            glVertex2f(left + width + 3, top + height + 3);
+            glVertex2f(left - 3, top + height + 3);
+            glEnd();
+            glLineWidth(1);
+        }
         char label[40];
         snprintf(label, sizeof(label), "Bloco %d", g + 1);
-        color(.9f, .94f, .98f);
-        name_text(font, group->x - width * .5f + 8, group->y + 5, group->name[0] ? group->name : label, (int)width - 16);
+        glColor3f(.86f, .89f, .91f);
+        name_text(font, left + 14, group->y + 5, group->name[0] ? group->name : label, (int)width - 24);
         if (lit)
         {
             color(.3f, .95f, .45f);
@@ -2551,16 +2582,16 @@ static void draw_groups(const AppState *app, GLuint font)
         {
             float x, y;
             bench_terminal_position(&app->bench, pin, &x, &y);
-            color(.45f, .52f, .58f);
-            line(x, y, x < group->x ? x + 10 : x - 10, y);
-            color(.18f, .23f, .28f);
-            circle(x, y, 8);
-            color(.94f, .96f, .98f);
-            circle(x, y, 5);
+            float edge = x < group->x ? left : left + width;
+            glColor3f(.70f, .72f, .74f);
+            rect(fminf(x, edge), y - 1.5f, fabsf(edge - x), 3);
+            circle(x, y, 3.5f);
+            if (!selected && !app->show_pin_labels)
+                continue;
             const ComponentPinInfo *info = component_pin_info(app->bench.parts[pin.component].type, pin.pin);
             pin_role_color(info->role);
-            snprintf(label, sizeof(label), "%d %s", index + 1, component_pin_marker(info->role));
-            text(font, x < group->x ? x - 56 : x + 12, y - 8, label);
+            snprintf(label, sizeof(label), "%d", index + 1);
+            world_text(font, x + (x < group->x ? -14 : 6) / app->view.zoom, y - 6 / app->view.zoom, label, app->view.zoom);
         }
     }
 }
@@ -2757,6 +2788,30 @@ static void draw_environment_control(GLuint font, const Part *part)
     ui_note(font, 852, 326, environment->note, INSPECTOR_NOTE_WIDTH);
 }
 
+static void draw_led_colors(const AppState *app, GLuint font, const Part *part)
+{
+    static const float swatches[APP_LED_SWATCHES][3] = {{.90f, .18f, .14f}, {.20f, .75f, .30f}, {.20f, .42f, .95f},
+                                                        {.98f, .85f, .15f}, {.96f, .97f, .98f}, {1, .55f, .10f}};
+    char label[64];
+    snprintf(label, sizeof(label), "Cor: %s", component_led_color_name(part->states));
+    color(UI_INK);
+    text(font, 852, INSPECTOR_LINE_2 + 2, label);
+    for (int index = 0; index < APP_LED_SWATCHES; ++index)
+    {
+        AppRect r = app_layout_led_swatch(index);
+        if (part->states == (unsigned)index)
+        {
+            glColor3f(UI_ACCENT);
+            rounded_rect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 7);
+        }
+        color(UI_BORDER);
+        ui_rounded(r, 5);
+        glColor3f(swatches[index][0], swatches[index][1], swatches[index][2]);
+        rounded_rect(r.x + 1, r.y + 1, r.w - 2, r.h - 2, 4);
+        (void)app;
+    }
+}
+
 static void draw_part_inspector(const AppState *app, GLuint font)
 {
     const Part *part = &app->bench.parts[app->selected];
@@ -2771,7 +2826,7 @@ static void draw_part_inspector(const AppState *app, GLuint font)
         device_note(part, measured ? app->sim.dc_elements[app->selected] : none, note, sizeof(note));
     }
     int environment = component_environment(part->type) != NULL;
-    float height = environment ? 268 : note[0] ? 186 : 162;
+    float height = environment || part->type == PART_LED ? 296 : note[0] ? 186 : 162;
     ui_panel(app_layout_inspector(height));
     color(UI_INK);
     name_text(font, 852, 112, part_name(part->type), 300);
@@ -2790,6 +2845,8 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     text(font, 852, INSPECTOR_LINE_1, reading[0] ? reading : "Sem leitura de corrente");
     if (environment)
         draw_environment_control(font, part);
+    else if (part->type == PART_LED)
+        draw_led_colors(app, font, part);
     else if (note[0])
         ui_note(font, 852, INSPECTOR_LINE_2, note, INSPECTOR_NOTE_WIDTH);
 }

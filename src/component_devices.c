@@ -77,6 +77,8 @@ int component_element_vector(PartType type, int index, int element, char *vector
 
 int component_states_valid(PartType type, unsigned states)
 {
+    if (type == PART_LED)
+        return states < COMPONENT_LED_COLORS;
     const ComponentDevice *device = component_device(type);
     if (!device)
         return states == 0;
@@ -108,4 +110,16 @@ int component_switch_at(PartType type, float local_x)
             return contact;
     }
     return -1;
+}
+
+const char *component_led_model(unsigned color)
+{
+    static const char *models[COMPONENT_LED_COLORS] = {"LED_RED", "LED_GREEN", "LED_BLUE", "LED_YELLOW", "LED_BLUE", "LED_YELLOW"};
+    return color < COMPONENT_LED_COLORS ? models[color] : models[0];
+}
+
+const char *component_led_color_name(unsigned color)
+{
+    static const char *names[COMPONENT_LED_COLORS] = {"Vermelho", "Verde", "Azul", "Amarelo", "Branco", "Laranja"};
+    return color < COMPONENT_LED_COLORS ? names[color] : names[0];
 }

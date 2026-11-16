@@ -458,12 +458,13 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
             if (session)
             {
-                if (fprintf(out, "D%d led%d %d LED_GENERIC\nRguard%d %d led%d %.17g\n", i, i,
-                            c == ground ? 0 : c + 1, i, a == ground ? 0 : a + 1, i,
+                if (fprintf(out, "D%d led%d %d %s\nRguard%d %d led%d %.17g\n", i, i, c == ground ? 0 : c + 1,
+                            component_led_model(b->parts[i].states), i, a == ground ? 0 : a + 1, i,
                             NETLIST_LIVE_CLOSED_OHMS) < 0)
                     return NETLIST_IO_ERROR;
             }
-            else if (fprintf(out, "D%d %d %d LED_GENERIC\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1) < 0)
+            else if (fprintf(out, "D%d %d %d %s\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1,
+                             component_led_model(b->parts[i].states)) < 0)
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)

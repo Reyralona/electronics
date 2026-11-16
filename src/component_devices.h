@@ -28,4 +28,8 @@ int component_switch_at(PartType type, float local_x);
 #define COMPONENT_DIP_POSITIONS 4
 #define COMPONENT_SEGMENTS 8
 #define COMPONENT_SCOPE_HISTORY 160
+/* LED colors (Part.states); white uses the blue junction, orange the yellow one. */
+#define COMPONENT_LED_COLORS 6
+const char *component_led_model(unsigned color);
+const char *component_led_color_name(unsigned color);
 #endif

@@ -354,3 +354,18 @@ AppRect app_layout_palette_delete(int slot)
         return card;
     return (AppRect){card.x + card.w - 30, card.y + (card.h - 24) / 2, 24, 24};
 }
+
+AppRect app_layout_led_swatch(int color)
+{
+    if (color < 0 || color >= APP_LED_SWATCHES)
+        return NO_RECT;
+    return (AppRect){INSPECTOR_ROW_X + color * 38.0f, 258, 32, 24};
+}
+
+int app_layout_led_swatch_at(float x, float y)
+{
+    for (int color = 0; color < APP_LED_SWATCHES; ++color)
+        if (app_rect_contains(app_layout_led_swatch(color), x, y))
+            return color;
+    return -1;
+}

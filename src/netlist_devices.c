@@ -31,7 +31,7 @@ int netlist_device_supported(PartType type)
 
 int netlist_device_rebuilds_on_change(PartType type)
 {
-    return type == PART_FUNCTION_GENERATOR;
+    return type == PART_FUNCTION_GENERATOR || type == PART_LED;
 }
 
 static int write_motor(FILE *out, int i, const int *n, const MotorModel *m)
@@ -191,6 +191,7 @@ int netlist_device_models(FILE *out)
 {
     /* Same diode law as LED_GENERIC, with saturation currents placing 10 mA near 1.9/2.2/2.9 V. */
     return fprintf(out, ".model LED_RED D(IS=1e-18 N=2 RS=2)\n.model LED_GREEN D(IS=3.6e-21 N=2 RS=2)\n"
+                        ".model LED_YELLOW D(IS=6.4e-20 N=2 RS=2)\n"
                         ".model LED_BLUE D(IS=4.7e-27 N=2 RS=2)\n.model relay_contact SW(Ron=.05 Roff=1e10 Vt=.5 Vh=.2)\n") >= 0;
 }
 

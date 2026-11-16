@@ -566,6 +566,14 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
     if (!selected_plain_part(app))
         return 0;
     const Part *part = &app->bench.parts[app->selected];
+    int swatch = part->type == PART_LED ? app_layout_led_swatch_at(x, y) : -1;
+    if (swatch >= 0)
+    {
+        if (part->states != (unsigned)swatch && bench_history_record(app->history, &app->bench))
+            bench_set_states(&app->bench, app->selected, (unsigned)swatch);
+        app->status = "Cor do LED alterada. Ctrl+Z desfaz.";
+        return 1;
+    }
     if (app_rect_contains(app_layout_inspector_scale(), x, y))
     {
         start_settings_edit(app, window, APP_EDIT_SCALE, bench_part_scale(part) * 100);
@@ -868,6 +876,14 @@ static void input_connect_pin(AppState *app, Pin clicked)
     }
 }
 
+/* Only the round cap presses a push button; the rest of the body selects and drags it. */
+#define BUTTON_CAP_RADIUS 14.0f
+static int button_cap_hit(const Part *part, float x, float y)
+{
+    WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
+    return hypotf(local.x, local.y + 4) <= BUTTON_CAP_RADIUS;
+}
+
 /* Double click on a DIP lever toggles that contact; on an instrument it cycles the mode. */
 static int input_toggle_device(AppState *app, int hit, float x, float y)
 {
@@ -921,7 +937,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
     }
     if (hit >= 0)
     {
-        if (app->bench.parts[hit].type == PART_BUTTON)
+        if (app->bench.parts[hit].type == PART_BUTTON && button_cap_hit(&app->bench.parts[hit], x, y))
         {
             bench_set_on(&app->bench, hit, 1);
             app->held_button = hit;
