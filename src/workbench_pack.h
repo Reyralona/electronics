@@ -11,6 +11,15 @@ int bench_group_port(const Workbench *bench, int group, int index, Pin *pin);
 float bench_group_width(const Workbench *bench, int group);
 int bench_group_resize(Workbench *bench, int group, float width, float height);
 float bench_group_height(const Workbench *bench, int group);
+#define BENCH_PORT_LEFT 0
+#define BENCH_PORT_RIGHT 1
+/* Where terminal `index` of a chip sits: side, slot on that side (top = 0) and terminals on that side. */
+void bench_group_port_place(const Workbench *bench, int group, int index, int *side, int *slot, int *side_count);
+/* Move terminal `index` to `side` at `slot` (clamped); the others on both sides keep their order.
+ * Returns 0 when the chip has more terminals than BENCH_GROUP_LAYOUT_MAX or the arguments are invalid. */
+int bench_group_move_port(Workbench *bench, int group, int index, int side, int slot);
+/* Index of the chip terminal that is `pin`, or -1. */
+int bench_group_port_index(const Workbench *bench, Pin pin);
 WirePoint bench_group_to_world(const BenchGroup *group, WirePoint local);
 WirePoint bench_group_to_local(const BenchGroup *group, WirePoint world);
 void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y);

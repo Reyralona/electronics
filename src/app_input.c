@@ -1075,6 +1075,67 @@ static void input_select(AppState *app, float x, float y, int clicks)
     }
 }
 
+/* Alt+drag on a chip terminal rearranges it along the package edges (left/right, any order). */
+static int input_click_chip_terminal(AppState *app, float x, float y)
+{
+    Pin pin = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
+    if (bench_group_port_index(&app->bench, pin) < 0)
+        return 0;
+    if (bench_group_ports(&app->bench, app->bench.parts[pin.component].group) > BENCH_GROUP_LAYOUT_MAX)
+    {
+        app->status = tr(TXT_APP_CHIP_TERMINALS_TOO_MANY);
+        return 1;
+    }
+    app->drag_port = pin;
+    app->move_recorded = 0;
+    app->selected = pin.component;
+    app->pending.component = -1;
+    app->status = tr(TXT_APP_DRAG_CHIP_TERMINAL);
+    return 1;
+}
+
+/* Side from the pointer's side of the package; slot from its height, counted as if already moved there. */
+static void chip_terminal_target(const AppState *app, int group, int index, WirePoint world, int *side, int *slot)
+{
+    WirePoint local = bench_group_to_local(&app->bench.groups[group - 1], world);
+    int counts[2] = {0, 0}, from_side = BENCH_PORT_LEFT;
+    for (int other = 0; other < bench_group_ports(&app->bench, group); ++other)
+    {
+        int other_side, other_slot, side_count;
+        bench_group_port_place(&app->bench, group, other, &other_side, &other_slot, &side_count);
+        ++counts[other_side];
+        if (other == index)
+            from_side = other_side;
+    }
+    *side = local.x < 0 ? BENCH_PORT_LEFT : BENCH_PORT_RIGHT;
+    int rows = counts[*side] + (*side != from_side);
+    *slot = (int)lroundf(local.y / BENCH_GROUP_PIN_SPACING + (rows - 1) * .5f);
+}
+
+static void input_drag_chip_terminal(AppState *app)
+{
+    Pin pin = app->drag_port;
+    int index = bench_group_port_index(&app->bench, pin);
+    if (index < 0)
+        return;
+    int group = app->bench.parts[pin.component].group, side, slot;
+    chip_terminal_target(app, group, index, app->mouse_world, &side, &slot);
+    int from_side, from_slot, side_count;
+    bench_group_port_place(&app->bench, group, index, &from_side, &from_slot, &side_count);
+    if (side == from_side && slot == from_slot)
+        return;
+    if (!app->move_recorded)
+    {
+        if (!bench_history_record(app->history, &app->bench))
+        {
+            app->status = tr(TXT_APP_HISTORY_FAILED);
+            return;
+        }
+        app->move_recorded = 1;
+    }
+    bench_group_move_port(&app->bench, group, index, side, slot);
+}
+
 static int input_click_lead(AppState *app, float x, float y, int clicks)
 {
     float tolerance = 8 / app->view.zoom;
@@ -1174,6 +1235,8 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     if (SDL_GetModState() & SDL_KMOD_ALT)
     {
+        if (input_click_chip_terminal(app, x, y))
+            return;
         if (input_click_lead(app, x, y, event->button.clicks))
             return;
         input_select(app, x, y, 1);
@@ -1231,6 +1294,9 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
         bench_set_on(&app->bench, app->held_button, 0);
     app->held_button = -1;
     app->drag_lead.component = -1;
+    if (app->drag_port.component >= 0 && app->move_recorded)
+        app->status = tr(TXT_APP_CHIP_TERMINAL_MOVED);
+    app->drag_port.component = -1;
     app->selecting_area = 0;
     if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
         !app->bench.parts[app->dragging].group && app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, app->dragging))
@@ -1410,6 +1476,18 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
     }
 }
 
+
+static void input_area_update(AppState *app)
+{
+    app->area_end = app->mouse_world;
+    bench_selection_rect(&app->selection, &app->bench, app->area_start, app->area_end);
+    app->selected = -1;
+    for (int i = 0; i < app->bench.part_count; ++i)
+        if (app->selection.parts[i])
+            app->selected = i;
+    report(app, TXT_APP_PARTS_SELECTED, bench_selection_count(&app->selection, &app->bench));
+}
+
 static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
     int width, height;
@@ -1422,13 +1500,41 @@ static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Ev
     app->mouse_position_valid = 1;
     if (!app->selecting_area)
         return;
-    app->area_end = app->mouse_world;
-    bench_selection_rect(&app->selection, &app->bench, app->area_start, app->area_end);
-    app->selected = -1;
-    for (int i = 0; i < app->bench.part_count; ++i)
-        if (app->selection.parts[i])
-            app->selected = i;
-    report(app, TXT_APP_PARTS_SELECTED, bench_selection_count(&app->selection, &app->bench));
+    input_area_update(app);
+}
+
+/* Dragging a selection area against a workspace edge scrolls the bench so far parts can be reached. */
+#define AREA_SCROLL_ZONE 32.0f
+#define AREA_SCROLL_SPEED 900.0f /* screen pixels per second at full push */
+#define AREA_SCROLL_MAX_STEP_MS 50
+
+static void input_area_autoscroll(AppState *app)
+{
+    if (!app->selecting_area || !app->mouse_position_valid)
+    {
+        app->area_scroll_ticks = 0;
+        return;
+    }
+    float push_x = bench_view_edge_push(app->mouse_screen.x, BENCH_VIEW_LEFT, BENCH_VIEW_LEFT + BENCH_VIEW_WIDTH,
+                                        AREA_SCROLL_ZONE);
+    float push_y = bench_view_edge_push(app->mouse_screen.y, BENCH_VIEW_TOP, BENCH_VIEW_TOP + BENCH_VIEW_HEIGHT,
+                                        AREA_SCROLL_ZONE);
+    uint64_t now = SDL_GetTicks();
+    if (!push_x && !push_y)
+    {
+        app->area_scroll_ticks = 0;
+        return;
+    }
+    uint64_t elapsed = app->area_scroll_ticks ? now - app->area_scroll_ticks : 0;
+    app->area_scroll_ticks = now;
+    if (elapsed > AREA_SCROLL_MAX_STEP_MS)
+        elapsed = AREA_SCROLL_MAX_STEP_MS;
+    float step = AREA_SCROLL_SPEED * (float)elapsed / 1000.0f;
+    app->view.pan_x -= push_x * step;
+    app->view.pan_y -= push_y * step;
+    bench_view_to_world(&app->view, app->mouse_screen.x, app->mouse_screen.y, &app->mouse_world.x,
+                        &app->mouse_world.y);
+    input_area_update(app);
 }
 
 /* Coalesce hover hit testing to one pass per frame; drag/model events still all execute. */
@@ -1513,6 +1619,10 @@ void app_input_poll(AppState *app, SDL_Window *window)
         {
             input_environment_position(app, app->mouse_screen.x);
         }
+        else if (e.type == SDL_EVENT_MOUSE_MOTION && app->drag_port.component >= 0)
+        {
+            input_drag_chip_terminal(app);
+        }
         else if (e.type == SDL_EVENT_MOUSE_MOTION && app->drag_lead.component >= 0)
         {
             input_drag_lead(app, window, &e);
@@ -1526,6 +1636,7 @@ void app_input_poll(AppState *app, SDL_Window *window)
             input_drag_part(app, window, &e);
         }
     }
+    input_area_autoscroll(app);
     app_code_validate(app, window);
     if (app->mouse_position_valid)
         input_refresh_hover(app);

@@ -1113,11 +1113,131 @@ int bench_group_resize(Workbench *bench, int group, float width, float height)
     return 1;
 }
 
+static int group_layout_custom(const Workbench *bench, int group, int count)
+{
+    return count > 0 && count <= BENCH_GROUP_LAYOUT_MAX && bench->groups[group - 1].port_layout == count;
+}
+
+static BenchPortPlace group_place(const Workbench *bench, int group, int count, int index)
+{
+    if (group_layout_custom(bench, group, count))
+        return bench->groups[group - 1].port_places[index];
+    int left = (count + 1) / 2;
+    BenchPortPlace place = {(unsigned char)(index >= left), (unsigned char)(index < left ? index : index - left)};
+    return place;
+}
+
+/* Stored rows may have gaps or ties (hand-edited files); slots are always 0..n-1 by (row, index). */
+static int place_before(BenchPortPlace a, int a_index, BenchPortPlace b, int b_index)
+{
+    return a.row < b.row || (a.row == b.row && a_index < b_index);
+}
+
+void bench_group_port_place(const Workbench *bench, int group, int index, int *side, int *slot, int *side_count)
+{
+    int count = bench_group_ports(bench, group);
+    BenchPortPlace own = group_place(bench, group, count, index);
+    *side = own.side;
+    *slot = 0;
+    *side_count = 0;
+    for (int other = 0; other < count; ++other)
+    {
+        BenchPortPlace place = group_place(bench, group, count, other);
+        if (place.side != own.side)
+            continue;
+        ++*side_count;
+        if (other != index && place_before(place, other, own, index))
+            ++*slot;
+    }
+}
+
+static int group_rows(const Workbench *bench, int group)
+{
+    int count = bench_group_ports(bench, group), sides[2] = {0, 0};
+    for (int index = 0; index < count; ++index)
+        ++sides[group_place(bench, group, count, index).side != 0];
+    return sides[0] > sides[1] ? sides[0] : sides[1];
+}
+
 float bench_group_height(const Workbench *bench, int group)
 {
-    int rows = (bench_group_ports(bench, group) + 1) / 2;
+    int rows = group_rows(bench, group);
     float minimum = rows > 2 ? rows * BENCH_GROUP_PIN_SPACING + 14.0f : 44.0f;
     return fmaxf(minimum, bench->groups[group - 1].height);
+}
+
+int bench_group_port_index(const Workbench *bench, Pin pin)
+{
+    if (pin.component < 0 || pin.component >= bench->part_count)
+        return -1;
+    const Part *part = &bench->parts[pin.component];
+    if (!part->group || !bench_pin_exposed(part, pin.pin))
+        return -1;
+    int index = 0;
+    for (int i = 0; i <= pin.component; ++i)
+        if (bench->parts[i].group == part->group)
+            for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
+                if (bench_pin_exposed(&bench->parts[i], p) && (i < pin.component || p < pin.pin))
+                    ++index;
+    return index;
+}
+
+/* Terminals of one side in slot order. */
+static int side_order(const Workbench *bench, int group, int count, int side, int order[BENCH_GROUP_LAYOUT_MAX])
+{
+    int length = 0;
+    for (int index = 0; index < count; ++index)
+    {
+        int own_side, slot, side_count;
+        bench_group_port_place(bench, group, index, &own_side, &slot, &side_count);
+        if (own_side != side)
+            continue;
+        order[slot] = index;
+        ++length;
+    }
+    return length;
+}
+
+static void remove_slot(int order[BENCH_GROUP_LAYOUT_MAX], int *length, int slot)
+{
+    for (int k = slot; k + 1 < *length; ++k)
+        order[k] = order[k + 1];
+    --*length;
+}
+
+static void insert_slot(int order[BENCH_GROUP_LAYOUT_MAX], int *length, int slot, int index)
+{
+    for (int k = *length; k > slot; --k)
+        order[k] = order[k - 1];
+    order[slot] = index;
+    ++*length;
+}
+
+int bench_group_move_port(Workbench *bench, int group, int index, int side, int slot)
+{
+    if (!bench || group < 1 || group > WORKBENCH_MAX_COMPONENTS || !bench->groups[group - 1].active ||
+        (side != BENCH_PORT_LEFT && side != BENCH_PORT_RIGHT))
+        return 0;
+    int count = bench_group_ports(bench, group);
+    if (index < 0 || index >= count || count > BENCH_GROUP_LAYOUT_MAX)
+        return 0;
+    int order[2][BENCH_GROUP_LAYOUT_MAX], length[2];
+    for (int s = 0; s < 2; ++s)
+        length[s] = side_order(bench, group, count, s, order[s]);
+    int from_side, from_slot, side_count;
+    bench_group_port_place(bench, group, index, &from_side, &from_slot, &side_count);
+    remove_slot(order[from_side], &length[from_side], from_slot);
+    slot = slot < 0 ? 0 : slot > length[side] ? length[side] : slot;
+    if (side == from_side && slot == from_slot && group_layout_custom(bench, group, count))
+        return 1;
+    insert_slot(order[side], &length[side], slot, index);
+    BenchGroup *package = &bench->groups[group - 1];
+    for (int s = 0; s < 2; ++s)
+        for (int k = 0; k < length[s]; ++k)
+            package->port_places[order[s][k]] = (BenchPortPlace){(unsigned char)s, (unsigned char)k};
+    package->port_layout = count;
+    ++bench->revision;
+    return 1;
 }
 
 void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y)
@@ -1128,18 +1248,12 @@ void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y
         bench_pin_position(part, pin.pin, x, y);
         return;
     }
-    int count = bench_group_ports(bench, part->group), index = 0;
-    for (int i = 0; i <= pin.component; ++i)
-        if (bench->parts[i].group == part->group)
-            for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
-                if (bench_pin_exposed(&bench->parts[i], p) && (i < pin.component || p < pin.pin))
-                    ++index;
-    int left = (count + 1) / 2, row = index < left ? index : index - left;
-    int rows = index < left ? left : count - left;
+    int side, slot, rows;
+    bench_group_port_place(bench, part->group, bench_group_port_index(bench, pin), &side, &slot, &rows);
     const BenchGroup *group = &bench->groups[part->group - 1];
     float half_width = bench_group_width(bench, part->group) * .5f + 11;
-    WirePoint local = {index < left ? -half_width : half_width,
-                       (row - (rows - 1) * .5f) * BENCH_GROUP_PIN_SPACING};
+    WirePoint local = {side == BENCH_PORT_LEFT ? -half_width : half_width,
+                       (slot - (rows - 1) * .5f) * BENCH_GROUP_PIN_SPACING};
     WirePoint world = bench_group_to_world(group, local);
     *x = world.x;
     *y = world.y;

@@ -15,6 +15,7 @@ static void reset_interaction(AppState *app)
     app->dragging = -1;
     app->drag_wire = -1;
     app->drag_lead.component = -1;
+    app->drag_port.component = -1;
     app->placing = -1;
     app->packed_placing = 0;
     app->pending.component = -1;

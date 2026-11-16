@@ -80,8 +80,8 @@ UI_TEXT(UI_GRAPH_PIN_CURRENT, "Corrente, pino 1 → 2 (A)", "Current, pin 1 → 
 UI_TEXT(UI_GRAPH_VOLTAGE, "Tensão, terminal %d (V)", "Voltage, terminal %d (V)")
 /* Status bar key hints: "Key: action", joined by " · ". */
 UI_TEXT(UI_HINT_CHIP,
-        "R: girar · Enter: ver interior · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
-        "R: rotate · Enter: view inside · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
+        "R: girar · Enter: ver interior · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
+        "R: rotate · Enter: view inside · Alt+drag terminal: rearrange · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
 UI_TEXT(UI_HINT_ROTATE, "R: girar", "R: rotate")
 UI_TEXT(UI_HINT_VALUE, "E: valor", "E: value")
 UI_TEXT(UI_HINT_SIZE, "Ctrl+roda: tamanho", "Ctrl+wheel: size")
@@ -97,9 +97,9 @@ UI_TEXT(UI_HINT_GRAPH_PLAYBACK,
         "Gráfico desde o estado inicial · Espaço: reproduzir · B/N: amostra anterior/próxima · P: voltar à simulação",
         "Graph from the initial state · Space: play · B/N: previous/next sample · P: back to simulation")
 UI_TEXT(UI_HINT_BENCH,
-        "Espaço: pausar · Ctrl+Espaço: reiniciar · Shift+arrastar: selecionar · Ctrl+C/V: copiar/colar · "
+        "Espaço: pausar · Shift+arrastar/Ctrl+A: selecionar · Ctrl+C/V: copiar/colar · "
         "Ctrl+G: criar chip · X: transparência · Ctrl+Z/Y: desfazer/refazer",
-        "Space: pause · Ctrl+Space: reset · Shift+drag: select · Ctrl+C/V: copy/paste · "
+        "Space: pause · Shift+drag/Ctrl+A: select · Ctrl+C/V: copy/paste · "
         "Ctrl+G: create chip · X: transparency · Ctrl+Z/Y: undo/redo")
 UI_TEXT(UI_TRANSPARENCY_BADGE, "Transparência (X)", "Transparency (X)")
 /* Value editor. */
