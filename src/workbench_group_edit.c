@@ -2,6 +2,7 @@
 #include "workbench_group_name.h"
 #include "workbench_pack.h"
 #include "component_registry.h"
+#include "ui_text.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -105,20 +106,19 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
     if (!parent || !draft || group < 1 || group > WORKBENCH_MAX_COMPONENTS || !parent->groups[group - 1].active ||
         parent->revision != expected_revision)
     {
-        snprintf(message, capacity, "A bancada mudou; reabra o editor antes de aplicar.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_BENCH_CHANGED));
         return 0;
     }
     if (!valid_draft(parent, group, draft) || !bench_group_name_valid(name))
     {
-        snprintf(message, capacity,
-                 "Modelo invalido, nome invalido ou bloco aninhado. Abra os blocos internos antes de aplicar.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_INVALID));
         return 0;
     }
     Workbench packed = {0}, result = {0};
     int published = 0;
     if (!bench_snapshot_clone(&packed, draft))
     {
-        snprintf(message, capacity, "Nao foi possivel copiar o rascunho; bancada preservada.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY_BENCH_KEPT));
         goto cleanup;
     }
     BenchSelection all = {0};
@@ -136,7 +136,7 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
             map[i] = result.part_count;
             if (!bench_part_clone(&result.parts[result.part_count], &parent->parts[i]))
             {
-                snprintf(message, capacity, "Memoria insuficiente para preservar componentes externos.");
+                snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY_BENCH_KEPT));
                 goto cleanup;
             }
             ++result.part_count;
@@ -145,7 +145,7 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
     int offset = result.part_count;
     if (offset + packed.part_count > WORKBENCH_MAX_COMPONENTS)
     {
-        snprintf(message, capacity, "Nao cabe na bancada: limite atual de 64 pecas internas.");
+        snprintf(message, capacity, tr(TXT_ENG_EDIT_PART_LIMIT), WORKBENCH_MAX_COMPONENTS);
         goto cleanup;
     }
     for (int i = 0; i < packed.part_count; ++i)
@@ -157,21 +157,21 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
         part.group = group;
         if (!bench_part_clone(&result.parts[result.part_count], &part))
         {
-            snprintf(message, capacity, "Memoria insuficiente para copiar componente do chip.");
+            snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY_BENCH_KEPT));
             goto cleanup;
         }
         ++result.part_count;
     }
     if (!copy_external_wires(parent, group, map, &result))
     {
-        snprintf(message, capacity, "Uma porta conectada foi removida ou faltam fios livres; bancada preservada.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_TERMINAL_REMOVED));
         goto cleanup;
     }
     for (int i = 0; i < packed.wire_count; ++i)
     {
         if (result.wire_count == WORKBENCH_MAX_WIRES)
         {
-            snprintf(message, capacity, "Nao cabe na bancada: limite atual de 128 fios.");
+            snprintf(message, capacity, tr(TXT_ENG_EDIT_WIRE_LIMIT), WORKBENCH_MAX_WIRES);
             goto cleanup;
         }
         Wire wire = packed.wires[i];
@@ -183,10 +183,10 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
     published = bench_replace(parent, &result);
     if (!published)
     {
-        snprintf(message, capacity, "Nao foi possivel publicar o modelo; bancada preservada.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_APPLY_FAILED));
         goto cleanup;
     }
-    snprintf(message, capacity, "Modelo aplicado nesta instancia. Ctrl+Z desfaz.");
+    snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_APPLIED));
 cleanup:
     bench_snapshot_clear(&packed);
     bench_snapshot_clear(&result);

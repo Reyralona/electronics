@@ -2,6 +2,7 @@
 #include <math.h>
 #include <string.h>
 #include "spice_process.h"
+#include "ui_text.h"
 
 int main(int argc, char **argv)
 {
@@ -16,7 +17,7 @@ int main(int argc, char **argv)
     assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,0})==1);
     assert(bench_toggle_wire(&b,(Pin){0,1},(Pin){1,1})==1);
     assert(!spice_dc_analyze(&b,"build/missing-ngspice.exe",&current,led,message,sizeof(message)));
-    assert(current==42 && strstr(message,"nao encontrado"));
+    assert(current==42 && !strcmp(message,tr(TXT_ENG_SOLVER_MISSING)));
     if(argc>1) {
         assert(spice_dc_analyze(&b,argv[1],&current,led,message,sizeof(message)));
         assert(fabs(current+.005)<1e-7);
@@ -33,11 +34,11 @@ int main(int argc, char **argv)
         assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){2,0})==1);
         assert(bench_toggle_wire(&b,(Pin){2,1},(Pin){1,0})==1);
         assert(!spice_dc_analyze_wires(&b,argv[1],&current,led,wire,message,sizeof(message)));
-        assert(strstr(message,"ambigua"));
+        assert(!strcmp(message,tr(TXT_ENG_AMBIGUOUS_WIRES)));
         assert(fabs(wire[0]-.005)<1e-7);
         { SpiceTrace ambiguous={0};
           assert(!spice_transient_wire(&b,argv[1],0,1e-5,.005,&ambiguous,message,sizeof(message)));
-          assert(strstr(message,"ambigua"));
+          assert(!strcmp(message,tr(TXT_ENG_AMBIGUOUS_WIRES)));
         }
         bench_remove(&b,2);
         assert(bench_toggle_wire(&b,(Pin){0,0},(Pin){1,0})==2);

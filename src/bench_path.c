@@ -1,4 +1,5 @@
 #include "bench_path.h"
+#include "ui_text.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -151,14 +152,14 @@ const char *bench_path_status_message(BenchPathStatus status)
     switch (status)
     {
     case BENCH_PATH_OK:
-        return "Caminho atualizado.";
+        return tr(TXT_ENG_PATH_UPDATED);
     case BENCH_PATH_RANGE:
-        return "Ponto fora do caminho.";
+        return tr(TXT_ENG_PATH_POINT_OUTSIDE);
     case BENCH_PATH_TOO_LARGE:
-        return "Caminho excede o tamanho representavel na memoria.";
+        return tr(TXT_ENG_PATH_TOO_LARGE);
     case BENCH_PATH_NO_MEMORY:
-        return "Memoria insuficiente; caminho anterior preservado.";
+        return tr(TXT_ENG_PATH_NO_MEMORY);
     default:
-        return "Caminho ou coordenada invalida.";
+        return tr(TXT_ENG_PATH_INVALID);
     }
 }

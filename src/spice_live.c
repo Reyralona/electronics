@@ -5,6 +5,7 @@
 #include "mcu_board.h"
 #include "component_devices.h"
 #include "component_registry.h"
+#include "ui_text.h"
 #include <windows.h>
 #include <math.h>
 #include <stdio.h>
@@ -115,14 +116,14 @@ static int load_session(SpiceLive *live, const Workbench *bench, const char *exe
     char directory[MAX_PATH], path[MAX_PATH];
     if (!GetTempPathA(sizeof(directory), directory) || !GetTempFileNameA(directory, "blc", 0, path))
     {
-        snprintf(message, capacity, "Arquivo temporario ngspice: Windows %lu.", GetLastError());
+        snprintf(message, capacity, tr(TXT_ENG_TEMP_FILE_WINDOWS), GetLastError());
         return 0;
     }
     FILE *file = fopen(path, "w");
     if (!file)
     {
         DeleteFileA(path);
-        snprintf(message, capacity, "Nao foi possivel escrever o netlist continuo.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_TEMP_FILE_FAILED));
         return 0;
     }
     NetlistResult netlist = netlist_write_live(file, bench, live->measures_wires);
@@ -130,7 +131,8 @@ static int load_session(SpiceLive *live, const Workbench *bench, const char *exe
     if (netlist != NETLIST_OK || failed)
     {
         DeleteFileA(path);
-        snprintf(message, capacity, "Netlist continuo invalido (codigo %d).", (int)netlist);
+        const char *reason = netlist != NETLIST_OK ? netlist_result_message(netlist) : tr(TXT_ENG_TEMP_FILE_FAILED);
+        snprintf(message, capacity, "%s", reason);
         return 0;
     }
     spice_session_close(live->session);
@@ -385,7 +387,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         char *key = topology_key(bench, &instrumented);
         if (!key)
         {
-            snprintf(result->message, sizeof(result->message), "Netlist continuo invalido ou memoria/arquivo indisponivel.");
+            snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_CALCULATION_PREPARE_FAILED));
             return 0;
         }
         if (!live->session || !live->topology || strcmp(key, live->topology))
@@ -408,7 +410,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         live->topology = key;
         if (!bench_snapshot_clone(&live->previous, bench))
         {
-            snprintf(result->message, sizeof(result->message), "Memoria insuficiente para acompanhar sessao continua.");
+            snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_NO_MEMORY));
             return 0;
         }
     }
@@ -428,12 +430,12 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         else if (mcu_board(bench->parts[i].type) && mcu_board(bench->parts[i].type)->supply_volts > 0)
             result->powered = 1;
     live->restarted = rebuilt;
-    const char *status = "Tempo continuo: %.6g s.";
+    TextId status = TXT_ENG_LIVE_TIME;
     if (rebuilt)
-        status = "Topologia/periodo alterado: tempo reiniciado em %.6g s.";
+        status = TXT_ENG_LIVE_RESTARTED;
     else if (!result->powered)
-        status = "Tempo continuo: %.6g s; alimentacao desligada.";
-    snprintf(result->message, sizeof(result->message), status, live->time);
+        status = TXT_ENG_LIVE_TIME_NO_SOURCE;
+    snprintf(result->message, sizeof(result->message), tr(status), live->time);
     return 1;
 }
 

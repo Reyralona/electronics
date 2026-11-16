@@ -1,5 +1,6 @@
 #include "spice_session.h"
 #include "spice_session_protocol.h"
+#include "ui_text.h"
 #include <windows.h>
 #include <math.h>
 #include <stdio.h>
@@ -12,6 +13,46 @@ struct SpiceSession
     int keep_log;
     char log_path[MAX_PATH];
 };
+
+/* Turns "<code> <number> <ngspice text>" from the host into interface text. */
+static void host_error(const char *reply, char *message, size_t capacity)
+{
+    int code = 0;
+    long number = 0;
+    int consumed = 0;
+    if (sscanf(reply, "%d %ld%n", &code, &number, &consumed) != 2)
+    {
+        snprintf(message, capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
+        return;
+    }
+    const char *text = reply + consumed;
+    if (*text == ' ')
+        ++text;
+    switch (code)
+    {
+    case SPICE_HOST_SOLVER:
+        snprintf(message, capacity, tr(TXT_ENG_SOLVER_MESSAGE), text);
+        break;
+    case SPICE_HOST_STOPPED:
+        snprintf(message, capacity, tr(TXT_ENG_SOLVER_STOPPED), number);
+        break;
+    case SPICE_HOST_FILE:
+        snprintf(message, capacity, "%s", tr(TXT_ENG_TEMP_FILE_FAILED));
+        break;
+    case SPICE_HOST_MEMORY:
+        snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY));
+        break;
+    case SPICE_HOST_LOAD:
+        snprintf(message, capacity, tr(TXT_ENG_SOLVER_LOAD_FAILED), number);
+        break;
+    case SPICE_HOST_REQUEST:
+        snprintf(message, capacity, "%s", tr(TXT_ENG_SOLVER_REQUEST_FAILED));
+        break;
+    default:
+        snprintf(message, capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
+        break;
+    }
+}
 
 static int response(SpiceSession *session, char *text, size_t capacity, char *message, size_t message_capacity)
 {
@@ -29,7 +70,7 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
                 DWORD exit_code = 0;
                 GetExitCodeProcess(session->process, &exit_code);
                 session->keep_log = 1;
-                snprintf(message, message_capacity, "Host ngspice encerrou (0x%08lX). Log: %s", exit_code,
+                snprintf(message, message_capacity, tr(TXT_ENG_CALCULATION_STOPPED_LOG), exit_code,
                          session->log_path);
                 return 0;
             }
@@ -45,19 +86,22 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
             if (!strncmp(text, "OK", 2))
                 return 1;
             session->keep_log = 1;
-            snprintf(message, message_capacity, "%s", !strncmp(text, "ERR ", 4) ? text + 4 : text);
+            if (!strncmp(text, "ERR ", 4))
+                host_error(text + 4, message, message_capacity);
+            else
+                snprintf(message, message_capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
             return 0;
         }
         if (count + 1 >= capacity)
         {
-            snprintf(message, message_capacity, "Resposta do host excedeu o protocolo interno.");
+            snprintf(message, message_capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
             return 0;
         }
         if (c != '\r')
             text[count++] = c;
     }
     session->keep_log = 1;
-    snprintf(message, message_capacity, "Host ngspice interrompido ou excedeu %d ms. Log: %s",
+    snprintf(message, message_capacity, tr(TXT_ENG_CALCULATION_TIMEOUT_LOG),
              SPICE_SESSION_TIMEOUT_MS, session->log_path);
     return 0;
 }
@@ -67,13 +111,13 @@ static int request(SpiceSession *session, const char *text, char *reply, size_t 
 {
     if (!session || !text || strchr(text, '\n') || strchr(text, '\r'))
     {
-        snprintf(message, capacity, "Requisicao interna ngspice invalida.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_REQUEST_INVALID));
         return 0;
     }
     size_t length = strlen(text);
     if (length + 2 >= SPICE_SESSION_COMMAND_CAPACITY)
     {
-        snprintf(message, capacity, "Comando excedeu o protocolo interno do host.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_REQUEST_INVALID));
         return 0;
     }
     char input[SPICE_SESSION_COMMAND_CAPACITY];
@@ -82,7 +126,7 @@ static int request(SpiceSession *session, const char *text, char *reply, size_t 
     DWORD written;
     if (!WriteFile(session->input, input, (DWORD)length, &written, NULL) || written != length)
     {
-        snprintf(message, capacity, "Falha no canal ngspice (Windows %lu).", GetLastError());
+        snprintf(message, capacity, tr(TXT_ENG_CHANNEL_FAILED), GetLastError());
         return 0;
     }
     return response(session, reply, reply_capacity, message, capacity);
@@ -126,7 +170,7 @@ SpiceSession *spice_session_open(const char *executable, char *message, size_t c
     PROCESS_INFORMATION process = {0};
     if (!session)
     {
-        snprintf(message, capacity, "Memoria insuficiente para sessao ngspice.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY));
         return NULL;
     }
     DWORD length = GetFullPathNameA(executable, sizeof(runtime), runtime, NULL);
@@ -182,7 +226,7 @@ SpiceSession *spice_session_open(const char *executable, char *message, size_t c
     }
     return session;
 failure:
-    snprintf(message, capacity, "Falha ao preparar host ngspice (Windows %lu).", GetLastError());
+    snprintf(message, capacity, tr(TXT_ENG_SOLVER_START_FAILED), GetLastError());
     if (child_input)
         CloseHandle(child_input);
     if (child_output)
@@ -218,7 +262,7 @@ int spice_session_value(SpiceSession *session, const char *vector, double *value
     double result;
     if (sscanf(reply, "OK %lf %c", &result, &extra) != 1 || !isfinite(result))
     {
-        snprintf(message, capacity, "Vetor ngspice nao possui valor real finito.");
+        snprintf(message, capacity, "%s", tr(TXT_ENG_RESULT_INVALID));
         return 0;
     }
     *value = result;

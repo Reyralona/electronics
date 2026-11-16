@@ -1,1 +1,149 @@
 /* Texts of the engine area. Format: UI_TEXT(ID, "pt-BR", "en-US"); style and glossary: docs/TEXTOS.md. */
+/* Example categories. */
+UI_TEXT(ENG_CATEGORY_BASIC, "Básico", "Basic")
+UI_TEXT(ENG_CATEGORY_DIGITAL, "Digital", "Digital")
+UI_TEXT(ENG_CATEGORY_SEMICONDUCTORS, "Semicondutores", "Semiconductors")
+UI_TEXT(ENG_CATEGORY_SENSORS, "Sensores", "Sensors")
+UI_TEXT(ENG_CATEGORY_MEASUREMENT, "Medição", "Measurement")
+UI_TEXT(ENG_CATEGORY_OUTPUTS, "Saídas", "Outputs")
+/* Example titles and descriptions. */
+UI_TEXT(ENG_EXAMPLE_BREADBOARD_LED, "LED na breadboard", "LED on a breadboard")
+UI_TEXT(ENG_EXAMPLE_BREADBOARD_LED_INFO, "Uma fonte acende o LED por um resistor na breadboard.",
+        "A source lights the LED through a resistor on the breadboard.")
+UI_TEXT(ENG_EXAMPLE_FLIP_FLOP, "Flip-flop D", "D flip-flop")
+UI_TEXT(ENG_EXAMPLE_FLIP_FLOP_INFO, "O LED mostra Q. Q só muda na borda do clock.",
+        "The LED shows Q. Q changes only on the clock edge.")
+UI_TEXT(ENG_EXAMPLE_NAND_CHIP, "Porta NAND 74HC00", "74HC00 NAND gate")
+UI_TEXT(ENG_EXAMPLE_NAND_CHIP_INFO, "O CI inverte o clock e o LED pisca.", "The IC inverts the clock and the LED flashes.")
+UI_TEXT(ENG_EXAMPLE_DIMMER, "Dimmer com potenciômetro", "Potentiometer dimmer")
+UI_TEXT(ENG_EXAMPLE_DIMMER_INFO, "Gire o cursor (Shift+scroll). O brilho do LED muda.",
+        "Turn the wiper (Shift+scroll). The LED brightness changes.")
+UI_TEXT(ENG_EXAMPLE_BUTTON_LED, "Botão acende LED", "Button lights an LED")
+UI_TEXT(ENG_EXAMPLE_BUTTON_LED_INFO, "Segure o botão com o mouse. O LED acende.",
+        "Hold the button with the mouse. The LED comes on.")
+UI_TEXT(ENG_EXAMPLE_CAPACITOR_HOLD, "Capacitor segura o LED", "Capacitor holds the LED")
+UI_TEXT(ENG_EXAMPLE_CAPACITOR_HOLD_INFO, "Abra o interruptor. O capacitor descarrega e o LED apaga devagar.",
+        "Open the switch. The capacitor discharges and the LED goes off slowly.")
+UI_TEXT(ENG_EXAMPLE_SERIES_PARALLEL, "LEDs em série e em paralelo", "LEDs in series and in parallel")
+UI_TEXT(ENG_EXAMPLE_SERIES_PARALLEL_INFO, "Compare a corrente e o brilho nas duas ligações.",
+        "Compare the current and the brightness in the two connections.")
+UI_TEXT(ENG_EXAMPLE_DIODE_POLARITY, "Diodo direto e reverso", "Diode polarity")
+UI_TEXT(ENG_EXAMPLE_DIODE_POLARITY_INFO, "Só acende o ramo com o diodo em polarização direta.",
+        "Only the branch with the forward-biased diode lights.")
+UI_TEXT(ENG_EXAMPLE_BATTERY_LED, "Bateria de 9 V", "9 V battery")
+UI_TEXT(ENG_EXAMPLE_BATTERY_LED_INFO, "A bateria tem resistência interna. O resistor limita a corrente.",
+        "The battery has internal resistance. The resistor limits the current.")
+UI_TEXT(ENG_EXAMPLE_TRANSISTOR_SWITCH, "Transistor como chave", "Transistor as a switch")
+UI_TEXT(ENG_EXAMPLE_TRANSISTOR_SWITCH_INFO, "Aperte o botão. A corrente na base liga o NPN e o LED acende.",
+        "Push the button. Current into the base turns on the NPN and the LED.")
+UI_TEXT(ENG_EXAMPLE_LIGHT_SENSOR, "Sensor de luz com LDR", "LDR light sensor")
+UI_TEXT(ENG_EXAMPLE_LIGHT_SENSOR_INFO, "Aumente a luz no LDR (slider). O transistor liga o LED.",
+        "Increase the light on the LDR (slider). The transistor turns on the LED.")
+UI_TEXT(ENG_EXAMPLE_INDUCTOR_DELAY, "Indutor atrasa o LED", "Inductor delays the LED")
+UI_TEXT(ENG_EXAMPLE_INDUCTOR_DELAY_INFO, "O LED acende devagar. O diodo protege o circuito ao abrir o interruptor.",
+        "The LED comes on slowly. The diode protects the circuit at switch-off.")
+UI_TEXT(ENG_EXAMPLE_AND_BUTTONS, "Porta AND com botões", "AND gate with buttons")
+UI_TEXT(ENG_EXAMPLE_AND_BUTTONS_INFO, "O LED só acende com os dois botões apertados.",
+        "The LED comes on only when you push both buttons.")
+UI_TEXT(ENG_EXAMPLE_BLINKER, "Pisca-pisca com clock", "Clock blinker")
+UI_TEXT(ENG_EXAMPLE_BLINKER_INFO, "Um clock liga e desliga o LED.", "A clock turns the LED on and off.")
+UI_TEXT(ENG_EXAMPLE_NOT_ALTERNATE, "NOT alterna dois LEDs", "NOT alternates two LEDs")
+UI_TEXT(ENG_EXAMPLE_NOT_ALTERNATE_INFO, "Um LED segue o clock. O outro mostra o inverso.",
+        "One LED follows the clock. The other shows the inverse.")
+UI_TEXT(ENG_EXAMPLE_GENERATOR_SCOPE, "Gerador no osciloscópio", "Generator on a scope")
+UI_TEXT(ENG_EXAMPLE_GENERATOR_SCOPE_INFO, "Onda senoidal de 1 kHz no LED e no osciloscópio.",
+        "A 1 kHz sine wave on the LED and on the oscilloscope.")
+UI_TEXT(ENG_EXAMPLE_RELAY_MOTOR, "Relé liga o motor", "Relay starts the motor")
+UI_TEXT(ENG_EXAMPLE_RELAY_MOTOR_INFO, "Feche o interruptor. A bobina fecha o contato NA e o motor liga.",
+        "Close the switch. The coil closes the NO contact and the motor starts.")
+UI_TEXT(ENG_EXAMPLE_DIP_DISPLAY, "Chave DIP no display", "DIP switch on a display")
+UI_TEXT(ENG_EXAMPLE_DIP_DISPLAY_INFO, "Cada alavanca acende um segmento (a-d). Duplo clique: alternar.",
+        "Each lever lights one segment (a-d). Double-click: toggle.")
+/* Calculation results and failures. */
+UI_TEXT(ENG_NO_MEMORY, "Memória insuficiente. Feche outros programas e tente de novo.",
+        "Not enough memory. Close other programs and try again.")
+UI_TEXT(ENG_NO_MEMORY_BENCH_KEPT, "Memória insuficiente. A bancada não mudou.",
+        "Not enough memory. The bench did not change.")
+UI_TEXT(ENG_CIRCUIT_CALCULATED, "Circuito calculado.", "Circuit calculated.")
+UI_TEXT(ENG_NO_SOURCE_ON, "Nenhuma fonte ligada.", "No source is on.")
+UI_TEXT(ENG_WIRE_CURRENTS_UNAVAILABLE, "Correntes nos fios indisponíveis: %s", "Wire currents not available: %s")
+UI_TEXT(ENG_STEP_OR_DURATION_INVALID, "Passo ou duração inválidos. Mude-os nas configurações.",
+        "Invalid step or duration. Change them in Settings.")
+UI_TEXT(ENG_CALCULATION_PREPARE_FAILED, "Não foi possível preparar o cálculo.", "Cannot prepare the calculation.")
+UI_TEXT(ENG_SOLVER_MISSING, "ngspice não encontrado. Instale o programa de novo.",
+        "ngspice not found. Install the program again.")
+UI_TEXT(ENG_AMBIGUOUS_WIRES, "Fios ideais em paralelo: a corrente em cada fio é indefinida.",
+        "Ideal wires in parallel: the current in each wire is not defined.")
+UI_TEXT(ENG_CIRCUIT_UNSUPPORTED, "O cálculo não aceita este circuito. Verifique as ligações.",
+        "The calculation cannot use this circuit. Check the connections.")
+UI_TEXT(ENG_SOLVER_START_FAILED, "Não foi possível iniciar o ngspice (Windows %lu).",
+        "Cannot start ngspice (Windows %lu).")
+UI_TEXT(ENG_CALCULATION_TIMEOUT, "O cálculo passou de %d segundos. Simplifique o circuito.",
+        "The calculation took more than %d seconds. Make the circuit simpler.")
+UI_TEXT(ENG_SOLVER_FAILED, "O ngspice falhou (0x%08lX).", "ngspice failed (0x%08lX).")
+UI_TEXT(ENG_SOLVER_DLL_MISSING, "O ngspice falhou (0x%08lX): falta uma DLL. Instale o programa de novo.",
+        "ngspice failed (0x%08lX): a DLL is missing. Install the program again.")
+UI_TEXT(ENG_RESULT_INVALID, "Resultado do cálculo incompleto ou inválido. Tente de novo.",
+        "The calculation result is incomplete or not valid. Try again.")
+UI_TEXT(ENG_GRAPH_CALCULATED, "Gráfico calculado: %d amostras.", "Graph calculated: %d samples.")
+UI_TEXT(ENG_FIRST_SOURCE_CURRENT, "Corrente da primeira fonte: %.6g A (sentido do SPICE).",
+        "First source current: %.6g A (SPICE direction).")
+UI_TEXT(ENG_TEMP_FILE_FAILED, "Não foi possível usar o arquivo temporário do cálculo. Verifique o espaço em disco.",
+        "Cannot use the temporary calculation file. Check the free disk space.")
+UI_TEXT(ENG_TEMP_FILE_WINDOWS, "Não foi possível criar o arquivo temporário do cálculo (Windows %lu).",
+        "Cannot create the temporary calculation file (Windows %lu).")
+/* Continuous calculation in the separate ngspice process. */
+UI_TEXT(ENG_CALCULATION_STOPPED_LOG, "O cálculo parou (0x%08lX). Veja o registro: %s",
+        "The calculation stopped (0x%08lX). See the log: %s")
+UI_TEXT(ENG_CALCULATION_TIMEOUT_LOG, "O cálculo parou ou passou de %d ms. Veja o registro: %s",
+        "The calculation stopped or took more than %d ms. See the log: %s")
+UI_TEXT(ENG_REPLY_INVALID, "Resposta do cálculo inválida. Reinicie a simulação.",
+        "Invalid calculation reply. Reset the simulation.")
+UI_TEXT(ENG_REQUEST_INVALID, "Pedido de cálculo inválido ou longo demais.",
+        "Calculation request not valid or too long.")
+UI_TEXT(ENG_CHANNEL_FAILED, "Falha na comunicação com o cálculo (Windows %lu).",
+        "Communication with the calculation failed (Windows %lu).")
+UI_TEXT(ENG_SOLVER_MESSAGE, "O cálculo falhou. Mensagem do ngspice: %s", "The calculation failed. ngspice message: %s")
+UI_TEXT(ENG_SOLVER_STOPPED, "O ngspice parou o cálculo (código %ld).", "ngspice stopped the calculation (code %ld).")
+UI_TEXT(ENG_SOLVER_LOAD_FAILED, "Não foi possível carregar o ngspice (Windows %ld). Instale o programa de novo.",
+        "Cannot load ngspice (Windows %ld). Install the program again.")
+UI_TEXT(ENG_SOLVER_REQUEST_FAILED, "O ngspice não aceitou o pedido de cálculo.",
+        "ngspice did not accept the calculation request.")
+UI_TEXT(ENG_LIVE_TIME, "Tempo simulado: %.6g s.", "Simulated time: %.6g s.")
+UI_TEXT(ENG_LIVE_TIME_NO_SOURCE, "Tempo simulado: %.6g s. Nenhuma fonte ligada.",
+        "Simulated time: %.6g s. No source is on.")
+UI_TEXT(ENG_LIVE_RESTARTED, "As ligações ou o período mudaram. O tempo voltou a %.6g s.",
+        "The connections or the period changed. Time restarted at %.6g s.")
+/* Chips: create and apply. */
+UI_TEXT(ENG_PACK_SELECT_PARTS, "Selecione peças para criar um chip.", "Select parts to create a chip.")
+UI_TEXT(ENG_PACK_UNGROUP_FIRST, "Desagrupe os chips selecionados antes de criar um chip.",
+        "Ungroup the selected chips before you create a chip.")
+UI_TEXT(ENG_PACK_CHIP_LIMIT, "Limite de %d chips na bancada. Desagrupe um chip.",
+        "Limit of %d chips on the bench. Ungroup a chip.")
+UI_TEXT(ENG_PACK_EDGE_WIRES, "Não cabe: os contatos na borda do chip precisam de mais fios (limite de %d fios).",
+        "Does not fit: the contacts at the chip edge need more wires (limit of %d wires).")
+UI_TEXT(ENG_PACK_INNER_WIRES, "Não cabe: as ligações dentro do chip precisam de mais fios (limite de %d fios).",
+        "Does not fit: the connections in the chip need more wires (limit of %d wires).")
+UI_TEXT(ENG_PACK_FAILED, "Não foi possível criar o chip. A bancada não mudou.",
+        "Cannot create the chip. The bench did not change.")
+UI_TEXT(ENG_PACK_CREATED, "Chip criado com %d terminais. Ctrl+Shift+G: desagrupar.",
+        "Chip created with %d terminals. Ctrl+Shift+G: ungroup.")
+UI_TEXT(ENG_EDIT_BENCH_CHANGED, "A bancada mudou. Abra o editor de novo e aplique.",
+        "The bench changed. Open the editor again, then apply.")
+UI_TEXT(ENG_EDIT_INVALID, "Chip ou nome inválido, ou há um chip dentro do chip. Desagrupe os chips internos.",
+        "Invalid chip or name, or a chip is inside the chip. Ungroup the inner chips.")
+UI_TEXT(ENG_EDIT_PART_LIMIT, "Não cabe na bancada: limite de %d peças.", "Does not fit on the bench: limit of %d parts.")
+UI_TEXT(ENG_EDIT_WIRE_LIMIT, "Não cabe na bancada: limite de %d fios.", "Does not fit on the bench: limit of %d wires.")
+UI_TEXT(ENG_EDIT_TERMINAL_REMOVED, "Um terminal ligado do chip foi removido, ou faltam fios livres. A bancada não mudou.",
+        "A connected chip terminal was removed, or no free wires remain. The bench did not change.")
+UI_TEXT(ENG_EDIT_APPLY_FAILED, "Não foi possível aplicar o chip. A bancada não mudou.",
+        "Cannot apply the chip. The bench did not change.")
+UI_TEXT(ENG_EDIT_APPLIED, "Mudanças aplicadas neste chip. Ctrl+Z: desfazer.", "Changes applied to this chip. Ctrl+Z: undo.")
+/* Paths of legs and wires. */
+UI_TEXT(ENG_PATH_UPDATED, "Caminho atualizado.", "Path updated.")
+UI_TEXT(ENG_PATH_POINT_OUTSIDE, "Ponto fora do caminho.", "Point is not on the path.")
+UI_TEXT(ENG_PATH_TOO_LARGE, "Caminho grande demais. O caminho anterior não mudou.",
+        "Path too large. The previous path did not change.")
+UI_TEXT(ENG_PATH_NO_MEMORY, "Memória insuficiente. O caminho anterior não mudou.",
+        "Not enough memory. The previous path did not change.")
+UI_TEXT(ENG_PATH_INVALID, "Caminho ou coordenada inválidos.", "Invalid path or coordinate.")

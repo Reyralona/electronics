@@ -3,6 +3,7 @@
 #include "mcu_board.h"
 #include "component_devices.h"
 #include "component_registry.h"
+#include "ui_text.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -718,6 +719,21 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
     if (ferror(out))
         return NETLIST_IO_ERROR;
     return NETLIST_OK;
+}
+
+const char *netlist_result_message(NetlistResult result)
+{
+    switch (result)
+    {
+    case NETLIST_OK:
+        return "";
+    case NETLIST_AMBIGUOUS_WIRES:
+        return tr(TXT_ENG_AMBIGUOUS_WIRES);
+    case NETLIST_IO_ERROR:
+        return tr(TXT_ENG_TEMP_FILE_FAILED);
+    default:
+        return tr(TXT_ENG_CIRCUIT_UNSUPPORTED);
+    }
 }
 
 NetlistResult netlist_write_dc(FILE *out, const Workbench *b)

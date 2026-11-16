@@ -2,6 +2,7 @@
 #include <math.h>
 #include <string.h>
 #include "spice_job.h"
+#include "ui_text.h"
 
 static void finish(SpiceJob *job)
 {
@@ -21,7 +22,7 @@ int main(int argc,char **argv)
     bench.parts[0].on=0;
     finish(&job);
     assert(!job.success && job.snapshot.parts[0].on==1);
-    assert(strstr(job.message,"nao encontrado"));
+    assert(!strcmp(job.message,tr(TXT_ENG_SOLVER_MISSING)));
     if(argc>1) {
         bench.parts[0].on=1;
         assert(spice_job_start(&job,&bench,argv[1]));

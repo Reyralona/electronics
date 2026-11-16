@@ -34,7 +34,20 @@ typedef int (*Circuit)(char **);
 typedef SharedVector *(*VectorInfo)(char *);
 
 static int solver_error;
-static char last_error[512];
+static SpiceHostError error_code;
+static long error_number;
+static char error_text[512];
+
+/* The first failure of a request wins; ngspice often prints several lines for one error. */
+static void set_error(SpiceHostError code, long number, const char *text)
+{
+    solver_error = 1;
+    if (error_code)
+        return;
+    error_code = code;
+    error_number = number;
+    snprintf(error_text, sizeof(error_text), "%s", text);
+}
 
 static int output(char *message, int identifier, void *user)
 {
@@ -46,9 +59,8 @@ static int output(char *message, int identifier, void *user)
         strstr(message, "timestep too small") || strstr(message, "Timestep too small") ||
         strstr(message, "singular matrix") || strstr(message, "convergence failed"))
     {
-        solver_error = 1;
         const char *detail = !strncmp(message, "stderr ", 7) ? message + 7 : message;
-        snprintf(last_error, sizeof(last_error), "%s", detail);
+        set_error(SPICE_HOST_SOLVER, 0, detail);
     }
     return 0;
 }
@@ -59,8 +71,7 @@ static int controlled_exit(int status, bool unload, bool quitting, int identifie
     (void)quitting;
     (void)identifier;
     (void)user;
-    solver_error = 1;
-    snprintf(last_error, sizeof(last_error), "ngspice pediu encerramento (%d).", status);
+    set_error(SPICE_HOST_STOPPED, status, "");
     return 0;
 }
 
@@ -78,7 +89,8 @@ static int load_circuit(Circuit circuit, const char *path)
     FILE *file = fopen(path, "rb");
     if (!file)
     {
-        snprintf(last_error, sizeof(last_error), "Nao foi possivel abrir netlist: %s", strerror(errno));
+        fprintf(stderr, "Cannot open circuit file %s: %s\n", path, strerror(errno));
+        set_error(SPICE_HOST_FILE, errno, "");
         return 1;
     }
     if (fseek(file, 0, SEEK_END))
@@ -95,7 +107,7 @@ static int load_circuit(Circuit circuit, const char *path)
     char *text = malloc((size_t)length + 1);
     if (!text)
     {
-        snprintf(last_error, sizeof(last_error), "Memoria insuficiente para ler netlist.");
+        set_error(SPICE_HOST_MEMORY, 0, "");
         fclose(file);
         return 1;
     }
@@ -109,8 +121,7 @@ static int load_circuit(Circuit circuit, const char *path)
     char **deck = calloc(lines, sizeof(*deck));
     if (!deck || failed)
     {
-        snprintf(last_error, sizeof(last_error), failed ? "Falha ao ler arquivo de netlist." :
-                                                         "Memoria insuficiente para linhas do netlist.");
+        set_error(failed ? SPICE_HOST_FILE : SPICE_HOST_MEMORY, 0, "");
         free(deck);
         free(text);
         return 1;
@@ -135,7 +146,7 @@ static int load_circuit(Circuit circuit, const char *path)
 static void respond(int failed)
 {
     if (failed || solver_error)
-        printf("ERR %s\n", last_error[0] ? last_error : "Comando ou vetor ngspice indisponivel.");
+        printf("ERR %d %ld %s\n", error_code ? (int)error_code : SPICE_HOST_REQUEST, error_number, error_text);
     else
         puts("OK");
     fflush(stdout);
@@ -155,7 +166,7 @@ int main(int argc, char **argv)
         !bind_function(module, "ngSpice_Circ", &circuit, sizeof(circuit)) ||
         !bind_function(module, "ngGet_Vec_Info", &vector_info, sizeof(vector_info)))
     {
-        printf("ERR DLL ngspice indisponivel (Windows %lu).\n", GetLastError());
+        printf("ERR %d %lu\n", SPICE_HOST_LOAD, GetLastError());
         return 3;
     }
     int failed = initialize(output, NULL, controlled_exit, NULL, NULL, NULL, NULL);
@@ -172,7 +183,9 @@ int main(int argc, char **argv)
     {
         input[strcspn(input, "\r\n")] = 0;
         solver_error = 0;
-        last_error[0] = 0;
+        error_code = 0;
+        error_number = 0;
+        error_text[0] = 0;
         if (!strcmp(input, "Q"))
             break;
         if (!strncmp(input, "L ", 2))
