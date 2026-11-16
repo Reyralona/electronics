@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-/* Didactic parameters; the inspector and DECISOES.md state that they are approximations. */
+/* Didactic parameters; the inspector and docs/DECISOES.md state that they are approximations. */
 #define GENERATOR_OUTPUT_OHMS 50.0
 #define METER_INPUT_OHMS 10e6
 #define METER_OHMS_TEST_AMPERES 1e-3

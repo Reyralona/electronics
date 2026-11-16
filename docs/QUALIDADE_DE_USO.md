@@ -1,7 +1,9 @@
 # Qualidade de uso e instrumentos
 
+> **Requisitos de usabilidade** e critérios de aceite para a 1.0 (15/11/2026).
+
 Pedido explicito do responsavel em 15/11/2026. Requisitos de produto e aceite para a meta 1.0.
-Este documento complementa META_1_0.md, prompt.md e QUALIDADE_CODIGO.md. Nao descreve recursos
+Este documento complementa META_1_0.md, VISAO.md e QUALIDADE_CODIGO.md. Nao descreve recursos
 como concluidos: a secao de estado identifica o que ainda precisa ser implementado.
 
 ## Principio de interacao

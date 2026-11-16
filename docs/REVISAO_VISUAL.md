@@ -1,10 +1,12 @@
-# Revisao visual de componentes
+# Revisão visual de componentes
+
+> **Revisão da arte** dos componentes a partir de capturas reais do programa (15/11/2026).
 
 Rodada inicial: 15/11/2026, base v0.27.0. Capturas reais do aplicativo, nao mockups.
 Comando: ./tools/capture-components.ps1 -Destination build/component-review/before
 Foram geradas 36 imagens: 18 tipos nao-DIP em dois temas, zoom 7x (breadboard 1.8x).
-Galeria: [antes](build/component-review/before/index.html). Resumo visual em
-[contact sheet](build/component-review/before/contact-sheet.png).
+Galeria: `build/component-review/before/index.html` (gerado localmente, fora do repositório). Resumo visual em
+`contact-sheet.png` na mesma pasta.
 Referencias: guia oficial Tinkercad Circuits, paginas 6/7 em build/visual-references, e
 https://www.tinkercad.com/circuits (consultados em 15/11/2026). Arte da Bancada permanece propria.
 

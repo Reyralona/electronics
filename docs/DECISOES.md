@@ -1,8 +1,10 @@
 # Decisões e próximos passos
 
+> **Registro de decisões técnicas**, em ordem cronológica, com fatos, fontes e datas de consulta. Uma decisão posterior pode substituir uma anterior; o comportamento atual está no [guia](GUIA.md).
+
 Consulta: 14/11/2026.
 
-Fatos: a visão está em `prompt.md`. GCC do MSYS2 UCRT64 foi encontrado neste computador; a presença no PATH não é pressuposta. A [Microsoft](https://learn.microsoft.com/en-us/windows/win32/learnwin32/prepare-your-development-environment) documenta suporte do Windows SDK a C e Windows x64. [Win32](https://learn.microsoft.com/en-us/cpp/windows) oferece APIs nativas de interface; [GDI](https://learn.microsoft.com/en-us/windows/win32/gdi/windows-gdi) oferece desenho e texto para C/C++. A [documentação SDL3 para Windows](https://wiki.libsdl.org/SDL3/README-windows) descreve compilação com MinGW-w64 e CMake.
+Fatos: a visão está em `VISAO.md`. GCC do MSYS2 UCRT64 foi encontrado neste computador; a presença no PATH não é pressuposta. A [Microsoft](https://learn.microsoft.com/en-us/windows/win32/learnwin32/prepare-your-development-environment) documenta suporte do Windows SDK a C e Windows x64. [Win32](https://learn.microsoft.com/en-us/cpp/windows) oferece APIs nativas de interface; [GDI](https://learn.microsoft.com/en-us/windows/win32/gdi/windows-gdi) oferece desenho e texto para C/C++. A [documentação SDL3 para Windows](https://wiki.libsdl.org/SDL3/README-windows) descreve compilação com MinGW-w64 e CMake.
 
 Decisão do usuário: SDL e OpenGL. SDL3, sob [licença zlib](https://github.com/libsdl-org/SDL), fornece a janela e eventos; OpenGL desenha a cena. A primeira experiência usa OpenGL 1.1 para validar a integração, sem fixar a versão definitiva. No Windows, funções posteriores à 1.1 exigem carregamento em tempo de execução, conforme a [documentação SDL](https://wiki.libsdl.org/SDL3/SDL_GL_CreateContext). A interface acessível e a distribuição, incluindo a DLL e a licença SDL, precisam ser definidas antes de um lançamento. Win32/GDI permanece uma alternativa sem dependência gráfica externa, mas exigiria trabalho próprio de interface e desenho.
 

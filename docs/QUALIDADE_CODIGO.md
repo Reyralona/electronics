@@ -1,8 +1,10 @@
 # Revisão de qualidade de código e direção de arquitetura
 
+> **Revisão de código** (14/11/2026, base 0.16.0) e direção de arquitetura que o código novo deve seguir. Parte dos itens já foi feita; veja [ROADMAP_1_0.md](ROADMAP_1_0.md).
+
 Data: 14/11/2026. Base revisada: commit `697ec4b` (`feature/simulation-evolution`, versão 0.16.0), sem as alterações locais não commitadas.
 Autor: Claude (revisão externa), a pedido do responsável pelo projeto. Público: Codex.
-Leia junto com `prompt.md`, `META_1_0.md`, `DECISOES.md` e `VERSIONAMENTO.md`. Este documento **não muda a visão**: ele trata de como o código precisa evoluir para sustentá-la.
+Leia junto com `VISAO.md`, `META_1_0.md`, `DECISOES.md` e `VERSIONAMENTO.md`. Este documento **não muda a visão**: ele trata de como o código precisa evoluir para sustentá-la.
 
 ## 0. Pedido do responsável (a meta deste documento)
 
@@ -21,11 +23,11 @@ Tradução operacional, para usar como critério de aceite em todo trabalho futu
 ## 1. Fatos verificados
 
 - `./build.ps1` compila com `-std=c11 -Wall -Wextra -Werror` e todos os testes passam (executado em 14/11/2026, com o runtime `build/spice-local`).
-- Tamanho de `src/`: cerca de 3.500 linhas. Porém [src/workbench_window.c](src/workbench_window.c) tem **80 KB em 935 linhas**, com linhas de até **997 caracteres**. `main()` começa na linha 288 e vai até o fim do arquivo: cerca de 650 linhas e mais de 40 variáveis locais de estado.
+- Tamanho de `src/`: cerca de 3.500 linhas. Porém [src/workbench_window.c](../src/workbench_window.c) tem **80 KB em 935 linhas**, com linhas de até **997 caracteres**. `main()` começa na linha 288 e vai até o fim do arquivo: cerca de 650 linhas e mais de 40 variáveis locais de estado.
 - Referências a `PART_*` por arquivo: `workbench_window.c` 122, `netlist.c` 55, `workbench.c` 45, `workbench_file.c` 15, `workbench_examples.c` 9, `spice_process.c` 4.
-- O formato de arquivo grava o tipo como **inteiro do enum** e subiu **15 versões**, a maioria só para aceitar um tipo novo de componente (ver [src/workbench_file.c:46](src/workbench_file.c#L46)).
+- O formato de arquivo grava o tipo como **inteiro do enum** e subiu **15 versões**, a maioria só para aceitar um tipo novo de componente (ver [src/workbench_file.c:46](../src/workbench_file.c#L46)).
 - O caminho `"build/spice-local/ucrt64/bin/ngspice_con.exe"` aparece **10 vezes** em `workbench_window.c` e é relativo ao diretório de trabalho, não ao executável.
-- Há dois simuladores: o booleano (`bench_simulate`) e o SPICE. [src/workbench.c:203](src/workbench.c#L203) desativa o booleano na presença de resistor, capacitor, indutor, porta ou CI. Isso produz o "CÁLCULO INDISPONÍVEL" que o usuário encontra na maioria das montagens: ele precisa saber que deve apertar `P`.
+- Há dois simuladores: o booleano (`bench_simulate`) e o SPICE. [src/workbench.c:203](../src/workbench.c#L203) desativa o booleano na presença de resistor, capacitor, indutor, porta ou CI. Isso produz o "CÁLCULO INDISPONÍVEL" que o usuário encontra na maioria das montagens: ele precisa saber que deve apertar `P`.
 - Código legado (`window.c`, `circuit.c`, `simulation.c`, `project.c`, `history.c`) convive em `src/` e só é compilado com `-Legacy`. Existem dois sistemas de histórico.
 
 ## 2. O que está bom e deve ser preservado
@@ -103,7 +105,7 @@ typedef struct {
     int param_count;
     NetlistResult (*emit)(NetlistCtx *, const Part *);  /* linhas SPICE + modelos */
     void (*draw)(const Part *, const DrawState *);       /* fica na camada de UI */
-    /* ficha didática (prompt.md §6) pode viver aqui também */
+    /* ficha didática (VISAO.md §6) pode viver aqui também */
 } ComponentInfo;
 ```
 - `Part` passa a ter `params[]` (ou um valor por `ParamInfo`) em vez de um único `double value`.
@@ -178,7 +180,7 @@ Os passos 1 e 2 vêm antes de qualquer feature nova: sem eles, cada feature aume
 - Toda mensagem de falha ao usuário carrega a **causa real** disponível; nenhuma falha silenciosa.
 - Módulos de modelo e simulação sem SDL/OpenGL, com teste unitário. Testes que precisam do ngspice ficam separados e são identificados como tais.
 - Manter `-Wall -Wextra -Werror`. Avaliar adicionar `-fsanitize=address,undefined` num alvo de teste (verificar suporte no MSYS2 UCRT64 antes).
-- Continuar registrando decisões em `DECISOES.md` e limites em `README.md`, como já é feito.
+- Continuar registrando decisões em `DECISOES.md` e limites em `docs/GUIA.md`, como já é feito.
 
 ## 7. Decisões pendentes do responsável
 

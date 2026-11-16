@@ -1,5 +1,7 @@
 # Meta 1.0 — critérios ainda pendentes
 
+> **Critérios para a versão 1.0.** As notas de incremento abaixo registram o estado de cada data; a lista consolidada do que falta está em [ROADMAP_1_0.md](ROADMAP_1_0.md).
+
 Pedido de 14/11/2026: continuar até uma versão 1.0 com catálogo abrangente de componentes interoperáveis, inspirado no Tinkercad, sem declarar concluído um simulador que apenas verifica conectividade.
 
 - Levantar catálogo verificável, modelos, pinagem e casos de validação de cada componente. Capacitores, indutores, portas lógicas, clocks e microcontroladores exigem modelos distintos. Não apresentar uma lista presumida como catálogo completo.

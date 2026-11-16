@@ -1,379 +1,152 @@
-# Simulador de elétrica e eletrônica
+# Bancada: simulador de circuitos
 
-Projeto de um aplicativo educacional nativo para Windows x64, principalmente em C. A proposta é aprender montando e simulando circuitos em uma área de trabalho 2.5D.
+Aplicativo para Windows que serve para aprender eletrônica montando circuitos numa bancada virtual. Você coloca fontes, resistores, LEDs, portas lógicas, CIs, sensores e até um Arduino, liga tudo com fios ou numa breadboard e vê o circuito funcionar: LEDs acendem conforme a corrente calculada, capacitores carregam e descarregam, clocks piscam.
 
-A visão, o escopo proposto e as orientações de trabalho estão em [prompt.md](prompt.md). As decisões provisórias estão em [DECISOES.md](DECISOES.md).
+O cálculo elétrico é feito pelo [ngspice](https://ngspice.sourceforge.io/), um simulador de circuitos de código aberto. A interface é escrita em C com [SDL3](https://www.libsdl.org/) e OpenGL.
 
-## Bancada de montagem experimental
+![Bancada com um CI 74HC00 numa breadboard, um clock e um LED](docs/img/bancada.png)
 
-Clique em um terminal, depois em pontos vazios para acrescentar até 16 joelhos, e termine em outro terminal. Arraste os pequenos quadrados dos joelhos para ajustar o trajeto; dois cliques removem um joelho. Os cantos são arredondados com raio limitado pelo espaço disponível. `F1` abre configurações de grade, pontos de controle e curvas. `bancada.exe --capture` gera `build/bancada-capture.bmp` com uma cena reproduzível para revisão visual; `--capture-settings` inclui o painel aberto.
+> **Estado do projeto:** em desenvolvimento (versão 0.34.1, antes da 1.0). Funciona só no Windows 10/11 de 64 bits, e a interface está em português. Os modelos elétricos são aproximações didáticas: servem para aprender, não para dimensionar um circuito real.
 
-Em `F1`, escolha uma das seis cores para os próximos fios. Para mudar um fio existente, clique no seu traçado, abra `F1` e selecione a cor; a alteração pode ser desfeita e é salva no projeto. Clique numa área vazia para deixar de selecionar o fio. A cor é apenas visual e não altera a simulação.
+## O que dá para fazer
 
-Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
+- **Montar circuitos** com mais de 50 tipos de peça: fontes e baterias, resistores, capacitores, indutores, potenciômetro, LEDs (inclusive RGB), lâmpada, diodos, transistores, interruptores, botões, relé, motores, servo, display de 7 segmentos, sensores (luz, temperatura, gás, distância e outros) e instrumentos (multímetro, osciloscópio, gerador de função).
+- **Usar uma breadboard** de 420 contatos com quatro trilhos de alimentação. As peças encaixam nos furos.
+- **Lógica digital:** portas AND, OR, NOT, NAND, NOR, XOR e XNOR, flip-flop D, clock e os CIs 74HC00/08/32/86.
+- **Programar microcontroladores** (Arduino Uno, ESP32, ATtiny85) num subconjunto da linguagem do Arduino, com monitor serial e LCD 16x2 I2C.
+- **Simular ao vivo:** a simulação roda continuamente enquanto você mexe no circuito, e dá para pausar, reiniciar e ver gráficos de tensão e corrente ao longo do tempo.
+- **Criar seus próprios chips:** selecione um pedaço do circuito, transforme num bloco reutilizável, dê um nome e use quantas cópias quiser.
+- **Começar pelos exemplos:** há 18 circuitos prontos com explicação curta.
+
+## Instalação
+
+Ainda não há instalador nem download pronto: é preciso compilar. São uns 10 minutos, quase todos esperando downloads.
+
+### 1. Instale o MSYS2
+
+O MSYS2 fornece o compilador C (GCC) e as bibliotecas. Baixe em <https://www.msys2.org/> e instale no caminho padrão, **`C:\msys64`** (os scripts procuram nele).
+
+### 2. Instale o GCC e a SDL3
+
+Abra o terminal **MSYS2 UCRT64** (pelo menu Iniciar) e rode:
+
+```sh
+pacman -Syu
+pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-sdl3
+```
+
+Se o primeiro comando pedir para fechar o terminal, feche, abra de novo e repita.
+
+### 3. Baixe o projeto
+
+Num terminal **PowerShell**, numa pasta **sem espaços no caminho** (exigência do ngspice por enquanto):
+
+```powershell
+git clone https://github.com/Reyralona/electronics.git
+cd electronics
+```
+
+Sem Git, use **Code → Download ZIP** no GitHub e extraia.
+
+### 4. Prepare o ngspice
+
+```powershell
+./tools/setup-ngspice.ps1
+```
+
+O script baixa o ngspice pelos pacotes do MSYS2, confere a integridade e instala uma cópia isolada em `build/spice-local`, sem mexer no resto do sistema.
+
+### 5. Compile e abra
 
 ```powershell
 ./build.ps1
 ./build/build.exe
 ```
 
-Executável único: `build/build.exe`. Se ele estiver aberto, feche-o antes de compilar (ou use `-OutputName` temporário e apague a cópia depois).
+O `build.ps1` compila o programa e roda os testes automáticos. No fim deve aparecer "Compilação e testes concluídos".
 
-Escolha **Fonte**, **Interruptor**, **LED**, **Breadboard**, **Resistor**, **Capacitor**, **Indutor** ou **Porta AND** na biblioteca e clique na bancada para posicionar. Arraste um componente com o botão esquerdo para movê-lo e pressione `R` para girá-lo em 90°; a placa ainda não gira. Clique em dois terminais ou furos para conectar um fio; clique no mesmo par para removê-lo. Dois cliques na fonte ou no interruptor alternam seu estado. `Espaço` pausa/retoma, `N` avança um passo quando pausado e `Delete` remove o componente selecionado e seus fios.
+> Se o PowerShell recusar os scripts ("execução de scripts foi desabilitada"), rode uma vez
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, ou chame cada script com
+> `powershell -ExecutionPolicy Bypass -File .\build.ps1`.
 
-Pressione `S` para salvar componentes, estados, fios, joelhos e configurações em `bancada.elec` na pasta de execução; salvar novamente substitui esse arquivo. `L` carrega a bancada; arquivos inválidos preservam a montagem aberta. O formato da bancada é independente do protótipo antigo. Ao carregar, o estado do LED é recalculado mesmo se a simulação estiver pausada.
+## Primeiros passos
 
-Na bancada, `P` executa uma análise de ponto DC no ngspice isolado em `build/spice-local/ucrt64` e mostra a corrente da primeira fonte adicionada na barra inferior, com a convenção de sinal do SPICE. Os LEDs são desenhados acesos se sua corrente direta calculada atingir 1 µA; esse limiar é apenas uma aproximação visual. A análise ocorre em uma tarefa separada; se a montagem mudar durante ou após o cálculo, o resultado é descartado. Ao fechar o programa durante uma análise, pode haver uma espera de até dez segundos. A instalação isolada é uma dependência de desenvolvimento ainda não empacotada: se estiver ausente, aparece uma mensagem de erro. A análise aceita fontes ideais, resistores, capacitores, indutores, interruptores e LEDs genéricos. A sondagem transitória é descrita ao final deste documento.
+1. Clique em **Exemplos** no topo e escolha **LED na breadboard**.
+2. Dê dois cliques na fonte para desligá-la e ligá-la: o LED acompanha.
+3. Escolha uma peça no catálogo à esquerda e clique na bancada para colocá-la.
+4. Para ligar um fio, clique num terminal (as bolinhas brancas) e depois em outro. Cliques em pontos vazios no caminho criam dobras.
+5. Selecione uma peça para ver e editar seus valores no painel à direita.
 
-Para preparar o ngspice de desenvolvimento com MSYS2 UCRT64 instalado em `C:\msys64`, execute `./tools/setup-ngspice.ps1` na raiz. O script baixa os pacotes disponíveis no catálogo do pacman, verifica sua integridade e extrai uma cópia em `build/spice-local`; ele preserva um destino que já exista. Depois, execute `./tools/test-ngspice.ps1` e `./tools/test-workbench-ngspice.ps1`. A preparação atual requer caminho sem espaços e não fixa a versão dos pacotes, portanto não é ainda um instalador de distribuição reproduzível.
+Os comandos principais:
 
-Selecione uma fonte, resistor, capacitor ou indutor e pressione `E` para digitar seu valor em unidades SI, aceitando ponto ou vírgula decimal e notação científica (por exemplo, `2.2e-6` para 2,2 µF). `Enter` confirma e `Esc` cancela. Também é possível usar `+`/`-` para dobrar ou reduzir à metade. O painel mostra a unidade SI; os padrões são 5 V, 1 kΩ, 1 µF e 10 mH. Os valores entre 10⁻¹² e 10¹² são salvos no projeto; arquivos das versões anteriores recebem esses padrões ao serem carregados.
+| Ação | Como |
+|---|---|
+| Colocar peça | Clique no catálogo, depois na bancada |
+| Ligar fio | Clique num terminal e depois em outro |
+| Ligar/desligar fonte ou interruptor | Dois cliques na peça |
+| Girar | `R` |
+| Editar valor | `E` ou clique em **Valor** no painel |
+| Apagar | `Delete` |
+| Desfazer / refazer | `Ctrl+Z` / `Ctrl+Y` |
+| Pausar / continuar a simulação | `Espaço` |
+| Zoom / mover a vista | Roda do mouse / arrastar com o botão do meio |
+| Salvar / carregar projeto | `Ctrl+S` / `Ctrl+L` (escolha o slot em **Projetos**) |
+| Criar chip com a seleção | `Ctrl+G` |
 
-Após calcular, selecione um resistor ou LED para inspecionar sua corrente individual no canto superior direito. O sinal positivo representa corrente do primeiro terminal para o segundo; antes de girar a peça, eles estão respectivamente à esquerda e à direita. O negativo indica o sentido oposto.
+Todos os atalhos e recursos estão no **[guia de uso](docs/GUIA.md)**.
 
-Para visualizar corrente nos fios, abra `F1`, ative **Visualizar corrente nos fios** e pressione `P`. Os fios com corrente calculada acima de 1 µA recebem um realce e um marcador no sentido convencional; a velocidade do marcador é ilustrativa. O modelo usa sensores ideais de 0 V. Laços de fios ideais podem tornar a divisão de corrente indeterminada: nesses casos, a análise instrumentada é recusada e uma mensagem é exibida. Desative a opção para voltar à análise sem medição por fio.
+## Onde ficam seus arquivos
 
-Sem uma análise DC válida, a simulação antiga é discreta: o LED acende quando seu terminal esquerdo alcança o positivo de uma fonte ligada e o direito alcança o negativo por fios e interruptores fechados. Se houver resistor, capacitor ou indutor, a interface indica **cálculo indisponível** e mostra o LED em cinza até uma análise DC bem-sucedida. A breadboard tem 420 furos: 30 colunas de cinco contatos em cada lado e quatro trilhos de alimentação, cada um com 30 contatos conectados entre si. Os dois lados e os quatro trilhos são independentes. As pontas metálicas dos fios são mostradas sobre os furos. Ao soltar uma peça próxima de um furo, seus terminais são alinhados à placa quando possível; terminais encaixados aparecem em verde e entram na conectividade. Mover a peça ou a placa rompe o contato. O encaixe é uma aproximação geométrica: a placa ainda não gira e não há verificação física de ocupação dos furos; placas sobrepostas não são suportadas. Fontes em curto não acendem LEDs no modelo discreto. A análise SPICE usa parâmetros genéricos e não deve ser usada para dimensionar uma montagem física. O desenho usa formas originais provisórias, ainda não modelos finais. Os projetos antigos não são alterados.
+Projetos, preferências e chips são salvos em pastas relativas à **pasta de onde o programa foi aberto**:
 
-Na bancada experimental, `Ctrl+Z` desfaz e `Ctrl+Y` refaz até 24 alterações por sessão. O histórico inclui componentes, fios, joelhos, valores, estados e carregamento; não é salvo no projeto. A roda do mouse ajusta o zoom ao redor do cursor; arraste com o botão central para deslocar a vista e use `Home` para restaurá-la. A posição e o zoom da vista ainda não são salvos.
+- `saves/slot-1.elec` … `slot-9.elec`: os 9 slots de projeto, mais `preferences.txt`;
+- `blocks/block-1.elec` … `block-8.elec`: a biblioteca de chips. Chips removidos vão para `blocks/lixeira`.
 
-As placas recém-criadas têm furos mais espaçados. Placas carregadas de projetos anteriores mantêm a geometria original para preservar os contatos já montados.
+Abrindo com dois cliques em `build/build.exe`, elas ficam dentro de `build/`. Rodando `./build/build.exe` a partir da raiz do projeto, ficam na raiz. Nenhuma das duas vai para o Git.
 
-Para incluir um teste automatizado dos eventos de janela (componentes, fios, joelhos, desfazer/refazer, zoom e deslocamento), execute `./build.ps1 -GuiTests`. Esse teste requer uma sessão gráfica Windows com OpenGL; não substitui uma avaliação manual completa da interface.
+## Limites atuais
 
-## Protótipo anterior
+- **Só Windows x64.** Não há versão para Linux ou macOS.
+- **Sem pacote de distribuição:** o programa depende do ngspice instalado em `build/spice-local`.
+- **Modelos didáticos:** LEDs, transistores, CIs e sensores usam parâmetros genéricos. Uma entrada lógica desligada é lida como 0; num CI real ela ficaria indefinida.
+- **Capacidade fixa:** até 64 peças e 128 fios por montagem, 9 slots de projeto e 8 chips na biblioteca.
+- **Microcontroladores** rodam um subconjunto da linguagem do Arduino (sem ponteiros, `String` ou bibliotecas além do LCD I2C), não o código de máquina real.
 
-O protótipo inicial (circuito fixo em console e janela) foi removido na 0.31.0 por não ser usado pelo app; está preservado nas tags `v0.1.0`–`v0.16.0`.
+O que falta para a 1.0 está em [docs/ROADMAP_1_0.md](docs/ROADMAP_1_0.md).
 
-Use `Ctrl+Z` e `Ctrl+Y` para desfazer e refazer mudanças de posição, estados e carregamento. O histórico mantém até 32 etapas na sessão e não é salvo no arquivo.
-
-Pressione `Espaço` para pausar ou retomar a simulação. Ao pausar, o LED mantém o último resultado mesmo que o circuito seja editado; `N` executa um passo e, ao retomar, o resultado volta a ser atualizado. O estado de execução não é salvo. Pressione `D` para listar na barra de título os estados observados da montagem (fonte, interruptor e ligações); quando a simulação está pausada, eles podem ser diferentes do resultado congelado do LED. Essa inspeção não identifica falhas elétricas além do modelo simplificado.
-
-Clique em dois terminais brancos para conectar ou desconectar o par; o primeiro fica amarelo. Os três pares possíveis são fonte–interruptor, interruptor–LED e retorno entre LED e fonte. Clique novamente no terminal ou pressione `Esc` para cancelar; pares diferentes dos previstos são rejeitados. As teclas `1`, `2` e `3` também alternam essas ligações. O LED só acende com todas conectadas. Essas alterações podem ser desfeitas e são salvas no projeto. Ligações arbitrárias ainda não são suportadas.
-
-Opcionalmente, o script `tools/codex-stop-notify.ps1` exibe um lembrete local quando invocado por um hook `Stop` do Codex. A configuração é local em `.codex/hooks.json` e não é versionada; hooks não gerenciados precisam ser revisados e aceitos no Codex antes de funcionarem. O aviso depende das notificações do Windows e não envia mensagens automaticamente.
-
-A política de branches, versões e recuperação está em [VERSIONAMENTO.md](VERSIONAMENTO.md); o histórico está em [CHANGELOG.md](CHANGELOG.md).
-
-Com GCC disponível no PowerShell, compile e execute a partir da raiz:
+## Para desenvolver
 
 ```powershell
-New-Item -ItemType Directory -Force build
-gcc -std=c11 -Wall -Wextra -Werror src/main.c src/circuit.c -o build/electronics.exe
-./build/electronics.exe
+./build.ps1 -GuiTests   # compila, roda todos os testes e o autoteste da interface (abre uma janela)
 ```
 
-Para testar o modelo:
-
-```powershell
-gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_circuit.c src/circuit.c -o build/test_circuit.exe
-./build/test_circuit.exe
-```
-
-Selecione um componente de dois terminais e pressione `T` para calcular, em segundo plano, a tensão de um terminal em relação ao negativo da primeira fonte ou a corrente do componente. Em `F1`, escolha tensão ou corrente, escolha o terminal para tensão e clique nos campos para ajustar o passo solicitado e a duração em segundos; os padrões são 10 µs e 5 ms. A duração dividida pelo passo não pode exceder 500. Capacitores e indutores iniciam com condições nulas. A bancada pausa ao concluir; `Espaço` reproduz ou pausa a curva calculada, `N` avança e `B` volta pelas amostras calculadas pelo ngspice; clique no gráfico para selecionar uma amostra e use `G` para ocultar ou mostrar o gráfico. Os intervalos podem variar por causa do passo adaptativo. Alterar a montagem descarta a série. Os ajustes do menu são salvos no projeto; ainda falta o controle completo da simulação tick a tick. A corrente tem sinal positivo do pino 1 para o pino 2 e está disponível em fontes, resistores, capacitores, indutores e LEDs; interruptores ideais não oferecem essa medição. Para um fio, selecione seu trajeto e pressione `T`: o gráfico mostra corrente positiva de A para B, na ordem em que o fio foi criado. Em F1, ative a visualização de corrente antes de calcular para realçar os fios cuja corrente calculada ultrapassar 1 µA; as setas indicam o sentido em cada amostra. Ciclos de fios ideais têm corrente indeterminada e são rejeitados.
-
-A comparação de alternativas digitais e a prova de conceito XSPICE estão em [LOGICA_DIGITAL.md](LOGICA_DIGITAL.md). Após preparar o runtime de desenvolvimento, execute `./tools/test-xspice-gates.ps1`; AND, NAND, OR, XOR e NOT estão disponíveis como blocos didáticos na bancada.
-
-A porta AND didática tem entradas nos terminais 1 e 2 e saída no terminal 3. Usa níveis fixos de 0 e 5 V, limiares de entrada de 1,5 e 3,5 V e saída indefinida de 2,5 V; não tem pinos de alimentação e não representa um CI comercial. Para observar a saída, selecione a porta, escolha tensão e terminal 3 em F1 e pressione T. Os cálculos dependem do runtime XSPICE.
-
-Pressione `Tab` ou clique no título da biblioteca para alternar para as portas AND, NAND, OR, XOR e NOT. As portas de duas entradas usam terminais 1 e 2 de entrada e terminal 3 de saída; a NOT usa terminal 1 de entrada e 2 de saída. Esses blocos têm os mesmos níveis didáticos fixos da AND, sem pinos de alimentação.
-
-Na página digital, o **Clock** gera uma tensão ideal entre o terminal 1 (saída) e o 2 (referência): onda periódica de 0 a 5 V, aproximadamente 50% de ciclo ativo, iniciando em 0 V. O padrão é 1 kHz; selecione e pressione `E` para editar a frequência em Hz (por exemplo, `1e6` para 1 MHz). Dois cliques ligam/desligam; desligado, o componente fornece 0 V. Em F1, ajuste passo e duração para enxergar períodos suficientes no gráfico. A sondagem tem limite de amostras e ainda não equivale a um clock interativo em tempo real.
-
-A reprodução percorre o intervalo completo da curva em cinco segundos de relógio, independentemente da duração simulada. Ela mostra a última amostra disponível em cada instante e para no fim; ao retomar do fim, reinicia. É uma reprodução de resultados já calculados, sem recalcular ou atualizar todos os componentes da bancada.
-
-Durante a sondagem e a reprodução transitória, os LEDs da montagem acompanham a corrente direta calculada na mesma amostra; o limiar visual é 1 µA. Isso também funciona ao percorrer a curva com `B` e `N`. Os demais estados de componentes ainda não são atualizados simultaneamente.
-
-Com **Visualizar corrente nos fios** ativado em F1 antes de pressionar `T`, a sondagem transiente mede todos os fios na mesma execução. O realce e as setas acompanham a amostra mostrada, inclusive na reprodução. A cor e a largura indicam três faixas: 1 a menos de 100 µA, 100 µA a menos de 10 mA e 10 mA ou mais. Abaixo de 1 µA não há realce; o gráfico de um fio selecionado mostra o valor. Caminhos redundantes de fios ideais continuam sendo recusados quando não há divisão de corrente única.
-
-O **Bloco DFF** na página digital é um flip-flop D didático: D recebe o dado, C recebe o clock e Q apresenta o estado retido. Q é atualizado na borda de subida de C; para sondá-lo, selecione o terminal 3 em F1. O modelo solicita estado inicial zero, mas bordas simultâneas ou entradas indefinidas podem produzir estado indefinido (2,5 V no modelo). Não há pinos de alimentação, set/reset ou saída complementar, e os limites de temporização de um CI real não são modelados.
-
-Na página digital, o **CI 74HC00** é um modelo didático com encapsulamento DIP de 14 pinos e quatro portas NAND. Pinos: 1A=1, 1B=2, 1Y=3; 2A=4, 2B=5, 2Y=6; GND=7; 3Y=8, 3A=9, 3B=10; 4Y=11, 4A=12, 4B=13, VCC=14. Encaixe-o sobre a divisão central da breadboard e conecte VCC e GND. Selecione o CI e use F1 para escolher um dos 14 terminais para sondagem.
-
-A simulação é uma aproximação própria, válida apenas para alimentação entre 4,5 e 5,5 V: abaixo de 1,5 V a entrada é baixa, acima de 3,5 V é alta e regiões intermediárias sem resultado definido deixam a saída em alta impedância. As saídas usam resistência idealizada de 50 Ω, e sem alimentação ficam em alta impedância. Conecte entradas não usadas a um nível conhecido. Consumo interno, atrasos, proteções e limites reais não são modelados; não use o modelo para dimensionamento. A pinagem segue a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf).
-
-Pressione **F2** ou clique em **Exemplos** no topo para alternar entre duas montagens prontas: LED com resistor encaixado na breadboard e flip-flop D com dois clocks e LED. No primeiro exemplo, pressione `P`; no segundo, `T` calcula a saída Q, e `Espaço`, `B` e `N` controlam a reprodução. `Ctrl+Z` recupera a montagem anterior. Ao abrir um exemplo, a sondagem volta a 10 µs / 5 ms e escolhe a tensão indicada; desfazer restaura a montagem, mas não as configurações. Os exemplos dependem do runtime ngspice de desenvolvimento.
-
-
-Integracao de qualidade: `./build.ps1 -OutputName bancada-quality -GuiTests` gera `build/bancada-quality.exe`. O botao executar/pausar controla o calculo automatico apos edicoes. F2 percorre tres exemplos, incluindo 74HC00 na breadboard. Indicacao de queima e uma heuristica reversivel apenas em circuitos estaticos; nao modela aquecimento nem dano fisico. Transientes continuam pre-calculados em lote. Veja `QUALIDADE_CODIGO.md` e `CONTINUIDADE.md` para arquitetura e proximos passos.
-
-Na versao 0.17.1, use `./build.ps1 -GuiTests` e abra **`build/bancada.exe`**. `tools/setup-ngspice.ps1` prepara tambem as DLLs do solver. `./tools/test-runtime-isolated.ps1` verifica a simulacao com PATH minimo; isso nao substitui o empacotamento final.
-
-### Organizacao interna (0.17.4)
-
-O ciclo da janela chama entrada, atualizacao e desenho em modulos separados. `app_input.c`
-despacha interacoes; `app_commands.c` executa atalhos de edicao; `app_render.c` le o estado.
-`sim_state.c` invalida resultados, avanca a reproducao e calcula a apresentacao dos LEDs sem
-SDL/OpenGL. `test_sim_state.exe` testa essas regras com tempo fornecido pelo teste, sem solver.
-A reproducao continua sendo de curvas calculadas em lote, com os limites eletricos documentados acima.
-
-
-Na 0.17.5, a validade de resultados usa um unico tipo (DC ou transiente) e revisoes da montagem.
-Desfazer/refazer e carregar criam novas revisoes: resultados de tarefas anteriores sao descartados,
-mesmo quando o conteudo e restaurado. As revisoes sao apenas de runtime e nao mudam o formato salvo.
-A verificacao de mudancas nao percorre mais a montagem inteira por quadro. Testes de revisoes e
-transicoes integram ./build.ps1; o modelo continua sem dependencia de janela ou renderer.
-
-
-### Slots e edicao de conjuntos (0.18.0)
-
-F3 abre nove slots de montagem e configuracoes. Clique num slot (ou pressione 1-9), depois
-Salvar/Carregar; Ctrl+S e Ctrl+L operam o slot escolhido. Os arquivos ficam em saves/slot-N.elec,
-relativos a pasta de execucao. S/L continuam usando bancada.elec. Carregar valida o arquivo antes
-de substituir a montagem; a gravacao usa arquivo temporario e substituicao atomica ja existentes.
-Estes slots nao guardam o estado interno do ngspice nem o instante de uma simulacao em andamento.
-
-Arraste numa area vazia, ou Shift+arraste sobre a bancada, para selecionar por retangulo.
-Entram os componentes cujos centros estao dentro da area. Ctrl+A seleciona tudo; Ctrl+C copia,
-Ctrl+X recorta, Ctrl+V cola perto do mouse e Delete remove. A copia inclui somente fios cujas duas
-pontas estao na selecao, preservando cores e joelhos. Arrastar um componente selecionado move o
-conjunto e os joelhos dos fios internos. Desfazer/refazer agrupa cada operacao. Os limites atuais
-continuam 64 componentes/128 fios; colagem que nao cabe falha sem alterar a montagem.
-
-A biblioteca possui abas Basicos/Digital e miniaturas desenhadas a partir das pecas reais.
-A versao 0.19.0 acrescenta o packing descrito abaixo; copiar um conjunto continua sendo uma
-operacao separada de encapsular seus componentes.
-
-
-### Blocos reutilizaveis / packing (0.19.0)
-
-Selecione as pecas e pressione **Ctrl+G**. Elas passam a aparecer como uma unica peca compacta,
-com terminais P1, P2 etc. Sao expostos os terminais com ligacoes para fora da selecao e os pinos
-livres dos componentes (furos livres de breadboard nao viram centenas de portas). Para escolher
-uma fronteira especifica, ligue os terminais desejados a componentes externos antes de encapsular.
-Os terminais sao eletricos: sua funcao de entrada, saida ou alimentacao depende do circuito interno.
-
-O bloco e salvo automaticamente no primeiro dos oito slots livres em `blocks/block-N.elec`.
-Na aba **Blocos**, clique na miniatura e depois na bancada para colocar uma instancia independente.
-As instancias possuem pecas, valores e conexoes proprios. Ctrl+C/V tambem duplica blocos.
-Arrastar move o conjunto; Delete remove; Ctrl+Z/Y desfaz/refaz. **Ctrl+Shift+G** restaura o interior
-para editar. Recriar um bloco modificado gera outra entrada da biblioteca; nao atualiza instancias
-antigas automaticamente. Salvar um projeto ou slot preserva os blocos e seus terminais.
-
-O modelo eletrico mantem os componentes originais. Contatos implicitos que atravessam a fronteira
-com breadboards sao convertidos em fios explicitos; breadboards internas de instancias diferentes
-ficam isoladas mesmo se seus layouts ocultos coincidirem. Conexoes externas dos blocos usam fios;
-encaixe automatico dos terminais compactos em breadboards ainda nao esta implementado.
-
-Primeira versao: um nivel de encapsulamento. Abra blocos existentes antes de combinar seus interiores.
-O limite atual de 64 pecas/128 fios conta os componentes internos, e a biblioteca possui oito slots.
-Falhas por capacidade preservam a montagem e exibem a causa. Os arquivos novos usam formato 16,
-com grupos/membros/portas; formatos 1-15 continuam legiveis. A migracao para IDs estaveis de tipos
-continua pendente e exigira outra versao de formato.
-
-Validacao: `./build.ps1 -GuiTests` inclui testes de packing com ngspice quando o runtime esta instalado,
-comparando DC e transiente RC antes/depois, contatos de fronteira e instancias independentes.
-O autoteste GUI possui 100 fases. `--capture-packed` gera uma cena para revisao visual.
-
-
-### Identificacao dos pinos e registro (0.20.0)
-
-Selecione uma peca para ver os rotulos dos terminais e aponte o mouse para um pino para ver seu
-nome e funcao. IN/I = entrada, OUT/O = saida, CLK/C = entrada de clock, V+/+ = alimentacao positiva,
-V- = retorno da fonte, G/GND = terra, A/K = anodo/catodo e IO/B = terminal passivo/bidirecional.
-Contatos de breadboard nao tem polaridade propria. Essas identificacoes descrevem o componente;
-nao sao leituras da tensao atual do no. O 74HC00 usa nomes/numero de pinos da ficha TI indicada em DECISOES.md.
-
-Blocos usam circulos de terminal maiores e espaco entre portas aumentado. A funcao mostrada em
-cada porta vem do componente interno ligado a ela; um terminal de resistor, por exemplo, continua
-bidirecional. Classificacao personalizada de portas pertence ao editor de chip ainda pendente.
-Ctrl+Shift+G esta rotulado como desempacotar na bancada, pois altera a montagem atual.
-O futuro editor isolado, renomeacao e instrumentos seguem os requisitos de QUALIDADE_DE_USO.md.
-
-component_registry.c concentra IDs estaveis, nomes, numero de pinos, capacidades, valor primario,
-unidades/faixas e funcao dos terminais. Os arquivos ainda usam o formato 16 com codigos numericos;
-a leitura possui um mapeamento historico independente da ordem atual do enum. Geometria, emissao
-SPICE e parametros completos de modelo ainda precisam migrar para descritores. Os limites numericos
-do parametro primario foram preservados e nao representam limites fisicos de todos os dispositivos.
-
-Build validado com a bancada antiga aberta: ./build.ps1 -OutputName bancada-next -GuiTests.
-Nesse caso, a copia testada e build/bancada-next.exe; a sessao existente nao e fechada nem substituida.
-
-
-### Interior de chips (0.21.0)
-Selecione um bloco e use **Ver interior** (Enter). O editor isolado tem bancada, simulacao e
-historico proprios. **Renomear** (F4) aceita acentos; **Salvar modelo** grava a biblioteca;
-**Aplicar ao chip** altera somente a instancia aberta e permite Ctrl+Z na bancada externa.
-**Voltar** (Esc) preserva a bancada e oferece salvar modelo, descartar ou cancelar se necessario.
-Formato 17 conserva nomes e le formatos 1-16. Limites atuais: nomes de 127 bytes UTF-8, um nivel,
-oito modelos, 64 pecas e 128 fios. Instrumentos com pontas ainda estao pendentes.
-
-
-### Grid e alinhamento (0.22.0)
-F1 abre Alinhamento e encaixe: espacamento configuravel de 1 a 10000 unidades da montagem,
-encaixe na grade e na breadboard independentes. Alt suspende encaixe durante posicionamento e
-arraste. Ocultar a grade apenas oculta linhas. Zoom muda a densidade visual, preservando snap.
-Mover selecoes e chips preserva a geometria interna. Os furos da breadboard tem prioridade para
-pecas individuais. Preferencias acompanham arquivos e slots no formato 18; leitura 1-17 mantida.
-Ainda pendentes: escala fisica ajustavel, terminais flexiveis e insercao de joelho por duplo clique.
-
-
-### Editar o caminho dos fios (0.23.0)
-Duplo clique em um trecho adiciona um joelho no ponto do caminho indicado. Arraste o joelho
-para dobrar o fio; duplo clique no joelho remove. Ctrl+Z/Ctrl+Y desfaz/refaz. A insercao respeita
-a ordem do caminho, inclusive curvas arredondadas, e conserva as conexoes eletricas. Os pontos
-acompanham salvar/carregar e chips. Limite atual de 16 joelhos por fio, com mensagem ao atingir.
-Terminais fisicos dos componentes ainda nao possuem dobra; essa parte continua pendente.
-
-
-### Tamanho dos componentes (0.24.0)
-Selecione uma peca e clique em **Tamanho** no inspetor. Informe porcentagem (1% a 10000%).
-Corpo, pinos, contato na breadboard e selecao acompanham a escala; Ctrl+Z/Ctrl+Y desfaz/refaz.
-A escala acompanha slots, arquivos, clipboard e membros de chips; edite membros no editor isolado.
-Arquivos antigos conservam tamanho original. Formato 19 acrescenta escala por componente.
-Tamanho e geometria visual: nao altera resistencia/capacitancia, modelo eletrico ou potencia nominal.
-Ao redimensionar, confira encaixes: os furos/terminais mudam de lugar; fios explicitos conservam
-identidade dos pinos. A geometria ainda nao possui unidade fisica calibrada, presets proporcionais
-por componente nem terminais dobraveis. O corpo compacto dos blocos continua com tamanho proprio.
-
-
-### Corrente sem alterar as cores dos fios (0.24.1)
-Ativar Visualizar corrente preserva as cores da montagem. Setas claras com contorno mostram o
-sentido convencional; o tamanho indica a faixa de corrente calculada. O ponto animado em DC e
-um indicador neutro, com velocidade apenas ilustrativa. Isso vale para DC e transientes.
-
-
-## Incremento 0.25.0 ? interface e catalogo
-
-F1 permite tema escuro e texto de 12 a 20 px (padrao 15). A escala dos paineis ainda e fixa.
-Use scroll sobre a biblioteca para revelar os itens adicionais; Tab alterna categorias.
-Ctrl+scroll altera o tamanho da peca selecionada; Alt+clique seleciona o corpo sem iniciar fio.
-No potenciometro, Shift+scroll ajusta o cursor e E edita a resistencia total. O botao e
-momentaneo: mantenha pressionado e solte; perder foco tambem abre o contato.
-Nos chips personalizados, Ctrl+scroll ajusta largura e Ctrl+Shift+scroll ajusta altura.
-O tamanho minimo vertical conserva espaco entre pinos; os ajustes sao salvos e desfaziveis.
-
-Catalogo: 22 tipos, incluindo NOR/XNOR e CIs 74HC08 (AND), 74HC32 (OR), 74HC86 (XOR).
-Os CIs usam modelo didatico de quatro portas alimentadas: 4.5..5.5 V, limiares de entrada
-1.5/3.5 V e resistencia de saida de 50 ohms; nao sao modelos completos do fabricante.
-Brilho do LED depende da corrente direta calculada, com curva de exibicao limitada a 20mA;
-isso nao e especificacao fotometrica nem corrente maxima permitida. Transientes conservam
-brilho por amostra. Sem resultado valido o LED permanece cinza.
-
-A analise automatica concluida sobrevive a movimentos sem breadboard quando conexoes e
-parametros continuam iguais. Mudancas eletricas ainda iniciam nova analise batch: carga de
-capacitor, corrente de indutor e memoria de flip-flop NAO sao preservadas entre essas analises.
-Os slots guardam montagens/configuracoes, nao o instante eletrico. Terminais flexiveis pendentes.
-Formato atual 22, leitura retrocompativel 1-21. Captura --capture-catalog mostra novos componentes.
-
-
-## Terminais flexiveis e contato direto (0.26.0)
-Segure Alt e arraste a bolinha do terminal para mover apenas o terminal. Alt+duplo clique
-no trajeto insere joelho; Alt+arraste move o joelho; Alt+duplo clique nele remove.
-O corpo permanece no lugar. Disponivel em LED, resistores, capacitores, indutores, fontes,
-interruptores, botoes, clocks e potenciometros; breadboard e pinos dos CIs permanecem rigidos.
-Terminais de pecas comuns coincidentes se conectam sem fio. A ponta encaixa em terminais
-proximos ao arrastar; cruzamento no meio de segmentos nao conecta. O encaixe da ponta da
-terminal e explicito mesmo com Alt pressionado (Alt suspende apenas o encaixe da grade/corpo).
-Caminhos de terminais sao dinamicos, conservados por undo/redo, clipboard, chips e slots.
-Formato 23 le versoes 1-22. Part possui geometria owned: codigo novo deve usar clone/clear.
-
-
-## Continuidade eletrica (0.27.0)
-Circuitos com capacitor, indutor, clock ou DFF agora usam automaticamente uma sessao ngspice
-persistente, isolada num processo proprio. Mover pecas sem alterar conexoes, mudar valores,
-acionar interruptores/botoes e desligar/ligar fontes conserva carga e memoria digital.
-No backend continuo, fonte desligada abre o contato de alimentacao; capacitor pode descarregar
-pela carga restante. Espaco pausa/continua; Ctrl+Espaco reinicia explicitamente o estado eletrico.
-Carregar montagem/slot ou exemplo tambem inicia estado novo; slots nao guardam instantes eletricos.
-O rodape mostra segundos simulados. Ctrl+Z desfaz montagem, nao rebobina o tempo eletrico.
-
-O grafico manual T continua sendo uma analise separada a partir do estado inicial; sua reproducao
-nao altera a sessao corrente. P retorna ao calculo automatico. Para inspecionar com T, pause primeiro
-se houver tarefa em andamento. O editor de chip possui outra sessao e preserva a memoria externa.
-Entradas digitais desconectadas sao flutuantes: botoes que devem voltar a0 precisam de pull-down.
-
-Limites: novas conexoes, remocao/adicao de pecas ou mudanca de frequencia do clock reconstroem
-a sessao e reiniciam o estado, com aviso no rodape. Migracao de estado nesses casos e pendente.
-Contatos ao vivo usam1uOhm fechados/1TOhm abertos; modelos e protecao continuam didaticos.
-Vetores do solver crescem com duracao da sessao; sao liberados ao reiniciar/fechar o contexto.
-O passo solicitado e aplicado ao iniciar o transitorio; para trocar a resolucao, reinicie o estado.
-A interface e nativa C; nao depende de Python. Distribuir tambem spice-live-host.exe junto da
-Bancada e o runtime ngspice. Capturas: --capture-live-rc, --capture-live-off e --capture-leads.
-Terminais agora compartilham tambem os cantos arredondados dos fios e a geometria de hit testing.
-
-
-## Catalogo analogico e ambiente (0.28.0)
-Biblioteca Basicos inclui diodo, NPN/PNP, LDR, flex, FSR, inclinacao, fotodiodo,
-fototransistor de luz ambiente, TMP36, umidade do solo e baterias 9 V, AA 1.5 V e moeda 3 V.
-Selecione um sensor e arraste o slider de ambiente do inspector; Shift+scroll tambem ajusta.
-Lux, angulo, forca, luz relativa, temperatura e umidade relativa alteram o modelo eletrico.
-O projeto/slot salva o controle; Ctrl+Z desfaz o ajuste. Alterar estimulos conserva a sessao
-continua. Entrada de ambiente nao depende de fio e nao e uma saida eletrica forcada.
-
-LDR/flex/FSR e umidade sao curvas genericas, nao instrumentos calibrados. TMP36 usa
-500mV + 10mV/C, alimentacao 2.7..5.5 V e limitacao aproximada de 250 uA; sem dinamica termica.
-Baterias possuem resistencia interna constante e nao esgotam por capacidade; detalhes ficam
-no inspector e em DECISOES.md. Transistores sao genericos, com pinos E/B/C identificados,
-sem prometer pinagem ou parametros de um fabricante especifico.
-A corrente de transistor usa C->E; a leitura do TMP36 usa OUT->carga.
-Formato24 le tambem versoes1..23. A lista completa solicitada e o que falta estao em
-CATALOGO_COMPONENTES.md; displays no exterior de chips, motores e instrumentos ainda pendentes.
-
-Revisao de arte: ./tools/capture-components.ps1 -Destination build/component-review/final
-produz close-ups reais de cada tipo exceto CIs repetidos, em claro/escuro; gere o resumo com
-./tools/component-contact-sheet.ps1 -Directory build/component-review/final . Referencias,
-achados e correcoes constam em REVISAO_VISUAL.md. Build/testes:
-./build.ps1 -OutputName bancada-next -GuiTests .
-
-
-### Atualizacao continua de valores e controles
-Circuitos alimentados com fonte/bateria tambem usam a sessao continua, mesmo sem capacitor
-ou clock. Ajustar potenciometro, resistencia ou ambiente recalcula sem a espera do modo em
-lote. A ultima amostra compativel permanece visivel enquanto o worker calcula a seguinte;
-leituras numericas pendentes indicam "atualizando". Resultados intermediarios compativeis
-podem aparecer durante um arraste continuo, evitando esperar que o usuario pare de ajustar.
-Mudar conexoes invalida a imagem anterior; isso nao altera o limite conhecido de reinicio
-por topologia. Pausa/manual e falhas continuam distintos de atualizacao em andamento.
-
-### Capacitor armazenando energia ao desligar
-Desligar a fonte ou abrir o interruptor com um capacitor carregado agora apaga o LED de forma
-gradual em vez de travar o calculo. Contatos ao vivo usam 1 mOhm fechado e 10 GOhm aberto.
-O tempo simulado anda cerca de 1 ms por segundo real (duracao da curva / 300 por quadro):
-um RC de 1 kOhm x 1 uF (tau ~1 ms) apaga em 1-3 s na tela; capacitores maiores apagam mais devagar.
-
-## Menus e preferencias (0.29.0)
-Cabecalho com Projetos, Exemplos e Configuracoes; biblioteca com abas e barra de rolagem.
-Configuracoes em um unico dialogo; alteracoes sao salvas automaticamente em saves/preferences.txt
-e restauradas ao abrir o app. Restaurar padroes volta aos valores iniciais. Carregar um slot
-traz montagem e configuracoes do projeto, mas mantem tema e tamanho do texto.
-Clique no Valor ou Tamanho do inspector para edita-los. Salvar/carregar: Ctrl+S/Ctrl+L (slots).
-
-## Exemplos (0.30.0)
-O botão Exemplos abre um catálogo com 15 circuitos prontos (básicos, semicondutores, sensores e
-digitais), cada um com título e descrição. Clicar carrega o exemplo (Ctrl+Z desfaz); F2 avança
-para o próximo. Todos são verificados no ngspice pela sessão contínua (tests/test_examples_live.c).
-Captura de revisão: --capture-examples e --capture-example=N.
-
-## Dispositivos, sensores e instrumentos (0.32.0)
-A biblioteca tem seis abas: Básicos, Digital, Blocos, Sensores, Saídas e Medição.
-- Saídas: lâmpada, LED RGB, display de 7 segmentos, motores (CC, vibração, com encoder), micro servo e piezo.
-- Medição: multímetro (duplo clique alterna V, A e Ω), osciloscópio (CH1/GND, histórico na tela) e
-  gerador de função (duplo clique alterna seno, quadrada e triangular; Valor = frequência).
-- Chaves: DIP de 4 vias (duplo clique na alavanca), DPST e relé 5 V com contatos NA/NF.
-- Sensores com slider de ambiente: PIR, gás, infravermelho de obstáculo e distância.
-Displays de 7 segmentos e LEDs RGB dentro de um bloco aparecem no corpo do bloco.
-Modelos são aproximações didáticas; limites no inspector e em DECISOES.md. Formato 26 (lê 1–25).
-
-## Terminais e blocos (0.33.0)
-- Pino sobre pino conecta: ao arrastar ou posicionar uma peça, um terminal a até 10 px de outro
-  terminal encaixa exatamente e forma contato elétrico, sem fio (como num furo da breadboard).
-- Nomes dos terminais: por padrão aparecem só no terminal sob o mouse; em Configurações >
-  Aparência, "Mostrar nomes dos terminais" exibe todos os da peça selecionada, sem sobreposição.
-- Corrente nos fios: bolinhas amarelas andando no sentido da corrente; a velocidade indica a faixa.
-- Blocos: o × no cartão da aba Blocos remove o bloco da biblioteca (dois cliques). O arquivo vai
-  para blocks/lixeira; blocos já colocados na bancada continuam.
-
-## Microcontroladores e LCD (0.34.0)
-- Aba Digital: Arduino Uno, ESP32 e ATtiny85 (precisa de VCC/GND externos) e LCD 16x2 I2C.
-- Duplo clique na placa (ou "Editar código" no inspector) abre o editor à direita. O programa usa
-  um subconjunto de Arduino: `int/float/bool`, vetores, funções, `if/for/while`, `pinMode`,
-  `digitalWrite/Read`, `analogRead/Write` (PWM como tensão média), `delay`, `millis`, `map`,
-  `random`, `Serial.print/println` e `LiquidCrystal_I2C lcd(0x27,16,2)` com `init/backlight/clear/
-  setCursor/print`. Digitar mostra sugestões (Tab/Enter aceita, setas escolhem, Ctrl+Espaço força).
-- Ctrl+Enter ou Executar envia o código; a placa reinicia. Erros aparecem na linha marcada em
-  vermelho e os pinos ficam em alta impedância. Ctrl+Espaço fora do editor reinicia tudo.
-- O LCD mostra texto só com GND/VCC ligados e SDA/SCL no mesmo nó dos pinos I2C da placa (Uno
-  A4/A5, ESP32 21/22). O barramento não é simulado bit a bit (ver DECISOES.md).
-- X: transparência das peças para alcançar terminais cobertos. Catálogo com peça selecionada troca
-  a peça no lugar. Blocos expõem só terminais livres ou ligados ao exterior.
+| Pasta | Conteúdo |
+|---|---|
+| `src/` | Código C. O modelo do circuito (`workbench*`, `netlist*`, `component_*`) não depende de SDL/OpenGL; a interface fica em `app_*`. |
+| `tests/` | Testes automáticos. Os que usam o ngspice rodam quando ele está instalado. |
+| `tools/` | Scripts de preparação do ngspice, capturas de tela para revisão visual e testes do runtime. |
+| `docs/` | Guia de uso, decisões técnicas, roadmap e diretrizes de qualidade. |
+
+A arquitetura e as convenções de código estão em [docs/QUALIDADE_CODIGO.md](docs/QUALIDADE_CODIGO.md), e as regras de branches e versões em [docs/VERSIONAMENTO.md](docs/VERSIONAMENTO.md). O histórico de versões fica no [CHANGELOG.md](CHANGELOG.md).
+
+### Documentação
+
+| Documento | Para quê |
+|---|---|
+| [docs/GUIA.md](docs/GUIA.md) | Guia de uso completo: montagem, simulação, chips, microcontroladores e atalhos |
+| [docs/DECISOES.md](docs/DECISOES.md) | Decisões técnicas e de modelo elétrico, com fontes e datas |
+| [docs/ROADMAP_1_0.md](docs/ROADMAP_1_0.md) | Histórico consolidado e o que falta para a 1.0 |
+| [docs/META_1_0.md](docs/META_1_0.md) | Critérios para declarar a versão 1.0 |
+| [docs/CATALOGO_COMPONENTES.md](docs/CATALOGO_COMPONENTES.md) | Componentes pedidos, implementados e pendentes |
+| [docs/QUALIDADE_CODIGO.md](docs/QUALIDADE_CODIGO.md) | Revisão de código e direção de arquitetura |
+| [docs/QUALIDADE_DE_USO.md](docs/QUALIDADE_DE_USO.md) | Critérios de usabilidade e de instrumentos |
+| [docs/LOGICA_DIGITAL.md](docs/LOGICA_DIGITAL.md) | Como a lógica digital é simulada (XSPICE) |
+| [docs/REVISAO_VISUAL.md](docs/REVISAO_VISUAL.md) | Revisão da arte dos componentes por capturas |
+| [docs/VISAO.md](docs/VISAO.md) | Visão original do produto e escopo do MVP |
+| [docs/VERSIONAMENTO.md](docs/VERSIONAMENTO.md) | Versões, branches e tags |
+| [docs/CONTINUIDADE.md](docs/CONTINUIDADE.md) | Diário de trabalho: ponto de retomada entre sessões |
+| [AGENTS.md](AGENTS.md) | Instruções para agentes de IA que trabalham no código |
+
+## Licença
+
+Ainda não há licença definida. Até que haja, o código é público para leitura, mas todos os direitos continuam reservados ao autor.

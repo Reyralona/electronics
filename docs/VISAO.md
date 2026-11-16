@@ -1,3 +1,7 @@
+# Visão do produto
+
+> **Documento original de visão** (14/11/2026): ideia, público, princípios e escopo do MVP. Serve de referência para decisões; o estado atual está no [README](../README.md).
+
 Documento de análise — simulador de elétrica e eletrônica para Windows
 
 Status: visão inicial para descoberta e planejamento

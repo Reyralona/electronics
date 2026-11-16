@@ -1,5 +1,7 @@
 # Versionamento e recuperação
 
+> **Regras de versões, branches e tags** do projeto. `VERSION` e `CHANGELOG.md` ficam na raiz do repositório.
+
 Usamos `major.medium.minor` (por exemplo, `0.2.0`): major para mudanças grandes ou incompatíveis; medium para funcionalidades; minor para correções e ajustes compatíveis. Antes de 1.0, o projeto ainda está em desenvolvimento e seus formatos e interfaces podem mudar. `VERSION` identifica a versão do código; `CHANGELOG.md` resume cada versão.
 
 `main` guarda incrementos integrados e verificados. Cada trabalho começa em uma branch `feature/nome` ou `fix/nome`, com commits pequenos. Depois de verificar, integramos a branch a `main` e criamos uma tag anotada `vMAJOR.MEDIUM.MINOR` para um ponto de retorno. Enviar branch, main e tags ao remoto preserva cópias compartilhadas. Não reescrever histórico publicado sem motivo e comunicação claros.

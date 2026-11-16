@@ -1,4 +1,6 @@
-# Catalogo solicitado e criterios de aceite
+# Catálogo solicitado e critérios de aceite
+
+> **Registro de escopo** (15/11/2026): o que foi pedido e os critérios de aceite. Contagens abaixo são da época; o estado atual está no [guia](GUIA.md) e no [CHANGELOG](../CHANGELOG.md).
 
 Pedido do responsavel em 15/11/2026. Este e um registro de escopo, nao uma lista de recursos
 concluidos. Estado atual: 22 tipos na v0.27.0. Preservar nomes/IDs, pinagem e arquivos anteriores.

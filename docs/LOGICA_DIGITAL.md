@@ -1,5 +1,7 @@
 # Integração digital: comparação e prova de conceito
 
+> **Estudo técnico** (14/11/2026): como portas lógicas, flip-flops e CIs são simulados no ngspice/XSPICE.
+
 Consulta: 14/11/2026. Esta nota separa o que foi verificado das decisões ainda abertas.
 
 ## Fatos e fontes

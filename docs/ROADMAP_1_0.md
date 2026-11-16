@@ -1,5 +1,7 @@
 # Caminho para a 1.0.0 — estado em 15/11/2026 (v0.32.0)
 
+> **Visão consolidada:** histórico desde 14/11/2026, revisão de código e pendências da 1.0 em ordem de prioridade. Mudanças posteriores à v0.32.0 estão no [CHANGELOG](../CHANGELOG.md).
+
 Documento de continuidade para quem retomar o trabalho (pessoa, Codex ou Claude). Fatos verificados
 no repositório, decisões e pendências. Detalhes de cada item: `CONTINUIDADE.md`, `DECISOES.md`,
 `META_1_0.md`, `CATALOGO_COMPONENTES.md` e `QUALIDADE_DE_USO.md`. A 1.0 **não** foi atingida.

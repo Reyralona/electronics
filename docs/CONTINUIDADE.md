@@ -1,4 +1,6 @@
-# Continuidade - 14/11/2026
+# Continuidade
+
+> **Diário de trabalho interno**, do mais antigo para o mais recente: ponto de retomada entre sessões de desenvolvimento (pessoas e agentes de IA). Entradas antigas descrevem o estado da época. Para usar o programa, veja o [README](../README.md).
 
 ## Origem e integracao
 Claude trabalhou no worktree `../electronics-claude`, branch `claude/investigar-calculo-indisponivel`.
@@ -553,3 +555,6 @@ autoteste GUI do editor, lcd_connected recalcula nos a cada operacao (otimizar s
 ganharam 100 MOhm. Chip renomeado/salvo no editor duplicava na biblioteca; agora BenchGroup.model
 (formato 28). Ver DECISOES.md. Testes "humanos" (sequencia de acoes do usuario + caso oposto):
 test_chip_library_flow.c e check_four_input_and. `./build.ps1 -GuiTests` passou.
+Repositorio publico (16/11/2026): documentos de projeto movidos para docs/ (prompt.md -> docs/VISAO.md);
+README e para quem chega de fora, docs/GUIA.md e o manual atual. Ao mudar comportamento visivel,
+atualize docs/GUIA.md (nao acumule secoes por versao no README). Nao versionar dados pessoais.
