@@ -15,3 +15,12 @@ Usamos `major.medium.minor` (por exemplo, `0.2.0`): major para mudanças grandes
 - Executáveis de teste temporários em `build/` são descartáveis. O executável a usar é sempre `build/build.exe`, gerado por `./build.ps1`. Não acumule cópias com nomes de etapa (`-OutputName` só quando o build.exe estiver aberto, e apague a cópia depois).
 
 Para consultar versões: `git tag --list` e `git log --oneline --decorate --graph --all`. Para examinar uma versão sem alterar main: `git switch --detach v0.1.0`; retorne com `git switch main`. Para desenvolver a partir de uma versão: `git switch -c fix/nome v0.1.0`. Para desfazer um commit publicado mantendo o histórico, use `git revert <commit>` após verificar suas consequências. Antes de trocar de versão, guarde ou faça commit das alterações locais.
+
+## Proteção no GitHub
+
+O repositório é público e tem dois rulesets (configurados em 16/11/2026 com `gh api .../rulesets`):
+
+- **Escrita apenas pelo dono:** em `main`, `feature/**` e `fix/**`, só administradores do repositório podem enviar, apagar ou reescrever. Outras pessoas contribuem por fork e pull request.
+- **Histórico da main protegido:** ninguém, nem o dono, pode dar force-push ou apagar a `main`. Para desfazer algo publicado, use `git revert`.
+
+Branches de agentes (`claude/**`, `codex/**`) não são protegidas e podem ser apagadas depois de integradas. Consultar: `gh api repos/Reyralona/electronics/rulesets`.
