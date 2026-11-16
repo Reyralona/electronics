@@ -18,6 +18,7 @@ void bench_part_clear(Part *part)
         free(part->terminals->paths);
         free(part->terminals);
     }
+    free(part->code);
     memset(part, 0, sizeof(*part));
 }
 
@@ -29,16 +30,23 @@ int bench_part_clone(Part *destination, const Part *source)
         return 1;
     Part copy = *source;
     copy.terminals = NULL;
+    copy.code = NULL;
+    if (source->code && !(copy.code = _strdup(source->code)))
+        return 0;
     if (source->terminals)
     {
         copy.terminals = calloc(1, sizeof(*copy.terminals));
         if (!copy.terminals)
+        {
+            free(copy.code);
             return 0;
+        }
         copy.terminals->pin_count = source->terminals->pin_count;
         copy.terminals->paths = calloc(copy.terminals->pin_count, sizeof(BenchPath));
         if (!copy.terminals->paths)
         {
             free(copy.terminals);
+            free(copy.code);
             return 0;
         }
         for (size_t i = 0; i < copy.terminals->pin_count; ++i)
@@ -281,18 +289,29 @@ int bench_parse_value(const char *text, double *value)
     return 1;
 }
 
+#define WIRE_REVERSAL_COSINE -.85f
+#define WIRE_STUB_LENGTH 14.0f
 static int wire_path_indexed(const Wire *wire, WirePoint start, WirePoint end, float radius,
                              WirePoint output[WIRE_PATH_CAPACITY], int *slots)
 {
     int i, count = 0;
+    WirePoint kept = start; /* last point actually drawn; pruned knees do not count */
     output[count++] = start;
     for (i = 0; i < wire->knee_count && i < WIRE_MAX_KNEES; ++i)
     {
-        WirePoint previous = i ? wire->knees[i - 1] : start;
+        WirePoint previous = kept;
         WirePoint corner = wire->knees[i];
         WirePoint next = i + 1 < wire->knee_count ? wire->knees[i + 1] : end;
         float before = hypotf(previous.x - corner.x, previous.y - corner.y);
         float after = hypotf(next.x - corner.x, next.y - corner.y);
+        /* A knee that doubles back over a short stub only draws a spike: skip it. */
+        float turn = before > .001f && after > .001f
+                         ? ((corner.x - previous.x) * (next.x - corner.x) + (corner.y - previous.y) * (next.y - corner.y)) /
+                               (before * after)
+                         : 0;
+        if (turn < WIRE_REVERSAL_COSINE && fminf(before, after) < WIRE_STUB_LENGTH)
+            continue;
+        kept = corner;
         float r = fminf(radius, fminf(before * .45f, after * .45f));
         if (r <= 0 || before < .001f || after < .001f)
         {
@@ -958,4 +977,20 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
                 led_on[i] = 1;
         }
     }
+}
+
+int bench_set_code(Workbench *bench, int component, const char *code)
+{
+    if (!bench || component < 0 || component >= bench->part_count || !code)
+        return 0;
+    Part *part = &bench->parts[component];
+    if (part->code && !strcmp(part->code, code))
+        return 1;
+    char *copy = _strdup(code);
+    if (!copy)
+        return 0;
+    free(part->code);
+    part->code = copy;
+    ++bench->revision;
+    return 1;
 }

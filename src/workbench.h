@@ -6,6 +6,7 @@
 #define WORKBENCH_MAX_COMPONENTS 64
 #define WORKBENCH_MAX_WIRES 128
 #define WORKBENCH_MAX_PINS 420
+#define WORKBENCH_MAX_IO 24
 #define BREADBOARD_PINS 420
 #define PART_SCALE_MIN 0.01f
 #define PART_SCALE_MAX 100.0f
@@ -72,11 +73,15 @@ typedef struct
 {
     PartType type;
     struct BenchTerminals *terminals; /* Owned; use part clone/clear, never owning assignment. */
+    char *code; /* Owned microcontroller program text (NULL = default); same ownership rules as terminals. */
     float x, y;
     int on;
     double value;
     double control; /* Potentiometer wiper position, 0..1. */
     unsigned states; /* Per-element switches (DIP bits) or instrument mode; see component_devices.h. */
+    /* Microcontroller pin drive written by the running program; runtime only, not saved or versioned. */
+    float io_level[WORKBENCH_MAX_IO];
+    unsigned char io_mode[WORKBENCH_MAX_IO];
     int rotation;
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
@@ -148,6 +153,8 @@ int bench_move_part(Workbench *bench, int component, float x, float y);
 int bench_set_on(Workbench *bench, int component, int on);
 /* Replaces the per-part state word; rejects values the component does not accept. */
 int bench_set_states(Workbench *bench, int component, unsigned states);
+/* Replaces the owned program text of a microcontroller part. */
+int bench_set_code(Workbench *bench, int component, const char *code);
 int bench_set_wire_color(Workbench *bench, int wire, int color);
 int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count);
 int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point);

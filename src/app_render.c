@@ -2624,9 +2624,10 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
     draw_workspace_boards(app);
     draw_workspace_wires(app);
     draw_workspace_route(app);
+    /* Wire tips in breadboard holes belong under the parts plugged on top of them. */
+    draw_workspace_contacts(app);
     draw_workspace_parts(app);
     draw_groups(app, font);
-    draw_workspace_contacts(app);
     draw_workspace_labels(app, font);
     draw_workspace_probe(app, font);
     draw_workspace_burns(app, font);

@@ -787,6 +787,26 @@ static void input_place_part(AppState *app, float x, float y)
         app->status = "Limite de componentes atingido.";
 }
 
+/* A terminal hidden under another part body cannot be hovered or clicked: what you see is what you hit.
+ * Breadboards are drawn first, so any part body hides their holes; parts hide those drawn before them. */
+static int terminal_covered(const Workbench *bench, int owner, float x, float y)
+{
+    const float edge_margin = 2;
+    int owner_is_board = bench->parts[owner].type == PART_BREADBOARD;
+    for (int i = bench->part_count - 1; i >= 0; --i)
+    {
+        const Part *part = &bench->parts[i];
+        if (i == owner || part->group || part->type == PART_BREADBOARD || (!owner_is_board && i < owner))
+            continue;
+        WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
+        float half_width, half_height;
+        component_body_extent(part->type, &half_width, &half_height);
+        if (fabsf(local.x) < half_width - edge_margin && fabsf(local.y) < half_height - edge_margin)
+            return 1;
+    }
+    return 0;
+}
+
 static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int i = bench->part_count - 1; i >= 0; --i)
@@ -820,7 +840,7 @@ static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom)
             {
                 float px, py;
                 bench_pin_position(&bench->parts[i], p, &px, &py);
-                if ((x - px) * (x - px) + (y - py) * (y - py) <= radius * radius)
+                if ((x - px) * (x - px) + (y - py) * (y - py) <= radius * radius && !terminal_covered(bench, i, px, py))
                 {
                     hit = i;
                     hitpin = p;
