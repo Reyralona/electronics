@@ -1,6 +1,6 @@
 # Catálogo solicitado e critérios de aceite
 
-> **Escopo e estado em 16/11/2026 (0.36.0).** As tabelas distinguem modelos presentes de critérios ainda não atendidos. O histórico dos incrementos está no fim.
+> **Escopo e estado em 16/11/2026 (0.37.0).** As tabelas distinguem modelos presentes de critérios ainda não atendidos. O histórico dos incrementos está no fim.
 
 Pedido do responsável em 15/11/2026. Há 58 tipos no registro atual, conferidos por
 `build/build.exe --list-components`. Ter uma peça no catálogo não encerra todos os critérios.

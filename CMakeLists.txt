@@ -113,6 +113,26 @@ if(BUILD_TESTING)
         src/ui_text.c
     )
     target_include_directories(test_workbench_examples PRIVATE src)
+    add_executable(test_terminal_contacts
+        tests/test_terminal_contacts.c
+        src/workbench_examples.c
+        src/workbench_pack.c
+        src/workbench_selection.c
+        src/workbench_file.c
+        src/workbench_pack_file.c
+        src/workbench_group_name.c
+        src/spice_process.c
+        src/netlist.c
+        src/netlist_devices.c
+        src/mcu_board.c
+        src/workbench.c
+        src/bench_path.c
+        src/component_registry.c
+        src/component_devices.c
+        src/ui_text.c
+    )
+    target_include_directories(test_terminal_contacts PRIVATE src)
+    add_test(NAME terminal_contacts COMMAND test_terminal_contacts)
     add_test(NAME gui COMMAND bancada --self-test-history)
     set_tests_properties(gui PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" TIMEOUT 20)
 endif()

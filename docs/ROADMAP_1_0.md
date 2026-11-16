@@ -1,6 +1,6 @@
-# Caminho para a 1.0.0 — estado em 16/11/2026 (v0.36.0)
+# Caminho para a 1.0.0 — estado em 16/11/2026 (v0.37.0)
 
-> **Visão consolidada:** recursos atuais, histórico e pendências da 1.0. Conferida com o código da v0.36.0 e o [CHANGELOG](../CHANGELOG.md).
+> **Visão consolidada:** recursos atuais, histórico e pendências da 1.0. Conferida com o código da v0.37.0 e o [CHANGELOG](../CHANGELOG.md).
 
 Documento de continuidade para quem retomar o trabalho (pessoa, Codex ou Claude). Fatos verificados
 no repositório, decisões e pendências. Detalhes de cada item: `CONTINUIDADE.md`, `DECISOES.md`,
@@ -28,6 +28,7 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 | 15–16/11 | 0.33–0.34.1 | Ajustes de contato e corrente; placas programáveis e LCD I2C; transparência; correções de entradas lógicas e da biblioteca de chips. |
 | 16/11 | 0.35.0 | Interface em português e inglês; catálogo de textos e revisão de nomes. |
 | 16/11 | 0.36.0 | CMake, ZIP portátil e instalador NSIS por usuário; dependências fixadas, fontes e hashes. Pré-release publicada no GitHub. |
+| 16/11 | 0.37.0 | Rotação de chips por R e contatos diretos entre terminais, breadboards e portas de chips. Formato 29. |
 
 ## 2. O que existe hoje
 
@@ -65,8 +66,8 @@ Dívidas encontradas, em ordem de impacto:
    Falta proteção de queima por elemento (hoje RGB/7 segmentos não "queimam").
 5. **Limites fixos**: 64 peças, 128 fios, 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
    capacidades dinâmicas.
-6. **Tipos persistidos como códigos numéricos** (formato 28); a migração para IDs textuais já foi
-   decidida e deve usar um número de formato novo, mantendo leitura 1–28.
+6. **Tipos persistidos como códigos numéricos** (formato 29); a migração para IDs textuais já foi
+   decidida e deve usar um número de formato novo, mantendo leitura 1–29.
 7. Funções ainda acima de 100 linhas: `workbench_read_project`, `input_edit_key`, `part_draw`,
    `input_zoom`, `analyze` em `spice_process.c`.
 

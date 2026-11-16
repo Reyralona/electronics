@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 0.37.0
+
+- `R` gira chips personalizados em passos de 90°. Corpo, portas, clique e fios acompanham a orientação;
+  o circuito interno permanece independente. Desfazer/refazer e salvar/reabrir conservam a rotação.
+- Contato direto entre terminais de qualquer tipo de peça, incluindo breadboards e portas de chips
+  diferentes. O encaixe usa os terminais visíveis. Separar as peças desfaz o contato, sem criar fios ocultos.
+- Chips também encaixam ao arrastar e ao colocar uma cópia da biblioteca. Terminais internos ocultos
+  continuam isolados do exterior; cada porta exposta liga ao nó real do circuito interno.
+- Formato de projeto 29. Arquivos anteriores continuam legíveis, com chips na orientação original.
+- Regressões para todos os terminais dos 58 tipos, chips em quatro orientações, persistência,
+  circuito com dois interruptores em série e fluxo gráfico de encaixar/separar/desfazer/refazer.
+
 ## 0.36.0
 
 - Build incremental com CMake/Ninja e empacotamento ZIP com CPack; `Empacotar.cmd` e

@@ -1,0 +1,158 @@
+#include "workbench_pack.h"
+#include "workbench_file.h"
+#include "component_registry.h"
+#include "netlist.h"
+#include "spice_process.h"
+#include <assert.h>
+#include <math.h>
+#include <stdio.h>
+
+/* Place every terminal of every catalog device on a switch terminal, then separate them.
+ * Both discovery directions and the actual solver node map must agree. */
+static void every_catalog_terminal(void)
+{
+    for (size_t type = 0; type < component_registry_count(); ++type)
+    {
+        const ComponentInfo *info = component_info((PartType)type);
+        if (!info)
+            continue;
+        Workbench bench = {0};
+        assert(bench_add(&bench, info->type, 500, 300) == 0);
+        assert(bench_add(&bench, PART_SWITCH, 2000, 2000) == 1);
+        for (int pin = 0; pin < info->pin_count; ++pin)
+        {
+            float x, y, sx, sy;
+            bench_terminal_position(&bench, (Pin){0, pin}, &x, &y);
+            bench_pin_position(&bench.parts[1], 0, &sx, &sy);
+            assert(bench_move_part(&bench, 1, bench.parts[1].x + x - sx, bench.parts[1].y + y - sy));
+            Pin contact;
+            assert(bench_find_contact(&bench, 0, pin, &contact) && contact.component == 1);
+            assert(bench_find_contact(&bench, 1, 0, &contact) && contact.component == 0);
+            assert(netlist_same_net(&bench, (Pin){0, pin}, (Pin){1, 0}));
+            assert(bench_move_part(&bench, 1, bench.parts[1].x + 3, bench.parts[1].y + 3));
+            assert(!bench_find_contact(&bench, 1, 0, &contact));
+            assert(!netlist_same_net(&bench, (Pin){0, pin}, (Pin){1, 0}));
+        }
+        bench_snapshot_clear(&bench);
+    }
+}
+
+static void chip_ports_and_persistence(void)
+{
+    Workbench bench = {0};
+    BenchSelection selection = {0};
+    char message[256];
+    assert(bench_add(&bench, PART_SWITCH, 500, 300) == 0);
+    selection.parts[0] = 1;
+    assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
+    assert(bench_add(&bench, PART_SWITCH, 2000, 2000) == 1);
+    for (int turn = 0; turn < 4; ++turn)
+    {
+        for (int pin = 0; pin < 2; ++pin)
+        {
+            float x, y, sx, sy;
+            bench_terminal_position(&bench, (Pin){0, pin}, &x, &y);
+            bench_pin_position(&bench.parts[1], 0, &sx, &sy);
+            assert(bench_move_part(&bench, 1, bench.parts[1].x + x - sx, bench.parts[1].y + y - sy));
+            assert(netlist_same_net(&bench, (Pin){0, pin}, (Pin){1, 0}));
+            Workbench loaded = {0};
+            FILE *file = tmpfile();
+            assert(file && workbench_write(file, &bench));
+            rewind(file);
+            assert(workbench_read(file, &loaded));
+            fclose(file);
+            assert(loaded.groups[0].rotation == turn);
+            assert(netlist_same_net(&loaded, (Pin){0, pin}, (Pin){1, 0}));
+            bench_snapshot_clear(&loaded);
+            assert(bench_move_part(&bench, 1, 2000, 2000));
+        }
+        assert(bench_rotate_part(&bench, 0));
+        assert(bench.parts[0].rotation == 0);
+    }
+    assert(bench.groups[0].rotation == 0);
+    /* Hidden internal geometry cannot become an external contact. */
+    float x, y, sx, sy;
+    bench_pin_position(&bench.parts[0], 0, &x, &y);
+    bench_pin_position(&bench.parts[1], 0, &sx, &sy);
+    assert(bench_move_part(&bench, 1, bench.parts[1].x + x - sx, bench.parts[1].y + y - sy));
+    assert(!netlist_same_net(&bench, (Pin){0, 0}, (Pin){1, 0}));
+    bench_snapshot_clear(&bench);
+}
+
+static void chip_to_chip(void)
+{
+    Workbench bench = {0};
+    char message[256];
+    assert(bench_add(&bench, PART_SWITCH, 500, 300) == 0);
+    BenchSelection selection = {0};
+    selection.parts[0] = 1;
+    assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
+    assert(bench_add(&bench, PART_SWITCH, 900, 500) == 1);
+    selection = (BenchSelection){0};
+    selection.parts[1] = 1;
+    assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
+    for (int turn = 0; turn < 4; ++turn)
+    {
+        float x, y, sx, sy;
+        bench_terminal_position(&bench, (Pin){0, 0}, &x, &y);
+        bench_terminal_position(&bench, (Pin){1, 1}, &sx, &sy);
+        bench_selection_move(&bench, &selection, x - sx, y - sy);
+        assert(netlist_same_net(&bench, (Pin){0, 0}, (Pin){1, 1}));
+        bench_selection_move(&bench, &selection, 3, 3);
+        assert(!netlist_same_net(&bench, (Pin){0, 0}, (Pin){1, 1}));
+        assert(bench_rotate_part(&bench, 0));
+    }
+    bench_snapshot_clear(&bench);
+}
+
+static void switched_chip_circuit(const char *solver)
+{
+    if (!solver)
+        return;
+    Workbench bench = {0};
+    const PartType types[] = {PART_SOURCE, PART_SWITCH, PART_SWITCH, PART_RESISTOR, PART_LED};
+    for (int i = 0; i < 5; ++i)
+        assert(bench_add(&bench, types[i], 100 + 300 * i, 300) == i);
+    assert(bench_set_on(&bench, 1, 1) && bench_set_on(&bench, 2, 1));
+    BenchSelection selection = {0};
+    selection.parts[2] = 1;
+    char message[256];
+    assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
+    assert(bench_toggle_wire(&bench, (Pin){0, 0}, (Pin){1, 0}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){2, 1}, (Pin){3, 0}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){3, 1}, (Pin){4, 0}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){4, 1}, (Pin){0, 1}) == 1);
+    for (int rotation = 0; rotation < 4; ++rotation)
+    {
+        float x, y, sx, sy;
+        bench_terminal_position(&bench, (Pin){2, 0}, &x, &y);
+        bench_terminal_position(&bench, (Pin){1, 1}, &sx, &sy);
+        assert(bench_move_part(&bench, 1, bench.parts[1].x + x - sx, bench.parts[1].y + y - sy));
+        double current, values[WORKBENCH_MAX_COMPONENTS];
+        assert(spice_dc_analyze(&bench, solver, &current, values, message, sizeof(message)));
+        assert(values[4] > .001);
+        assert(bench_set_on(&bench, 1, 0));
+        assert(spice_dc_analyze(&bench, solver, &current, values, message, sizeof(message)));
+        assert(fabs(values[4]) < 1e-6);
+        assert(bench_set_on(&bench, 1, 1));
+        assert(bench_set_on(&bench, 2, 0));
+        assert(spice_dc_analyze(&bench, solver, &current, values, message, sizeof(message)));
+        assert(fabs(values[4]) < 1e-6);
+        assert(bench_set_on(&bench, 2, 1));
+        assert(bench_move_part(&bench, 1, bench.parts[1].x + 3, bench.parts[1].y + 3));
+        assert(spice_dc_analyze(&bench, solver, &current, values, message, sizeof(message)));
+        assert(fabs(values[4]) < 1e-6);
+        assert(bench_rotate_part(&bench, 2));
+    }
+    bench_snapshot_clear(&bench);
+}
+
+int main(int argc, char **argv)
+{
+    every_catalog_terminal();
+    chip_ports_and_persistence();
+    chip_to_chip();
+    switched_chip_circuit(argc > 1 ? argv[1] : NULL);
+    puts("Every catalog terminal, chip rotation, direct contacts and save/reopen passed.");
+    return 0;
+}

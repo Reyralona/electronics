@@ -558,3 +558,24 @@ quando o português muda.
 - Textos já guardados em buffers (mensagens de status) ficam no idioma em que foram gerados até a
   próxima mensagem; nomes que o usuário digitou (chips, código) não são traduzidos.
 Pendente: números em pt-BR ainda usam ponto decimal na exibição (%g); a entrada aceita os dois.
+
+## Rotação de chips e contato universal (16/11/2026, antes da implementação)
+
+Fatos: o pacote não tem orientação própria; R é bloqueado na seleção de chips. Contatos usam
+coordenadas internas e exigem grupos iguais; por isso não unem portas visíveis de chips ao exterior.
+O encaixe da UI também exclui chips e breadboards em alguns caminhos.
+
+Comparação: girar os membros internos mudaria a montagem do editor e misturaria dois contextos.
+Guardar a orientação no pacote permite uma transformação única para corpo, portas e seleção.
+Para contatos, criar fios ocultos acumularia conexões após mover peças. Recalcular a coincidência
+dos terminais mantém o comportamento geométrico já usado pela bancada.
+
+Decisão: orientação do pacote em quartos de volta, persistida no formato 29 (anteriores usam zero).
+Dentro do mesmo chip, preservar contatos internos; entre contextos, só portas expostas usam a
+posição externa. Breadboards e peças comuns participam dos mesmos contatos. Encaixe aproxima;
+só coincidência efetiva cria ligação. Mover para longe desfaz o contato.
+
+Fonte oficial: [manual ngspice, seção 2.1](https://ngspice.sourceforge.io/docs/ngspice-manual.pdf),
+consultado em 16/11/2026: terminais conectados compartilham nós. A mudança ocorre no mapeamento da
+bancada para esses nós; não muda as equações dos dispositivos. Hipótese a validar: a mesma geometria
+serve ao desenho, clique, encaixe e netlist, sem expor os membros ocultos de outro chip.
