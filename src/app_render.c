@@ -13,6 +13,7 @@
 #include "mcu_board.h"
 #include "code_text.h"
 #include "app_code_editor.h"
+#include "ui_text.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -128,7 +129,8 @@ static void circle(float x, float y, float radius);
 static void rounded_rect(float x, float y, float w, float h, float radius);
 static const float wire_palette[WIRE_COLOR_COUNT][3] = {{.12f, .36f, .48f}, {.75f, .12f, .12f}, {.12f, .12f, .14f},
                                                         {.12f, .52f, .25f}, {.9f, .7f, .08f},   {.84f, .86f, .87f}};
-static const char *wire_color_names[WIRE_COLOR_COUNT] = {"Azul", "Vermelho", "Preto", "Verde", "Amarelo", "Branco"};
+static const TextId wire_color_names[WIRE_COLOR_COUNT] = {TXT_WIRE_COLOR_BLUE,  TXT_WIRE_COLOR_RED,    TXT_WIRE_COLOR_BLACK,
+                                                         TXT_WIRE_COLOR_GREEN, TXT_WIRE_COLOR_YELLOW, TXT_WIRE_COLOR_WHITE};
 static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
 {
     float dx = next.x - hole.x, dy = next.y - hole.y, length = hypotf(dx, dy);
@@ -3161,35 +3163,35 @@ static void draw_status(const AppState *app, GLuint font)
 static void draw_settings_appearance(const AppState *app, GLuint font)
 {
     char value[32];
-    ui_section(font, app_layout_settings_section(0, 0), "Aparência");
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_DARK_THEME), "Tema escuro", app->dark_theme);
+    ui_section(font, app_layout_settings_section(0, 0), tr(TXT_SETTINGS_APPEARANCE));
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_DARK_THEME), tr(TXT_SETTINGS_DARK_THEME), app->dark_theme);
     snprintf(value, sizeof(value), "%d px", app->gui_font_size);
     AppRect minus = app_layout_setting(APP_SETTING_FONT_SMALLER), plus = app_layout_setting(APP_SETTING_FONT_LARGER);
     ui_stepper(app, font, (AppRect){app_layout_setting(APP_SETTING_DARK_THEME).x, minus.y, 400, minus.h}, minus, plus,
-               "Tamanho do texto", value);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_SHOW_GRID), "Mostrar grade", app->show_grid);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_ROUND_WIRES), "Cantos arredondados nos fios",
+               tr(TXT_SETTINGS_TEXT_SIZE), value);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_SHOW_GRID), tr(TXT_SETTINGS_SHOW_GRID), app->show_grid);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_ROUND_WIRES), tr(TXT_SETTINGS_ROUND_WIRES),
               app->round_wires);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_HANDLES), "Mostrar joelhos dos fios", app->show_handles);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_PIN_LABELS), "Mostrar nomes dos terminais", app->show_pin_labels);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_HANDLES), tr(TXT_SETTINGS_SHOW_BENDS), app->show_handles);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_PIN_LABELS), tr(TXT_SETTINGS_SHOW_TERMINAL_NAMES), app->show_pin_labels);
 }
 
 static void draw_settings_snapping(const AppState *app, GLuint font)
 {
     char value[48];
-    ui_section(font, app_layout_settings_section(0, 7), "Grade e encaixe");
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_GRID), "Encaixar na grade", app->snap_grid);
+    ui_section(font, app_layout_settings_section(0, 7), tr(TXT_SETTINGS_GRID_AND_SNAP));
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_GRID), tr(TXT_SETTINGS_SNAP_GRID), app->snap_grid);
     snprintf(value, sizeof(value), "%.6g", app->grid_spacing);
-    ui_field(app, font, app_layout_setting(APP_SETTING_GRID_SPACING), "Espaçamento da grade", value);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_BOARD), "Encaixar na breadboard", app->snap_board);
+    ui_field(app, font, app_layout_setting(APP_SETTING_GRID_SPACING), tr(TXT_SETTINGS_GRID_SPACING), value);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_BOARD), tr(TXT_SETTINGS_SNAP_BREADBOARD), app->snap_board);
 }
 
 static void draw_settings_wires(const AppState *app, GLuint font)
 {
-    ui_section(font, app_layout_settings_section(1, 0), "Fios");
+    ui_section(font, app_layout_settings_section(1, 0), tr(TXT_SETTINGS_WIRES));
     AppRect first = app_layout_wire_swatch(0);
     color(UI_INK);
-    text(font, first.x, first.y - 8, app->selected_wire >= 0 ? "Cor do fio selecionado" : "Cor dos próximos fios");
+    text(font, first.x, first.y - 8, app->selected_wire >= 0 ? tr(TXT_SETTINGS_SELECTED_WIRE_COLOR) : tr(TXT_SETTINGS_NEW_WIRE_COLOR));
     for (int swatch = 0; swatch < WIRE_COLOR_COUNT; ++swatch)
     {
         AppRect r = app_layout_wire_swatch(swatch);
@@ -3205,26 +3207,95 @@ static void draw_settings_wires(const AppState *app, GLuint font)
     }
     color(UI_MUTED);
     AppRect last = app_layout_wire_swatch(WIRE_COLOR_COUNT - 1);
-    text(font, last.x + last.w + 12, ui_baseline(last), wire_color_names[app->wire_color]);
+    text(font, last.x + last.w + 12, ui_baseline(last), tr(wire_color_names[app->wire_color]));
     AppRect current = app_layout_setting(APP_SETTING_SHOW_CURRENT);
-    ui_toggle(app, font, current, "Mostrar corrente nos fios", app->show_current);
-    ui_note(font, current.x, current.y + current.h + 22, "Velocidade das bolinhas: 1–100 µA · até 10 mA · ≥ 10 mA", 400);
+    ui_toggle(app, font, current, tr(TXT_SETTINGS_SHOW_CURRENT), app->show_current);
+    ui_note(font, current.x, current.y + current.h + 22, tr(TXT_SETTINGS_CURRENT_SPEED), 400);
 }
 
 static void draw_settings_trace(const AppState *app, GLuint font)
 {
     char value[48];
-    ui_section(font, app_layout_settings_section(1, 5), "Gráfico transitório (T)");
-    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_MEASURE), "Grandeza medida",
-             app->probe_current ? "Corrente" : "Tensão");
-    snprintf(value, sizeof(value), "Terminal %d", app->probe_pin + 1);
-    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_PIN), "Terminal medido", value);
+    ui_section(font, app_layout_settings_section(1, 5), tr(TXT_SETTINGS_GRAPH));
+    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_MEASURE), tr(TXT_SETTINGS_MEASURE),
+             app->probe_current ? tr(TXT_QUANTITY_CURRENT) : tr(TXT_QUANTITY_VOLTAGE));
+    snprintf(value, sizeof(value), tr(TXT_TERMINAL_NUMBER), app->probe_pin + 1);
+    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_PIN), tr(TXT_SETTINGS_TERMINAL), value);
     snprintf(value, sizeof(value), "%.6g s", app->transient_step);
-    ui_field(app, font, app_layout_setting(APP_SETTING_STEP), "Passo", value);
+    ui_field(app, font, app_layout_setting(APP_SETTING_STEP), tr(TXT_SETTINGS_STEP), value);
     snprintf(value, sizeof(value), "%.6g s", app->transient_stop);
-    ui_field(app, font, app_layout_setting(APP_SETTING_STOP), "Duração", value);
+    ui_field(app, font, app_layout_setting(APP_SETTING_STOP), tr(TXT_SETTINGS_DURATION), value);
     AppRect stop = app_layout_setting(APP_SETTING_STOP);
-    ui_note(font, stop.x, stop.y + stop.h + 22, "Ao vivo, cada quadro avança duração ÷ 300.", 400);
+    ui_note(font, stop.x, stop.y + stop.h + 22, tr(TXT_SETTINGS_LIVE_FRAME), 400);
+}
+
+/* Flags keep their real colors in both themes, so they use glColor directly instead of color(). */
+#define US_STRIPES 13
+#define US_CANTON_STRIPES 7
+static void flag_us(AppRect r)
+{
+    float stripe = r.h / US_STRIPES;
+    for (int i = 0; i < US_STRIPES; ++i)
+    {
+        if (i % 2)
+            glColor3f(1, 1, 1);
+        else
+            glColor3f(.70f, .13f, .20f);
+        rect(r.x, r.y + i * stripe, r.w, stripe + .5f);
+    }
+    float canton_w = r.w * .4f, canton_h = stripe * US_CANTON_STRIPES;
+    glColor3f(.24f, .23f, .43f);
+    rect(r.x, r.y, canton_w, canton_h);
+    glColor3f(1, 1, 1);
+    for (int row = 0; row < 4; ++row)
+        for (int column = 0; column < 5; ++column)
+            circle(r.x + canton_w * (column + .5f) / 5, r.y + canton_h * (row + .5f) / 4, .9f);
+}
+
+static void flag_br(AppRect r)
+{
+    float cx = app_rect_center_x(r), cy = app_rect_center_y(r), margin = r.h * .12f;
+    glColor3f(0, .61f, .23f);
+    rect(r.x, r.y, r.w, r.h);
+    glColor3f(1, .87f, 0);
+    glBegin(GL_QUADS);
+    glVertex2f(r.x + margin * 1.4f, cy);
+    glVertex2f(cx, r.y + margin);
+    glVertex2f(r.x + r.w - margin * 1.4f, cy);
+    glVertex2f(cx, r.y + r.h - margin);
+    glEnd();
+    float radius = r.h * .27f;
+    glColor3f(0, .15f, .46f);
+    circle(cx, cy, radius);
+    glColor3f(1, 1, 1);
+    glLineWidth(1.5f);
+    line(cx - radius * .95f, cy + radius * .05f, cx + radius * .95f, cy - radius * .35f);
+    glLineWidth(1);
+}
+
+static void draw_language_flags(const AppState *app, GLuint font)
+{
+    static const AppSetting flags[UI_LANG_COUNT] = {APP_SETTING_LANGUAGE_PT_BR, APP_SETTING_LANGUAGE_EN_US};
+    for (int language = 0; language < UI_LANG_COUNT; ++language)
+    {
+        AppRect r = app_layout_setting(flags[language]);
+        if (language == (int)ui_text_language() || ui_hovered(app, r))
+        {
+            if (language == (int)ui_text_language())
+                glColor3f(UI_ACCENT);
+            else
+                color(UI_BORDER);
+            rounded_rect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 5);
+        }
+        if (language == UI_LANG_PT_BR)
+            flag_br(r);
+        else
+            flag_us(r);
+    }
+    AppRect first = app_layout_setting(flags[0]);
+    const char *label = tr(TXT_LANGUAGE);
+    color(UI_MUTED);
+    text(font, first.x - 14 - (float)app_text_utf8_width(label, 2048), ui_baseline(first), label);
 }
 
 static void draw_settings(const AppState *app, GLuint font)
@@ -3234,15 +3305,16 @@ static void draw_settings(const AppState *app, GLuint font)
     AppRect panel = app_layout_settings_panel();
     ui_panel(panel);
     color(UI_INK);
-    text(font, panel.x + 30, panel.y + 42, "Configurações");
+    text(font, panel.x + 30, panel.y + 42, tr(TXT_SETTINGS_TITLE));
     ui_close_button(app, app_layout_setting(APP_SETTING_CLOSE));
+    draw_language_flags(app, font);
     draw_settings_appearance(app, font);
     draw_settings_snapping(app, font);
     draw_settings_wires(app, font);
     draw_settings_trace(app, font);
     AppRect reset = app_layout_setting(APP_SETTING_RESET);
-    ui_note(font, panel.x + 30, ui_baseline(reset), "Alterações são salvas automaticamente.", 500);
-    ui_button(app, font, reset, "Restaurar padrões", UI_BUTTON_NEUTRAL);
+    ui_note(font, panel.x + 30, ui_baseline(reset), tr(TXT_SETTINGS_AUTOSAVE), 500);
+    ui_button(app, font, reset, tr(TXT_SETTINGS_RESTORE_DEFAULTS), UI_BUTTON_NEUTRAL);
 }
 
 static const char *value_editor_title(int editing)

@@ -13,6 +13,7 @@
 #include "app_code_editor.h"
 #include "component_devices.h"
 #include "app_settings.h"
+#include "ui_text.h"
 #include "app_palette.h"
 #include "workbench_file.h"
 #include "workbench_examples.h"
@@ -429,6 +430,14 @@ static void cycle_probe_pin(AppState *app)
     app->probe_pin = (app->probe_pin + 1) % (quad ? quad_gate_pins : default_pins);
 }
 
+/* The whole interface switches at once; texts already on screen are rebuilt from their ids next frame. */
+static void choose_language(AppState *app, UiLanguage language)
+{
+    ui_text_set_language(language);
+    app_packing_refresh(app);
+    app->status = tr(language == UI_LANG_PT_BR ? TXT_LANGUAGE_NAME_PT_BR : TXT_LANGUAGE_NAME_EN_US);
+}
+
 static void input_settings(AppState *app, SDL_Window *window, float x, float y)
 {
     int swatch = app_layout_wire_swatch_at(x, y);
@@ -486,9 +495,15 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     case APP_SETTING_STOP:
         start_settings_edit(app, window, APP_EDIT_STOP, app->transient_stop);
         break;
+    case APP_SETTING_LANGUAGE_PT_BR:
+        choose_language(app, UI_LANG_PT_BR);
+        break;
+    case APP_SETTING_LANGUAGE_EN_US:
+        choose_language(app, UI_LANG_EN_US);
+        break;
     case APP_SETTING_RESET:
         app_settings_reset(app);
-        app->status = "Configurações restauradas para o padrão.";
+        app->status = tr(TXT_SETTINGS_RESTORED);
         break;
     case APP_SETTING_CLOSE:
         app->settings = 0;

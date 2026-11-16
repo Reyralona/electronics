@@ -1,5 +1,6 @@
 #include "app_settings.h"
 #include "app_preferences.h"
+#include "ui_text.h"
 #include <direct.h>
 #include <errno.h>
 
@@ -21,6 +22,7 @@ WorkbenchSettings app_settings_capture(const AppState *app)
     settings.dark_theme = app->dark_theme;
     settings.gui_font_size = app->gui_font_size;
     settings.show_pin_labels = app->show_pin_labels;
+    settings.language = ui_text_language();
     return settings;
 }
 
@@ -46,12 +48,24 @@ void app_settings_apply_all(AppState *app, const WorkbenchSettings *settings)
     app->dark_theme = settings->dark_theme;
     app->gui_font_size = settings->gui_font_size;
     app->show_pin_labels = settings->show_pin_labels;
+    ui_text_set_language((UiLanguage)settings->language);
 }
 
 void app_settings_reset(AppState *app)
 {
     WorkbenchSettings defaults = workbench_settings_default();
+    defaults.language = ui_text_language(); /* Restoring defaults must not switch the language under the reader. */
     app_settings_apply_all(app, &defaults);
+}
+
+/* First run: the first preferred locale of the system picks the language. */
+UiLanguage app_settings_system_language(void)
+{
+    int count = 0;
+    SDL_Locale **locales = SDL_GetPreferredLocales(&count);
+    UiLanguage language = ui_text_language_for_locale(locales && count > 0 ? locales[0]->language : NULL);
+    SDL_free(locales);
+    return language;
 }
 
 #define PREFERENCES_DIRECTORY "saves"
@@ -62,6 +76,8 @@ void app_settings_load_preferences(AppState *app)
     WorkbenchSettings settings = app_settings_capture(app);
     if (app_preferences_load(PREFERENCES_PATH, &settings))
         app_settings_apply_all(app, &settings);
+    else
+        ui_text_set_language(app_settings_system_language());
     app->preferences_saved = app_settings_capture(app);
     app->preferences_enabled = 1;
 }
@@ -77,5 +93,5 @@ void app_settings_autosave(AppState *app)
     app->preferences_saved = current;
     if ((_mkdir(PREFERENCES_DIRECTORY) != 0 && errno != EEXIST) ||
         !app_preferences_save(PREFERENCES_PATH, &current))
-        app->status = "Não foi possível salvar as preferências; a sessão continua com os valores atuais.";
+        app->status = tr(TXT_PREFERENCES_SAVE_FAILED);
 }
