@@ -6,6 +6,12 @@ Usamos `major.medium.minor` (por exemplo, `0.2.0`): major para mudanças grandes
 
 `main` guarda incrementos integrados e verificados. Cada trabalho começa em uma branch `feature/nome` ou `fix/nome`, com commits pequenos. Depois de verificar, integramos a branch a `main` e criamos uma tag anotada `vMAJOR.MEDIUM.MINOR` para um ponto de retorno. Enviar branch, main e tags ao remoto preserva cópias compartilhadas. Não reescrever histórico publicado sem motivo e comunicação claros.
 
+A partir de 0.36.0, cada versão distribuída também tem uma GitHub Release com instalador Windows,
+ZIP portátil, fontes correspondentes e hashes. Depois de enviar a tag, executar
+`./tools/publish-release.ps1 -Tag vMAJOR.MEDIUM.MINOR` com os artefatos testados em `build/dist`.
+Por enquanto são pré-releases experimentais, sem assinatura digital. O fluxo de validação e publicação
+está em [DISTRIBUICAO_WINDOWS.md](DISTRIBUICAO_WINDOWS.md); o envio de tags ainda não publica sozinho.
+
 ## Vida curta das branches
 
 - Uma branch existe só enquanto seu trabalho não foi integrado. Logo após integrá-la a `main` e criar a tag, apague-a localmente e no remoto (`git branch -d nome`; `git push origin --delete nome`). A tag preserva o ponto de retorno.

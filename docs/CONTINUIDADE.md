@@ -598,3 +598,14 @@ Artefatos em build/dist, com build-info.json identificando commit/ferramentas e 
 Não assinados; sem publicação de release. Faltam VM limpa Windows 10/11, assinatura e teste de
 atualização entre versões publicadas. MAX_PATH e caminhos fora da página de código permanecem
 limites conhecidos. Meta 1.0 continua não atendida.
+
+## Publicação por versão - 16/11/2026
+Usuário autorizou GitHub Releases para cada versão. Publicada v0.36.0 como pré-release, com
+instalador, portátil, fontes e SHA256SUMS; nomes, tamanhos e digests remotos conferidos.
+tools/publish-release.ps1 valida hashes, versão, ancestralidade e código contra a tag antes do upload;
+publica somente após conferir os quatro arquivos. -ResumeDraft recupera rascunho já enviado;
+releases públicas não são sobrescritas. Script com BOM UTF-8 para Windows PowerShell 5.1.
+Drafts precisam ser localizados pela CLI e consultados por ID: endpoint releases/tags não expõe
+rascunhos. README aponta para releases; VERSIONAMENTO passa a incluir a publicação explícita.
+Não há workflow automático por tag. Não fabricar binários históricos sem teste; próxima versão
+segue build/testes, integração/tag e publish-release. Sem assinatura digital ou validação em VM.

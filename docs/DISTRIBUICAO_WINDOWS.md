@@ -85,5 +85,29 @@ do processo. O host usa esse comportamento no layout canônico do bundle, evitan
 Instalações alternativas do runtime mantêm o caminho anterior; não misturar runtimes no bundle.
 
 Pendentes antes de uma distribuição estável: VM limpa Windows 10/11, assinatura Authenticode,
-pipeline de publicação e teste de atualização entre duas versões publicadas. Não desligar Defender,
-SmartScreen ou outras proteções para executar o programa. Esta etapa não publica release no GitHub.
+pipeline automático por tag e teste de atualização entre duas versões publicadas. Não desligar Defender,
+SmartScreen ou outras proteções para executar o programa.
+
+## Publicar cada versão
+
+A partir de 0.36.0, cada versão distribuída tem uma GitHub Release com instalador, ZIP portátil,
+fontes correspondentes e SHA256SUMS. Versões antigas não ganham binários reconstruídos sem validação.
+Enquanto os critérios de distribuição estável estiverem pendentes, publicar como pré-release.
+
+Após compilar e testar, integrar a main e enviar a tag anotada ao remoto. Com GitHub CLI autenticado:
+
+```powershell
+./tools/publish-release.ps1 -Tag v0.36.0
+```
+
+O comando verifica os três hashes, a versão dentro do ZIP, a ancestralidade do commit compilado e
+a ausência de mudanças no código/empacotamento entre o build e a tag. Cria um rascunho, envia os quatro
+arquivos, confere tamanho e digest SHA256 fornecido pelo GitHub e publica como pré-release. Não substitui
+arquivos de releases já publicadas. A opção `-ResumeDraft` retoma somente um rascunho existente com
+os mesmos arquivos, inclusive após uma falha de rede. Se o upload ficou incompleto, completar os
+arquivos no rascunho antes de retomar; não tornar público um conjunto parcial.
+
+Este comando é uma etapa explícita por versão; ainda não há workflow automático ao enviar tags.
+Notas são geradas do CHANGELOG da própria tag. Usar os artefatos aprovados pelos testes completos;
+não publicar resultados de `-SkipTests`. Fonte oficial da operação:
+[GitHub CLI release create](https://cli.github.com/manual/gh_release_create), consultada em 16/11/2026.
