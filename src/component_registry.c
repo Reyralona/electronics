@@ -40,7 +40,7 @@ static const ComponentPinInfo pins_seven[] = {{"a", PIN_ANODE}, {"b", PIN_ANODE}
 static const ComponentPinInfo pins_dip[] = {{"1", PIN_CONTACT}, {"2", PIN_CONTACT}, {"3", PIN_CONTACT}, {"4", PIN_CONTACT},
                                             {"1'", PIN_CONTACT}, {"2'", PIN_CONTACT}, {"3'", PIN_CONTACT}, {"4'", PIN_CONTACT}};
 static const ComponentPinInfo pins_dpst[] = {{"1A", PIN_CONTACT}, {"1B", PIN_CONTACT}, {"2A", PIN_CONTACT}, {"2B", PIN_CONTACT}};
-static const ComponentPinInfo pins_relay[] = {{"Bobina+", PIN_PASSIVE}, {"Bobina-", PIN_PASSIVE}, {"COM", PIN_CONTACT},
+static const ComponentPinInfo pins_relay[] = {{"B+", PIN_PASSIVE}, {"B-", PIN_PASSIVE}, {"COM", PIN_CONTACT},
                                               {"NA", PIN_CONTACT}, {"NF", PIN_CONTACT}};
 static const ComponentPinInfo pins_motor[] = {{"M+", PIN_PASSIVE}, {"M-", PIN_PASSIVE}};
 static const ComponentPinInfo pins_encoder[] = {{"M+", PIN_PASSIVE}, {"M-", PIN_PASSIVE}, {"VCC", PIN_SUPPLY_POSITIVE},

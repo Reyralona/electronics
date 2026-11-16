@@ -93,45 +93,36 @@ static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
     circle(hole.x, hole.y, 2.5f);
     glLineWidth(1);
 }
+/* Current flow: small yellow dots spaced along the wire path, moving in the current direction.
+ * Speed grows with the measured current range (level 1..3); dots stay still while paused. */
+#define FLOW_DOT_SPACING 26.0f
+#define FLOW_DOT_RADIUS 2.6f
+static int flow_running;
+
 static void wire_direction_marker(const WirePoint *path, int count, int reverse, int level)
 {
-    float total = 0, position;
-    int i;
-    for (i = 1; i < count; ++i)
+    const float speed_per_ms[4] = {0, .02f, .05f, .10f};
+    float total = 0;
+    for (int i = 1; i < count; ++i)
         total += hypotf(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
-    position = total * .5f;
-    for (i = 1; i < count; ++i)
+    if (total <= 0 || level < 1 || level > 3)
+        return;
+    float phase = flow_running ? fmodf((float)SDL_GetTicks() * speed_per_ms[level], FLOW_DOT_SPACING) : 0;
+    if (reverse)
+        phase = FLOW_DOT_SPACING - phase;
+    float travelled = 0;
+    glColor3f(1, .82f, .12f);
+    for (int i = 1; i < count; ++i)
     {
-        float dx = path[i].x - path[i - 1].x, dy = path[i].y - path[i - 1].y, len = hypotf(dx, dy);
-        if (len > 0 && position <= len)
-        {
-            float x = path[i - 1].x + dx * position / len, y = path[i - 1].y + dy * position / len, ux = dx / len,
-                  uy = dy / len;
-            if (reverse)
-            {
-                ux = -ux;
-                uy = -uy;
-            }
-            float size = 5 + 2 * level;
-            float half_width = 2 + level;
-            for (int pass = 0; pass < 2; ++pass)
-            {
-                float border = pass == 0 ? 2 : 0;
-                if (pass == 0)
-                    color(.12f, .16f, .19f);
-                else
-                    color(.98f, .98f, .94f);
-                glBegin(GL_TRIANGLES);
-                glVertex2f(x + ux * (size + border), y + uy * (size + border));
-                glVertex2f(x - ux * (size * .7f + border) - uy * (half_width + border),
-                          y - uy * (size * .7f + border) + ux * (half_width + border));
-                glVertex2f(x - ux * (size * .7f + border) + uy * (half_width + border),
-                          y - uy * (size * .7f + border) - ux * (half_width + border));
-                glEnd();
-            }
-            return;
-        }
-        position -= len;
+        float dx = path[i].x - path[i - 1].x, dy = path[i].y - path[i - 1].y, length = hypotf(dx, dy);
+        if (length <= 0)
+            continue;
+        float first = fmodf(phase - travelled, FLOW_DOT_SPACING);
+        if (first < 0)
+            first += FLOW_DOT_SPACING;
+        for (float s = first; s < length; s += FLOW_DOT_SPACING)
+            circle(path[i - 1].x + dx * s / length, path[i - 1].y + dy * s / length, FLOW_DOT_RADIUS + .4f * level);
+        travelled += length;
     }
 }
 static void circle(float x, float y, float radius)
@@ -2052,39 +2043,11 @@ static void draw_wire_trace_current(const AppState *app, int i, const WirePoint 
 
 static void draw_wire_dc_current(const AppState *app, int i, const WirePoint *path, int count)
 {
-    int k;
-    if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_DC) && app->sim.dc_wire_valid &&
-        spice_wire_current_level(app->sim.dc_wire_currents[i]) > 0)
-    {
-        float total = 0, position;
-        int segment;
-        wire_direction_marker(path, count, app->sim.dc_wire_currents[i] < 0,
-                              spice_wire_current_level(app->sim.dc_wire_currents[i]));
-        for (k = 1; k < count; ++k)
-            total += hypotf(path[k].x - path[k - 1].x, path[k].y - path[k - 1].y);
-        if (total > 0)
-        {
-            position = app->sim.sim_running ? fmodf((float)SDL_GetTicks() * .08f, total) : 0.0f;
-            if (app->sim.dc_wire_currents[i] < 0)
-                position = total - position;
-            for (segment = 1; segment < count; ++segment)
-            {
-                float dx = path[segment].x - path[segment - 1].x, dy = path[segment].y - path[segment - 1].y,
-                      length = hypotf(dx, dy);
-                if (length > 0 && position <= length)
-                {
-                    float marker_x = path[segment - 1].x + dx * position / length;
-                    float marker_y = path[segment - 1].y + dy * position / length;
-                    color(.12f, .16f, .19f);
-                    circle(marker_x, marker_y, 5);
-                    color(.98f, .98f, .94f);
-                    circle(marker_x, marker_y, 3);
-                    break;
-                }
-                position -= length;
-            }
-        }
-    }
+    if (!app->show_current || !sim_state_has_result(&app->sim, SIM_RESULT_DC) || !app->sim.dc_wire_valid)
+        return;
+    int level = spice_wire_current_level(app->sim.dc_wire_currents[i]);
+    if (level > 0)
+        wire_direction_marker(path, count, app->sim.dc_wire_currents[i] < 0, level);
 }
 
 static void draw_workspace_wires(const AppState *app)
@@ -2293,6 +2256,137 @@ static char pin_role_symbol(ComponentPinRole role)
     return (unsigned)role < sizeof(symbols) / sizeof(symbols[0]) ? symbols[role] : '?';
 }
 
+/* Terminal labels are laid out in screen space: each goes outward from the body and, when it would
+ * collide with a label already placed, moves one lane further out with a leader line to its pin. */
+#define PIN_LABEL_MAX 16
+#define PIN_LABEL_GAP 3.0f
+#define PIN_LABEL_LANES 10
+
+typedef struct
+{
+    float x, y, w, h;
+} LabelBox;
+
+typedef struct
+{
+    int pin;
+    float sx, sy;
+    int vertical, outward;
+    char text[40];
+} PinLabel;
+
+static int label_boxes_overlap(LabelBox a, LabelBox b)
+{
+    return a.x < b.x + b.w + PIN_LABEL_GAP && b.x < a.x + a.w + PIN_LABEL_GAP && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
+}
+
+static int label_box_free(LabelBox box, const LabelBox *placed, int count)
+{
+    for (int i = 0; i < count; ++i)
+        if (label_boxes_overlap(box, placed[i]))
+            return 0;
+    return 1;
+}
+
+static LabelBox place_pin_label(GLuint font, const PinLabel *label, const LabelBox *placed, int count)
+{
+    float w = (float)ui_text_width(font, label->text) + 6, h = (float)ui_font_pixels + 4, step = h + 1;
+    LabelBox box = {0, 0, w, h};
+    for (int lane = 0; lane < PIN_LABEL_LANES; ++lane)
+    {
+        if (label->vertical)
+        {
+            box.x = label->sx - w / 2;
+            box.y = label->outward > 0 ? label->sy + 8 + lane * step : label->sy - 8 - h - lane * step;
+        }
+        else
+        {
+            box.x = label->outward > 0 ? label->sx + 8 : label->sx - 8 - w;
+            box.y = label->sy - h - 4 + lane * step;
+        }
+        if (label_box_free(box, placed, count))
+            break;
+    }
+    return box;
+}
+
+static int compare_pin_labels(const void *left, const void *right)
+{
+    const PinLabel *a = left, *b = right;
+    if (a->vertical != b->vertical || a->outward != b->outward)
+        return a->vertical * 2 + a->outward - (b->vertical * 2 + b->outward);
+    float ka = a->vertical ? a->sx : a->sy, kb = b->vertical ? b->sx : b->sy;
+    return (ka > kb) - (ka < kb);
+}
+
+static int collect_pin_labels(const AppState *app, const Part *part, PinLabel *labels)
+{
+    float cx, cy;
+    bench_view_to_screen(&app->view, part->x, part->y, &cx, &cy);
+    int count = 0;
+    for (int pin = 0; pin < bench_pin_count(part->type) && count < PIN_LABEL_MAX; ++pin, ++count)
+    {
+        const ComponentPinInfo *info = component_pin_info(part->type, pin);
+        const char *marker = component_pin_marker(info->role);
+        PinLabel *label = &labels[count];
+        float x, y;
+        bench_pin_position(part, pin, &x, &y);
+        bench_view_to_screen(&app->view, x, y, &label->sx, &label->sy);
+        float dx = label->sx - cx, dy = label->sy - cy;
+        label->pin = pin;
+        label->vertical = fabsf(dy) > fabsf(dx);
+        label->outward = (label->vertical ? dy : dx) >= 0 ? 1 : -1;
+        /* Contacts and passive terminals show only the name; the hover help states the function. */
+        int terse = !strcmp(info->name, marker) || info->role == PIN_CONTACT || info->role == PIN_PASSIVE;
+        if (terse)
+            snprintf(label->text, sizeof(label->text), "%s", info->name);
+        else
+            snprintf(label->text, sizeof(label->text), "%s %s", info->name, marker);
+    }
+    qsort(labels, (size_t)count, sizeof(labels[0]), compare_pin_labels);
+    return count;
+}
+
+static void draw_pin_leader(const Part *part, const PinLabel *label, LabelBox box)
+{
+    float anchor_x = fmaxf(box.x, fminf(box.x + box.w, label->sx));
+    float anchor_y = label->vertical ? (label->outward > 0 ? box.y : box.y + box.h) : box.y + box.h;
+    pin_role_color(component_pin_info(part->type, label->pin)->role);
+    line(label->sx, label->sy, anchor_x, anchor_y);
+}
+
+static void draw_pin_label(GLuint font, const Part *part, const PinLabel *label, LabelBox box)
+{
+    const ComponentPinInfo *info = component_pin_info(part->type, label->pin);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    if (dark_interface)
+        glColor4f(.07f, .10f, .14f, .82f);
+    else
+        glColor4f(.97f, .98f, .99f, .86f);
+    rounded_rect(box.x, box.y, box.w, box.h, 4);
+    glDisable(GL_BLEND);
+    pin_role_color(info->role);
+    text(font, box.x + 3, box.y + box.h - 4, label->text);
+}
+
+static void draw_pin_name_labels(const AppState *app, GLuint font, const Part *part)
+{
+    PinLabel labels[PIN_LABEL_MAX];
+    LabelBox placed[PIN_LABEL_MAX];
+    int count = collect_pin_labels(app, part, labels);
+    glPushMatrix();
+    glLoadIdentity();
+    for (int i = 0; i < count; ++i)
+        placed[i] = place_pin_label(font, &labels[i], placed, i);
+    /* Leaders first, labels on top: a leader never crosses another label text. */
+    for (int i = 0; i < count; ++i)
+        draw_pin_leader(part, &labels[i], placed[i]);
+    for (int i = 0; i < count; ++i)
+        draw_pin_label(font, part, &labels[i], placed[i]);
+    glPopMatrix();
+}
+
 static void draw_selected_pin_labels(const AppState *app, GLuint font)
 {
     if (app->selected < 0)
@@ -2300,47 +2394,23 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
     const Part *part = &app->bench.parts[app->selected];
     if (part->group || part->type == PART_BREADBOARD)
         return;
+    if (!component_has_flag(part->type, COMPONENT_QUAD_GATE))
+    {
+        draw_pin_name_labels(app, font, part);
+        return;
+    }
+    /* 14-pin ICs: one role symbol per pin fits the 14-unit pitch; names are in the hover help. */
     for (int pin = 0; pin < bench_pin_count(part->type); ++pin)
     {
         const ComponentPinInfo *info = component_pin_info(part->type, pin);
+        char label[] = {pin_role_symbol(info->role), 0};
         float x, y;
         bench_pin_position(part, pin, &x, &y);
         pin_role_color(info->role);
-        if (component_has_flag(part->type, COMPONENT_QUAD_GATE))
-        {
-            char label[] = {pin_role_symbol(info->role), 0};
-            if (part->rotation % 2)
-                world_text(font, x + (x < part->x ? -16 : 10) / app->view.zoom, y + 5 / app->view.zoom, label, app->view.zoom);
-            else
-                text(font, x - 4, y + (y < part->y ? -9 : 20), label);
-        }
+        if (part->rotation % 2)
+            world_text(font, x + (x < part->x ? -16 : 10) / app->view.zoom, y + 5 / app->view.zoom, label, app->view.zoom);
         else
-        {
-            char label[40];
-            const char *marker = component_pin_marker(info->role);
-            if (!strcmp(info->name, marker))
-                snprintf(label, sizeof(label), "%s", info->name);
-            else
-                snprintf(label, sizeof(label), "%s %s", info->name, marker);
-            if (component_radial_pins(part->type))
-            {
-                int pins = bench_pin_count(part->type);
-                float offset = pin == 0 ? -36 : pin == pins - 1 ? 8 : -12;
-                line(x, y, x + (pin == 0 ? -6 : pin == pins - 1 ? 6 : 0) / app->view.zoom,
-                     y + 8 / app->view.zoom);
-                world_text(font, x + offset / app->view.zoom, y + 23 / app->view.zoom, label, app->view.zoom);
-            }
-            else if (bench_part_scale(part) < .5f && bench_pin_count(part->type) == 2)
-            {
-                float label_x = x + (pin ? 8 : -40) / app->view.zoom;
-                float label_y = y + (pin ? 24 : -14) / app->view.zoom;
-                line(x, y, x + (pin ? 6 : -6) / app->view.zoom,
-                     y + (pin ? 14 : -8) / app->view.zoom);
-                world_text(font, label_x, label_y, label, app->view.zoom);
-            }
-            else
-                world_text(font, x + 8 / app->view.zoom, y - 10 / app->view.zoom, label, app->view.zoom);
-        }
+            text(font, x - 4, y + (y < part->y ? -9 : 20), label);
     }
 }
 
@@ -2823,7 +2893,7 @@ static void draw_settings_wires(const AppState *app, GLuint font)
     text(font, last.x + last.w + 12, ui_baseline(last), wire_color_names[app->wire_color]);
     AppRect current = app_layout_setting(APP_SETTING_SHOW_CURRENT);
     ui_toggle(app, font, current, "Mostrar corrente nos fios", app->show_current);
-    ui_note(font, current.x, current.y + current.h + 22, "Tamanho da seta: 1–100 µA · até 10 mA · ≥ 10 mA", 400);
+    ui_note(font, current.x, current.y + current.h + 22, "Velocidade das bolinhas: 1–100 µA · até 10 mA · ≥ 10 mA", 400);
 }
 
 static void draw_settings_trace(const AppState *app, GLuint font)
@@ -3063,6 +3133,7 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     dark_interface = app->dark_theme;
     drawing_scale = app->view.zoom;
     lead_corner_radius = app->round_wires ? 18 : 0;
+    flow_running = app->sim.sim_running;
     interface_layer = 1;
     draw_chrome(app, font, width, height);
     interface_layer = 0;
