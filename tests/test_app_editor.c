@@ -75,6 +75,9 @@ int main(void)
         remove(path);
     }
     assert(app_editor_save(child) && !app_editor_dirty(child));
+    /* Saving links the outer instance to its library entry; the circuit itself is untouched. */
+    assert(root.bench.groups[0].model && root.bench.groups[0].model == child->editor_model);
+    before.groups[0].model = root.bench.groups[0].model;
     assert(!memcmp(&before, &root.bench, sizeof(before)));
     assert(app_editor_apply(child));
     assert(app_editor_route(child) == &root);

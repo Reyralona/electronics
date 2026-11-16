@@ -23,17 +23,65 @@ void app_packing_refresh(AppState *app)
         struct _stat metadata;
         app->library_available[i] = _stat(path, &metadata) == 0 || errno != ENOENT;
         snprintf(app->library_names[i], sizeof(app->library_names[i]), "Bloco %d", i + 1);
+        app->library_models[i] = 0;
         if (app->library_available[i])
         {
             Workbench candidate BENCH_AUTO_CLEAR = {0};
             WorkbenchSettings settings;
             if (workbench_load_project(path, &candidate, &settings) && candidate.part_count && candidate.parts[0].group)
-                memcpy(app->library_names[i], candidate.groups[candidate.parts[0].group - 1].name,
-                       sizeof(app->library_names[i]));
+            {
+                const BenchGroup *group = &candidate.groups[candidate.parts[0].group - 1];
+                memcpy(app->library_names[i], group->name, sizeof(app->library_names[i]));
+                app->library_models[i] = group->model;
+            }
             else
                 strcpy(app->library_names[i], "Arquivo indisponivel");
         }
     }
+}
+
+static int model_listed(const AppState *app, uint64_t model)
+{
+    for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
+        if (app->library_available[i] && app->library_models[i] == model)
+            return 1;
+    return 0;
+}
+
+uint64_t app_packing_new_model(AppState *app)
+{
+    static uint64_t sequence;
+    app_packing_refresh(app);
+    uint64_t model;
+    do
+        model = ((uint64_t)time(NULL) << 16) + (++sequence & 0xffff);
+    while (!model || model_listed(app, model));
+    return model;
+}
+
+/* Legacy chips (no identity) match a listed block only by a name no other block shares. */
+static int unique_name_slot(const AppState *app, const char *name)
+{
+    int found = -1;
+    for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
+        if (app->library_available[i] && !strcmp(app->library_names[i], name))
+        {
+            if (found >= 0)
+                return -1;
+            found = i;
+        }
+    return found;
+}
+
+int app_packing_model_slot(AppState *app, uint64_t model, const char *legacy_name)
+{
+    app_packing_refresh(app);
+    if (!model)
+        return legacy_name ? unique_name_slot(app, legacy_name) : -1;
+    for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
+        if (app->library_available[i] && app->library_models[i] == model)
+            return i;
+    return -1;
 }
 
 int app_packing_store_model(AppState *app, const Workbench *model, int *slot)
@@ -100,12 +148,16 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
             app->status = "Selecione um bloco para desempacotar.";
         return 1;
     }
-    if (!bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status)))
+    int group = bench_pack_selection(&app->bench, &app->selection, app->selection_status,
+                                     sizeof(app->selection_status));
+    if (!group)
     {
         app->status = app->selection_status;
         return 1;
     }
     bench_history_record(app->history, &before);
+    /* The new instance and its library entry share an identity, so editing it later updates that entry. */
+    app->bench.groups[group - 1].model = app_packing_new_model(app);
     int stored = store_block(app);
     if (stored < 0)
         app->status = app->selection_status;

@@ -32,7 +32,6 @@ void app_state_init(AppState *app)
     app->view = (BenchView){1, 0, 0};
     app->editing = -1;
     app->name_target_group = -1;
-    app->editor_library_slot = -1;
     app->library_delete_armed = -1;
     app->code_part = -1;
     app->mcu = mcu_runtime_create();

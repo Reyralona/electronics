@@ -69,7 +69,9 @@ typedef struct AppState
     char library_names[BLOCK_LIBRARY_SLOTS][BENCH_GROUP_NAME_CAPACITY];
     struct AppState *editor_parent, *editor_child;
     int editor_open_requested, editor_close_requested, editor_quit_requested, editor_confirm_close;
-    int editor_group, editor_library_slot;
+    uint64_t library_models[BLOCK_LIBRARY_SLOTS]; /* Model identity of each listed block (0 = legacy file). */
+    int editor_group;
+    uint64_t editor_model; /* Library model this editor saves into; 0 until known. */
     uint64_t editor_parent_revision, editor_initial_revision, editor_saved_revision, editor_opened_at;
     char editor_name[BENCH_GROUP_NAME_CAPACITY];
     char editor_initial_name[BENCH_GROUP_NAME_CAPACITY], editor_saved_name[BENCH_GROUP_NAME_CAPACITY];

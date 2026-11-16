@@ -1,5 +1,6 @@
 #include "workbench_pack_file.h"
 #include "workbench_group_name.h"
+#include <inttypes.h>
 #include <math.h>
 #include <string.h>
 #define PROJECT_COORDINATE_LIMIT 100000.0f
@@ -17,7 +18,8 @@ static int write_group(FILE *file, int index, const BenchGroup *group)
     if (!bench_group_name_valid(name))
         return 0;
     size_t length = strlen(name);
-    return fprintf(file, "group %d %.9g %.9g %.9g %.9g %zu\n", index + 1, group->x, group->y, group->width, group->height, length) >= 0 &&
+    return fprintf(file, "group %d %.9g %.9g %.9g %.9g %" PRIu64 " %zu\n", index + 1, group->x, group->y,
+                   group->width, group->height, group->model, length) >= 0 &&
            fwrite(name, 1, length, file) == length && fputc('\n', file) != EOF;
 }
 
@@ -115,6 +117,8 @@ static int read_groups(FILE *file, Workbench *bench, int version)
                 (group->height != 0 && (group->height < 44 || group->height > 10000)))
                 return 0;
         }
+        if (version >= 28 && fscanf(file, "%" SCNu64, &group->model) != 1)
+            return 0;
         if (version >= 17)
         {
             if (!read_group_name(file, group))

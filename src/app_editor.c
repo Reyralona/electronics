@@ -55,6 +55,7 @@ AppState *app_editor_open(AppState *parent)
     }
     child->editor_parent = parent;
     child->editor_group = group;
+    child->editor_model = parent->bench.groups[group - 1].model;
     child->editor_parent_revision = parent->bench.revision;
     child->editor_initial_revision = child->editor_saved_revision = child->bench.revision;
     child->editor_opened_at = SDL_GetTicks();
@@ -139,6 +140,27 @@ int app_editor_begin_name(AppState *app, SDL_Window *window)
     return 1;
 }
 
+/* Library slot this chip saves into (-1 = a new entry). A legacy chip found by its listed name adopts
+ * that entry's identity; a chip whose entry was removed keeps its identity and gets a new entry. */
+static int editor_library_slot(AppState *app)
+{
+    int slot = app_packing_model_slot(app, app->editor_model, app->editor_initial_name);
+    if (!app->editor_model && slot >= 0)
+        app->editor_model = app->library_models[slot];
+    if (!app->editor_model)
+        app->editor_model = app_packing_new_model(app);
+    return slot;
+}
+
+/* Saving the model links the outer instance to it; only identity changes, not the circuit. */
+static void link_parent_instance(AppState *app)
+{
+    AppState *parent = app->editor_parent;
+    int group = app->editor_group;
+    if (parent && group >= 1 && group <= WORKBENCH_MAX_COMPONENTS && parent->bench.groups[group - 1].active)
+        parent->bench.groups[group - 1].model = app->editor_model;
+}
+
 int app_editor_save(AppState *app)
 {
     Workbench model BENCH_AUTO_CLEAR = {0};
@@ -156,12 +178,15 @@ int app_editor_save(AppState *app)
         app->status = app->selection_status;
         return 0;
     }
-    int saved = app_packing_store_model(app, &model, &app->editor_library_slot);
+    int slot = editor_library_slot(app);
+    model.groups[group - 1].model = app->editor_model;
+    int saved = app_packing_store_model(app, &model, &slot);
     if (saved < 1)
     {
         app->status = saved < 0 ? app->selection_status : "Biblioteca cheia (8 slots); modelo nao foi salvo.";
         return 0;
     }
+    link_parent_instance(app);
     app->editor_saved_revision = app->bench.revision;
     memcpy(app->editor_saved_name, app->editor_name, sizeof(app->editor_saved_name));
     app->status = "Modelo salvo na biblioteca. A bancada externa continua preservada.";
