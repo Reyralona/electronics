@@ -10,10 +10,11 @@
 #include <stdio.h>
 #include <string.h>
 
-static void command_example(AppState *app)
+void app_commands_load_example(AppState *app, int choice)
 {
     Workbench example BENCH_AUTO_CLEAR = {0};
-    int choice = (app->example_index + 1) % WORKBENCH_EXAMPLE_COUNT, example_selected;
+    int example_selected;
+    app->examples_open = 0;
     if (workbench_example_create(choice, &example, &example_selected))
     {
         bench_history_record(app->history, &app->bench);
@@ -35,15 +36,20 @@ static void command_example(AppState *app)
         app->view = (BenchView){1, 0, 0};
         sim_state_clear_result(&app->sim);
         memset(app->leds, 0, sizeof(app->leds));
-        app->probe_pin = choice > 0 ? 2 : 0;
+        app->probe_pin = choice == 1 || choice == 2 ? 2 : 0;
         app->probe_current = 0;
         app->transient_step = 1e-5;
         app->transient_stop = .005;
-        app->status = workbench_example_name(choice);
+        app->status = workbench_example_description(choice);
     }
     else
         app->status = "Falha ao preparar exemplo.";
     return;
+}
+
+static void command_example(AppState *app)
+{
+    app_commands_load_example(app, (app->example_index + 1) % WORKBENCH_EXAMPLE_COUNT);
 }
 
 static void command_palette(AppState *app)
@@ -355,6 +361,11 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
 {
     if (app_editor_key(app, window, key, mod))
         return;
+    if (app->examples_open && key == SDLK_ESCAPE)
+    {
+        app->examples_open = 0;
+        return;
+    }
     if (!app->projects_open && app_packing_key(app, key, mod))
         return;
     if (app_editing_key(app, key, mod))

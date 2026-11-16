@@ -98,4 +98,10 @@ int app_layout_group_button_at(float x, float y);
 AppRect app_layout_confirm_panel(void);
 AppRect app_layout_confirm_button(int index);
 int app_layout_confirm_button_at(float x, float y);
+/* Examples dialog: one card per example, three columns. */
+#define APP_EXAMPLE_CARDS 15
+AppRect app_layout_examples_panel(void);
+AppRect app_layout_example_card(int index);
+int app_layout_example_card_at(float x, float y);
+AppRect app_layout_examples_close(void);
 #endif

@@ -55,7 +55,7 @@ typedef struct AppState
     SimState sim;
     BenchSelection selection;
     BenchClipboard clipboard;
-    int selecting_area, projects_open, save_slot;
+    int selecting_area, projects_open, save_slot, examples_open;
     int saved_slots[PROJECT_SLOT_COUNT];
     WirePoint area_start, area_end, mouse_world, mouse_screen;
     int mouse_position_valid;

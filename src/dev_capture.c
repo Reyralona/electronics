@@ -14,7 +14,7 @@ int dev_capture_requested(const char *argument)
         "--capture-knee-edit",
         "--capture-editor", "--capture-editor-name",
         "--capture-pins",       "--capture-pin-led",       "--capture-packed",     "--capture",
-        "--capture-settings",   "--capture-projects",      "--capture-selection",  "--capture-analog",
+        "--capture-settings",   "--capture-projects", "--capture-examples",      "--capture-selection",  "--capture-analog",
         "--capture-dc",         "--capture-current",       "--capture-edit",       "--capture-zoom",
         "--capture-snap",       "--capture-board",         "--capture-rotation",   "--capture-colors",
         "--capture-trace",      "--capture-trace-current", "--capture-trace-wire", "--capture-and",
@@ -25,7 +25,8 @@ int dev_capture_requested(const char *argument)
     };
     if (!argument)
         return 0;
-    if (!strncmp(argument, "--capture-component=", 20) || !strncmp(argument, "--capture-component-dark=", 25))
+    if (!strncmp(argument, "--capture-component=", 20) || !strncmp(argument, "--capture-component-dark=", 25) ||
+        !strncmp(argument, "--capture-example=", 18))
         return 1;
     for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); ++i)
     {

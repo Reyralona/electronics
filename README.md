@@ -347,3 +347,9 @@ Configuracoes em um unico dialogo; alteracoes sao salvas automaticamente em save
 e restauradas ao abrir o app. Restaurar padroes volta aos valores iniciais. Carregar um slot
 traz montagem e configuracoes do projeto, mas mantem tema e tamanho do texto.
 Clique no Valor ou Tamanho do inspector para edita-los. Salvar/carregar: Ctrl+S/Ctrl+L (slots).
+
+## Exemplos (0.30.0)
+O botão Exemplos abre um catálogo com 15 circuitos prontos (básicos, semicondutores, sensores e
+digitais), cada um com título e descrição. Clicar carrega o exemplo (Ctrl+Z desfaz); F2 avança
+para o próximo. Todos são verificados no ngspice pela sessão contínua (tests/test_examples_live.c).
+Captura de revisão: --capture-examples e --capture-example=N.

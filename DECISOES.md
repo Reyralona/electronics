@@ -461,3 +461,11 @@ entao a histerese impede conducao simultanea. Em 0/5 V as tabelas-verdade sao id
 Entradas entre 1,5 e 3,5 V passam a dar saida intermediaria aproximada, nao garantida pelo fabricante.
 Regressao: tests/test_examples_live.c roda TODOS os exemplos na sessao continua e verifica a NAND
 seguindo o clock; falhou antes da correcao e passou depois.
+
+
+## Catalogo de exemplos (15/11/2026, Claude)
+Decisao: tabela unica em workbench_examples.c (titulo, categoria, descricao, construtor curto);
+indices 0..2 preservados para testes e F2. Botao do cabecalho abre dialogo de cartoes; F2 segue
+avancando. Exemplos usam apenas componentes ja validados; cada um foi conferido no ngspice contra
+sua descricao (correntes de LED) antes do commit. Layouts evitam a zona do inspector (canto
+superior direito). Limite conhecido: o inspector ainda pode cobrir pecas do usuario nessa zona.

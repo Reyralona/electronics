@@ -7,6 +7,7 @@
 #include "app_palette.h"
 #include "component_registry.h"
 #include "workbench_pack.h"
+#include "workbench_examples.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -1092,6 +1093,11 @@ static void ui_text_center(GLuint font, AppRect r, const char *label)
     text(font, r.x + (r.w - ui_text_width(font, label)) / 2, ui_baseline(r), label);
 }
 
+static void ui_text_right_edge(GLuint font, float right, float baseline, const char *label)
+{
+    text(font, right - ui_text_width(font, label), baseline, label);
+}
+
 static int ui_hovered(const AppState *app, AppRect r)
 {
     return app->mouse_position_valid && app_rect_contains(r, app->mouse_screen.x, app->mouse_screen.y);
@@ -1348,7 +1354,8 @@ static void draw_header(const AppState *app, GLuint font)
         draw_brand(font);
         ui_button(app, font, app_layout_header(APP_HEADER_PROJECTS), "Projetos",
                   app->projects_open ? UI_BUTTON_ACTIVE : UI_BUTTON_NEUTRAL);
-        ui_button(app, font, app_layout_header(APP_HEADER_EXAMPLES), "Exemplos", UI_BUTTON_NEUTRAL);
+        ui_button(app, font, app_layout_header(APP_HEADER_EXAMPLES), "Exemplos",
+                  app->examples_open ? UI_BUTTON_ACTIVE : UI_BUTTON_NEUTRAL);
         ui_button(app, font, app_layout_header(APP_HEADER_SETTINGS), "Configurações",
                   app->settings ? UI_BUTTON_ACTIVE : UI_BUTTON_NEUTRAL);
     }
@@ -2121,7 +2128,7 @@ static void draw_part_inspector(const AppState *app, GLuint font)
 
 static void draw_inspector(const AppState *app, GLuint font)
 {
-    if (app->selected < 0 || app->settings || app->projects_open)
+    if (app->selected < 0 || app->settings || app->projects_open || app->examples_open)
         return;
     if (app->bench.parts[app->selected].group)
         draw_group_inspector(app, font);
@@ -2357,7 +2364,7 @@ static void draw_projects(const AppState *app, GLuint font)
 static void draw_pin_help(const AppState *app, GLuint font)
 {
     Pin pin = app->hovered_pin;
-    if (app->settings || app->projects_open || app->editing >= 0 || app->selecting_area ||
+    if (app->settings || app->projects_open || app->examples_open || app->editing >= 0 || app->selecting_area ||
         app->hover_revision != app->bench.revision || pin.component < 0 || pin.component >= app->bench.part_count)
         return;
     const Part *part = &app->bench.parts[pin.component];
@@ -2402,6 +2409,72 @@ static void draw_editor_confirmation(const AppState *app, GLuint font)
         ui_button(app, font, app_layout_confirm_button(i), labels[i], styles[i]);
 }
 
+/* Greedy word wrap using measured widths; the last allowed line is truncated with "...". */
+static void ui_wrapped(GLuint font, float x, float baseline, const char *source, int width, int max_lines,
+                       float line_height)
+{
+    char line[256], candidate[sizeof(line) * 2];
+    const char *cursor = source;
+    for (int index = 0; index < max_lines && *cursor; ++index)
+    {
+        line[0] = 0;
+        while (*cursor)
+        {
+            const char *word_end = strchr(cursor, ' ');
+            size_t length = word_end ? (size_t)(word_end - cursor) : strlen(cursor);
+            snprintf(candidate, sizeof(candidate), "%s%s%.*s", line, line[0] ? " " : "", (int)length, cursor);
+            size_t used = strlen(candidate);
+            if (used >= sizeof(line) || (line[0] && ui_text_width(font, candidate) > width && index < max_lines - 1))
+                break;
+            memcpy(line, candidate, used + 1);
+            cursor += length;
+            while (*cursor == ' ')
+                ++cursor;
+        }
+        name_text(font, x, baseline + index * line_height, line, width);
+    }
+}
+
+static void draw_example_card(const AppState *app, GLuint font, int index)
+{
+    AppRect r = app_layout_example_card(index);
+    int current = index == app->example_index;
+    if (current)
+    {
+        glColor3f(UI_ACCENT);
+        ui_outline(r, UI_RADIUS, 2);
+    }
+    else
+    {
+        float shade = ui_hovered(app, r) ? .90f : .945f;
+        color(shade, shade + .02f, shade + .03f);
+        ui_rounded(r, UI_RADIUS);
+    }
+    const char *category = workbench_example_category(index);
+    glColor3f(UI_ACCENT);
+    ui_text_right_edge(font, r.x + r.w - 14, r.y + 24, category);
+    color(UI_INK);
+    name_text(font, r.x + 14, r.y + 24, workbench_example_name(index), (int)r.w - 28 - ui_text_width(font, category));
+    color(UI_MUTED);
+    ui_wrapped(font, r.x + 14, r.y + 48, workbench_example_description(index), (int)r.w - 28, 2,
+               (float)ui_font_pixels + 4);
+}
+
+static void draw_examples(const AppState *app, GLuint font)
+{
+    if (!app->examples_open)
+        return;
+    AppRect panel = app_layout_examples_panel();
+    ui_panel(panel);
+    color(UI_INK);
+    text(font, panel.x + 30, panel.y + 42, "Exemplos");
+    ui_note(font, panel.x + 30, panel.y + 66,
+            "Escolha um circuito pronto. Ele substitui a bancada atual; Ctrl+Z desfaz.", 800);
+    ui_close_button(app, app_layout_examples_close());
+    for (int index = 0; index < WORKBENCH_EXAMPLE_COUNT; ++index)
+        draw_example_card(app, font, index);
+}
+
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
     app_text_utf8_set_size(app->gui_font_size);
@@ -2419,6 +2492,7 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_pin_help(app, font);
     draw_settings(app, font);
     draw_projects(app, font);
+    draw_examples(app, font);
     draw_value_editor(app, font);
     draw_editor_confirmation(app, font);
 }

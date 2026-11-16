@@ -1,4 +1,4 @@
-#include "dev_scenarios.h"
+﻿#include "dev_scenarios.h"
 #include "component_registry.h"
 #include "dev_capture.h"
 #include "app_editor.h"
@@ -8,6 +8,7 @@
 #include "spice_trace.h"
 #include "app_layout.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
@@ -79,6 +80,8 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     }
     if (argc > 1 && strcmp(argv[1], "--capture-projects") == 0)
         app->projects_open = 1;
+    if (argc > 1 && strcmp(argv[1], "--capture-examples") == 0)
+        app->examples_open = 1;
     if (argc > 1 && strcmp(argv[1], "--capture-settings") == 0)
         app->settings = 1;
     if (app->capture)
@@ -269,16 +272,20 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         app->selected = 1;
         bench_view_zoom_at(&app->view, 1.3f, 650, 380);
     }
-    if (app->capture && (strcmp(argv[1], "--capture-example0") == 0 || strcmp(argv[1], "--capture-example1") == 0 ||
-                         strcmp(argv[1], "--capture-example2") == 0))
+    int numbered_example = app->capture && !strncmp(argv[1], "--capture-example=", 18);
+    if (numbered_example || (app->capture && (strcmp(argv[1], "--capture-example0") == 0 ||
+                                               strcmp(argv[1], "--capture-example1") == 0 ||
+                                               strcmp(argv[1], "--capture-example2") == 0)))
     {
-        int which = strcmp(argv[1], "--capture-example2") == 0 ? 2 : strcmp(argv[1], "--capture-example1") == 0;
+        int which = numbered_example ? atoi(argv[1] + 18)
+                    : strcmp(argv[1], "--capture-example2") == 0 ? 2
+                                                                  : strcmp(argv[1], "--capture-example1") == 0;
         if (!workbench_example_create(which, &app->bench, &app->selected))
         {
             fprintf(stderr, "Falha no exemplo de captura.\n");
             return 1;
         }
-        app->probe_pin = which ? 2 : 0;
+        app->probe_pin = which == 1 || which == 2 ? 2 : 0;
         app->status = workbench_example_name(which);
     }
     if (app->capture && (strcmp(argv[1], "--capture-auto") == 0 || strcmp(argv[1], "--capture-auto-clock") == 0))
@@ -289,7 +296,7 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             fprintf(stderr, "Falha no exemplo de captura.\n");
             return 1;
         }
-        app->probe_pin = which ? 2 : 0;
+        app->probe_pin = which == 1 || which == 2 ? 2 : 0;
     }
     if (app->capture && strcmp(argv[1], "--capture-burn") == 0)
     {
@@ -1117,6 +1124,13 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         SDL_SetModState(SDL_KMOD_SHIFT);
         queued = dev_test_wheel(window, 700, 400, 1);
     }
+    else if (app->selftest_phase == 187)
+    {
+        SDL_SetModState(SDL_KMOD_NONE);
+        queued = click_rect(window, app_layout_header(APP_HEADER_EXAMPLES));
+    }
+    else if (app->selftest_phase == 188)
+        queued = click_rect(window, app_layout_example_card(13));
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1462,6 +1476,11 @@ void dev_scenario_validate(AppState *app)
         valid = app->selected == -1 && fabs(app->bench.parts[app->bench.part_count - 1].control - .1) < 1e-6;
     else if (app->selftest_phase == 186)
         valid = fabs(app->bench.parts[app->selected].control - .8) < 1e-6;
+    else if (app->selftest_phase == 187)
+        valid = app->examples_open && !app->settings && !app->projects_open;
+    else if (app->selftest_phase == 188)
+        valid = !app->examples_open && app->example_index == 13 && app->bench.part_count == 3 &&
+                app->bench.parts[0].type == PART_CLOCK;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1472,7 +1491,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 187)
+    if (++app->selftest_phase == 189)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

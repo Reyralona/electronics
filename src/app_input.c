@@ -16,6 +16,7 @@
 #include "workbench_examples.h"
 #include "spice_trace.h"
 #include <math.h>
+_Static_assert(APP_EXAMPLE_CARDS == WORKBENCH_EXAMPLE_COUNT, "one examples card per example");
 #include <stdio.h>
 #include <string.h>
 
@@ -492,6 +493,18 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     }
 }
 
+static int input_examples(AppState *app, float x, float y)
+{
+    if (!app->examples_open)
+        return 0;
+    int card = app_layout_example_card_at(x, y);
+    if (card >= 0)
+        app_commands_load_example(app, card);
+    else if (app_rect_contains(app_layout_examples_close(), x, y))
+        app->examples_open = 0;
+    return 1;
+}
+
 static int input_projects(AppState *app, float x, float y)
 {
     if (!app->projects_open)
@@ -525,7 +538,7 @@ static void push_shortcut(SDL_Keycode key)
 
 static int selected_plain_part(const AppState *app)
 {
-    return !app->settings && !app->projects_open && app->selected >= 0 && !app->bench.parts[app->selected].group;
+    return !app->settings && !app->projects_open && !app->examples_open && app->selected >= 0 && !app->bench.parts[app->selected].group;
 }
 
 static int input_click_environment(AppState *app, float x, float y)
@@ -575,11 +588,14 @@ static int input_click_header(AppState *app, float x, float y)
         app_editing_key(app, SDLK_F3, 0);
         return 1;
     case APP_HEADER_EXAMPLES:
-        push_shortcut(SDLK_F2);
+        app->examples_open = !app->examples_open;
+        app->settings = 0;
+        app->projects_open = 0;
         return 1;
     case APP_HEADER_SETTINGS:
         app->settings = !app->settings;
         app->projects_open = 0;
+        app->examples_open = 0;
         app->dragging = -1;
         app->drag_wire = -1;
         return 1;
@@ -653,7 +669,7 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
         return 1;
     if (input_click_inspector(app, window, x, y))
         return 1;
-    if (input_click_header(app, x, y) || input_projects(app, x, y))
+    if (input_click_header(app, x, y) || input_projects(app, x, y) || input_examples(app, x, y))
         return 1;
     if (app->settings)
     {
@@ -1206,7 +1222,7 @@ static void input_refresh_hover(AppState *app)
     app->hovered_pin = (Pin){-1, -1};
     app->hover_revision = app->bench.revision;
     float x = app->mouse_screen.x, y = app->mouse_screen.y;
-    if (x < 220 || y < 70 || y >= 660 || app->settings || app->projects_open || app->editing >= 0 ||
+    if (x < 220 || y < 70 || y >= 660 || app->settings || app->projects_open || app->examples_open || app->editing >= 0 ||
         app->selecting_area || app->editor_confirm_close || app->panning || app->dragging >= 0 || app->drag_wire >= 0)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
@@ -1244,7 +1260,7 @@ void app_input_poll(AppState *app, SDL_Window *window)
         {
             app_commands_key(app, window, e.key.key, e.key.mod);
         }
-        else if (app->projects_open && e.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
+        else if ((app->projects_open || app->examples_open) && e.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
             continue;
         else if (e.type == SDL_EVENT_MOUSE_MOTION && app->selecting_area)
             continue;

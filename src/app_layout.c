@@ -311,3 +311,36 @@ int app_layout_confirm_button_at(float x, float y)
             return index;
     return -1;
 }
+
+#define EXAMPLE_COLUMNS 3
+#define EXAMPLE_CARD_W 296.0f
+#define EXAMPLE_CARD_H 82.0f
+#define EXAMPLE_GAP 10.0f
+
+AppRect app_layout_examples_panel(void)
+{
+    return (AppRect){270, 84, 960, 560};
+}
+
+AppRect app_layout_example_card(int index)
+{
+    if (index < 0 || index >= APP_EXAMPLE_CARDS)
+        return NO_RECT;
+    AppRect panel = app_layout_examples_panel();
+    int column = index % EXAMPLE_COLUMNS, row = index / EXAMPLE_COLUMNS;
+    return (AppRect){panel.x + 30 + column * (EXAMPLE_CARD_W + EXAMPLE_GAP), panel.y + 82 + row * (EXAMPLE_CARD_H + EXAMPLE_GAP),
+                     EXAMPLE_CARD_W, EXAMPLE_CARD_H};
+}
+
+int app_layout_example_card_at(float x, float y)
+{
+    for (int index = 0; index < APP_EXAMPLE_CARDS; ++index)
+        if (app_rect_contains(app_layout_example_card(index), x, y))
+            return index;
+    return -1;
+}
+
+AppRect app_layout_examples_close(void)
+{
+    return close_button(app_layout_examples_panel());
+}
