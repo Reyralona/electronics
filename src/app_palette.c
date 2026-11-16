@@ -1,7 +1,8 @@
 #include "app_palette.h"
 #include "component_registry.h"
+#include "ui_text.h"
 
-/* Page indices are stable: 0 basics, 1 digital, 2 blocks (packing), 3 sensors, 4 outputs, 5 instruments. */
+/* Page indices are stable: 0 basics, 1 digital, 2 chips (packing), 3 sensors, 4 outputs, 5 instruments. */
 static const PartType basic[] = {PART_SOURCE,    PART_SWITCH,     PART_LED,        PART_BREADBOARD, PART_RESISTOR,
                                  PART_CAPACITOR, PART_INDUCTOR,   PART_AND,        PART_BUTTON,     PART_POTENTIOMETER,
                                  PART_DIODE,     PART_NPN,        PART_PNP,        PART_BATTERY_9V, PART_BATTERY_AA,
@@ -38,12 +39,13 @@ PartType palette_part(int page, int item)
 
 const char *palette_page_name(int page)
 {
-    static const char *names[] = {"Básicos", "Digital", "Blocos", "Sensores", "Saídas", "Medição"};
-    return page >= 0 && page < PALETTE_PAGES ? names[page] : "";
+    static const TextId names[PALETTE_PAGES] = {TXT_UI_PAGE_BASICS,  TXT_UI_PAGE_DIGITAL, TXT_UI_PAGE_CHIPS,
+                                                TXT_UI_PAGE_SENSORS, TXT_UI_PAGE_OUTPUTS, TXT_UI_PAGE_METERS};
+    return page >= 0 && page < PALETTE_PAGES ? tr(names[page]) : "";
 }
 
 const char *part_name(PartType type)
 {
     const ComponentInfo *info = component_info(type);
-    return info ? info->display_name : "Componente desconhecido";
+    return info ? info->display_name : tr(TXT_UI_UNKNOWN_PART);
 }
