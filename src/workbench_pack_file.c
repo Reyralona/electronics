@@ -1,5 +1,6 @@
 #include "workbench_pack_file.h"
 #include "workbench_group_name.h"
+#include "ui_text.h"
 #include <inttypes.h>
 #include <math.h>
 #include <string.h>
@@ -13,7 +14,7 @@ static int exposed(const Part *part, int pin)
 static int write_group(FILE *file, int index, const BenchGroup *group)
 {
     char fallback[BENCH_GROUP_NAME_CAPACITY];
-    snprintf(fallback, sizeof(fallback), "Bloco %d", index + 1);
+    snprintf(fallback, sizeof(fallback), tr(TXT_CHIP_DEFAULT_NAME), index + 1);
     const char *name = group->name[0] ? group->name : fallback;
     if (!bench_group_name_valid(name))
         return 0;
@@ -125,7 +126,7 @@ static int read_groups(FILE *file, Workbench *bench, int version)
                 return 0;
         }
         else
-            snprintf(group->name, sizeof(group->name), "Bloco %d", id);
+            snprintf(group->name, sizeof(group->name), tr(TXT_CHIP_DEFAULT_NAME), id);
     }
     return 1;
 }

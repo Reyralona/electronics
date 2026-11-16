@@ -31,4 +31,6 @@ int netlist_shorted_sources(const Workbench *bench, unsigned char shorted[WORKBE
 /* Series resistance of the generic LED model, in ohms. */
 #define NETLIST_LED_SERIES_OHMS 2.0
 NetlistResult netlist_write_transient_instrumented(FILE *out, const Workbench *bench, int mode, Pin probe, double step_seconds, double stop_seconds);
+/* Interface text that explains a failed write, in the current language; "" for NETLIST_OK. */
+const char *netlist_result_message(NetlistResult result);
 #endif

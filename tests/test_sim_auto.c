@@ -4,6 +4,7 @@
 #include <string.h>
 #include "sim_auto.h"
 #include "netlist.h"
+#include "ui_text.h"
 
 static void wire(Workbench *b, int ca, int pa, int cb, int pb)
 {
@@ -161,7 +162,7 @@ static void test_with_ngspice(const char *exe)
         SimAutoOptions options = {1, {0, 0}, 1e-5, .005, burn_limits_default()};
         assert(sim_auto_run(&b, exe, &options, &r, &trace));
         assert(r.has_trace && !trace.measures_wires);
-        assert(strstr(r.message, "Correntes indisponiveis:"));
+        assert(!strncmp(r.message, tr(TXT_ENG_WIRE_CURRENTS_UNAVAILABLE), strcspn(tr(TXT_ENG_WIRE_CURRENTS_UNAVAILABLE), "%")));
     }
 
     /* An inductor across a voltage source ramps current; it is not an immediate DC short. */

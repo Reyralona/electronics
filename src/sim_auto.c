@@ -2,6 +2,7 @@
 #include "bench_scope.h"
 #include "sim_auto.h"
 #include "netlist.h"
+#include "ui_text.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -154,7 +155,7 @@ static int run_transient(const Workbench *bench, const char *executable, const S
     snprintf(result->message, sizeof(result->message), "%s", message);
     if (!ok) return 0;
     if (instrumentation_error[0]) {
-        snprintf(result->message, sizeof(result->message), "Correntes indisponiveis: %s", instrumentation_error);
+        snprintf(result->message, sizeof(result->message), tr(TXT_ENG_WIRE_CURRENTS_UNAVAILABLE), instrumentation_error);
     }
     result->has_trace = 1;
     result->periodic = sim_auto_is_periodic(bench);
@@ -181,13 +182,13 @@ int sim_auto_run(const Workbench *bench, const char *executable, const SimAutoOp
     }
     if (!sim_auto_dc_equivalent(bench, &dc))
     {
-        snprintf(result->message, sizeof(result->message), "Memoria insuficiente para preparar simulacao.");
+        snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_NO_MEMORY));
         return 0;
     }
     for (iteration = 0; iteration <= bench->part_count + 1; ++iteration) {
         if (!sim_auto_open_parts(&dc, open, &test))
         {
-            snprintf(result->message, sizeof(result->message), "Memoria insuficiente para preparar simulacao.");
+            snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_NO_MEMORY));
             return 0;
         }
         if (open_shorted_sources(&test, open, result)) continue;
@@ -204,19 +205,19 @@ int sim_auto_run(const Workbench *bench, const char *executable, const SimAutoOp
         memset(result->currents, 0, sizeof(result->currents));
         result->source_current = 0;
         result->has_dc = 1;
-        snprintf(result->message, sizeof(result->message), "Sem fonte de energia ligada.");
+        snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_NO_SOURCE_ON));
         return 1;
     }
     if (dynamic) {
         if (!sim_auto_open_parts(bench, open, &test))
         {
-            snprintf(result->message, sizeof(result->message), "Memoria insuficiente para preparar simulacao.");
+            snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_NO_MEMORY));
             return 0;
         }
         return run_transient(&test, executable, options, result, trace);
     }
     result->has_dc = 1;
-    snprintf(result->message, sizeof(result->message), "Circuito calculado.");
+    snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_CIRCUIT_CALCULATED));
     if (options->instrument_wires) {
         double current, currents[WORKBENCH_MAX_COMPONENTS];
         if (spice_dc_analyze_wires(&test, executable, &current, currents, result->wire_currents, message, sizeof(message))) {

@@ -1,11 +1,15 @@
 #include "component_registry.h"
 #include "spice_process.h"
 #include "netlist.h"
+#include "ui_text.h"
 #include <windows.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define SPICE_PROCESS_TIMEOUT_SECONDS 10
+#define WINDOWS_DLL_NOT_FOUND 0xC0000135UL
 
 int spice_wire_current_level(double amperes)
 {
@@ -22,30 +26,30 @@ static int analyze(const Workbench *bench,const char *executable,double *current
     DWORD length,exit_code=1; FILE *file=NULL; HANDLE log=INVALID_HANDLE_VALUE; STARTUPINFOA si={0}; PROCESS_INFORMATION pi={0};
     SECURITY_ATTRIBUTES security={sizeof(SECURITY_ATTRIBUTES),NULL,TRUE}; NetlistResult result; int ok=0;
     if(!bench || !executable || !message || !capacity || (!trace && (!current || !led_currents))) return 0;
-    if(trace && (!isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || stop/step>500.0*(1.0+1e-12))) { snprintf(message,capacity,"Intervalo transitorio invalido."); return 0; }
-    snprintf(message,capacity,"Falha ao preparar analise.");
+    if(trace && (!isfinite(step) || !isfinite(stop) || step<=0 || stop<=0 || stop/step>500.0*(1.0+1e-12))) { snprintf(message,capacity,"%s",tr(TXT_ENG_STEP_OR_DURATION_INVALID)); return 0; }
+    snprintf(message,capacity,"%s",tr(TXT_ENG_CALCULATION_PREPARE_FAILED));
     buffer=malloc(buffer_capacity); if(!buffer) return 0;
     length=GetFullPathNameA(executable,MAX_PATH,exe,NULL);
-    if(!length || length>=MAX_PATH || GetFileAttributesA(exe)==INVALID_FILE_ATTRIBUTES) { snprintf(message,capacity,"ngspice nao encontrado."); goto cleanup; }
+    if(!length || length>=MAX_PATH || GetFileAttributesA(exe)==INVALID_FILE_ATTRIBUTES) { snprintf(message,capacity,"%s",tr(TXT_ENG_SOLVER_MISSING)); goto cleanup; }
     length=GetTempPathA(MAX_PATH,dir);
     if(!length || length>=MAX_PATH || !GetTempFileNameA(dir,"nci",0,input) || !GetTempFileNameA(dir,"nco",0,output)) goto cleanup;
     file=fopen(input,"w"); if(!file) goto cleanup;
     result=trace?(instrument?netlist_write_transient_instrumented(file,bench,trace_current+1,probe,step,stop):trace_current==1?netlist_write_transient_current(file,bench,probe.component,step,stop):netlist_write_transient(file,bench,probe,step,stop)):wire_currents?netlist_write_dc_instrumented(file,bench):netlist_write_dc(file,bench);
     if(fclose(file)!=0) result=NETLIST_IO_ERROR;
     file=NULL;
-    if(result!=NETLIST_OK) { snprintf(message,capacity,result==NETLIST_AMBIGUOUS_WIRES?"Corrente ambigua em fios ideais paralelos.":"Montagem invalida ou nao suportada."); goto cleanup; }
+    if(result!=NETLIST_OK) { snprintf(message,capacity,"%s",netlist_result_message(result)); goto cleanup; }
     log=CreateFileA(output,GENERIC_WRITE,FILE_SHARE_READ,&security,CREATE_ALWAYS,FILE_ATTRIBUTE_TEMPORARY,NULL);
     if(log==INVALID_HANDLE_VALUE) goto cleanup;
     si.cb=sizeof(si); si.dwFlags=STARTF_USESTDHANDLES; si.hStdOutput=log; si.hStdError=log; si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
     snprintf(command,sizeof(command),"\"%s\" -b \"%s\"",exe,input);
-    if(!CreateProcessA(exe,command,NULL,NULL,TRUE,CREATE_NO_WINDOW,NULL,NULL,&si,&pi)) { snprintf(message,capacity,"Falha ao iniciar ngspice (Windows %lu).",GetLastError()); goto cleanup; }
-    if(WaitForSingleObject(pi.hProcess,10000)!=WAIT_OBJECT_0) { TerminateProcess(pi.hProcess,1); WaitForSingleObject(pi.hProcess,5000); snprintf(message,capacity,"Analise excedeu 10 segundos."); goto cleanup; }
+    if(!CreateProcessA(exe,command,NULL,NULL,TRUE,CREATE_NO_WINDOW,NULL,NULL,&si,&pi)) { snprintf(message,capacity,tr(TXT_ENG_SOLVER_START_FAILED),GetLastError()); goto cleanup; }
+    if(WaitForSingleObject(pi.hProcess,SPICE_PROCESS_TIMEOUT_SECONDS*1000)!=WAIT_OBJECT_0) { TerminateProcess(pi.hProcess,1); WaitForSingleObject(pi.hProcess,5000); snprintf(message,capacity,tr(TXT_ENG_CALCULATION_TIMEOUT),SPICE_PROCESS_TIMEOUT_SECONDS); goto cleanup; }
     GetExitCodeProcess(pi.hProcess,&exit_code);
     CloseHandle(log); log=INVALID_HANDLE_VALUE;
-    if(exit_code!=0) { snprintf(message,capacity,"ngspice falhou (0x%08lX)%s",exit_code,exit_code==0xC0000135UL?": DLL ausente.":"."); goto cleanup; }
+    if(exit_code!=0) { snprintf(message,capacity,tr(exit_code==WINDOWS_DLL_NOT_FOUND?TXT_ENG_SOLVER_DLL_MISSING:TXT_ENG_SOLVER_FAILED),exit_code); goto cleanup; }
     file=fopen(output,"r"); if(!file) goto cleanup;
     length=(DWORD)fread(buffer,1,buffer_capacity-1,file); buffer[length]='\0';
-    if(!feof(file) || ferror(file) || strstr(buffer,"Error:") || strstr(buffer,"error:") || strstr(buffer,"Warning:") || strstr(buffer,"warning:") || strstr(buffer,"couldn't be loaded") || strstr(buffer,"singular matrix") || strstr(buffer,"convergence failed")) { snprintf(message,capacity,"Resultado SPICE invalido ou incompleto."); goto cleanup; }
+    if(!feof(file) || ferror(file) || strstr(buffer,"Error:") || strstr(buffer,"error:") || strstr(buffer,"Warning:") || strstr(buffer,"warning:") || strstr(buffer,"couldn't be loaded") || strstr(buffer,"singular matrix") || strstr(buffer,"convergence failed")) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
     if(trace) {
         SpiceTrace local={0}; char *line=buffer; double previous=-1; int led_indices[WORKBENCH_MAX_COMPONENTS],led_count=0,section=0,section_count=0,i;
         for(i=0;i<bench->part_count;++i) if(bench->parts[i].type==PART_LED) led_indices[led_count++]=i;
@@ -54,15 +58,15 @@ static int analyze(const Workbench *bench,const char *executable,double *current
             if(next) *next='\0';
             if(sscanf(line," %d %lf %lf %n",&index,&time,&value,&consumed)==3 && consumed>0 && line[consumed]=='\0') {
                 if(index==0 && section_count>0) {
-                    if(section>0 && section_count!=local.count) { snprintf(message,capacity,"Correntes transitorias incompletas."); goto cleanup; }
+                    if(section>0 && section_count!=local.count) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
                     ++section; section_count=0;
                 }
-                if(index!=section_count || !isfinite(time) || !isfinite(value) || time<0 || index>=SPICE_TRANSIENT_MAX_SAMPLES || section>led_count+(instrument?bench->wire_count:0)) { snprintf(message,capacity,"Amostras transitorias invalidas."); goto cleanup; }
+                if(index!=section_count || !isfinite(time) || !isfinite(value) || time<0 || index>=SPICE_TRANSIENT_MAX_SAMPLES || section>led_count+(instrument?bench->wire_count:0)) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
                 if(section==0) {
-                    if(time<previous) { snprintf(message,capacity,"Tempos transitorios invalidos."); goto cleanup; }
+                    if(time<previous) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
                     local.samples[local.count++]=(SpiceSample){time,value}; previous=time;
                 } else {
-                    if(index>=local.count || time!=local.samples[index].time) { snprintf(message,capacity,"Correntes transitorias dessincronizadas."); goto cleanup; }
+                    if(index>=local.count || time!=local.samples[index].time) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
                     if(section<=led_count) {
                         int part = led_indices[section-1];
                         if(value>=1e-6) local.leds_on[index]|=UINT64_C(1)<<part;
@@ -80,13 +84,13 @@ static int analyze(const Workbench *bench,const char *executable,double *current
             if(!next) break;
             line=next+1;
         }
-        if(local.count<2 || previous<stop*(1-1e-6) || section!=led_count+(instrument?bench->wire_count:0) || section_count!=local.count) { snprintf(message,capacity,"Amostras transitorias incompletas."); goto cleanup; }
-        local.measures_wires=instrument; *trace=local; snprintf(message,capacity,"Transitorio calculado: %d amostras.",local.count); ok=1; goto cleanup;
+        if(local.count<2 || previous<stop*(1-1e-6) || section!=led_count+(instrument?bench->wire_count:0) || section_count!=local.count) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
+        local.measures_wires=instrument; *trace=local; snprintf(message,capacity,tr(TXT_ENG_GRAPH_CALCULATED),local.count); ok=1; goto cleanup;
     }
     {
         char *start=strstr(buffer,"@vsource[i] ="), *end;
         double value, local_leds[WORKBENCH_MAX_COMPONENTS]={0}, local_wires[WORKBENCH_MAX_WIRES]={0}; int i;
-        if(!start) { snprintf(message,capacity,"Corrente da fonte indisponivel."); goto cleanup; }
+        if(!start) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
         value=strtod(start+strlen("@vsource[i] ="),&end);
         if(end==start+strlen("@vsource[i] =") || !isfinite(value)) goto cleanup;
         for(i=0;i<bench->part_count;++i) {
@@ -94,22 +98,22 @@ static int analyze(const Workbench *bench,const char *executable,double *current
             if (!component_current_vector(bench->parts[i].type, i, vector, sizeof(vector))) continue;
             snprintf(key,sizeof(key),"%s =",vector);
             start=strstr(buffer,key);
-            if(!start) { snprintf(message,capacity,"Corrente de componente indisponivel."); goto cleanup; }
+            if(!start) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
             led=strtod(start+strlen(key),&end);
-            if(end==start+strlen(key) || !isfinite(led)) { snprintf(message,capacity,"Resultado de LED invalido."); goto cleanup; }
+            if(end==start+strlen(key) || !isfinite(led)) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
             local_leds[i]=led;
         }
         if(wire_currents) for(i=0;i<bench->wire_count;++i) {
             char key[32]; double wire;
             snprintf(key,sizeof(key),"@vwire%d[i] =",i);
             start=strstr(buffer,key);
-            if(!start) { snprintf(message,capacity,"Corrente de fio indisponivel."); goto cleanup; }
+            if(!start) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
             wire=strtod(start+strlen(key),&end);
-            if(end==start+strlen(key) || !isfinite(wire)) { snprintf(message,capacity,"Corrente de fio invalida."); goto cleanup; }
+            if(end==start+strlen(key) || !isfinite(wire)) { snprintf(message,capacity,"%s",tr(TXT_ENG_RESULT_INVALID)); goto cleanup; }
             local_wires[i]=wire;
         }
         if(wire_currents) memcpy(wire_currents,local_wires,sizeof(local_wires));
-        *current=value; memcpy(led_currents,local_leds,sizeof(local_leds)); snprintf(message,capacity,"Corrente da primeira fonte: %.6g A (convencao SPICE).",value); ok=1;
+        *current=value; memcpy(led_currents,local_leds,sizeof(local_leds)); snprintf(message,capacity,tr(TXT_ENG_FIRST_SOURCE_CURRENT),value); ok=1;
     }
 cleanup:
     if(file) fclose(file);

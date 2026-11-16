@@ -1,6 +1,7 @@
 #include "spice_job.h"
 #include "spice_live.h"
 #include "spice_process.h"
+#include "ui_text.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -21,7 +22,7 @@ static int SDLCALL run_job(void *argument)
             job->success = job->live && spice_live_step(job->live, &job->snapshot, job->executable,
                                                        &job->auto_options, job->live_span, &job->auto_result);
             if (!job->live)
-                snprintf(job->auto_result.message, sizeof(job->auto_result.message), "Memoria insuficiente para simulacao continua.");
+                snprintf(job->auto_result.message, sizeof(job->auto_result.message), "%s", tr(TXT_ENG_NO_MEMORY));
         }
         else
         {
@@ -51,7 +52,7 @@ static int start_job(SpiceJob *job,const Workbench *bench,const char *executable
     if(length>=sizeof(job->executable)) return 0;
     if (!bench_snapshot_clone(&job->snapshot, bench))
     {
-        snprintf(job->message, sizeof(job->message), "Nao foi possivel copiar a montagem para simulacao.");
+        snprintf(job->message, sizeof(job->message), "%s", tr(TXT_ENG_NO_MEMORY));
         return 0;
     }
     job->continuous = continuous;
