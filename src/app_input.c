@@ -88,9 +88,13 @@ static void input_insert_knee(AppState *app, float x, float y)
 static int part_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
-        if (bench->groups[g].active && fabsf(x - bench->groups[g].x) < bench_group_width(bench, g + 1) * .5f + 11 &&
-            fabsf(y - bench->groups[g].y) < bench_group_height(bench, g + 1) * .5f)
-            return bench_group_first(bench, g + 1);
+        if (bench->groups[g].active)
+        {
+            WirePoint local = bench_group_to_local(&bench->groups[g], (WirePoint){x, y});
+            if (fabsf(local.x) < bench_group_width(bench, g + 1) * .5f + 11 &&
+                fabsf(local.y) < bench_group_height(bench, g + 1) * .5f)
+                return bench_group_first(bench, g + 1);
+        }
 
     int pass, i;
     for (pass = 0; pass < 2; ++pass)
@@ -1164,6 +1168,13 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     {
         input_snap_grid(app, &x, &y);
         app_packing_place(app, x, y);
+        if (!app->packed_placing && app->selected >= 0)
+        {
+            const Part *placed = &app->bench.parts[app->selected];
+            float snapped_x = placed->x, snapped_y = placed->y;
+            snap_part_terminals(app, app->selected, &snapped_x, &snapped_y);
+            bench_selection_move(&app->bench, &app->selection, snapped_x - placed->x, snapped_y - placed->y);
+        }
         return;
     }
     if (app->placing >= 0)
@@ -1288,29 +1299,42 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
 #define TERMINAL_SNAP_PIXELS 10.0f
 static void snap_part_terminals(const AppState *app, int component, float *x, float *y)
 {
-    Part candidate = app->bench.parts[component]; /* borrowed view: terminals are not owned here */
-    candidate.x = *x;
-    candidate.y = *y;
+    const Workbench *bench = &app->bench;
+    const Part *moving = &bench->parts[component];
+    float dx = *x - moving->x, dy = *y - moving->y;
     float best = TERMINAL_SNAP_PIXELS / app->view.zoom, shift_x = 0, shift_y = 0;
-    for (int own = 0; own < bench_pin_count(candidate.type); ++own)
+    for (int member = 0; member < bench->part_count; ++member)
     {
-        float px, py;
-        bench_pin_position(&candidate, own, &px, &py);
-        for (int other = 0; other < app->bench.part_count; ++other)
+        const Part *candidate = &bench->parts[member];
+        if (moving->group ? candidate->group != moving->group : member != component)
+            continue;
+        for (int own = 0; own < bench_pin_count(candidate->type); ++own)
         {
-            const Part *target = &app->bench.parts[other];
-            if (other == component || target->group != candidate.group || target->type == PART_BREADBOARD)
+            if (candidate->group && !bench_pin_exposed(candidate, own))
                 continue;
-            for (int pin = 0; pin < bench_pin_count(target->type); ++pin)
+            float px, py;
+            bench_terminal_position(bench, (Pin){member, own}, &px, &py);
+            px += dx;
+            py += dy;
+            for (int other = 0; other < bench->part_count; ++other)
             {
-                float tx, ty;
-                bench_pin_position(target, pin, &tx, &ty);
-                float distance = hypotf(tx - px, ty - py);
-                if (distance < best)
+                const Part *target = &bench->parts[other];
+                if (other == component || (moving->group && target->group == moving->group) ||
+                    (target->type == PART_BREADBOARD && !app->snap_board))
+                    continue;
+                for (int pin = 0; pin < bench_pin_count(target->type); ++pin)
                 {
-                    best = distance;
-                    shift_x = tx - px;
-                    shift_y = ty - py;
+                    if (target->group && !bench_pin_exposed(target, pin))
+                        continue;
+                    float tx, ty;
+                    bench_terminal_position(bench, (Pin){other, pin}, &tx, &ty);
+                    float distance = hypotf(tx - px, ty - py);
+                    if (distance < best)
+                    {
+                        best = distance;
+                        shift_x = tx - px;
+                        shift_y = ty - py;
+                    }
                 }
             }
         }
@@ -1339,6 +1363,7 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
             input_snap_grid(app, &body_x, &body_y);
             x = dragged->x + body_x - group->x;
             y = dragged->y + body_y - group->y;
+            snap_part_terminals(app, app->dragging, &x, &y);
         }
         else
         {

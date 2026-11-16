@@ -164,7 +164,8 @@ static void command_rotate(AppState *app)
     }
     if (bench_rotate_part(&app->bench, app->selected))
     {
-        bench_snap_to_breadboard(&app->bench, app->selected);
+        if (!app->bench.parts[app->selected].group)
+            bench_snap_to_breadboard(&app->bench, app->selected);
         bench_history_record(app->history, &before);
         app->dragging = -1;
         app->pending.component = -1;
@@ -321,7 +322,7 @@ static void command_delete_wire(AppState *app)
 
 static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key)
 {
-    if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T)
+    if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T && key != SDLK_R)
     {
         app->status = tr(TXT_APP_CHIP_ACTION_UNAVAILABLE);
         return;

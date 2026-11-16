@@ -24,8 +24,6 @@ static int same_electrical_assembly(const Workbench *a, const Workbench *b, int 
             return 0;
         if (compare_controls && (p->on != q->on || p->value != q->value || p->control != q->control))
             return 0;
-        if (p->type == PART_BREADBOARD)
-            continue;
         for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
         {
             int after = -1;

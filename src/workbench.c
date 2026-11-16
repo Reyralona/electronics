@@ -718,29 +718,49 @@ void bench_pin_position(const Part *part, int pin, float *x, float *y)
     *y = world.y;
 }
 
+/* Internal contacts use the original circuit. Cross-package contacts use only visible ports. */
+static int contact_positions(const Workbench *bench, Pin a, Pin b, WirePoint *pa, WirePoint *pb)
+{
+    const Part *first = &bench->parts[a.component];
+    const Part *second = &bench->parts[b.component];
+    if (first->group == second->group)
+    {
+        bench_pin_position(first, a.pin, &pa->x, &pa->y);
+        bench_pin_position(second, b.pin, &pb->x, &pb->y);
+        return 1;
+    }
+    if ((first->group && !bench_pin_exposed(first, a.pin)) ||
+        (second->group && !bench_pin_exposed(second, b.pin)))
+        return 0;
+    bench_terminal_position(bench, a, &pa->x, &pa->y);
+    bench_terminal_position(bench, b, &pb->x, &pb->y);
+    return 1;
+}
+
 int bench_find_contact_after(const Workbench *b, int component, int pin, int after, Pin *contact)
 {
-    int board, hole;
-    float x, y;
-    if (!b || !contact || component < 0 || component >= b->part_count || b->parts[component].type == PART_BREADBOARD ||
+    const float contact_tolerance = .01f;
+    if (!b || !contact || component < 0 || component >= b->part_count ||
         pin < 0 || pin >= bench_pin_count(b->parts[component].type))
         return 0;
-    bench_pin_position(&b->parts[component], pin, &x, &y);
-    for (board = 0; board < b->part_count; ++board)
-        if (board != component && b->parts[board].group == b->parts[component].group)
+    for (int other = 0; other < b->part_count; ++other)
+    {
+        if (other == component)
+            continue;
+        for (int terminal = 0; terminal < bench_pin_count(b->parts[other].type); ++terminal)
         {
-            for (hole = 0; hole < bench_pin_count(b->parts[board].type); ++hole)
+            if (other * WORKBENCH_MAX_PINS + terminal <= after)
+                continue;
+            WirePoint a, c;
+            Pin candidate = {other, terminal};
+            if (contact_positions(b, (Pin){component, pin}, candidate, &a, &c) &&
+                fabsf(a.x - c.x) < contact_tolerance && fabsf(a.y - c.y) < contact_tolerance)
             {
-                float hx, hy;
-                bench_pin_position(&b->parts[board], hole, &hx, &hy);
-                if (board * WORKBENCH_MAX_PINS + hole > after &&
-                    fabsf(x - hx) < .01f && fabsf(y - hy) < .01f)
-                {
-                    *contact = (Pin){board, hole};
-                    return 1;
-                }
+                *contact = candidate;
+                return 1;
             }
         }
+    }
     return 0;
 }
 
@@ -860,6 +880,13 @@ int bench_swap_type(Workbench *b, int component, PartType type)
 
 int bench_rotate_part(Workbench *b, int component)
 {
+    if (b && component >= 0 && component < b->part_count && b->parts[component].group)
+    {
+        BenchGroup *group = &b->groups[b->parts[component].group - 1];
+        group->rotation = (group->rotation + 1) % 4;
+        ++b->revision;
+        return 1;
+    }
     if (!b || component < 0 || component >= b->part_count ||
         !component_has_flag(b->parts[component].type, COMPONENT_ROTATES))
         return 0;
@@ -981,7 +1008,6 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
         }
     }
     for (i = 0; i < b->part_count; ++i)
-        if (b->parts[i].type != PART_BREADBOARD)
         {
             int pin;
             for (pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
@@ -1112,7 +1138,22 @@ void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y
     int rows = index < left ? left : count - left;
     const BenchGroup *group = &bench->groups[part->group - 1];
     float half_width = bench_group_width(bench, part->group) * .5f + 11;
-    *x = group->x + (index < left ? -half_width : half_width);
-    *y = group->y + (row - (rows - 1) * .5f) * BENCH_GROUP_PIN_SPACING;
+    WirePoint local = {index < left ? -half_width : half_width,
+                       (row - (rows - 1) * .5f) * BENCH_GROUP_PIN_SPACING};
+    WirePoint world = bench_group_to_world(group, local);
+    *x = world.x;
+    *y = world.y;
+}
+
+WirePoint bench_group_to_world(const BenchGroup *group, WirePoint local)
+{
+    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation};
+    return bench_part_to_world(&frame, local);
+}
+
+WirePoint bench_group_to_local(const BenchGroup *group, WirePoint world)
+{
+    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation};
+    return bench_part_to_local(&frame, world);
 }
 

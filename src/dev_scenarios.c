@@ -348,7 +348,8 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         bench_selection_rect(&app->selection, &app->bench, app->area_start, app->area_end);
         app->status = "Selecao por area: Ctrl+C/X/V, Delete e arraste em grupo.";
     }
-    if (argc > 1 && (strcmp(argv[1], "--capture-packed") == 0 || strncmp(argv[1], "--capture-editor", 16) == 0))
+    if (argc > 1 && (strcmp(argv[1], "--capture-packed") == 0 ||
+                     strcmp(argv[1], "--capture-packed-rotated") == 0 || strncmp(argv[1], "--capture-editor", 16) == 0))
     {
         app->bench = (Workbench){0};
         bench_add(&app->bench, PART_SOURCE, 360, 250);
@@ -364,6 +365,11 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             return 1;
         app->selected = 1;
         bench_group_set_name(&app->bench, 1, "Indicador \xc3\xa1rvore");
+        if (!strcmp(argv[1], "--capture-packed-rotated"))
+        {
+            bench_group_resize(&app->bench, 1, 72, 180);
+            bench_rotate_part(&app->bench, app->selected);
+        }
         app->editor_open_requested = strncmp(argv[1], "--capture-editor", 16) == 0;
         app->palette_page = 2;
         app->library_available[0] = 1;
@@ -1184,6 +1190,39 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
             deleted_block = first_saved_block(app);
         queued = deleted_block >= 0 && click_rect(window, app_layout_palette_delete(deleted_block));
     }
+    /* Human flow: select and rotate a chip, dock a switch, separate, reconnect, undo/redo. */
+    else if (app->selftest_phase == 192)
+    {
+        bench_snapshot_clear(&app->bench);
+        bench_selection_clear(&app->selection);
+        bench_history_clear(app->history);
+        app->view = (BenchView){1, 0, 0};
+        app->snap_grid = 0;
+        app->selected = -1;
+        bench_add(&app->bench, PART_SWITCH, 500, 300);
+        app->selection.parts[0] = 1;
+        queued = bench_pack_selection(&app->bench, &app->selection, app->selection_status,
+                                      sizeof(app->selection_status));
+        bench_group_resize(&app->bench, 1, 72, 180);
+        bench_add(&app->bench, PART_SWITCH, 750, 450);
+        queued = queued && dev_test_click(window, 500, 300) && dev_test_key(window, SDLK_R);
+    }
+    else if (app->selftest_phase == 193)
+    {
+        float x, y, sx, sy;
+        bench_terminal_position(&app->bench, (Pin){0, 0}, &x, &y);
+        bench_pin_position(&app->bench.parts[1], 0, &sx, &sy);
+        queued = dev_test_click(window, 750, 450) &&
+                 dev_test_drag_finish(window, 750 + x - sx + 5, 450 + y - sy + 3);
+    }
+    else if (app->selftest_phase == 194)
+        queued = dev_test_click(window, 500, 300) && dev_test_drag_finish(window, 700, 500);
+    else if (app->selftest_phase == 195)
+        queued = dev_test_click(window, 700, 500) && dev_test_drag_finish(window, 505, 303);
+    else if (app->selftest_phase == 196)
+        queued = dev_test_shortcut(window, SDLK_Z, SDL_KMOD_CTRL);
+    else if (app->selftest_phase == 197)
+        queued = dev_test_shortcut(window, SDLK_Y, SDL_KMOD_CTRL);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1543,6 +1582,14 @@ void dev_scenario_validate(AppState *app)
         valid = app->library_delete_armed == deleted_block && app->library_available[deleted_block];
     else if (app->selftest_phase == 191)
         valid = !app->library_available[deleted_block] && app->library_delete_armed == -1;
+    else if (app->selftest_phase == 192)
+        valid = app->bench.groups[0].rotation == 1 && app->bench.parts[0].rotation == 0;
+    else if (app->selftest_phase >= 193 && app->selftest_phase <= 197)
+    {
+        Pin contact;
+        int connected = bench_find_contact(&app->bench, 1, 0, &contact) && contact.component == 0;
+        valid = connected == (app->selftest_phase == 193 || app->selftest_phase == 195 || app->selftest_phase == 197);
+    }
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1553,7 +1600,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 192)
+    if (++app->selftest_phase == 198)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

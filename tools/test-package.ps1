@@ -10,7 +10,7 @@ try {
     $env:Path = "$env:SystemRoot/System32;$env:SystemRoot"
     Push-Location $work
     try {
-        foreach ($test in 'test_spice_process.exe', 'test_workbench_examples.exe', 'test_spice_session.exe', 'test_spice_live.exe') {
+        foreach ($test in 'test_spice_process.exe', 'test_workbench_examples.exe', 'test_spice_session.exe', 'test_spice_live.exe', 'test_terminal_contacts.exe') {
             $temporaryTest = Join-Path $packagePath $test
             if (Test-Path -LiteralPath $temporaryTest) { throw "Test file already exists: $temporaryTest" }
             Copy-Item -LiteralPath (Join-Path $testPath $test) -Destination $temporaryTest

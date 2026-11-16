@@ -90,6 +90,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_workbench_selection.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_terminal_contacts.c src/workbench_examples.c src/workbench_pack.c src/workbench_selection.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/ui_text.c -o build/test_terminal_contacts.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_terminal_contacts.exe "$ngspiceBin/ngspice_con.exe" } else { & ./build/test_terminal_contacts.exe }
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_workbench_pack.c src/workbench_examples.c src/workbench_pack.c src/workbench_selection.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/ui_text.c -o build/test_workbench_pack.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path 'build/spice-local/ucrt64/bin/ngspice_con.exe') {

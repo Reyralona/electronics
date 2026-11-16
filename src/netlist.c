@@ -61,8 +61,6 @@ static void build_nets(const Workbench *b, int *parents, int unite_wires, int sh
     for (i = 0; i < b->part_count; ++i)
     {
         int pin;
-        if (b->parts[i].type == PART_BREADBOARD)
-            continue;
         for (pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
         {
             Pin contact;

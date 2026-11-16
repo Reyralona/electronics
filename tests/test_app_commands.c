@@ -1,13 +1,44 @@
 #include "app_commands.h"
 #include "app_packing.h"
+#include "workbench_pack.h"
 #include "ui_text.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+
+static void check_chip_rotation_flow(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    assert(bench_add(&app.bench, PART_SWITCH, 500, 300) == 0);
+    BenchSelection selection = {0};
+    selection.parts[0] = 1;
+    char message[256];
+    assert(bench_pack_selection(&app.bench, &selection, message, sizeof(message)));
+    app.selected = 0;
+    float x, y, rx, ry;
+    bench_terminal_position(&app.bench, (Pin){0, 0}, &x, &y);
+    /* Create a chip, select it, press R, undo, redo, then complete four turns. */
+    app_commands_key(&app, NULL, SDLK_R, 0);
+    bench_terminal_position(&app.bench, (Pin){0, 0}, &rx, &ry);
+    assert(hypotf(rx - x, ry - y) > 1);
+    app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
+    bench_terminal_position(&app.bench, (Pin){0, 0}, &rx, &ry);
+    assert(hypotf(rx - x, ry - y) < .001f);
+    app_commands_key(&app, NULL, SDLK_Y, SDL_KMOD_CTRL);
+    app.selected = 0; /* Undo/redo clears selection; the person selects the chip again. */
+    for (int turn = 0; turn < 3; ++turn)
+        app_commands_key(&app, NULL, SDLK_R, 0);
+    bench_terminal_position(&app.bench, (Pin){0, 0}, &rx, &ry);
+    assert(hypotf(rx - x, ry - y) < .001f);
+    app_state_dispose(&app);
+}
 
 int main(void)
 {
+    check_chip_rotation_flow();
     static AppState app;
     app_state_init(&app);
     assert(app.history);

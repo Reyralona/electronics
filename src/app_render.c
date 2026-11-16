@@ -2796,6 +2796,10 @@ static void draw_groups(const AppState *app, GLuint font)
                 burnt |= app->sim.burnt[i];
             }
         /* Same package language as the DIP ICs: dark molded body, pin-1 notch, metal legs, small pads. */
+        glPushMatrix();
+        glTranslatef(group->x, group->y, 0);
+        glRotatef(group->rotation * 90.0f, 0, 0, 1);
+        glTranslatef(-group->x, -group->y, 0);
         float left = group->x - width * .5f, top = group->y - height * .5f;
         glColor3f(.10f, .11f, .12f);
         rect(left + 2, top + 3, width, height);
@@ -2822,7 +2826,6 @@ static void draw_groups(const AppState *app, GLuint font)
         char label[40];
         snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), g + 1);
         glColor3f(.86f, .89f, .91f);
-        name_text(font, left + 14, group->y + 5, group->name[0] ? group->name : label, (int)width - 24);
         if (lit)
         {
             color(.3f, .95f, .45f);
@@ -2834,9 +2837,15 @@ static void draw_groups(const AppState *app, GLuint font)
         {
             float x, y;
             bench_terminal_position(&app->bench, pin, &x, &y);
+            WirePoint local = bench_group_to_local(group, (WirePoint){x, y});
+            x = group->x + local.x;
+            y = group->y + local.y;
             float edge = x < group->x ? left : left + width;
             glColor3f(.70f, .72f, .74f);
             rect(fminf(x, edge), y - 1.5f, fabsf(edge - x), 3);
+            Pin contact;
+            if (bench_find_contact(&app->bench, pin.component, pin.pin, &contact))
+                color(.15f, .66f, .79f);
             circle(x, y, 3.5f);
             if (!selected && !app->show_pin_labels)
                 continue;
@@ -2845,6 +2854,12 @@ static void draw_groups(const AppState *app, GLuint font)
             snprintf(label, sizeof(label), "%d", index + 1);
             world_text(font, x + (x < group->x ? -14 : 6) / app->view.zoom, y - 6 / app->view.zoom, label, app->view.zoom);
         }
+        glPopMatrix();
+        snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), g + 1);
+        float label_width = group->rotation % 2 ? height : width;
+        glColor3f(.86f, .89f, .91f);
+        name_text(font, group->x - label_width * .5f + 14, group->y + 5,
+                  group->name[0] ? group->name : label, (int)label_width - 24);
     }
 }
 

@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.36.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.37.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
@@ -40,7 +40,9 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 
 - A breadboard tem duas metades de 30 colunas de 5 contatos ligados entre si, mais quatro trilhos de alimentação independentes.
 - Solte uma peça perto dos furos e os terminais encaixam. Terminais encaixados entram na conexão, sem fio.
-- Um **terminal encostado em outro terminal** também conecta: ao arrastar, um terminal a até 10 px de outro encaixa nele.
+- Um **terminal encostado em outro terminal** também conecta. Isso vale para todos os tipos,
+  inclusive furos da breadboard, interruptores e portas de chips personalizados.
+  Ao arrastar, um terminal a até 10 px de outro encaixa nele. Afastar as peças desfaz o contato.
 - **Perninhas flexíveis:** segure `Alt` e arraste a bolinha de um terminal para mover só a perna da peça. `Alt` + dois cliques na perna cria uma dobra.
 - `X` liga a **transparência**: as peças ficam translúcidas e os terminais escondidos atrás delas podem ser clicados.
 
@@ -96,6 +98,8 @@ O que aparece na tela:
 
 1. Selecione as peças e pressione `Ctrl+G`. Elas viram um **chip** compacto e vão para a aba **Chips**.
 2. Na aba **Chips**, clique no chip e depois na bancada para colocar uma cópia independente.
+   Selecione o chip e pressione `R` para girar 90°. As portas e os fios acompanham o corpo.
+   A orientação fica salva no projeto e pode ser desfeita. Girar não muda a montagem interna.
 3. Selecione um chip e pressione `Enter` (ou **Ver interior**) para abrir o **editor isolado**. Ele tem bancada, simulação e histórico próprios, e nada do que você fizer lá altera a bancada externa até você aplicar.
    - `F4` ou **Renomear**: muda o nome (aceita acentos).
    - `S` ou **Salvar modelo**: atualiza o chip na biblioteca. As cópias de um mesmo chip atualizam a mesma entrada; não aparece uma entrada nova.

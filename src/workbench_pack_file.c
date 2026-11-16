@@ -16,11 +16,11 @@ static int write_group(FILE *file, int index, const BenchGroup *group)
     char fallback[BENCH_GROUP_NAME_CAPACITY];
     snprintf(fallback, sizeof(fallback), tr(TXT_CHIP_DEFAULT_NAME), index + 1);
     const char *name = group->name[0] ? group->name : fallback;
-    if (!bench_group_name_valid(name))
+    if (!bench_group_name_valid(name) || group->rotation < 0 || group->rotation > 3)
         return 0;
     size_t length = strlen(name);
-    return fprintf(file, "group %d %.9g %.9g %.9g %.9g %" PRIu64 " %zu\n", index + 1, group->x, group->y,
-                   group->width, group->height, group->model, length) >= 0 &&
+    return fprintf(file, "group %d %.9g %.9g %.9g %.9g %" PRIu64 " %d %zu\n", index + 1, group->x, group->y,
+                   group->width, group->height, group->model, group->rotation, length) >= 0 &&
            fwrite(name, 1, length, file) == length && fputc('\n', file) != EOF;
 }
 
@@ -119,6 +119,8 @@ static int read_groups(FILE *file, Workbench *bench, int version)
                 return 0;
         }
         if (version >= 28 && fscanf(file, "%" SCNu64, &group->model) != 1)
+            return 0;
+        if (version >= 29 && (fscanf(file, "%d", &group->rotation) != 1 || group->rotation < 0 || group->rotation > 3))
             return 0;
         if (version >= 17)
         {

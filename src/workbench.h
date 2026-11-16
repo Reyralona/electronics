@@ -126,6 +126,7 @@ typedef struct
     float x, y;
     char name[BENCH_GROUP_NAME_CAPACITY];
     float width, height; /* Zero selects the automatic package dimensions. */
+    int rotation; /* Package orientation, independent of internal parts; saved from format 29. */
     uint64_t model; /* Library model identity shared by its copies (0 = none); saved from format 28. */
 } BenchGroup;
 typedef struct
