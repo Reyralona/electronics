@@ -13,8 +13,19 @@ if (Test-Path (Join-Path $toolchain 'SDL3.dll')) {
         }
     }
 }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc src/spice_live_host.c -o build/spice-live-host.exe
+# The host may be locked by an open Bancada session; keep it if it is not older than its source.
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc src/spice_live_host.c -o build/spice-live-host.new.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+try { Move-Item -Force build/spice-live-host.new.exe build/spice-live-host.exe -ErrorAction Stop }
+catch {
+    $hostExe = Get-Item build/spice-live-host.exe -ErrorAction SilentlyContinue
+    if ($null -eq $hostExe -or $hostExe.LastWriteTime -lt (Get-Item src/spice_live_host.c).LastWriteTime) {
+        Write-Error "spice-live-host.exe is locked and older than src/spice_live_host.c; close Bancada and rebuild."
+        exit 1
+    }
+    Write-Warning "spice-live-host.exe is in use; keeping the current host (source unchanged)."
+    Remove-Item build/spice-live-host.new.exe -ErrorAction SilentlyContinue
+}
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_session.c src/spice_session.c -o build/test_spice_session.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_live.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c src/bench_path.c src/component_registry.c -o build/test_spice_live.exe
