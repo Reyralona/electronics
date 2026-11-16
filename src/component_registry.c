@@ -28,6 +28,8 @@ static const ComponentParameter battery_aa = {"voltage", "V", 1.5, 1e-12, 1e12};
 static const ComponentParameter battery_coin = {"voltage", "V", 3, 1e-12, 1e12};
 static const ComponentParameter flex_resistance = {"resistance", "Ω", 25000, 1, 1e9};
 static const ComponentParameter force_resistance = {"resistance", "Ω", 15000, 1, 1e9};
+/* Filament as a constant resistance: 250 ohm is a 5 V / 0.1 W indicator lamp; no thermal model. */
+static const ComponentParameter lamp_resistance = {"resistance", "Ω", 250, 1, 1e6};
 static const ComponentPinInfo pins_bjt[] = {{"E", PIN_EMITTER}, {"B", PIN_BASE}, {"C", PIN_COLLECTOR}};
 static const ComponentPinInfo pins_photo_transistor[] = {{"C", PIN_COLLECTOR}, {"E", PIN_EMITTER}};
 static const ComponentPinInfo pins_sensor[] = {{"V+", PIN_SUPPLY_POSITIVE}, {"OUT", PIN_OUTPUT}, {"GND", PIN_GROUND}};
@@ -75,12 +77,13 @@ static const ComponentInfo components[] = {
     [PART_AMBIENT_LIGHT] = {PART_AMBIENT_LIGHT, "ambient-light", "Fototransistor", 2, COMPONENT_ROTATES, 24, NULL, pins_photo_transistor},
     [PART_TEMPERATURE] = {PART_TEMPERATURE, "temperature", "Sensor TMP36", 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
     [PART_SOIL] = {PART_SOIL, "soil", "Umidade do solo", 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
+    [PART_LAMP] = {PART_LAMP, "lamp", "Lâmpada", 2, COMPONENT_ROTATES, 25, &lamp_resistance, pins_passive},
 };
 
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP};
 
 size_t component_registry_count(void)
 {
@@ -174,6 +177,7 @@ PartType component_electrical_type(PartType type)
     case PART_LDR:
     case PART_FLEX:
     case PART_FORCE:
+    case PART_LAMP:
         return PART_RESISTOR;
     case PART_TILT:
         return PART_SWITCH;

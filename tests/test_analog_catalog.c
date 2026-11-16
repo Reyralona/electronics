@@ -176,8 +176,9 @@ static void new_types_roundtrip(void)
     {
         int index = bench_add(&bench, type, 300 + (type % 6) * 120, 200 + (type / 6) * 100);
         assert(index >= 0);
-        assert(component_from_legacy(type, 23) == NULL);
-        assert(component_from_legacy(type, 24)->type == type);
+        int first = component_info(type)->first_file_version;
+        assert(component_from_legacy(type, first - 1) == NULL);
+        assert(component_from_legacy(type, first)->type == type);
     }
     FILE *file = tmpfile();
     assert(file && workbench_write(file, &bench));
@@ -242,6 +243,18 @@ static void powered_sensor(PartType type)
     bench_snapshot_clear(&bench);
 }
 
+/* Constant filament resistance: 5 V across the default 250 ohm lamp draws 20 mA. */
+static void lamp(void)
+{
+    Workbench bench = {0};
+    assert(bench_add(&bench, PART_SOURCE, 300, 200) == 0 && bench_add(&bench, PART_LAMP, 500, 200) == 1);
+    wire(&bench, 0, 0, 1, 0);
+    wire(&bench, 1, 1, 0, 1);
+    analyze(&bench);
+    assert(fabs(currents[1] - .02) < 1e-4);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
     environment_and_persistence();
@@ -253,6 +266,7 @@ int main(int argc, char **argv)
         powered_sensor(PART_SOIL);
         batteries();
         diode();
+        lamp();
         transistor(PART_NPN);
         transistor(PART_PNP);
         sensor_live(PART_LDR);

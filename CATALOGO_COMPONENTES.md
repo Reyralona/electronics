@@ -56,7 +56,7 @@ Curvas genericas devem ser rotuladas como aproximacoes; nao inventar calibracao 
 | Pedido | Modelo/aceite requerido | Estado atual |
 |---|---|---|
 | LED RGB | Tres juncoes/correntes, pino comum identificado, mistura por corrente de cada cor | Pendente |
-| Lampada | Potencia e aquecimento/brilho; explicitar modelo resistivo/termico | Pendente |
+| Lampada | Potencia e aquecimento/brilho; explicitar modelo resistivo/termico | Implementado 0.31.0: resistencia constante 250 ohm (5 V / 0,1 W), brilho pela corrente; sem modelo termico |
 | Motor de vibracao | Corrente, inercia e vibracao dependentes do acionamento | Pendente |
 | Motor CC | R/L, forca contraeletromotriz, corrente, velocidade e sentido | Pendente |
 | Motor CC com codificador | Modelo de motor e sinais A/B coerentes com posicao/sentido | Pendente |
@@ -107,3 +107,9 @@ com estado salvo e desfazivel. Baterias sao fontes constantes com Rserie, sem ca
 Tambem foi criada a revisao reproduzivel de cada tipo em dois temas. Instrumentos, atuadores,
 displays externos, DIP/DPST, quatro familias restantes de sensores e inventario integral de CIs
 continuam pendentes; este incremento nao conclui todo o pedido nem a continuidade topologica.
+
+## Bloqueio de infraestrutura (15/11/2026, Claude)
+LED RGB, sete segmentos, DIP, LCD e rele com varios contatos precisam de varias correntes/estados
+por peca. Hoje SimAutoResult guarda uma corrente por componente e Part tem um unico `on`.
+Antes desses itens: introduzir elementos internos por peca (correntes e estados indexados),
+persistidos em formato novo, com protecao de queima por elemento. Nao improvisar com varias pecas.

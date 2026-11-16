@@ -48,7 +48,8 @@ typedef enum
     PART_PHOTODIODE,
     PART_AMBIENT_LIGHT,
     PART_TEMPERATURE,
-    PART_SOIL
+    PART_SOIL,
+    PART_LAMP
 } PartType;
 typedef struct
 {

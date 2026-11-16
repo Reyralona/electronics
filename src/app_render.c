@@ -801,6 +801,39 @@ static void draw_sensor(const Part *part)
     }
 }
 
+/* Indicator lamp on a socket: glass tint, filament color and halo follow the measured current. */
+static void draw_lamp(const Part *part, float brightness)
+{
+    float x = part->x, y = part->y, glow = fminf(1, fmaxf(0, brightness));
+    glColor3f(.44f, .46f, .48f);
+    rounded_rect(x - 30, y - 4, 60, 10, 3);
+    gradient_rect(x - 14, y - 10, 28, 16, (SurfaceColor){.82f, .80f, .70f}, (SurfaceColor){.50f, .48f, .40f});
+    glColor3f(.40f, .38f, .32f);
+    for (int ridge = 0; ridge < 3; ++ridge)
+        rect(x - 14, y - 7 + ridge * 5, 28, 1.2f);
+    if (glow > 0)
+    {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glColor4f(1, .86f, .40f, .35f * glow);
+        circle(x, y - 30, 22 + 14 * glow);
+        glDisable(GL_BLEND);
+    }
+    glColor3f(.78f + .2f * glow, .84f + .12f * glow, .88f - .25f * glow);
+    circle(x, y - 30, 19);
+    rect(x - 9, y - 18, 18, 9);
+    glColor3f(.97f, .99f, 1);
+    ellipse(x - 8, y - 38, 3, 6);
+    glColor3f(.35f + .65f * glow, .30f + .55f * glow, .25f);
+    glLineWidth(1.5f);
+    line(x - 5, y - 10, x - 5, y - 28);
+    line(x + 5, y - 10, x + 5, y - 28);
+    line(x - 5, y - 28, x - 2, y - 33);
+    line(x - 2, y - 33, x + 2, y - 27);
+    line(x + 2, y - 27, x + 5, y - 28);
+    glLineWidth(1);
+}
+
 static void draw_diode(const Part *part)
 {
     float x = part->x, y = part->y;
@@ -834,6 +867,8 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     }
     if (p->type == PART_BATTERY_9V || p->type == PART_BATTERY_AA || p->type == PART_BATTERY_COIN)
         draw_battery(p);
+    else if (p->type == PART_LAMP)
+        draw_lamp(p, brightness);
     else if (p->type == PART_DIODE)
         draw_diode(p);
     else if (p->type == PART_NPN || p->type == PART_PNP || p->type == PART_TEMPERATURE)
