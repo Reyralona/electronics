@@ -1897,7 +1897,10 @@ static void draw_block_library(const AppState *app, GLuint font)
         if (app->library_available[slot] && app->library_names[slot][0])
         {
             color(UI_INK);
-            name_text(font, r.x + 62, ui_baseline(r), app->library_names[slot], 118);
+            name_text(font, r.x + 62, ui_baseline(r), app->library_names[slot], 92);
+            AppRect remove = app_layout_palette_delete(slot);
+            int armed = app->library_delete_armed == slot;
+            ui_button(app, font, remove, "×", armed ? UI_BUTTON_DANGER : UI_BUTTON_NEUTRAL);
             continue;
         }
         char label[48];
@@ -2319,13 +2322,15 @@ static int compare_pin_labels(const void *left, const void *right)
     return (ka > kb) - (ka < kb);
 }
 
-static int collect_pin_labels(const AppState *app, const Part *part, PinLabel *labels)
+static int collect_pin_labels(const AppState *app, const Part *part, int only_pin, PinLabel *labels)
 {
     float cx, cy;
     bench_view_to_screen(&app->view, part->x, part->y, &cx, &cy);
     int count = 0;
-    for (int pin = 0; pin < bench_pin_count(part->type) && count < PIN_LABEL_MAX; ++pin, ++count)
+    for (int pin = 0; pin < bench_pin_count(part->type) && count < PIN_LABEL_MAX; ++pin)
     {
+        if (only_pin >= 0 && pin != only_pin)
+            continue;
         const ComponentPinInfo *info = component_pin_info(part->type, pin);
         const char *marker = component_pin_marker(info->role);
         PinLabel *label = &labels[count];
@@ -2342,6 +2347,7 @@ static int collect_pin_labels(const AppState *app, const Part *part, PinLabel *l
             snprintf(label->text, sizeof(label->text), "%s", info->name);
         else
             snprintf(label->text, sizeof(label->text), "%s %s", info->name, marker);
+        ++count;
     }
     qsort(labels, (size_t)count, sizeof(labels[0]), compare_pin_labels);
     return count;
@@ -2370,11 +2376,11 @@ static void draw_pin_label(GLuint font, const Part *part, const PinLabel *label,
     text(font, box.x + 3, box.y + box.h - 4, label->text);
 }
 
-static void draw_pin_name_labels(const AppState *app, GLuint font, const Part *part)
+static void draw_pin_name_labels(const AppState *app, GLuint font, const Part *part, int only_pin)
 {
     PinLabel labels[PIN_LABEL_MAX];
     LabelBox placed[PIN_LABEL_MAX];
-    int count = collect_pin_labels(app, part, labels);
+    int count = collect_pin_labels(app, part, only_pin, labels);
     glPushMatrix();
     glLoadIdentity();
     for (int i = 0; i < count; ++i)
@@ -2387,8 +2393,19 @@ static void draw_pin_name_labels(const AppState *app, GLuint font, const Part *p
     glPopMatrix();
 }
 
+/* Terminal names: all of the selected part when the option is on; otherwise only the hovered terminal. */
 static void draw_selected_pin_labels(const AppState *app, GLuint font)
 {
+    if (!app->show_pin_labels)
+    {
+        Pin pin = app->hovered_pin;
+        if (app->hover_revision != app->bench.revision || pin.component < 0 || pin.component >= app->bench.part_count)
+            return;
+        const Part *hovered = &app->bench.parts[pin.component];
+        if (!hovered->group && hovered->type != PART_BREADBOARD)
+            draw_pin_name_labels(app, font, hovered, pin.pin);
+        return;
+    }
     if (app->selected < 0)
         return;
     const Part *part = &app->bench.parts[app->selected];
@@ -2396,7 +2413,7 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
         return;
     if (!component_has_flag(part->type, COMPONENT_QUAD_GATE))
     {
-        draw_pin_name_labels(app, font, part);
+        draw_pin_name_labels(app, font, part, -1);
         return;
     }
     /* 14-pin ICs: one role symbol per pin fits the 14-unit pitch; names are in the hover help. */
@@ -2855,18 +2872,17 @@ static void draw_settings_appearance(const AppState *app, GLuint font)
     ui_toggle(app, font, app_layout_setting(APP_SETTING_ROUND_WIRES), "Cantos arredondados nos fios",
               app->round_wires);
     ui_toggle(app, font, app_layout_setting(APP_SETTING_HANDLES), "Mostrar joelhos dos fios", app->show_handles);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_PIN_LABELS), "Mostrar nomes dos terminais", app->show_pin_labels);
 }
 
 static void draw_settings_snapping(const AppState *app, GLuint font)
 {
     char value[48];
-    ui_section(font, app_layout_settings_section(0, 6), "Grade e encaixe");
+    ui_section(font, app_layout_settings_section(0, 7), "Grade e encaixe");
     ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_GRID), "Encaixar na grade", app->snap_grid);
     snprintf(value, sizeof(value), "%.6g", app->grid_spacing);
     ui_field(app, font, app_layout_setting(APP_SETTING_GRID_SPACING), "Espaçamento da grade", value);
     ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_BOARD), "Encaixar na breadboard", app->snap_board);
-    AppRect board = app_layout_setting(APP_SETTING_SNAP_BOARD);
-    ui_note(font, board.x, board.y + board.h + 22, "Segure Alt ao mover para ignorar o encaixe.", 400);
 }
 
 static void draw_settings_wires(const AppState *app, GLuint font)

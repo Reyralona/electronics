@@ -2,6 +2,7 @@
 #include "component_registry.h"
 #include "dev_capture.h"
 #include "app_editor.h"
+#include "app_packing.h"
 #include "workbench_group_name.h"
 #include "workbench_examples.h"
 #include "workbench_pack.h"
@@ -580,6 +581,16 @@ static float slider_x(double position)
     return track.x + (float)(track.w * position);
 }
 
+static int first_saved_block(const AppState *app)
+{
+    for (int slot = 0; slot < BLOCK_LIBRARY_SLOTS; ++slot)
+        if (app->library_available[slot])
+            return slot;
+    return -1;
+}
+
+static int deleted_block = -1;
+
 void dev_scenario_queue(AppState *app, SDL_Window *window)
 {
 
@@ -1131,6 +1142,27 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     }
     else if (app->selftest_phase == 188)
         queued = click_rect(window, app_layout_example_card(13));
+    else if (app->selftest_phase == 189)
+    {
+        bench_snapshot_clear(&app->bench);
+        bench_selection_clear(&app->selection);
+        app->view = (BenchView){1, 0, 0};
+        app->snap_grid = 0;
+        app->selected = -1;
+        bench_add(&app->bench, PART_RESISTOR, 500, 300);
+        bench_add(&app->bench, PART_LED, 760, 300);
+        float anode_x, anode_y;
+        bench_pin_position(&app->bench.parts[1], 0, &anode_x, &anode_y);
+        queued = dev_test_click(window, 500, 300) && dev_test_drag_finish(window, anode_x - 49 + 5, anode_y + 3);
+    }
+    else if (app->selftest_phase == 190 || app->selftest_phase == 191)
+    {
+        app->palette_page = 2;
+        app_packing_refresh(app);
+        if (app->selftest_phase == 190)
+            deleted_block = first_saved_block(app);
+        queued = deleted_block >= 0 && click_rect(window, app_layout_palette_delete(deleted_block));
+    }
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1481,6 +1513,15 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 188)
         valid = !app->examples_open && app->example_index == 13 && app->bench.part_count == 3 &&
                 app->bench.parts[0].type == PART_CLOCK;
+    else if (app->selftest_phase == 189)
+    {
+        Pin contact;
+        valid = bench_find_contact(&app->bench, 0, 1, &contact) && contact.component == 1 && contact.pin == 0;
+    }
+    else if (app->selftest_phase == 190)
+        valid = app->library_delete_armed == deleted_block && app->library_available[deleted_block];
+    else if (app->selftest_phase == 191)
+        valid = !app->library_available[deleted_block] && app->library_delete_armed == -1;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1491,7 +1532,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 189)
+    if (++app->selftest_phase == 192)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

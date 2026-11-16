@@ -458,6 +458,9 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     case APP_SETTING_HANDLES:
         app->show_handles = !app->show_handles;
         break;
+    case APP_SETTING_PIN_LABELS:
+        app->show_pin_labels = !app->show_pin_labels;
+        break;
     case APP_SETTING_SNAP_GRID:
         app->snap_grid = !app->snap_grid;
         break;
@@ -649,6 +652,12 @@ static int input_click_palette(AppState *app, float x, float y)
         return 1;
     if (app->palette_page == 2)
     {
+        if (app->library_available[slot] && app_rect_contains(app_layout_palette_delete(slot), x, y))
+        {
+            app_packing_delete(app, slot);
+            return 1;
+        }
+        app->library_delete_armed = -1;
         app_packing_choose(app, slot);
         return 1;
     }
@@ -740,6 +749,8 @@ static void input_snap_grid(const AppState *app, float *x, float *y)
     }
 }
 
+static void snap_part_terminals(const AppState *app, int component, float *x, float *y);
+
 static void input_place_part(AppState *app, float x, float y)
 {
     Workbench before BENCH_AUTO_CLEAR = {0};
@@ -755,6 +766,7 @@ static void input_place_part(AppState *app, float x, float y)
         if (!snapped)
         {
             input_snap_grid(app, &x, &y);
+            snap_part_terminals(app, added, &x, &y);
             bench_move_part(&app->bench, added, x, y);
         }
         bench_history_record(app->history, &before);
@@ -1175,6 +1187,42 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
     }
 }
 
+/* While a part is dragged, a terminal near another part's terminal pulls the part so both coincide
+ * exactly; coincident terminals are an electrical contact (bench_find_contact), like a breadboard hole. */
+#define TERMINAL_SNAP_PIXELS 10.0f
+static void snap_part_terminals(const AppState *app, int component, float *x, float *y)
+{
+    Part candidate = app->bench.parts[component]; /* borrowed view: terminals are not owned here */
+    candidate.x = *x;
+    candidate.y = *y;
+    float best = TERMINAL_SNAP_PIXELS / app->view.zoom, shift_x = 0, shift_y = 0;
+    for (int own = 0; own < bench_pin_count(candidate.type); ++own)
+    {
+        float px, py;
+        bench_pin_position(&candidate, own, &px, &py);
+        for (int other = 0; other < app->bench.part_count; ++other)
+        {
+            const Part *target = &app->bench.parts[other];
+            if (other == component || target->group != candidate.group || target->type == PART_BREADBOARD)
+                continue;
+            for (int pin = 0; pin < bench_pin_count(target->type); ++pin)
+            {
+                float tx, ty;
+                bench_pin_position(target, pin, &tx, &ty);
+                float distance = hypotf(tx - px, ty - py);
+                if (distance < best)
+                {
+                    best = distance;
+                    shift_x = tx - px;
+                    shift_y = ty - py;
+                }
+            }
+        }
+    }
+    *x += shift_x;
+    *y += shift_y;
+}
+
 static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
 
@@ -1206,6 +1254,7 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
                              bench_breadboard_snap_position(&app->bench, &candidate, &x, &y);
             if (!board_snap)
                 input_snap_grid(app, &x, &y);
+            snap_part_terminals(app, app->dragging, &x, &y);
         }
         if (app->bench.parts[app->dragging].x != x || app->bench.parts[app->dragging].y != y)
         {

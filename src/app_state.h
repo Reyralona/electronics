@@ -37,7 +37,7 @@ typedef struct AppState
     double transient_step, transient_stop;
     double grid_spacing;
     int snap_grid, snap_board;
-    int dark_theme, gui_font_size;
+    int dark_theme, gui_font_size, show_pin_labels;
     BenchHistory *history;
     int move_recorded;
     uint64_t live_last_scheduled;
@@ -61,7 +61,7 @@ typedef struct AppState
     int mouse_position_valid;
     char selection_status[160];
     BenchClipboard library_template;
-    int packed_placing, library_index;
+    int packed_placing, library_index, library_delete_armed;
     int library_available[BLOCK_LIBRARY_SLOTS];
     char library_names[BLOCK_LIBRARY_SLOTS][BENCH_GROUP_NAME_CAPACITY];
     struct AppState *editor_parent, *editor_child;

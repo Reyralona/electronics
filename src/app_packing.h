@@ -6,4 +6,5 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod);
 void app_packing_refresh(AppState *app);
 void app_packing_choose(AppState *app, int index);
 void app_packing_place(AppState *app, float x, float y);
+int app_packing_delete(AppState *app, int index);
 #endif

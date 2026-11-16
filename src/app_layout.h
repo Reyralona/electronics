@@ -33,6 +33,8 @@ int app_layout_palette_tab_at(float x, float y);
 AppRect app_layout_palette_item(int slot);
 int app_layout_palette_item_at(float x, float y);
 AppRect app_layout_palette_scrollbar(void);
+/* Remove button on a saved block card (Blocos tab). */
+AppRect app_layout_palette_delete(int slot);
 
 typedef enum
 {
@@ -50,6 +52,7 @@ typedef enum
     APP_SETTING_PROBE_PIN,
     APP_SETTING_STEP,
     APP_SETTING_STOP,
+    APP_SETTING_PIN_LABELS,
     APP_SETTING_RESET,
     APP_SETTING_CLOSE,
     APP_SETTING_COUNT

@@ -20,6 +20,7 @@ WorkbenchSettings app_settings_capture(const AppState *app)
     settings.snap_board = app->snap_board;
     settings.dark_theme = app->dark_theme;
     settings.gui_font_size = app->gui_font_size;
+    settings.show_pin_labels = app->show_pin_labels;
     return settings;
 }
 
@@ -44,6 +45,7 @@ void app_settings_apply_all(AppState *app, const WorkbenchSettings *settings)
     app_settings_apply_project(app, settings);
     app->dark_theme = settings->dark_theme;
     app->gui_font_size = settings->gui_font_size;
+    app->show_pin_labels = settings->show_pin_labels;
 }
 
 void app_settings_reset(AppState *app)

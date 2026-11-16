@@ -186,3 +186,9 @@ O inspector mostra dados tecnicos, valores e controles efetivos. Dicas de teclad
 ficam no rodape contextual, sem ocupar o painel tecnico. Usar "terminais" na interface;
 nao usar apelidos informais para os pinos. Preservar informacoes sobre modelo, unidades,
 polaridade e limites eletricos. Botoes continuam identificados pela acao, sem legenda de atalho.
+
+
+## Rotulos de terminais e fluxo de corrente (preferencia do usuario, 15/11/2026)
+Rotulos nunca se sobrepoem (layout em tela com faixas e linhas-guia). Por padrao so o terminal sob
+o mouse mostra o nome; todos so com a opcao em Configuracoes. Corrente: bolinhas amarelas discretas,
+sem setas grandes. Terminais coincidentes conectam; encaixe de 10 px ao arrastar/posicionar.

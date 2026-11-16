@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
 static void block_path(const AppState *app, int index, char *path, size_t capacity)
 {
@@ -175,4 +176,38 @@ void app_packing_place(AppState *app, float x, float y)
     app->selected_wire = -1;
     app->packed_placing = 0;
     app->status = "Bloco colocado. Conecte seus terminais; Ctrl+Shift+G desempacota na bancada.";
+}
+
+/* Two-step removal from the library: the first request arms the slot, the second moves the file to
+ * <library>/lixeira so it can still be recovered by hand. Placed instances are independent copies. */
+int app_packing_delete(AppState *app, int index)
+{
+    if (index < 0 || index >= BLOCK_LIBRARY_SLOTS || !app->library_available[index])
+        return 0;
+    if (app->library_delete_armed != index)
+    {
+        app->library_delete_armed = index;
+        snprintf(app->selection_status, sizeof(app->selection_status),
+                 "Clique de novo no x para remover \"%.60s\" da biblioteca.", app->library_names[index]);
+        app->status = app->selection_status;
+        return 0;
+    }
+    app->library_delete_armed = -1;
+    const char *library = app->selftest ? "build/test-blocks" : "blocks";
+    char path[128], trash[160], target[224];
+    block_path(app, index, path, sizeof(path));
+    snprintf(trash, sizeof(trash), "%s/lixeira", library);
+    snprintf(target, sizeof(target), "%s/block-%d-%lld.elec", trash, index + 1, (long long)time(NULL));
+    if ((_mkdir(trash) != 0 && errno != EEXIST) || rename(path, target) != 0)
+    {
+        snprintf(app->selection_status, sizeof(app->selection_status), "Não foi possível remover o bloco: %s",
+                 strerror(errno));
+        app->status = app->selection_status;
+        return 0;
+    }
+    if (app->library_index == index)
+        app->packed_placing = 0;
+    app_packing_refresh(app);
+    app->status = "Bloco removido da biblioteca (cópia em lixeira). Instâncias na bancada continuam.";
+    return 1;
 }

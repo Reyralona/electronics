@@ -129,12 +129,14 @@ AppRect app_layout_setting(AppSetting setting)
         return settings_row(SETTINGS_LEFT, 3);
     case APP_SETTING_HANDLES:
         return settings_row(SETTINGS_LEFT, 4);
+    case APP_SETTING_PIN_LABELS:
+        return settings_row(SETTINGS_LEFT, 5);
     case APP_SETTING_SNAP_GRID:
-        return settings_row(SETTINGS_LEFT, 6);
-    case APP_SETTING_GRID_SPACING:
         return settings_row(SETTINGS_LEFT, 7);
-    case APP_SETTING_SNAP_BOARD:
+    case APP_SETTING_GRID_SPACING:
         return settings_row(SETTINGS_LEFT, 8);
+    case APP_SETTING_SNAP_BOARD:
+        return settings_row(SETTINGS_LEFT, 9);
     case APP_SETTING_SHOW_CURRENT:
         return settings_row(SETTINGS_RIGHT, 2);
     case APP_SETTING_PROBE_MEASURE:
@@ -343,4 +345,12 @@ int app_layout_example_card_at(float x, float y)
 AppRect app_layout_examples_close(void)
 {
     return close_button(app_layout_examples_panel());
+}
+
+AppRect app_layout_palette_delete(int slot)
+{
+    AppRect card = app_layout_palette_item(slot);
+    if (card.w <= 0)
+        return card;
+    return (AppRect){card.x + card.w - 30, card.y + (card.h - 24) / 2, 24, 24};
 }

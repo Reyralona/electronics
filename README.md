@@ -354,3 +354,12 @@ A biblioteca tem seis abas: Básicos, Digital, Blocos, Sensores, Saídas e Medi�
 - Sensores com slider de ambiente: PIR, gás, infravermelho de obstáculo e distância.
 Displays de 7 segmentos e LEDs RGB dentro de um bloco aparecem no corpo do bloco.
 Modelos são aproximações didáticas; limites no inspector e em DECISOES.md. Formato 26 (lê 1–25).
+
+## Terminais e blocos (0.33.0)
+- Pino sobre pino conecta: ao arrastar ou posicionar uma peça, um terminal a até 10 px de outro
+  terminal encaixa exatamente e forma contato elétrico, sem fio (como num furo da breadboard).
+- Nomes dos terminais: por padrão aparecem só no terminal sob o mouse; em Configurações >
+  Aparência, "Mostrar nomes dos terminais" exibe todos os da peça selecionada, sem sobreposição.
+- Corrente nos fios: bolinhas amarelas andando no sentido da corrente; a velocidade indica a faixa.
+- Blocos: o × no cartão da aba Blocos remove o bloco da biblioteca (dois cliques). O arquivo vai
+  para blocks/lixeira; blocos já colocados na bancada continuam.
