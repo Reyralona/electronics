@@ -149,4 +149,6 @@ A arquitetura e as convenções de código estão em [docs/QUALIDADE_CODIGO.md](
 
 ## Licença
 
-Ainda não há licença definida. Até que haja, o código é público para leitura, mas todos os direitos continuam reservados ao autor.
+[GNU GPL versão 3](LICENSE). Você pode usar, estudar, modificar e redistribuir o programa. Quem distribuir uma versão modificada precisa mantê-la sob a mesma licença e publicar o código-fonte.
+
+Dependências que o projeto não inclui no repositório: a [SDL3](https://www.libsdl.org/) (licença zlib) e o [ngspice](https://ngspice.sourceforge.io/), que o `tools/setup-ngspice.ps1` baixa dos pacotes do MSYS2. Cada um segue a sua própria licença.

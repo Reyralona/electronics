@@ -7,6 +7,7 @@
   resistência de entrada e uma entrada aberta lê BAIXO.
 - Correção: renomear/salvar um chip no editor isolado não cria mais uma segunda entrada na aba
   Blocos; o chip e suas cópias atualizam a própria entrada (formato de arquivo 28, lê os antigos).
+- Licença GPL-3.0 (`LICENSE`).
 - Documentação para o repositório público: README reescrito (o que é, instalação passo a passo,
   primeiros passos, limites), guia de uso atual em `docs/GUIA.md` e documentos de projeto movidos
   para `docs/` com cabeçalho explicando o propósito de cada um.
