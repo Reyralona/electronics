@@ -1807,6 +1807,22 @@ static int ui_text_width(GLuint font, const char *label)
     return width > 0 || !font ? width : (int)strlen(label) * 8;
 }
 
+static void ui_wrapped(GLuint font, float x, float baseline, const char *source, int width, int max_lines,
+                       float line_height);
+
+/* Keep short names centered and use the card height for longer translations. */
+static void palette_name(GLuint font, AppRect r, const char *name)
+{
+    const int text_offset = 62;
+    const int right_padding = 4;
+    const float line_height = ui_font_pixels + 2.0f;
+    int width = (int)r.w - text_offset - right_padding;
+    float baseline = ui_baseline(r);
+    if (ui_text_width(font, name) > width)
+        baseline -= line_height / 2;
+    ui_wrapped(font, r.x + text_offset, baseline, name, width, 2, line_height);
+}
+
 static void ui_text_center(GLuint font, AppRect r, const char *label)
 {
     text(font, r.x + (r.w - ui_text_width(font, label)) / 2, ui_baseline(r), label);
@@ -2185,7 +2201,7 @@ static void draw_palette(const AppState *app, GLuint font)
         draw_palette_card(app, r, app->placing == (int)type);
         draw_thumbnail(type, r.x + 28, app_rect_center_y(r));
         color(UI_INK);
-        name_text(font, r.x + 62, ui_baseline(r), part_name(type), 120);
+        palette_name(font, r, part_name(type));
     }
     draw_palette_scrollbar(app->palette_offset, count);
 }

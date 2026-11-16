@@ -558,3 +558,19 @@ test_chip_library_flow.c e check_four_input_and. `./build.ps1 -GuiTests` passou.
 Repositorio publico (16/11/2026): documentos de projeto movidos para docs/ (prompt.md -> docs/VISAO.md);
 README e para quem chega de fora, docs/GUIA.md e o manual atual. Ao mudar comportamento visivel,
 atualize docs/GUIA.md (nao acumule secoes por versao no README). Nao versionar dados pessoais.
+
+## Tradução e revisão visual - 16/11/2026 (feature/i18n)
+Revisados os merges de tradução até add2fac e a correção de símbolos e glossário e6f21fc.
+Catálogo com 622 textos pt-BR/en-US, selecionados pelas bandeiras em Configurações.
+O diff interrompido chamava palette_name sem definir a função; concluído com duas linhas
+medidas pela fonte real, usando ui_wrapped existente. Nomes curtos continuam centralizados.
+Preservada a revisão local de desmontar/unpack para desagrupar/ungroup.
+README e GUIA agora descrevem os idiomas; decisões e limites seguem em TEXTOS e DECISOES.
+Verificação: ./build.ps1 -GuiTests passou, incluindo test_ui_text nos dois idiomas e autoteste GUI.
+Compilação estrita repetida após o ajuste final da declaração do helper e do modo de captura.
+Novo modo de desenvolvimento: --capture-palette=N (0..5), com --language=pt-BR ou en-US
+e --capture-output=build/arquivo.bmp. Geradas oito capturas de sensores, saídas, medição e
+configurações; revisadas saídas nos dois idiomas, medição pt-BR e configurações en-US.
+Artefatos locais em build/i18n-*.bmp. Capturas não são evidência de troca por clique/persistência;
+persistência de preferências tem teste próprio. Números exibidos ainda usam ponto decimal.
+Meta 1.0 continua não atendida. Este incremento permanece na branch de tradução, sem release.

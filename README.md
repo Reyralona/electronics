@@ -6,7 +6,7 @@ O cálculo elétrico é feito pelo [ngspice](https://ngspice.sourceforge.io/), u
 
 ![Bancada com um CI 74HC00 numa breadboard, um clock e um LED](docs/img/bancada.png)
 
-> **Estado do projeto:** em desenvolvimento (versão 0.34.1, antes da 1.0). Funciona só no Windows 10/11 de 64 bits, e a interface está em português. Os modelos elétricos são aproximações didáticas: servem para aprender, não para dimensionar um circuito real.
+> **Estado do projeto:** em desenvolvimento (versão 0.34.1, antes da 1.0). Funciona só no Windows 10/11 de 64 bits, e a interface oferece português (Brasil) e inglês (EUA). Os modelos elétricos são aproximações didáticas: servem para aprender, não para dimensionar um circuito real.
 
 ## O que dá para fazer
 

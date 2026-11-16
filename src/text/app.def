@@ -60,8 +60,8 @@ UI_TEXT(APP_VALUE_INVALID, "Valor inválido. Use um número positivo de 1e-12 a 
         "Invalid value. Use a positive number from 1e-12 to 1e12.")
 UI_TEXT(APP_PART_DELETED, "Peça e seus fios apagados.", "Part and its wires deleted.")
 UI_TEXT(APP_WIRE_DELETED, "Fio apagado.", "Wire deleted.")
-UI_TEXT(APP_CHIP_ACTION_UNAVAILABLE, "Esta ação não vale para chips. Ctrl+Shift+G: desmontar o chip.",
-        "This action does not apply to chips. Ctrl+Shift+G: unpack the chip.")
+UI_TEXT(APP_CHIP_ACTION_UNAVAILABLE, "Esta ação não vale para chips. Ctrl+Shift+G: desagrupar o chip.",
+        "This action does not apply to chips. Ctrl+Shift+G: ungroup the chip.")
 UI_TEXT(APP_TRANSPARENCY_ON, "Transparência ligada. Terminais cobertos ficam acessíveis.",
         "Transparency on. Covered terminals are accessible.")
 UI_TEXT(APP_TRANSPARENCY_OFF, "Transparência desligada.", "Transparency off.")
@@ -113,9 +113,9 @@ UI_TEXT(APP_CHIP_FILE_UNAVAILABLE, "Arquivo indisponível", "File not available"
 UI_TEXT(APP_LIBRARY_FOLDER_FAILED, "Não foi possível criar a pasta da biblioteca: %s",
         "Cannot create the library folder: %s")
 UI_TEXT(APP_CHIP_SAVE_FAILED, "Não foi possível salvar o chip: %s", "Cannot save the chip: %s")
-UI_TEXT(APP_CHIP_UNPACKED, "Chip desmontado. Os fios externos continuam nos mesmos terminais.",
-        "Chip unpacked. The outer wires stay on the same terminals.")
-UI_TEXT(APP_SELECT_CHIP_TO_UNPACK, "Selecione um chip para desmontar.", "Select a chip to unpack.")
+UI_TEXT(APP_CHIP_UNPACKED, "Chip desagrupado. Os fios externos continuam nos mesmos terminais.",
+        "Chip ungrouped. The outer wires stay on the same terminals.")
+UI_TEXT(APP_SELECT_CHIP_TO_UNPACK, "Selecione um chip para desagrupar.", "Select a chip to ungroup.")
 UI_TEXT(APP_CHIP_CREATED, "Chip criado.", "Chip created.")
 UI_TEXT(APP_CHIP_CREATED_NOT_SAVED, "Chip criado, mas a biblioteca está cheia. Ele não foi salvo.",
         "Chip created, but the library is full. It was not saved.")

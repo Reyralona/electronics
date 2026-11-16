@@ -8,6 +8,7 @@
 #include "workbench_pack.h"
 #include "spice_trace.h"
 #include "app_layout.h"
+#include "app_palette.h"
 #include "ui_text.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,6 +69,18 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         int closeup = component_closeup(app, argv[1]);
         if (closeup)
             return closeup < 0;
+    }
+    /* Capture each catalog page without changing the saved workspace. */
+    if (argc > 1 && !strncmp(argv[1], "--capture-palette=", 18))
+    {
+        char *end;
+        long page = strtol(argv[1] + 18, &end, 10);
+        if (end == argv[1] + 18 || *end || page < 0 || page >= PALETTE_PAGES)
+            return 1;
+        app->palette_page = (int)page;
+        app->palette_offset = 0;
+        app->sim.sim_running = 0;
+        return 0;
     }
     if (argc > 1 && !strcmp(argv[1], "--capture-environment"))
     {
