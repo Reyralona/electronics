@@ -1,5 +1,20 @@
 # Histórico de versões
 
+## 0.34.0
+
+- Microcontroladores programáveis: Arduino Uno, ESP32 DevKit e ATtiny85, com linguagem estilo
+  Arduino (setup/loop, pinMode, digitalWrite/Read, analogRead/Write, delay, millis, Serial...).
+- Editor de código lateral (duplo clique na placa ou "Editar código" no inspector): fonte
+  monoespaçada, números de linha, auto-indentação, sugestões ao digitar (Ctrl+Espaço), erro de
+  compilação marcado na linha, monitor serial; Ctrl+Enter/Executar envia o programa (Ctrl+Z desfaz).
+- LCD 16x2 I2C: mostra o texto de `lcd.print` quando SDA/SCL estão ligados aos pinos I2C da placa.
+- X liga/desliga transparência das peças: terminais atrás de outra peça ficam acessíveis.
+- Com uma peça selecionada, escolher outro tipo no catálogo troca a peça no lugar (fios mantidos
+  por terminal; Ctrl+Z desfaz). Esc agora também limpa a seleção.
+- Blocos personalizados expõem só um terminal por nó livre ou ligado ao exterior: três AND formando
+  um AND de 4 entradas viram um bloco de 5 terminais (antes 9), inclusive via breadboard.
+- Executável único `build/build.exe`.
+
 ## 0.33.0
 
 - Terminal sobre terminal conecta: encaixe de 10 px ao arrastar ou posicionar peças.

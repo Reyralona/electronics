@@ -493,3 +493,26 @@ Nao implementados com justificativa: LCD 16x2 I2C (exige mestre I2C/microcontrol
 na Bancada); sensor ultrassonico (trigger/echo exige temporizacao por pulso; o sensor de distancia
 atual e IR analogico, declarado). Displays 7 segmentos e RGB dentro de blocos aparecem no corpo.
 Regressao: tests/test_devices.c verifica cada dispositivo no ngspice.
+
+## Microcontroladores, editor e blocos (0.34.0, 16/11/2026)
+Decisao: interpretar um subconjunto de Arduino (mcu_lang: compilador de uma passada para bytecode e
+VM retomavel que cede em delay()) em vez de emular AVR/Xtensa. Fatos: Tinkercad roda AVR real;
+emular ISA exige toolchain do usuario e foge do MVP. Hipotese aceita: programas didaticos cabem
+no subconjunto; falta (pendente) ponteiros, String, bibliotecas alem de LiquidCrystal_I2C.
+- Tempo: a placa usa o relogio real (millis = ms reais com a simulacao rodando); o circuito
+  analogico tem sua escala propria. Pausar a simulacao pausa a placa.
+- Pinos: saida = fonte comportamental nivel*VCC atras de 25 ohm; entrada = aberto; INPUT_PULLUP
+  = 30 kohm a VCC. Mudancas de pino usam `alter` sem reconstruir a sessao. PWM = tensao media.
+- LCD I2C: o texto e aplicado quando SDA/SCL estao no mesmo no dos pinos I2C da placa e o LCD
+  tem alimentacao > 4 V. Nao ha protocolo I2C bit a bit nem endereco verificado (declarado).
+- Editor: buffer puro em code_text.c (testado); app_code_editor.c so roteia eventos SDL. O
+  rascunho so chega a peca por app_code_apply, que grava historico (Ctrl+Z). Fechar aplica.
+- Transparencia (X): corpo das pecas com alfa constante via glBlendColor (GL 1.4 carregado em
+  tempo de execucao); sem ele, so o teste de acerto muda. Sem X, terminais cobertos continuam
+  inacessiveis (margem de borda 6 px).
+- Troca pelo catalogo: bench_swap_type mantem posicao/rotacao/escala e fios em terminais de mesmo
+  indice; descarta fios de terminais inexistentes no tipo novo.
+- Portas de blocos: por no eletrico (fios, contatos e faixas de breadboard), um unico terminal
+  representante e exposto se o no e livre (so um terminal do bloco) ou alcanca peca externa.
+  Ligacoes internas que passavam por breadboard externa viram fios internos; fios de fronteira em
+  terminais ocultos migram para o representante.

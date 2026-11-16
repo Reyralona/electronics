@@ -76,11 +76,11 @@ Dívidas encontradas, em ordem de impacto:
 ### 4.2 Catálogo pendente (`CATALOGO_COMPONENTES.md`)
 Feito na 0.32.0: saídas, 7 segmentos (visível no corpo de blocos), DIP 4 vias, DPST, relé,
 sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
-- LCD 16x2 I2C: exige um mestre I2C (microcontrolador), que a Bancada ainda não tem.
+- ~~LCD 16x2 I2C~~ e microcontroladores: feitos na 0.34.0 (subconjunto Arduino, editor lateral).
 - Sensor ultrassônico com trigger/echo (o de distância atual é IR analógico, declarado).
 - DIP de tamanho configurável (hoje 4 vias); servo por largura de pulso real.
 - CIs: inventário verificável do Tinkercad (555, 74HC02/04/14/595, 4511, L293D, LM741...).
-- Microcontrolador (tipo Arduino): pré-requisito para LCD e para servo/ultrassônico realistas.
+- Microcontrolador: feito (0.34.0); falta servo por pulso e ultrassônico usando-o.
 
 ### 4.3 Uso e acabamento (`QUALIDADE_DE_USO.md`)
 - [ ] Escala completa da interface (hoje só o tamanho do texto muda).
@@ -92,8 +92,8 @@ sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
 
 1. Proteção de queima por elemento (RGB e 7 segmentos) e divisão de `app_render.c`.
 2. CIs do inventário Tinkercad com pinagem conferida (começar por 74HC04, 74HC02 e 555).
-3. Decidir o microcontrolador (pré-requisito do LCD I2C e do ultrassônico) com comparação técnica.
+3. Exemplos com placas programáveis; ultrassônico e servo por pulso sobre o microcontrolador.
 4. Capacidades dinâmicas e IDs textuais no formato de arquivo.
 
-Comandos de verificação: `./build.ps1 -OutputName bancada-next -GuiTests` (não fecha a Bancada aberta);
+Comandos de verificação: `./build.ps1 -GuiTests` (gera o executável único `build/build.exe`);
 revisão de arte: `./tools/capture-components.ps1 -Destination build/component-review/<nome>`.

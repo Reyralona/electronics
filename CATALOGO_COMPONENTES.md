@@ -63,7 +63,7 @@ Curvas genericas devem ser rotuladas como aproximacoes; nao inventar calibracao 
 | Micro servo | Alimentacao, largura de pulso, posicao e dinamica identificadas | Pendente |
 | Piezo | Modelo eletrico e resposta em frequencia; som opcional coerente com sinal | Pendente |
 | Sete segmentos | Segmentos/ponto individuais, corrente e anodo/catodo comum identificados | Pendente |
-| LCD 16x2 I2C | Alimentacao, endereco, barramento e protocolo; nao fingir texto recebido | Pendente |
+| LCD 16x2 I2C | Alimentacao, endereco, barramento e protocolo; nao fingir texto recebido | Feito 0.34.0 (texto por conectividade I2C; protocolo nao simulado) |
 
 ### Displays no exterior de chips personalizados
 
@@ -122,3 +122,5 @@ passivo, gerador de funcao, multimetro (V/A/Ohm), osciloscopio, sensores PIR, ga
 de obstaculo e distancia (IR analogico). 54 tipos no total.
 Pendentes: LCD 16x2 I2C (sem microcontrolador/mestre I2C), sensor ultrassonico com trigger/echo,
 DIP de tamanho configuravel (hoje 4 vias), inventario de CIs Tinkercad alem de 74HC00/08/32/86.
+
+0.34.0: Arduino Uno, ESP32 DevKit, ATtiny85 (programaveis no editor lateral) e LCD 16x2 I2C. 58 tipos.

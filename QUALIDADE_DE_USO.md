@@ -192,3 +192,7 @@ polaridade e limites eletricos. Botoes continuam identificados pela acao, sem le
 Rotulos nunca se sobrepoem (layout em tela com faixas e linhas-guia). Por padrao so o terminal sob
 o mouse mostra o nome; todos so com a opcao em Configuracoes. Corrente: bolinhas amarelas discretas,
 sem setas grandes. Terminais coincidentes conectam; encaixe de 10 px ao arrastar/posicionar.
+
+0.34.0: transparencia (X) com selo visivel na barra de status; troca pelo catalogo anunciada na
+dica da peca selecionada; editor de codigo mostra estado (rodando/erro na linha/nao enviado) e
+monitor serial sem esconder a bancada (painel a direita, inspector oculto enquanto aberto).

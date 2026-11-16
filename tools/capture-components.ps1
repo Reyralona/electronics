@@ -1,5 +1,5 @@
 param(
-    [string]$Executable = 'build/bancada-next.exe',
+    [string]$Executable = 'build/build.exe',
     [string]$Destination = 'build/component-review/before',
     [switch]$IncludeChips
 )

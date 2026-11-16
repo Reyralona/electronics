@@ -538,3 +538,11 @@ nao commitados ja integrados; remover so com confirmacao do usuario. Remoto da b
 ## Estado 0.32.0 (15/11/2026, Claude)
 Dispositivos multi-elemento entregues (component_devices + netlist_devices, formato 26).
 Proximo: queima por elemento, divisao de app_render.c, CIs Tinkercad, decisao de microcontrolador.
+
+
+## Estado 0.34.0 (16/11/2026, Claude)
+Microcontroladores (Uno/ESP32/ATtiny85) + LCD I2C + editor de codigo lateral; transparencia (X);
+troca de peca pelo catalogo; portas de blocos por no. Executavel unico: build/build.exe
+(`./build.ps1 -GuiTests`). Modulos novos: mcu_lang, mcu_board, mcu_runtime, code_text,
+app_code_editor. Proximo: CIs Tinkercad (74HC04/02, 555, 4511, L293D), exemplos com placas,
+autoteste GUI do editor, lcd_connected recalcula nos a cada operacao (otimizar se pesar).
