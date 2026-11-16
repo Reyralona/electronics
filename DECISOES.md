@@ -516,3 +516,23 @@ no subconjunto; falta (pendente) ponteiros, String, bibliotecas alem de LiquidCr
   representante e exposto se o no e livre (so um terminal do bloco) ou alcanca peca externa.
   Ligacoes internas que passavam por breadboard externa viram fios internos; fios de fronteira em
   terminais ocultos migram para o representante.
+
+## Entradas logicas flutuantes e identidade de chips (16/11/2026)
+Fato: no live, chave aberta = 10 GOhm (NETLIST_LIVE_OPEN_OHMS) e a unica fuga da entrada de porta
+era rshunt 1 TOhm; divisor deixava a entrada atras de chave aberta em ~4,95 V (ALTO). Slot 1 do
+usuario (AND de 4 entradas) acendia o LED com tudo desligado; o DC (chave aberta omitida) dava 0.
+Decisao: cada entrada de porta (gate_adc) e de 74HC tem NETLIST_GATE_INPUT_OHMS = 100 MOhm ate a
+referencia (terra ou pino GND do CI): entrada aberta le BAIXO (~0,05 V), fuga 50 nA a 5 V. Nao
+amplia a razao aberto/fechado (1e13). Simplificacao didatica: CMOS real flutuante e indefinido.
+Pendente/decisao do usuario: pino de MCU em INPUT continua so com rshunt (le ALTO atras de chave
+aberta), como no Arduino real o pino fica indefinido; avaliar mesma regra ou aviso na UI.
+Regressao: tests/test_spice_live.c check_four_input_and (falhou antes: 3,1 mA com tudo desligado).
+
+Fato: Ctrl+G grava o bloco na biblioteca, mas a instancia nao sabia qual era sua entrada; o editor
+isolado salvava sempre em slot livre (duplicava ao renomear/salvar).
+Decisao: BenchGroup.model (uint64, formato 28, linha `group ... model len`) identifica o modelo;
+copias colocadas da lista herdam. Salvar no editor grava no slot com esse id e liga a instancia
+externa (so identidade, circuito intacto). Sem id (arquivos <= 27): usa o slot cujo nome e unico
+e igual ao nome inicial do chip e adota o id dele. Id removido da lista -> nova entrada; slot
+reaproveitado por outro chip nunca e sobrescrito (id diferente). Renomear na bancada nao altera a
+biblioteca. Regressao: tests/test_chip_library_flow.c, passos de usuario (falhou antes no 1o salvar).

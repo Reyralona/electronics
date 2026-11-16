@@ -546,3 +546,10 @@ troca de peca pelo catalogo; portas de blocos por no. Executavel unico: build/bu
 (`./build.ps1 -GuiTests`). Modulos novos: mcu_lang, mcu_board, mcu_runtime, code_text,
 app_code_editor. Proximo: CIs Tinkercad (74HC04/02, 555, 4511, L293D), exemplos com placas,
 autoteste GUI do editor, lcd_connected recalcula nos a cada operacao (otimizar se pesar).
+
+
+## Correcoes 0.34.1 - 16/11/2026 (Claude, sem commit, sobre main c6baa46)
+4AND do slot 1 acendia com chaves abertas (divisor 10 GOhm/1 TOhm); entradas de portas/74HC
+ganharam 100 MOhm. Chip renomeado/salvo no editor duplicava na biblioteca; agora BenchGroup.model
+(formato 28). Ver DECISOES.md. Testes "humanos" (sequencia de acoes do usuario + caso oposto):
+test_chip_library_flow.c e check_four_input_and. `./build.ps1 -GuiTests` passou.

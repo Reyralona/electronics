@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.34.1
+
+- Correção: entrada de porta lógica ou de CI 74HC atrás de interruptor aberto lia nível ALTO na
+  simulação ao vivo (AND de 4 entradas acendia com tudo desligado). Entradas têm agora 100 MΩ de
+  resistência de entrada e uma entrada aberta lê BAIXO.
+- Correção: renomear/salvar um chip no editor isolado não cria mais uma segunda entrada na aba
+  Blocos; o chip e suas cópias atualizam a própria entrada (formato de arquivo 28, lê os antigos).
+
 ## 0.34.0
 
 - Microcontroladores programáveis: Arduino Uno, ESP32 DevKit e ATtiny85, com linguagem estilo
