@@ -11,6 +11,35 @@ static int exposed(const Part *part, int pin)
     return (part->exposed[pin / 64] & (UINT64_C(1) << (pin % 64))) != 0;
 }
 
+/* Format 30: "<count> <side> <row>..." after the rotation; count 0 keeps the automatic arrangement. */
+static int write_port_layout(FILE *file, const BenchGroup *group)
+{
+    int count = group->port_layout;
+    if (count < 0 || count > BENCH_GROUP_LAYOUT_MAX)
+        return 0;
+    if (fprintf(file, " %d", count) < 0)
+        return 0;
+    for (int index = 0; index < count; ++index)
+        if (fprintf(file, " %u %u", group->port_places[index].side, group->port_places[index].row) < 0)
+            return 0;
+    return 1;
+}
+
+static int read_port_layout(FILE *file, BenchGroup *group)
+{
+    if (fscanf(file, "%d", &group->port_layout) != 1 || group->port_layout < 0 ||
+        group->port_layout > BENCH_GROUP_LAYOUT_MAX)
+        return 0;
+    for (int index = 0; index < group->port_layout; ++index)
+    {
+        unsigned side, row;
+        if (fscanf(file, "%u %u", &side, &row) != 2 || side > 1 || row >= BENCH_GROUP_LAYOUT_MAX)
+            return 0;
+        group->port_places[index] = (BenchPortPlace){(unsigned char)side, (unsigned char)row};
+    }
+    return 1;
+}
+
 static int write_group(FILE *file, int index, const BenchGroup *group)
 {
     char fallback[BENCH_GROUP_NAME_CAPACITY];
@@ -19,8 +48,9 @@ static int write_group(FILE *file, int index, const BenchGroup *group)
     if (!bench_group_name_valid(name) || group->rotation < 0 || group->rotation > 3)
         return 0;
     size_t length = strlen(name);
-    return fprintf(file, "group %d %.9g %.9g %.9g %.9g %" PRIu64 " %d %zu\n", index + 1, group->x, group->y,
-                   group->width, group->height, group->model, group->rotation, length) >= 0 &&
+    return fprintf(file, "group %d %.9g %.9g %.9g %.9g %" PRIu64 " %d", index + 1, group->x, group->y,
+                   group->width, group->height, group->model, group->rotation) >= 0 &&
+           write_port_layout(file, group) && fprintf(file, " %zu\n", length) >= 0 &&
            fwrite(name, 1, length, file) == length && fputc('\n', file) != EOF;
 }
 
@@ -121,6 +151,8 @@ static int read_groups(FILE *file, Workbench *bench, int version)
         if (version >= 28 && fscanf(file, "%" SCNu64, &group->model) != 1)
             return 0;
         if (version >= 29 && (fscanf(file, "%d", &group->rotation) != 1 || group->rotation < 0 || group->rotation > 3))
+            return 0;
+        if (version >= 30 && !read_port_layout(file, group))
             return 0;
         if (version >= 17)
         {

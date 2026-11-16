@@ -2409,6 +2409,22 @@ static void draw_workspace_route(const AppState *app)
         }
 }
 
+/* Below 100% zoom, terminal marks shrink with the parts instead of keeping their screen size. */
+#define TERMINAL_MIN_SCREEN_RADIUS 1.5f
+/* Bitmap labels keep their pixel size; below this zoom they would cover the parts, so they are hidden. */
+#define LABEL_MIN_ZOOM 0.6f
+
+static float terminal_world_radius(float zoom, float screen_radius)
+{
+    float shrink = fminf(1, zoom);
+    return fmaxf(TERMINAL_MIN_SCREEN_RADIUS, screen_radius * shrink) / zoom;
+}
+
+static int labels_visible(const AppState *app)
+{
+    return app->view.zoom >= LABEL_MIN_ZOOM;
+}
+
 static void draw_workspace_parts(const AppState *app)
 {
     int i;
@@ -2443,8 +2459,9 @@ static void draw_workspace_parts(const AppState *app)
                     inner_radius = 2.5f;
                 }
                 float terminal_scale = fminf(1, bench_part_scale(&app->bench.parts[i]));
-                outer_radius = fmaxf(3, outer_radius * terminal_scale) / app->view.zoom;
-                inner_radius = fmaxf(1.5f, inner_radius * terminal_scale) / app->view.zoom;
+                float inner_ratio = inner_radius / outer_radius;
+                outer_radius = terminal_world_radius(app->view.zoom, fmaxf(3, outer_radius * terminal_scale));
+                inner_radius = outer_radius * inner_ratio;
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
                 color(.18f, .22f, .24f);
                 circle(x, y, outer_radius);
@@ -2706,6 +2723,11 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
 static void draw_workspace_labels(const AppState *app, GLuint font)
 {
     int i;
+    if (!labels_visible(app))
+    {
+        draw_selected_pin_labels(app, font);
+        return;
+    }
     for (i = 0; i < app->bench.part_count; ++i)
         if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
         {
@@ -2807,8 +2829,6 @@ static void draw_groups(const AppState *app, GLuint font)
         rect(left, top, width, height);
         glColor3f(.18f, .20f, .22f);
         rect(left, top + height - 4, width, 4);
-        glColor3f(.14f, .16f, .18f);
-        circle(left, group->y, 6);
         glColor3f(.70f, .74f, .76f);
         circle(left + 9, top + 9, 2.5f);
         if (selected)
@@ -2847,7 +2867,7 @@ static void draw_groups(const AppState *app, GLuint font)
             if (bench_find_contact(&app->bench, pin.component, pin.pin, &contact))
                 color(.15f, .66f, .79f);
             circle(x, y, 3.5f);
-            if (!selected && !app->show_pin_labels)
+            if ((!selected && !app->show_pin_labels) || !labels_visible(app))
                 continue;
             const ComponentPinInfo *info = component_pin_info(app->bench.parts[pin.component].type, pin.pin);
             pin_role_color(info->role);

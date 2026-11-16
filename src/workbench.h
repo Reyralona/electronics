@@ -120,6 +120,14 @@ typedef struct
     int color;
 } Wire;
 
+/* Custom chip terminal arrangement: up to this many terminals can be placed by hand. */
+#define BENCH_GROUP_LAYOUT_MAX 64
+typedef struct
+{
+    unsigned char side; /* 0 = left, 1 = right (package frame, before rotation). */
+    unsigned char row;  /* Order on that side, top to bottom. */
+} BenchPortPlace;
+
 typedef struct
 {
     int active;
@@ -128,6 +136,10 @@ typedef struct
     float width, height; /* Zero selects the automatic package dimensions. */
     int rotation; /* Package orientation, independent of internal parts; saved from format 29. */
     uint64_t model; /* Library model identity shared by its copies (0 = none); saved from format 28. */
+    /* Number of terminals the custom arrangement covers; 0 or a different terminal count = automatic
+     * (first half left, rest right). Saved from format 30. */
+    int port_layout;
+    BenchPortPlace port_places[BENCH_GROUP_LAYOUT_MAX];
 } BenchGroup;
 typedef struct
 {

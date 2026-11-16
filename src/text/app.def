@@ -176,6 +176,12 @@ UI_TEXT(APP_WIRE_COLOR_CHANGED, "Cor do fio alterada.", "Wire color changed.")
 UI_TEXT(APP_SELECT_WIRE_FOR_CURRENT, "Selecione um fio e aperte T para medir a corrente no tempo.",
         "Select a wire and press T to measure its current over time.")
 UI_TEXT(APP_ENVIRONMENT_DRAG, "Arraste para mudar o ambiente.", "Drag to change the environment.")
+UI_TEXT(APP_DRAG_CHIP_TERMINAL, "Arraste o terminal para outro lado ou posição do chip.",
+        "Drag the terminal to another side or position of the chip.")
+UI_TEXT(APP_CHIP_TERMINAL_MOVED, "Terminal do chip reposicionado. Ctrl+Z desfaz.",
+        "Chip terminal moved. Ctrl+Z undoes it.")
+UI_TEXT(APP_CHIP_TERMINALS_TOO_MANY, "Este chip tem terminais demais para reorganizar à mão.",
+        "This chip has too many terminals to rearrange by hand.")
 UI_TEXT(APP_LED_COLOR_CHANGED, "Cor do LED alterada.", "LED color changed.")
 UI_TEXT(APP_INSPECTOR_MINIMIZED, "Painel recolhido. Clique na etiqueta para abrir.",
         "Panel collapsed. Click the tab to open it.")

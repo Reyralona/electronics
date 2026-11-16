@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 static void test_breadboard_boundary(const char *solver)
 {
@@ -178,8 +179,67 @@ static void test_four_input_and(void)
     bench_snapshot_clear(&bench);
 }
 
+static WirePoint terminal(const Workbench *bench, int part, int pin)
+{
+    WirePoint point;
+    bench_terminal_position(bench, (Pin){part, pin}, &point.x, &point.y);
+    return point;
+}
+
+/* "Quero um 3AND com as 3 entradas a esquerda e a saida a direita": two ANDs packed give 4 terminals,
+ * automatically 2 left (A, B) and 2 right (C, Y). Moving C to the left leaves only Y on the right. */
+static void test_three_input_and_layout(void)
+{
+    Workbench bench = {0}, reopened = {0};
+    BenchSelection selection = {0};
+    WorkbenchSettings settings = workbench_settings_default();
+    char message[256];
+    int first = bench_add(&bench, PART_AND, 300, 200), last = bench_add(&bench, PART_AND, 460, 240);
+    assert(bench_toggle_wire(&bench, (Pin){first, 2}, (Pin){last, 0}) == 1);
+    selection.parts[first] = selection.parts[last] = 1;
+    assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
+    assert(bench_group_ports(&bench, 1) == 4);
+    const BenchGroup *chip = &bench.groups[0];
+    assert(terminal(&bench, last, 1).x > chip->x); /* C starts on the right */
+    float automatic_height = bench_group_height(&bench, 1);
+
+    int c = bench_group_port_index(&bench, (Pin){last, 1});
+    assert(c == 2);
+    uint64_t revision = bench.revision;
+    assert(bench_group_move_port(&bench, 1, c, BENCH_PORT_LEFT, 2));
+    assert(bench.revision != revision);
+    WirePoint a = terminal(&bench, first, 0), b = terminal(&bench, first, 1);
+    WirePoint moved = terminal(&bench, last, 1), output = terminal(&bench, last, 2);
+    assert(a.x < chip->x && b.x < chip->x && moved.x < chip->x);
+    assert(a.y < b.y && b.y < moved.y);
+    assert(output.x > chip->x && fabsf(output.y - chip->y) < .01f);
+    assert(bench_group_height(&bench, 1) > automatic_height);
+
+    /* Same place again changes nothing; invalid side or terminal is refused without changes. */
+    revision = bench.revision;
+    assert(bench_group_move_port(&bench, 1, c, BENCH_PORT_LEFT, 2));
+    assert(bench.revision == revision);
+    assert(!bench_group_move_port(&bench, 1, c, 2, 0));
+    assert(!bench_group_move_port(&bench, 1, 4, BENCH_PORT_LEFT, 0));
+    assert(bench.revision == revision);
+
+    /* Save and reopen: the arrangement is part of the chip. */
+    assert(workbench_save_project("build/test-chip-layout.elec", &bench, &settings));
+    assert(workbench_load_project("build/test-chip-layout.elec", &reopened, &settings));
+    remove("build/test-chip-layout.elec");
+    WirePoint reopened_c = terminal(&reopened, last, 1);
+    assert(fabsf(reopened_c.x - moved.x) < .01f && fabsf(reopened_c.y - moved.y) < .01f);
+
+    /* A stale arrangement (different terminal count) falls back to the automatic one. */
+    reopened.groups[0].port_layout = 3;
+    assert(terminal(&reopened, last, 1).x > reopened.groups[0].x);
+    bench_snapshot_clear(&reopened);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
+    test_three_input_and_layout();
     const char *solver = argc > 1 ? argv[1] : NULL;
     test_four_input_and();
     test_breadboard_boundary(solver);

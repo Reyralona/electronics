@@ -6,6 +6,7 @@
 #include "workbench_group_name.h"
 #include "workbench_examples.h"
 #include "workbench_pack.h"
+#include "workbench_file.h"
 #include "spice_trace.h"
 #include "app_layout.h"
 #include "app_palette.h"
@@ -85,6 +86,24 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     if (argc > 1 && !strcmp(argv[1], "--capture-environment"))
     {
         app->selected = bench_add(&app->bench, PART_LDR, 600, 400);
+        app->sim.sim_running = 0;
+        return 0;
+    }
+    /* Review a saved project as the user sees it: whole circuit fitted at the chosen zoom limits. */
+    if (argc > 1 && !strncmp(argv[1], "--capture-file=", 15))
+    {
+        WorkbenchSettings settings;
+        if (!workbench_load_project(argv[1] + 15, &app->bench, &settings))
+            return 1;
+        float min_x = 1e9f, min_y = 1e9f, max_x = -1e9f, max_y = -1e9f;
+        for (int i = 0; i < app->bench.part_count; ++i)
+        {
+            min_x = fminf(min_x, app->bench.parts[i].x);
+            min_y = fminf(min_y, app->bench.parts[i].y);
+            max_x = fmaxf(max_x, app->bench.parts[i].x);
+            max_y = fmaxf(max_y, app->bench.parts[i].y);
+        }
+        bench_view_fit(&app->view, min_x, min_y, max_x, max_y);
         app->sim.sim_running = 0;
         return 0;
     }
@@ -585,6 +604,17 @@ int dev_scenario_analyze(AppState *app, char **argv)
         app->status = "DFF: saida retida entre bordas do clock.";
     }
     return 0;
+}
+
+static int move_pointer(SDL_Window *window, float x, float y)
+{
+    SDL_Event event;
+    SDL_zero(event);
+    event.type = SDL_EVENT_MOUSE_MOTION;
+    event.motion.windowID = SDL_GetWindowID(window);
+    event.motion.x = x;
+    event.motion.y = y;
+    return SDL_PushEvent(&event);
 }
 
 static int click_rect(SDL_Window *window, AppRect rect)
@@ -1266,6 +1296,41 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 206)
         queued = dev_test_key(window, SDLK_F3);
+    /* Area selection: hold the drag at the right edge; the bench scrolls until the far part is inside. */
+    else if (app->selftest_phase == 208 || app->selftest_phase == 220)
+    {
+        app->bench = (Workbench){0};
+        app->view = (BenchView){1, 0, 0};
+        bench_add(&app->bench, PART_RESISTOR, 500, 400);
+        bench_add(&app->bench, PART_RESISTOR, 1400, 400);
+        app->selected = -1;
+        float edge_x = app->selftest_phase == 208 ? 1278 : 700;
+        queued = dev_test_click(window, 300, 300) && move_pointer(window, edge_x, 420);
+    }
+    else if ((app->selftest_phase > 208 && app->selftest_phase < 219) || app->selftest_phase == 221)
+        SDL_Delay(20);
+    else if (app->selftest_phase == 219 || app->selftest_phase == 222)
+        queued = dev_test_drag_finish(window, app->selftest_phase == 219 ? 1278 : 700, 420);
+    /* 3AND: Alt+drag the third input from the right side to the bottom of the left side; Ctrl+Z undoes. */
+    else if (app->selftest_phase == 223)
+    {
+        app->bench = (Workbench){0};
+        app->view = (BenchView){1, 0, 0};
+        bench_selection_clear(&app->selection);
+        int first = bench_add(&app->bench, PART_AND, 500, 300), last = bench_add(&app->bench, PART_AND, 660, 340);
+        bench_toggle_wire(&app->bench, (Pin){first, 2}, (Pin){last, 0});
+        app->selection.parts[first] = app->selection.parts[last] = 1;
+        queued = bench_pack_selection(&app->bench, &app->selection, app->selection_status,
+                                      sizeof(app->selection_status));
+        bench_selection_clear(&app->selection);
+        float x, y;
+        bench_terminal_position(&app->bench, (Pin){last, 1}, &x, &y);
+        const BenchGroup *chip = &app->bench.groups[0];
+        SDL_SetModState(SDL_KMOD_ALT);
+        queued = queued && dev_test_click(window, x, y) && dev_test_drag_finish(window, chip->x - 60, chip->y + 40);
+    }
+    else if (app->selftest_phase == 224)
+        queued = dev_test_shortcut(window, SDLK_Z, SDL_KMOD_CTRL);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1658,6 +1723,19 @@ void dev_scenario_validate(AppState *app)
         valid = app->settings && !app->projects_open && !app->examples_open;
     else if (app->selftest_phase == 207)
         valid = !app->projects_open && !app->examples_open && !app->settings;
+    else if (app->selftest_phase == 208 || app->selftest_phase == 220)
+        valid = app->selecting_area;
+    else if (app->selftest_phase == 219)
+        valid = !app->selecting_area && app->view.pan_x < -122 && app->selection.parts[0] && app->selection.parts[1];
+    else if (app->selftest_phase == 222)
+        valid = !app->selecting_area && app->view.pan_x == 0 && app->selection.parts[0] && !app->selection.parts[1];
+    else if (app->selftest_phase == 223 || app->selftest_phase == 224)
+    {
+        float x, y;
+        bench_terminal_position(&app->bench, (Pin){1, 1}, &x, &y);
+        int left = x < app->bench.groups[0].x;
+        valid = app->bench.groups[0].active && app->drag_port.component < 0 && left == (app->selftest_phase == 223);
+    }
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1668,7 +1746,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 208)
+    if (++app->selftest_phase == 225)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

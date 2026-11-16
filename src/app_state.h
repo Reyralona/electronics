@@ -24,6 +24,7 @@ typedef struct AppState
 {
     Workbench bench;
     Pin pending, hovered_pin, drag_lead;
+    Pin drag_port; /* Chip terminal being rearranged with Alt+drag; component -1 = none. */
     size_t drag_lead_point;
     uint64_t hover_revision;
     int selected, placing, dragging, running;
@@ -62,6 +63,7 @@ typedef struct AppState
     int selecting_area, projects_open, save_slot, examples_open;
     int saved_slots[PROJECT_SLOT_COUNT];
     WirePoint area_start, area_end, mouse_world, mouse_screen;
+    uint64_t area_scroll_ticks; /* Last edge auto-scroll step while selecting an area; 0 = idle. */
     int mouse_position_valid;
     char selection_status[160];
     BenchClipboard library_template;

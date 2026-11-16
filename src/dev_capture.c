@@ -28,7 +28,7 @@ int dev_capture_requested(const char *argument)
         return 0;
     if (!strncmp(argument, "--capture-palette=", 18) ||
         !strncmp(argument, "--capture-component=", 20) || !strncmp(argument, "--capture-component-dark=", 25) ||
-        !strncmp(argument, "--capture-example=", 18))
+        !strncmp(argument, "--capture-example=", 18) || !strncmp(argument, "--capture-file=", 15))
         return 1;
     for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); ++i)
     {
