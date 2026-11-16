@@ -43,16 +43,7 @@ Para incluir um teste automatizado dos eventos de janela (componentes, fios, joe
 
 ## Protótipo anterior
 
-O primeiro incremento é um circuito fixo de fonte, interruptor e LED em console. Use `i` para alternar o interruptor, `f` para alternar a fonte e `q` para sair. É um modelo booleano didático, sem cálculo elétrico ou edição de conexões; não representa precisão de SPICE.
-
-O protótipo anterior de circuito fixo permanece disponível para comparação. Para recompilá-lo, use:
-
-```powershell
-./build.ps1 -Legacy
-./build/window.exe
-```
-
-A DLL SDL3 deve estar no PATH ou junto do executável. Pressione `S` para salvar posições e estados em `circuito.elec` na pasta em que o programa foi iniciado; salvar novamente substitui esse arquivo. `L` carrega esse arquivo e informa o resultado no título. O formato é versionado e arquivos inválidos não alteram o circuito aberto. Os pontos possíveis de ligação são fixos; a vista de zoom não é salva. A interface de texto é básica e a apresentação 2.5D ainda está em desenvolvimento.
+O protótipo inicial (circuito fixo em console e janela) foi removido na 0.31.0 por não ser usado pelo app; está preservado nas tags `v0.1.0`–`v0.16.0`.
 
 Use `Ctrl+Z` e `Ctrl+Y` para desfazer e refazer mudanças de posição, estados e carregamento. O histórico mantém até 32 etapas na sessão e não é salvo no arquivo.
 
