@@ -3,6 +3,7 @@
 #include <string.h>
 #include "spice_process.h"
 #include "ui_text.h"
+#include <stdio.h>
 
 int main(int argc, char **argv)
 {
@@ -134,7 +135,7 @@ int main(int argc, char **argv)
                 Workbench logic={0}; SpiceTrace measured={0}; int i,high,output=type==PART_NOT?1:2;
                 high=type==PART_AND?bits==3:type==PART_NAND?bits!=3:type==PART_OR?bits!=0:type==PART_XOR?(bits==1 || bits==2):bits==0;
                 assert(bench_add(&logic, PART_SOURCE, 250 * logic.part_count, 0)==0);
-                assert(bench_add(&logic,type,0,0)==1);
+                assert(bench_add(&logic,type,250,0)==1);
                 assert(bench_add(&logic, PART_RESISTOR, 250 * logic.part_count, 0)==2);
                 assert(bench_add(&logic, PART_LED, 250 * logic.part_count, 0)==3);
                 assert(bench_toggle_wire(&logic,(Pin){0,(bits&1)?0:1},(Pin){1,0})==1);
@@ -142,7 +143,11 @@ int main(int argc, char **argv)
                 assert(bench_toggle_wire(&logic,(Pin){1,output},(Pin){2,0})==1);
                 assert(bench_toggle_wire(&logic,(Pin){2,1},(Pin){3,0})==1);
                 assert(bench_toggle_wire(&logic,(Pin){3,1},(Pin){0,1})==1);
-                assert(spice_transient_analyze(&logic,argv[1],(Pin){1,output},1e-5,.001,&measured,message,sizeof(message)));
+                int analyzed = spice_transient_analyze(&logic, argv[1], (Pin){1, output}, 1e-5, .001,
+                                                       &measured, message, sizeof(message));
+                if (!analyzed)
+                    fprintf(stderr, "Gate %d, inputs %d: %s\n", type, bits, message);
+                assert(analyzed);
                 i=measured.count-1;
                 if(high) assert(measured.samples[i].value>4.9); else assert(fabs(measured.samples[i].value)<.01);
                 assert(spice_dc_analyze(&logic,argv[1],&current,led,message,sizeof(message)));
@@ -301,7 +306,8 @@ int main(int argc, char **argv)
         assert(bench_toggle_wire(&chip,(Pin){0,1},(Pin){1,13})==1);
         assert(spice_dc_analyze(&chip,argv[1],&current,led,message,sizeof(message)));
         for(g=0;g<4;++g) assert(fabs(led[g+2])<1e-8);
-        assert(fabs(current)<1e-8);
+        /* Four inputs stay tied to 5 V through the documented 100 MOhm input resistors. */
+        assert(fabs(current + 4 * 5.0 / 1e8) < 1e-8);
         assert(bench_toggle_wire(&chip,(Pin){0,1},(Pin){1,13})==2);
         assert(bench_toggle_wire(&chip,(Pin){0,0},(Pin){1,13})==1);
         assert(bench_add(&chip, PART_SOURCE, 250 * chip.part_count, 0)==6 && bench_set_value(&chip,6,2.5));
