@@ -526,3 +526,10 @@ divida conhecida, extrair primitivas para modulo proprio quando tocar de novo.
 Fila pedida pelo usuario apos este incremento: (1) resto do catalogo do primeiro pedido;
 (2) exemplo com erro de calculo; (3) muitos exemplos com menu de titulo; (4) revisao geral do
 codigo; (5) documento do que falta para 1.0.0 e historico desde 14/11.
+
+
+## Estado 0.31.0 (15/11/2026, Claude)
+Exemplos (15, dialogo), correcao do 74HC00, lampada, remocao do prototipo legado e ROADMAP_1_0.md.
+Proximo obrigatorio antes do resto do catalogo: elementos internos por peca (ROADMAP_1_0.md 4.1).
+Worktree ../electronics-claude (branch local claude/investigar-calculo-indisponivel) tem 9 arquivos
+nao commitados ja integrados; remover so com confirmacao do usuario. Remoto da branch ja apagado.

@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.31.0
+
+- Lâmpada indicadora (resistência constante 250 Ω, brilho e halo pela corrente); formato 25 (lê 1–24).
+- Removido o protótipo legado de circuito fixo (preservado nas tags v0.1.0–v0.16.0).
+- ROADMAP_1_0.md: histórico desde 14/11, revisão de código e pendências da 1.0 em ordem de dependência.
+
 ## 0.30.0
 
 - Diálogo de Exemplos com 15 circuitos (título, categoria e descrição); F2 avança para o próximo.

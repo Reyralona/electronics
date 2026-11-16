@@ -13,3 +13,5 @@
 
 - Qualidade de uso e instrumentos: siga `QUALIDADE_DE_USO.md`. Interior de chip deve ser isolado;
   consultar nao altera a bancada. Nomes, funcoes de pinos e acoes principais precisam ser claros na UI.
+
+- Visao consolidada (historico desde 14/11, revisao de codigo, pendencias da 1.0 em ordem): `ROADMAP_1_0.md`.
