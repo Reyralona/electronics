@@ -7,6 +7,7 @@
 #include <math.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 void bench_part_clear(Part *part)
 {
@@ -20,6 +21,7 @@ void bench_part_clear(Part *part)
         free(part->terminals);
     }
     free(part->code);
+    free(part->port_names);
     memset(part, 0, sizeof(*part));
 }
 
@@ -32,14 +34,21 @@ int bench_part_clone(Part *destination, const Part *source)
     Part copy = *source;
     copy.terminals = NULL;
     copy.code = NULL;
+    copy.port_names = NULL;
     if (source->code && !(copy.code = _strdup(source->code)))
         return 0;
+    if (source->port_names && !(copy.port_names = _strdup(source->port_names)))
+    {
+        free(copy.code);
+        return 0;
+    }
     if (source->terminals)
     {
         copy.terminals = calloc(1, sizeof(*copy.terminals));
         if (!copy.terminals)
         {
             free(copy.code);
+            free(copy.port_names);
             return 0;
         }
         copy.terminals->pin_count = source->terminals->pin_count;
@@ -48,6 +57,7 @@ int bench_part_clone(Part *destination, const Part *source)
         {
             free(copy.terminals);
             free(copy.code);
+            free(copy.port_names);
             return 0;
         }
         for (size_t i = 0; i < copy.terminals->pin_count; ++i)
@@ -369,6 +379,47 @@ int wire_pick_segment(const Wire *wire, WirePoint start, WirePoint end, float ra
     return 1;
 }
 
+int bench_split_wire(Workbench *bench, int wire, int slot, WirePoint point)
+{
+    if (!wire_valid(bench, wire) || slot < 0 || slot > bench->wires[wire].knee_count ||
+        bench->wire_count >= WORKBENCH_MAX_WIRES || bench->part_count >= WORKBENCH_MAX_COMPONENTS ||
+        !isfinite(point.x) || !isfinite(point.y))
+        return -1;
+    Wire original = bench->wires[wire];
+    int junction = bench_add(bench, PART_JUNCTION, point.x, point.y);
+    if (junction < 0)
+        return -1;
+    Wire first = {.a = original.a, .b = {junction, 0}, .color = original.color, .knee_count = slot};
+    Wire second = {.a = {junction, 0}, .b = original.b, .color = original.color,
+                   .knee_count = original.knee_count - slot};
+    memcpy(first.knees, original.knees, (size_t)slot * sizeof(WirePoint));
+    memcpy(second.knees, original.knees + slot, (size_t)second.knee_count * sizeof(WirePoint));
+    bench->wires[wire] = first;
+    bench->wires[bench->wire_count++] = second;
+    ++bench->revision;
+    return junction;
+}
+
+static int junction_wired(const Workbench *bench, int part)
+{
+    for (int i = 0; i < bench->wire_count; ++i)
+        if (bench->wires[i].a.component == part || bench->wires[i].b.component == part)
+            return 1;
+    return 0;
+}
+
+int bench_prune_junctions(Workbench *bench)
+{
+    int removed = 0;
+    for (int i = bench->part_count - 1; i >= 0; --i)
+        if (bench->parts[i].type == PART_JUNCTION && !junction_wired(bench, i))
+        {
+            bench_remove(bench, i);
+            ++removed;
+        }
+    return removed;
+}
+
 int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point)
 {
     if (!wire_valid(bench, wire) || slot < 0 || slot > bench->wires[wire].knee_count ||
@@ -493,6 +544,11 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
     {
         *x = pin == 0 ? -49 : pin == 2 ? 49 : 0;
         *y = pin == 1 ? 49 : 0;
+    }
+    else if (p->type == PART_JUNCTION)
+    {
+        *x = 0;
+        *y = 0;
     }
     else if (component_has_flag(p->type, COMPONENT_QUAD_GATE))
     {
@@ -1051,6 +1107,96 @@ int bench_set_code(Workbench *bench, int component, const char *code)
         return 0;
     free(part->code);
     part->code = copy;
+    ++bench->revision;
+    return 1;
+}
+
+int bench_port_name_valid(const char *name)
+{
+    size_t length = name ? strlen(name) : 0;
+    if (!length || length >= BENCH_PORT_NAME_CAPACITY)
+        return 0;
+    for (size_t i = 0; i < length; ++i)
+        if ((unsigned char)name[i] < 32 || (unsigned char)name[i] == 127)
+            return 0;
+    return strspn(name, " ") != length;
+}
+
+/* Start of the "<pin>\t" line of `pin` in a port name list, or NULL. */
+static const char *port_name_line(const char *names, int pin)
+{
+    for (const char *line = names; line && *line;)
+    {
+        char *tab;
+        long number = strtol(line, &tab, 10);
+        if (*tab == '\t' && number == pin)
+            return line;
+        const char *next = strchr(line, '\n');
+        line = next ? next + 1 : NULL;
+    }
+    return NULL;
+}
+
+int bench_port_name(const Part *part, int pin, char *name, size_t capacity)
+{
+    if (!capacity)
+        return 0;
+    name[0] = 0;
+    const char *line = part ? port_name_line(part->port_names, pin) : NULL;
+    if (!line)
+        return 0;
+    const char *start = strchr(line, '\t') + 1;
+    size_t length = strcspn(start, "\n");
+    if (length >= capacity)
+        length = capacity - 1;
+    memcpy(name, start, length);
+    name[length] = 0;
+    return 1;
+}
+
+/* Port name list without the line of `pin`, plus "<pin>\t<name>\n" when name is not empty. */
+static char *port_names_with(const char *names, int pin, const char *name)
+{
+    size_t old_length = names ? strlen(names) : 0;
+    char *result = malloc(old_length + BENCH_PORT_NAME_CAPACITY + 16);
+    if (!result)
+        return NULL;
+    size_t used = 0;
+    const char *skip = port_name_line(names, pin);
+    for (const char *line = names; line && *line;)
+    {
+        const char *next = strchr(line, '\n');
+        size_t length = next ? (size_t)(next - line) + 1 : strlen(line);
+        if (line != skip)
+        {
+            memcpy(result + used, line, length);
+            used += length;
+        }
+        line += length;
+    }
+    if (name[0])
+        used += (size_t)sprintf(result + used, "%d\t%s\n", pin, name);
+    result[used] = 0;
+    return result;
+}
+
+int bench_set_port_name(Workbench *bench, Pin pin, const char *name)
+{
+    if (!bench || !name || pin.component < 0 || pin.component >= bench->part_count || pin.pin < 0 ||
+        pin.pin >= bench_pin_count(bench->parts[pin.component].type) || (name[0] && !bench_port_name_valid(name)))
+        return 0;
+    Part *part = &bench->parts[pin.component];
+    char current[BENCH_PORT_NAME_CAPACITY];
+    bench_port_name(part, pin.pin, current, sizeof(current));
+    if (!strcmp(current, name))
+        return 1;
+    char *names = port_names_with(part->port_names, pin.pin, name);
+    if (!names)
+        return 0;
+    free(part->port_names);
+    part->port_names = names[0] ? names : NULL;
+    if (!names[0])
+        free(names);
     ++bench->revision;
     return 1;
 }

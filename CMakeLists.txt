@@ -8,6 +8,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 add_compile_options(-Wall -Wextra -Werror -UNDEBUG)
+# Large benches (256 parts x 420 pins) keep pin-sized union-find arrays on the stack.
+add_link_options(-Wl,--stack,67108864)
 find_package(SDL3 CONFIG REQUIRED)
 add_executable(bancada WIN32
     src/workbench_window.c

@@ -316,6 +316,8 @@ static void command_delete_wire(AppState *app)
 {
     bench_history_record(app->history, &app->bench);
     bench_remove_wire(&app->bench, app->selected_wire);
+    if (bench_prune_junctions(&app->bench))
+        app->selected = -1;
     app->selected_wire = -1;
     app->status = tr(TXT_APP_WIRE_DELETED);
 }

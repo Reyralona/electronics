@@ -92,16 +92,33 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     /* Review a saved project as the user sees it: whole circuit fitted at the chosen zoom limits. */
     if (argc > 1 && !strncmp(argv[1], "--capture-file=", 15))
     {
+        /* Optional "@top,bottom" frames only the parts in that height band (close-up review). */
+        char path[512];
+        float band_top = -1e9f, band_bottom = 1e9f;
+        snprintf(path, sizeof(path), "%s", argv[1] + 15);
+        char *band = strchr(path, '@');
+        if (band)
+        {
+            *band = 0;
+            if (sscanf(band + 1, "%f,%f", &band_top, &band_bottom) != 2)
+                return 1;
+        }
         WorkbenchSettings settings;
-        if (!workbench_load_project(argv[1] + 15, &app->bench, &settings))
+        if (!workbench_load_project(path, &app->bench, &settings))
             return 1;
         float min_x = 1e9f, min_y = 1e9f, max_x = -1e9f, max_y = -1e9f;
         for (int i = 0; i < app->bench.part_count; ++i)
         {
-            min_x = fminf(min_x, app->bench.parts[i].x);
-            min_y = fminf(min_y, app->bench.parts[i].y);
-            max_x = fmaxf(max_x, app->bench.parts[i].x);
-            max_y = fmaxf(max_y, app->bench.parts[i].y);
+            /* Chip members are hidden: frame the package instead of their inner positions. */
+            const Part *part = &app->bench.parts[i];
+            float x = part->group ? app->bench.groups[part->group - 1].x : part->x;
+            float y = part->group ? app->bench.groups[part->group - 1].y : part->y;
+            if (y < band_top || y > band_bottom)
+                continue;
+            min_x = fminf(min_x, x - 60);
+            min_y = fminf(min_y, y - 60);
+            max_x = fmaxf(max_x, x + 60);
+            max_y = fmaxf(max_y, y + 60);
         }
         bench_view_fit(&app->view, min_x, min_y, max_x, max_y);
         app->sim.sim_running = 0;
@@ -654,6 +671,59 @@ static int reports_project_saved(const AppState *app)
 }
 
 static int deleted_block = -1;
+
+static WirePoint junction_test_middle(const AppState *app)
+{
+    float ax, ay, bx, by;
+    bench_pin_position(&app->bench.parts[0], 0, &ax, &ay);
+    bench_pin_position(&app->bench.parts[1], 0, &bx, &by);
+    return (WirePoint){(ax + bx) / 2, (ay + by) / 2};
+}
+
+static int queue_junction_phase(AppState *app, SDL_Window *window)
+{
+    float x, y;
+    WirePoint middle;
+    if (app->selftest_phase == 229)
+    {
+        app->bench = (Workbench){0};
+        app->view = (BenchView){1, 0, 0};
+        app->round_wires = 0;
+        bench_selection_clear(&app->selection);
+        app->pending.component = -1;
+        bench_add(&app->bench, PART_SOURCE, 400, 250);
+        bench_add(&app->bench, PART_RESISTOR, 800, 250);
+        bench_add(&app->bench, PART_RESISTOR, 600, 480);
+        bench_toggle_wire(&app->bench, (Pin){0, 0}, (Pin){1, 0});
+        middle = junction_test_middle(app);
+        bench_pin_position(&app->bench.parts[2], 0, &x, &y);
+        return dev_test_click(window, x, y) && dev_test_drag_finish(window, x, y) &&
+               dev_test_click(window, middle.x, middle.y) && dev_test_drag_finish(window, middle.x, middle.y);
+    }
+    if (app->selftest_phase == 230)
+        return dev_test_shortcut(window, SDLK_Z, SDL_KMOD_CTRL);
+    if (app->selftest_phase == 231)
+    {
+        middle = junction_test_middle(app);
+        SDL_SetModState(SDL_KMOD_ALT);
+        return dev_test_click(window, middle.x, middle.y) && dev_test_drag_finish(window, middle.x, middle.y);
+    }
+    bench_pin_position(&app->bench.parts[2], 1, &x, &y);
+    return dev_test_click(window, x, y) && dev_test_drag_finish(window, x, y);
+}
+
+static int junction_phase_valid(const AppState *app)
+{
+    const Workbench *b = &app->bench;
+    int junction = b->part_count == 4 && b->parts[3].type == PART_JUNCTION;
+    if (app->selftest_phase == 229)
+        return junction && b->wire_count == 3 && app->pending.component < 0;
+    if (app->selftest_phase == 230)
+        return b->part_count == 3 && b->wire_count == 1;
+    if (app->selftest_phase == 231)
+        return junction && b->wire_count == 2 && app->pending.component == 3;
+    return junction && b->wire_count == 3 && app->pending.component < 0;
+}
 
 void dev_scenario_queue(AppState *app, SDL_Window *window)
 {
@@ -1331,6 +1401,22 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     }
     else if (app->selftest_phase == 224)
         queued = dev_test_shortcut(window, SDLK_Z, SDL_KMOD_CTRL);
+    /* Name the 3AND output: double-click the terminal, type Y, Enter; Ctrl+Z; a single click still wires. */
+    else if (app->selftest_phase == 225 || app->selftest_phase == 228)
+    {
+        float x, y;
+        bench_terminal_position(&app->bench, (Pin){1, 2}, &x, &y);
+        queued = dev_test_click(window, x, y) && dev_test_drag_finish(window, x, y);
+        if (app->selftest_phase == 225)
+            queued = queued && dev_test_click_count(window, x, y, 2) && dev_test_drag_finish(window, x, y);
+    }
+    else if (app->selftest_phase == 226)
+        queued = dev_test_replace_text(window, "Y");
+    else if (app->selftest_phase == 227)
+        queued = dev_test_shortcut(window, SDLK_Z, SDL_KMOD_CTRL);
+    /* Wire on wire: start at a resistor, click the middle of another wire; Ctrl+Z; Alt+click branches. */
+    else if (app->selftest_phase >= 229 && app->selftest_phase <= 232)
+        queued = queue_junction_phase(app, window);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1736,6 +1822,21 @@ void dev_scenario_validate(AppState *app)
         int left = x < app->bench.groups[0].x;
         valid = app->bench.groups[0].active && app->drag_port.component < 0 && left == (app->selftest_phase == 223);
     }
+    else if (app->selftest_phase >= 225 && app->selftest_phase <= 228)
+    {
+        char name[BENCH_PORT_NAME_CAPACITY];
+        int named = bench_port_name(&app->bench.parts[1], 2, name, sizeof(name)) && !strcmp(name, "Y");
+        if (app->selftest_phase == 225)
+            valid = app->editing == APP_EDIT_PORT_NAME && app->pending.component < 0;
+        else if (app->selftest_phase == 226)
+            valid = app->editing < 0 && named;
+        else if (app->selftest_phase == 227)
+            valid = app->editing < 0 && !named;
+        else
+            valid = app->editing < 0 && app->pending.component == 1 && app->pending.pin == 2;
+    }
+    else if (app->selftest_phase >= 229 && app->selftest_phase <= 232)
+        valid = junction_phase_valid(app);
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1746,7 +1847,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 225)
+    if (++app->selftest_phase == 233)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

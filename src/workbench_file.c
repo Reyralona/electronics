@@ -133,6 +133,51 @@ static int read_code(FILE *file, Workbench *bench)
     return 1;
 }
 
+/* Format 31: chip terminal names, one "<part> <pin> <bytes>" header plus raw UTF-8 bytes per name. */
+static int write_port_names(FILE *file, const Workbench *bench)
+{
+    int records = 0;
+    char name[BENCH_PORT_NAME_CAPACITY];
+    for (int i = 0; i < bench->part_count; ++i)
+        for (int pin = 0; pin < bench_pin_count(bench->parts[i].type); ++pin)
+            records += bench_port_name(&bench->parts[i], pin, name, sizeof(name));
+    if (fprintf(file, "portnames %d\n", records) < 0)
+        return 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        for (int pin = 0; pin < bench_pin_count(bench->parts[i].type); ++pin)
+        {
+            if (!bench_port_name(&bench->parts[i], pin, name, sizeof(name)))
+                continue;
+            size_t length = strlen(name);
+            if (fprintf(file, "%d %d %zu\n", i, pin, length) < 0 || fwrite(name, 1, length, file) != length ||
+                fputc('\n', file) == EOF)
+                return 0;
+        }
+    return 1;
+}
+
+static int read_port_names(FILE *file, Workbench *bench)
+{
+    char tag[32];
+    int records;
+    if (fscanf(file, "%31s %d", tag, &records) != 2 || strcmp(tag, "portnames") || records < 0 ||
+        records > bench->part_count * WORKBENCH_MAX_PINS)
+        return 0;
+    for (int k = 0; k < records; ++k)
+    {
+        int index, pin;
+        size_t length;
+        char name[BENCH_PORT_NAME_CAPACITY];
+        if (fscanf(file, "%d %d %zu", &index, &pin, &length) != 3 || length == 0 || length >= sizeof(name) ||
+            fgetc(file) != '\n' || fread(name, 1, length, file) != length)
+            return 0;
+        name[length] = 0;
+        if (strlen(name) != length || !bench_set_port_name(bench, (Pin){index, pin}, name))
+            return 0;
+    }
+    return 1;
+}
+
 static int read_leads(FILE *file, Workbench *bench)
 {
     char tag[32];
@@ -183,7 +228,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !workbench_settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 30\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 31\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -204,7 +249,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
         if (fputc('\n', f) == EOF)
             return 0;
     }
-    if (!bench_groups_write(f, b) || !write_leads(f, b) || !write_states(f, b) || !write_code(f, b))
+    if (!bench_groups_write(f, b) || !write_leads(f, b) || !write_states(f, b) || !write_code(f, b) || !write_port_names(f, b))
         return 0;
     if (fprintf(f, "settings %d %d %d %d %d %d %d %.17g %.17g\n", s->show_grid, s->show_handles, s->round_wires,
                 s->show_current, s->wire_color, s->probe_pin, s->probe_current, s->transient_step,
@@ -227,7 +272,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 30) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 31) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -316,6 +361,8 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (version >= 26 && !read_states(f, &b))
         goto cleanup;
     if (version >= 27 && !read_code(f, &b))
+        goto cleanup;
+    if (version >= 31 && !read_port_names(f, &b))
         goto cleanup;
     if (version >= 10)
     {
