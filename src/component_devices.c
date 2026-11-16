@@ -26,6 +26,19 @@ static const ComponentDevice devices[] = {
     {PART_GAS, {{-14, 49}, {0, 49}, {14, 49}}, 24, 30, 0, {0}, 0, 0},
     {PART_IR_OBSTACLE, {{-14, 49}, {0, 49}, {14, 49}}, 24, 30, 0, {0}, 0, 0},
     {PART_DISTANCE, {{-14, 49}, {0, 49}, {14, 49}}, 34, 22, 0, {0}, 0, 0},
+    {PART_ARDUINO_UNO,
+     {{126, -92}, {112, -92}, {98, -92}, {84, -92}, {70, -92}, {56, -92}, {42, -92}, {28, -92}, {14, -92}, {0, -92},
+      {-14, -92}, {-28, -92}, {-42, -92}, {-56, -92}, {-28, 92}, {-14, 92}, {0, 92}, {14, 92}, {28, 92}, {42, 92},
+      {-84, 92}, {-98, 92}, {-70, 92}},
+     150, 78, 20, {0}, 0, 0},
+    {PART_ESP32,
+     {{-140, -58}, {-126, -58}, {-112, -58}, {-98, -58}, {-84, -58}, {-70, -58}, {-56, -58}, {-42, -58}, {-28, -58},
+      {-14, -58}, {0, -58}, {-140, 58}, {-126, 58}, {-112, 58}, {-98, 58}, {-84, 58}, {-70, 58}, {-56, 58}, {-42, 58},
+      {-28, 58}, {-14, 58}, {0, 58}},
+     160, 46, 20, {0}, 0, 0},
+    {PART_ATTINY85, {{-21, 22}, {-7, 22}, {7, 22}, {21, 22}, {21, -22}, {7, -22}, {-7, -22}, {-21, -22}}, 30, 14, 6,
+     {0}, 0, 0},
+    {PART_LCD_I2C, {{-136, -21}, {-136, -7}, {-136, 7}, {-136, 21}}, 124, 46, 1, {"Alimentação"}, 0, 0},
 };
 
 const ComponentDevice *component_device(PartType type)
@@ -69,6 +82,14 @@ int component_element_vector(PartType type, int index, int element, char *vector
         return 1;
     case PART_OSCILLOSCOPE:
         snprintf(vector, capacity, "v(oscv%d)", index);
+        return 1;
+    case PART_ARDUINO_UNO:
+    case PART_ESP32:
+    case PART_ATTINY85:
+        snprintf(vector, capacity, "v(mcu%d_in%d)", index, element);
+        return 1;
+    case PART_LCD_I2C:
+        snprintf(vector, capacity, "v(lcd%d_pwr)", index);
         return 1;
     default:
         return 0;

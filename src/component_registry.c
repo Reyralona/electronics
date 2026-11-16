@@ -50,6 +50,23 @@ static const ComponentPinInfo pins_generator[] = {{"SAIDA", PIN_OUTPUT}, {"COM",
 static const ComponentPinInfo pins_meter[] = {{"COM", PIN_SUPPLY_RETURN}, {"VΩ", PIN_INPUT}, {"A", PIN_INPUT}};
 static const ComponentPinInfo pins_scope[] = {{"CH1", PIN_INPUT}, {"GND", PIN_GROUND}};
 static const ComponentParameter generator_frequency = {"frequency", "Hz", 1000.0, 1e-3, 1e6};
+static const ComponentPinInfo pins_uno[] = {
+    {"D0", PIN_PASSIVE},  {"D1", PIN_PASSIVE},  {"D2", PIN_PASSIVE},  {"D3", PIN_PASSIVE},  {"D4", PIN_PASSIVE},
+    {"D5", PIN_PASSIVE},  {"D6", PIN_PASSIVE},  {"D7", PIN_PASSIVE},  {"D8", PIN_PASSIVE},  {"D9", PIN_PASSIVE},
+    {"D10", PIN_PASSIVE}, {"D11", PIN_PASSIVE}, {"D12", PIN_PASSIVE}, {"D13", PIN_PASSIVE}, {"A0", PIN_PASSIVE},
+    {"A1", PIN_PASSIVE},  {"A2", PIN_PASSIVE},  {"A3", PIN_PASSIVE},  {"A4 SDA", PIN_PASSIVE}, {"A5 SCL", PIN_PASSIVE},
+    {"5V", PIN_SUPPLY_POSITIVE}, {"3V3", PIN_SUPPLY_POSITIVE}, {"GND", PIN_GROUND}};
+static const ComponentPinInfo pins_esp32[] = {
+    {"2", PIN_PASSIVE},  {"4", PIN_PASSIVE},  {"5", PIN_PASSIVE},  {"12", PIN_PASSIVE}, {"13", PIN_PASSIVE},
+    {"14", PIN_PASSIVE}, {"15", PIN_PASSIVE}, {"16", PIN_PASSIVE}, {"17", PIN_PASSIVE}, {"18", PIN_PASSIVE},
+    {"19", PIN_PASSIVE}, {"21 SDA", PIN_PASSIVE}, {"22 SCL", PIN_PASSIVE}, {"23", PIN_PASSIVE}, {"25", PIN_PASSIVE},
+    {"26", PIN_PASSIVE}, {"27", PIN_PASSIVE}, {"32", PIN_PASSIVE}, {"33", PIN_PASSIVE}, {"34", PIN_PASSIVE},
+    {"3V3", PIN_SUPPLY_POSITIVE}, {"GND", PIN_GROUND}};
+static const ComponentPinInfo pins_tiny[] = {{"PB5", PIN_PASSIVE}, {"PB3", PIN_PASSIVE}, {"PB4", PIN_PASSIVE},
+                                             {"GND", PIN_GROUND}, {"PB0 SDA", PIN_PASSIVE}, {"PB1", PIN_PASSIVE},
+                                             {"PB2 SCL", PIN_PASSIVE}, {"VCC", PIN_SUPPLY_POSITIVE}};
+static const ComponentPinInfo pins_lcd[] = {{"GND", PIN_GROUND}, {"VCC", PIN_SUPPLY_POSITIVE}, {"SDA", PIN_INPUT},
+                                            {"SCL", PIN_INPUT}};
 static const ComponentPinInfo board_contact = {"Contato", PIN_CONTACT};
 
 /* Enum indexes remain the legacy file codes; id is the durable external identity. */
@@ -112,12 +129,16 @@ static const ComponentInfo components[] = {
     [PART_GAS] = {PART_GAS, "gas", "Sensor de gás", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
     [PART_IR_OBSTACLE] = {PART_IR_OBSTACLE, "ir-obstacle", "Sensor infravermelho", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
     [PART_DISTANCE] = {PART_DISTANCE, "distance", "Sensor de distância", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_ARDUINO_UNO] = {PART_ARDUINO_UNO, "arduino-uno", "Arduino Uno", 23, COMPONENT_ROTATES, 27, NULL, pins_uno},
+    [PART_ESP32] = {PART_ESP32, "esp32", "ESP32 DevKit", 22, COMPONENT_ROTATES, 27, NULL, pins_esp32},
+    [PART_ATTINY85] = {PART_ATTINY85, "attiny85", "ATtiny85", 8, COMPONENT_ROTATES, 27, NULL, pins_tiny},
+    [PART_LCD_I2C] = {PART_LCD_I2C, "lcd-16x2-i2c", "LCD 16x2 I2C", 4, COMPONENT_ROTATES, 27, NULL, pins_lcd},
 };
 
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C};
 
 size_t component_registry_count(void)
 {

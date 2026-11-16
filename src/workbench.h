@@ -67,7 +67,11 @@ typedef enum
     PART_PIR,
     PART_GAS,
     PART_IR_OBSTACLE,
-    PART_DISTANCE
+    PART_DISTANCE,
+    PART_ARDUINO_UNO,
+    PART_ESP32,
+    PART_ATTINY85,
+    PART_LCD_I2C
 } PartType;
 typedef struct
 {

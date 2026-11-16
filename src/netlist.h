@@ -11,6 +11,8 @@ typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERRO
 #define NETLIST_POT_MIN_SEGMENT_OHMS .001
 #define NETLIST_LIVE_OPEN_OHMS 1e10
 NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires);
+/* Terminals joined by wires, breadboard strips or direct contact (switch states ignored). */
+int netlist_same_net(const Workbench *bench, Pin a, Pin b);
 int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin);
 NetlistResult netlist_write_dc(FILE *out, const Workbench *bench);
 /* Each wire becomes a zero-volt current sensor; ideal wire cycles are ambiguous. */

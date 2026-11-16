@@ -4,8 +4,8 @@
 #include "workbench.h"
 /* Geometry, measurements and modes of multi-element devices (RGB LED, displays, motors, relays,
  * instruments and powered sensor modules). Pure data: no SDL/OpenGL, no netlist text. */
-#define COMPONENT_MAX_ELEMENTS 8
-#define COMPONENT_MAX_DEVICE_PINS 9
+#define COMPONENT_MAX_ELEMENTS 24
+#define COMPONENT_MAX_DEVICE_PINS 24
 
 typedef struct
 {
