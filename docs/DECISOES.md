@@ -579,3 +579,18 @@ Fonte oficial: [manual ngspice, seção 2.1](https://ngspice.sourceforge.io/docs
 consultado em 16/11/2026: terminais conectados compartilham nós. A mudança ocorre no mapeamento da
 bancada para esses nós; não muda as equações dos dispositivos. Hipótese a validar: a mesma geometria
 serve ao desenho, clique, encaixe e netlist, sem expor os membros ocultos de outro chip.
+
+## Nome confirmado separado do rascunho do circuito (16/11/2026, 0.37.1)
+
+Pedido: o nome “4and” deve permanecer, com um único botão de renomeação dentro do chip.
+Fato: antes, set_name alterava apenas editor_name. Salvar modelo escrevia na biblioteca, mas
+a bancada conservava o nome anterior até Aplicar. Descartar o rascunho também perdia o nome.
+
+Comparação: continuar vinculando o nome ao rascunho exigiria duas confirmações para a mesma ação.
+Tratar o nome confirmado como metadado permite preservar o circuito isolado e tornar a ação direta.
+Decisão: Enter confirma o nome na instância alvo e na entrada existente da biblioteca. A biblioteca
+é renomeada a partir do circuito já salvo, sem incorporar edições pendentes do editor. Confirmar
+o nome não salva o projeto inteiro nem cria uma entrada nova na biblioteca. Cópias já colocadas
+continuam independentes. Nomes inválidos ou falha ao gravar a entrada não alteram o nome da instância.
+O rascunho mantém os fluxos de salvar/aplicar/descartar para alterações elétricas. F4 e o botão
+externo são removidos. Não há mudança no formato de arquivo ou no modelo elétrico.
