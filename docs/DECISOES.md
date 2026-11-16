@@ -620,3 +620,46 @@ Cada chip guarda lado e ordem de até 64 terminais (`port_layout`, `port_places`
 mudar (por exemplo, ao aplicar uma edição), volta o arranjo automático. Formato 30 grava o arranjo após a
 rotação; formatos anteriores leem arranjo automático. Lados de cima e de baixo ficaram fora deste incremento.
 Sem mudança no modelo elétrico: a posição do terminal muda só a geometria (desenho, clique, contato direto).
+
+## Portas lógicas alimentadas pela fonte e terminais de chip nomeados (16/11/2026, 0.40.0)
+
+Pedido: com fonte de 2 V, um LED na saída de uma AND queimava; a pessoa quer comportamento realista e não
+entende de onde viriam 5 V. Também quer nomear os terminais de chips personalizados (ex.: decodificador de
+7 segmentos).
+
+Fatos (fontes oficiais consultadas em 16/11/2026):
+- [TI SN74HC08](https://www.ti.com/lit/ds/symlink/sn74hc08.pdf): VCC especificado de 2 a 6 V (nominal 5 V);
+  VIH mínimo 1,5 / 3,15 / 4,2 V e VIL máximo 0,5 / 1,35 / 1,8 V em VCC 2 / 4,5 / 6 V; VOH mínimo 1,9 / 4,4 /
+  5,9 V com 20 µA; em 6 V com 5,2 mA, VOH mínimo 5,34 V (típico 5,48 V).
+- [Nexperia 74HC08](https://assets.nexperia.com/documents/data-sheet/74HC_HCT08.pdf): faixa de 2,0 a 6,0 V.
+- Modelo anterior: portas avulsas com pontes XSPICE fixas (entrada 1,5/3,5 V, saída ideal 0/5 V e 2,5 V para
+  nível indefinido), sem ligação com a fonte. Com entradas em 2 V, saída ideal de 2,5 V num LED sem resistor.
+
+Comparação: (a) pinos VCC/GND visíveis em cada porta: mais fiel, mas quebra os circuitos existentes e estoura
+o limite de 128 fios em circuitos com ~30 portas; (b) alimentação comum, equivalente aos pinos de alimentação
+ocultos de programas de esquema; (c) manter 5 V ideais e só avisar. Decisão da pessoa: (b).
+
+Decisões: VCC das portas = positivo da fonte de referência (a primeira fonte, que também define o terra).
+Entradas reescalonadas para o domínio de 5 V das pontes XSPICE, de modo que 1,5/3,5 V correspondam a 30%/70%
+do VCC. Saída CMOS por duas chaves de 50 Ω (para o VCC e para o terra), o mesmo valor já usado nos 74HC
+quádruplos; a corrente vem da fonte. Janela de alimentação 2–6 V para portas avulsas e quádruplas.
+Sem fonte, um gerador de clock define o terra e alimenta a lógica com 5 V (módulo de 5 V).
+
+Hipóteses e limites: 30%/70% aproxima a tabela (a 2 V a TI especifica 25%/75%). Os 50 Ω aproximam a saída
+típica a 4,5–5 V; em 2 V a saída real é mais fraca. Com várias fontes, só a primeira alimenta a lógica.
+A corrente de alimentação em repouso e o limite absoluto de 25 mA por saída não são modelados.
+
+Nomes de terminais: texto por peça (`port_names`, linhas "<pino>\t<nome>"), com a mesma regra de posse do
+programa dos microcontroladores; só aparece enquanto o pino é terminal de um chip. Até 15 bytes, sem
+caracteres de controle. Formato 31 grava a seção `portnames`. Com terminais nomeados, o nome do chip fica centralizado
+no corpo, entre os nomes dos dois lados.
+
+## Limites maiores e junções de fio (16/11/2026, 0.40.0)
+
+Pedido: ligar um fio diretamente em outro, como nos esquemas, e subir bastante o limite de peças.
+Fato: um fio liga dois pinos; derivações exigiam fios repetidos até o mesmo terminal. Limites: 64 peças, 128 fios.
+Decisão: junção é uma peça de um pino (`PART_JUNCTION`, formato 31), sem corpo, desenhada como ponto cheio;
+terminar um fio sobre outro divide o fio de baixo em dois no ponto (as dobras se repartem e a cor se mantém).
+Eletricamente é só um nó. Junções sem fio são removidas ao apagar fios. Limites: 256 peças e 512 fios.
+Os vetores de união por pino passam a ~430 KB; os executáveis usam pilha de 64 MB (`-Wl,--stack`).
+Hipótese a validar: desempenho da simulação contínua perto do limite de peças.

@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.39.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.40.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
@@ -36,6 +36,9 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 - Clique num terminal (bolinha branca) e depois em outro para ligar.
 - Cliques em pontos vazios no caminho criam **dobras** (até 16 por fio).
 - Dois cliques num trecho do fio inserem uma dobra. Arraste a dobra para ajustar e dê dois cliques nela para removê-la.
+- **Fio em fio (junção):** com um fio em andamento, clique em cima de outro fio para terminar nele; ali aparece
+  um ponto de junção, e tudo que chega ao ponto fica no mesmo nó. `Alt`+clique num fio cria a junção e já
+  começa um fio a partir dela. `Alt`+arraste uma junção para movê-la. Apagar o último fio de uma junção a remove.
 - Clique no fio para selecioná-lo. `Delete` apaga. A cor dos próximos fios, ou do fio selecionado, é escolhida em **Configurações**. A cor é só visual.
 
 ### Breadboard e contato direto
@@ -113,12 +116,15 @@ O que aparece na tela:
    - `S` ou **Salvar modelo**: atualiza o chip na biblioteca. As cópias de um mesmo chip atualizam a mesma entrada; não aparece uma entrada nova.
    - `Ctrl+Enter` ou **Aplicar ao chip**: troca só esta cópia na bancada (`Ctrl+Z` desfaz).
    - `Esc` ou **Voltar**: sai, e pergunta se quer salvar quando houver mudanças.
-4. **Reorganizar terminais:** segure `Alt` e arraste um terminal do chip para o outro lado ou para outra
+4. **Nomear terminais:** dê dois cliques num terminal do chip e digite o nome (até 15 bytes; aceita acentos).
+   `Enter` confirma, nome vazio remove e `Ctrl+Z` desfaz. O nome aparece dentro do corpo, junto ao terminal,
+   e o nome do chip fica centralizado entre os nomes dos dois lados. Os nomes ficam salvos no projeto e no modelo da biblioteca.
+5. **Reorganizar terminais:** segure `Alt` e arraste um terminal do chip para o outro lado ou para outra
    posição do mesmo lado. Os fios acompanham, e `Ctrl+Z` desfaz. Por exemplo, num 3AND feito com duas AND,
    leve a terceira entrada para a esquerda: ficam as 3 entradas à esquerda e a saída à direita.
    O arranjo fica salvo no projeto e no modelo da biblioteca. Até 64 terminais por chip.
-5. `Ctrl+Shift+G` desagrupa o chip na bancada e devolve as peças soltas.
-6. O **×** no cartão da aba Chips remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
+6. `Ctrl+Shift+G` desagrupa o chip na bancada e devolve as peças soltas.
+7. O **×** no cartão da aba Chips remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
 
 Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga ao exterior. Por exemplo, três AND formando uma AND de 4 entradas viram um chip de 5 terminais. Displays de 7 segmentos e LEDs RGB dentro de um chip aparecem no corpo do chip.
 
@@ -195,8 +201,16 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
 ## Limites do modelo elétrico
 
 - As peças usam parâmetros genéricos: o LED tem 2 Ω em série, e transistores, sensores e baterias seguem curvas típicas. Detalhes de cada modelo em [DECISOES.md](DECISOES.md).
-- As **portas lógicas** são blocos didáticos sem pinos de alimentação: 0 e 5 V, entrada baixa abaixo de 1,5 V e alta acima de 3,5 V. Uma entrada desligada lê 0.
-- Os **CIs 74HC** simulam quatro portas alimentadas entre 4,5 e 5,5 V, com saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
+- As **portas lógicas** (AND, OR, NOT…) seguem a família 74HC com **alimentação comum**: não mostram pinos
+  VCC/GND, mas são alimentadas pela **primeira fonte da bancada** (positivo = VCC, negativo = terra), como os
+  pinos de alimentação ocultos dos programas de esquema. Funcionam de 2 a 6 V; fora disso ficam desligadas.
+  Entrada até 30% do VCC lê 0 e a partir de 70% lê 1; entre os dois é indefinida. A saída alta fica no VCC
+  da fonte, atrás de cerca de 50 Ω, e a corrente sai da própria fonte. Uma entrada desligada lê 0.
+  Exemplo: com fonte de 2 V, entradas em 2 V são 1 e a saída dá 2 V. Um LED ligado direto numa saída
+  com 5 V passa do limite: use um resistor de 220 a 330 Ω. Sem fonte, um gerador de clock (módulo de 5 V)
+  alimenta as portas.
+- Os **CIs 74HC** simulam quatro portas alimentadas pelos próprios pinos VCC e GND, de 2 a 6 V, com os mesmos
+  limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
 - O **tempo simulado** corre bem mais devagar que o real: cerca de 1 ms simulado por segundo na tela. Um RC de 1 kΩ × 1 µF leva de 1 a 3 s para descarregar visivelmente.
 - Adicionar ou remover peças ou ligações, ou mudar a frequência de um clock, reinicia a simulação contínua. O rodapé avisa quando isso acontece.
-- Capacidade: 64 peças, 128 fios, 9 slots e 8 chips. Chips não podem conter outros chips.
+- Capacidade: 256 peças (junções contam como peças), 512 fios, 9 slots e 8 chips. Chips não podem conter outros chips.
