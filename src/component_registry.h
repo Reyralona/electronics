@@ -21,7 +21,10 @@ typedef enum
     PIN_GROUND,
     PIN_ANODE,
     PIN_CATHODE,
-    PIN_CONTACT
+    PIN_CONTACT,
+    PIN_COLLECTOR,
+    PIN_BASE,
+    PIN_EMITTER
 } ComponentPinRole;
 
 typedef struct
@@ -56,6 +59,28 @@ double component_effective_value(const Part *part);
 int component_effective_on(const Part *part);
 double component_default_control(PartType type);
 int component_current_vector(PartType type, int index, char *vector, size_t capacity);
+typedef struct
+{
+    const char *label;
+    const char *unit;
+    double minimum, maximum, initial;
+    const char *note;
+} ComponentEnvironment;
+
+typedef struct
+{
+    double offset, volts_per_degree;
+    double supply_minimum, supply_maximum, quiescent_current;
+    double output_resistance, current_limit, limiting_resistance, off_resistance;
+} ComponentTemperatureModel;
+
+const ComponentTemperatureModel *component_temperature_model(void);
+double component_photocurrent(const Part *part);
+const ComponentEnvironment *component_environment(PartType type);
+double component_environment_value(const Part *part);
+double component_source_resistance(PartType type);
+int component_radial_pins(PartType type);
+void component_body_extent(PartType type, float *half_width, float *half_height);
 size_t component_registry_count(void);
 const ComponentInfo *component_info(PartType type);
 const ComponentInfo *component_from_legacy(int code, int version);

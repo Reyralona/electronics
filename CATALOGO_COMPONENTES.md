@@ -1,7 +1,7 @@
 # Catalogo solicitado e criterios de aceite
 
 Pedido do responsavel em 15/11/2026. Este e um registro de escopo, nao uma lista de recursos
-concluidos. Estado inicial: 22 tipos na v0.27.0. Preservar nomes/IDs, pinagem e arquivos anteriores.
+concluidos. Estado atual: 22 tipos na v0.27.0. Preservar nomes/IDs, pinagem e arquivos anteriores.
 
 ## Ordem de trabalho
 
@@ -14,15 +14,15 @@ concluidos. Estado inicial: 22 tipos na v0.27.0. Preservar nomes/IDs, pinagem e 
 
 ## Passivos, semicondutores e alimentacao
 
-| Pedido | Modelo/aceite requerido | Estado inicial |
+| Pedido | Modelo/aceite requerido | Estado atual |
 |---|---|---|
-| Diodo | Juncao nao linear, anodo/catodo claros, faixa no catodo, curva I/V e polarizacao inversa | Pendente |
-| Transistor NPN | B/C/E claros, corte, regiao ativa e saturacao, modelo SPICE identificado | Pendente |
-| Transistor PNP | Mesmos criterios, polaridades corretas | Pendente |
+| Diodo | Juncao nao linear, anodo/catodo claros, faixa no catodo, curva I/V e polarizacao inversa | Implementado: silicio generico; nao linear |
+| Transistor NPN | B/C/E claros, corte, regiao ativa e saturacao, modelo SPICE identificado | Implementado: NPN generico SPICE |
+| Transistor PNP | Mesmos criterios, polaridades corretas | Implementado: PNP generico SPICE |
 | Rele | Bobina R/L, contatos independentes, acionamento/release e histerese identificados | Pendente |
-| Bateria 9 V | Corpo retangular e conector de pressao, polaridade, resistencia interna identificada | Pendente |
-| Pilha 1.5 V | Corpo cilindrico, ressalto positivo e negativo plano | Pendente |
-| Moeda 3 V | Disco com espessura/borda e identificacao da face positiva | Pendente |
+| Bateria 9 V | Corpo retangular e conector de pressao, polaridade, resistencia interna identificada | Implementado: 9 V / 1 ohm didatico |
+| Pilha 1.5 V | Corpo cilindrico, ressalto positivo e negativo plano | Implementado: AA / 0.2 ohm |
+| Moeda 3 V | Disco com espessura/borda e identificacao da face positiva | Implementado: 3 V / 15 ohm didatico |
 | DIP configuravel | Banco de contatos independentes; quantidade, geometria e estados salvos | Pendente |
 | DPST configuravel | Dois polos acionados juntos; distinguir de banco DIP SPST | Pendente |
 
@@ -31,19 +31,19 @@ com resistencia interna. Antes de desenhar, capturar referencias proximas de cad
 
 ## Sensores e ambiente simulado
 
-| Pedido | Estimulo humano/ambiente e resposta requerida | Estado inicial |
+| Pedido | Estimulo humano/ambiente e resposta requerida | Estado atual |
 |---|---|---|
-| Fotoresistor | Luz controlavel e resistencia dependente da luz, curva identificada | Pendente |
-| Fotodiodo | Luz controlavel, fotocorrente e juncao; nao substituir por resistor | Pendente |
-| Sensor de luz ambiente | Luz controlavel e resposta do dispositivo escolhido, alimentacao quando aplicavel | Pendente |
-| Sensor flexivel | Dobra/angulo controlavel e variacao resistiva identificada | Pendente |
-| Sensor de forca | Forca controlavel e curva resistiva aproximada explicita | Pendente |
+| Fotoresistor | Luz controlavel e resistencia dependente da luz, curva identificada | Implementado: curva generica + lux |
+| Fotodiodo | Luz controlavel, fotocorrente e juncao; nao substituir por resistor | Implementado: juncao + fotocorrente generica |
+| Sensor de luz ambiente | Luz controlavel e resposta do dispositivo escolhido, alimentacao quando aplicavel | Implementado como fototransistor generico C/E |
+| Sensor flexivel | Dobra/angulo controlavel e variacao resistiva identificada | Implementado: curva generica + angulo |
+| Sensor de forca | Forca controlavel e curva resistiva aproximada explicita | Implementado: FSR generico + forca |
 | Sensor infravermelho | Identificar receptor/reflexao/modulo e sua resposta; estimulo IR controlavel | Pendente |
 | Sensor de distancia | Distancia controlavel; se ultrassonico, respeitar trigger/echo e tempo de voo | Pendente |
 | PIR | Movimento controlavel; saida digital alimentada, retencao/tempo identificados | Pendente |
-| Umidade do solo | Umidade controlavel; identificar sonda resistiva ou modulo de saida analogica | Pendente |
-| Inclinacao | Angulo controlavel; contato e orientacao coerentes | Pendente |
-| Temperatura | Temperatura em graus C; modelo e faixa identificados | Pendente |
+| Umidade do solo | Umidade controlavel; identificar sonda resistiva ou modulo de saida analogica | Implementado: sonda/divisor resistivo generico |
+| Inclinacao | Angulo controlavel; contato e orientacao coerentes | Implementado: contato generico + angulo |
+| Temperatura | Temperatura em graus C; modelo e faixa identificados | Implementado: transferencia nominal TMP36, alimentado |
 | Gas | Concentracao/estimulo controlavel; resposta, aquecimento e limites identificados | Pendente |
 
 Controles devem ficar visiveis no inspector, com nome, unidade/faixa e valor atual. Alterar um
@@ -53,7 +53,7 @@ Curvas genericas devem ser rotuladas como aproximacoes; nao inventar calibracao 
 
 ## Saidas e atuadores
 
-| Pedido | Modelo/aceite requerido | Estado inicial |
+| Pedido | Modelo/aceite requerido | Estado atual |
 |---|---|---|
 | LED RGB | Tres juncoes/correntes, pino comum identificado, mistura por corrente de cada cor | Pendente |
 | Lampada | Potencia e aquecimento/brilho; explicitar modelo resistivo/termico | Pendente |
@@ -76,7 +76,7 @@ um e varios displays externos antes de marcar este criterio como concluido.
 
 ## Instrumentos
 
-| Pedido | Aceite requerido | Estado inicial |
+| Pedido | Aceite requerido | Estado atual |
 |---|---|---|
 | Osciloscopio | Pontas reais, canais/referencia, tempo/tensao, escala e historico limitados/configuraveis | Pendente |
 | Multimetro | Pontas reais, tensao/corrente/resistencia, impedancia e modo corretos | Pendente |
@@ -99,3 +99,11 @@ distintos. Nao reutilizar imagens do Tinkercad como assets da Bancada.
 Referencias iniciais oficiais: https://www.tinkercad.com/circuits e guia de Circuits em
 https://assets.ctfassets.net/jl5ii4oqrdmc/4sMFqe3rDlbUymJt0I4yh/85a4487f7fe274e74c19870ae4679fc1/tinkercad-guides_circuits-Printable.pdf
 (consulta em 15/11/2026). O guia possui screenshots, mas nao e um inventario completo dos CIs.
+
+
+## Incremento analogico 0.28.0
+14 novos tipos; 36 tipos totais. Sensores possuem sliders de ambiente e Shift+scroll,
+com estado salvo e desfazivel. Baterias sao fontes constantes com Rserie, sem capacidade.
+Tambem foi criada a revisao reproduzivel de cada tipo em dois temas. Instrumentos, atuadores,
+displays externos, DIP/DPST, quatro familias restantes de sensores e inventario integral de CIs
+continuam pendentes; este incremento nao conclui todo o pedido nem a continuidade topologica.

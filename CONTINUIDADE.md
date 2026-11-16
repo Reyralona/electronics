@@ -477,3 +477,27 @@ removidas. O host conteve a falha. Nao reintroduzir API apenas pela declaracao d
 validar comportamento real. Isolamento de configuracao spinit externa continua pendente.
 Meta ampla permanece pausada conforme ultima ordem. As tarefas posteriores foram autorizadas.
 Nao alterar saves nem encerrar janelas do usuario para atualizar executavel. Tag 0.27.0.
+
+
+## Ajuste do inspector e terminologia (15/11/2026)
+Usuario pediu dados tecnicos no inspector e dicas de controle somente no rodape.
+Inspector preserva valores, tamanho, modelo e controles efetivos, sem atalhos entre colchetes.
+Rodape contextual mostra tamanho, giro, valor, terminais, joelhos e ambiente conforme selecao;
+o tempo ao vivo foi para a primeira linha, preservando a segunda para os controles.
+Botoes mantem nome da acao; usar "terminais" em toda a interface. Capturas revisadas:
+build/review-footer-pin-led.bmp e build/review-footer-environment.bmp.
+Catalogo ampliado anterior ainda na branch feature/catalog-and-review; nao anunciar que
+instrumentos, displays, motores, lista completa de CIs ou continuidade topologica acabaram.
+
+
+## Brilho ao vivo e resultados intermediarios (15/11/2026)
+app_simulation agora escolhe live tambem para fontes/baterias em circuitos estaticos.
+compatible_live_sample verifica topologia, ignorando valores/on/controle; amostra antiga
+aceita durante alteracoes continuas, preservando result_revision original. display_pending
+mantem DC/brilho enquanto recalcula e mostra leitura "atualizando". Invalidar ANTES de
+schedule_analysis substituir snapshot, para nao aplicar leitura antiga a outra topologia.
+Pausa, reset pendente, erro e modo manual nao recebem esta retencao. Comparacao aceita
+breadboard (contatos descobertos pelos terminais externos); verifica tipos/grupos/layout.
+Regressao em test_app_live:80ajustes em sequencia, >=3amostras durante ajuste, sem frame
+apagado; pot com/sem breadboard e resistor com breadboard, depois desconexao real apaga.
+O teste novo falhou antes da correcao (pot ficava batch) e passou no backend real.

@@ -34,7 +34,21 @@ typedef enum
     PART_BUTTON,
     PART_74HC08,
     PART_74HC32,
-    PART_74HC86
+    PART_74HC86,
+    PART_DIODE,
+    PART_LDR,
+    PART_FLEX,
+    PART_FORCE,
+    PART_TILT,
+    PART_NPN,
+    PART_PNP,
+    PART_BATTERY_9V,
+    PART_BATTERY_AA,
+    PART_BATTERY_COIN,
+    PART_PHOTODIODE,
+    PART_AMBIENT_LIGHT,
+    PART_TEMPERATURE,
+    PART_SOIL
 } PartType;
 typedef struct
 {

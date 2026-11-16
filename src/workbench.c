@@ -111,7 +111,7 @@ int bench_replace(Workbench *bench, const Workbench *replacement)
 int bench_set_control(Workbench *bench, int component, double position)
 {
     if (!bench || component < 0 || component >= bench->part_count ||
-        bench->parts[component].type != PART_POTENTIOMETER || !isfinite(position) || position < 0 || position > 1)
+        (bench->parts[component].type != PART_POTENTIOMETER && !component_environment(bench->parts[component].type)) || !isfinite(position) || position < 0 || position > 1)
         return 0;
     if (bench->parts[component].control != position)
     {
@@ -433,6 +433,21 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
             *y = (rail == 0 ? -98.0f : rail == 1 ? -82.0f : rail == 2 ? 78.0f : 94.0f);
         }
     }
+    else if (component_radial_pins(p->type))
+    {
+        *x = bench_pin_count(p->type) == 3 ? (pin - 1) * 20.0f : (pin ? 10.0f : -10.0f);
+        *y = p->type == PART_SOIL ? -58 : 49;
+    }
+    else if (p->type == PART_BATTERY_9V)
+    {
+        *x = pin ? -13 : 13;
+        *y = -58;
+    }
+    else if (p->type == PART_BATTERY_AA)
+    {
+        *x = 0;
+        *y = pin ? 58 : -58;
+    }
     else if (p->type == PART_POTENTIOMETER)
     {
         *x = pin == 0 ? -49 : pin == 2 ? 49 : 0;
@@ -494,11 +509,13 @@ WirePoint bench_lead_anchor(const Part *part, int pin)
     pin_local_position(part, pin, &local.x, &local.y);
     local.x *= .38f;
     local.y *= .38f;
+    if (component_radial_pins(part->type))
+        local.y = part->type == PART_SOIL ? -30 : 8;
     if (part->type == PART_LED)
     {
         float angle = (float)(-part->rotation * 3.141592653589793 * .5);
         float c = cosf(angle), s = sinf(angle), x = pin ? 10 : -10;
-        local = (WirePoint){x * c - 18 * s, x * s + 18 * c};
+        local = (WirePoint){x * c - 8 * s, x * s + 8 * c};
     }
     return bench_part_to_world(part, local);
 }

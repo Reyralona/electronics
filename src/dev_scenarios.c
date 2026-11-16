@@ -33,7 +33,19 @@ static int component_closeup(AppState *app, const char *argument)
     if (bench_add(&app->bench, info->type, 750, 365) < 0)
         return -1;
     float zoom = info->type == PART_BREADBOARD ? 1.8f : 7;
-    app->view = (BenchView){zoom, 530 * (1 - zoom), 295 * (1 - zoom)};
+    Part *part = &app->bench.parts[0];
+    float min_y = part->y - 48, max_y = part->y + 45;
+    for (int pin = 0; pin < info->pin_count; ++pin)
+    {
+        float px, py;
+        bench_pin_position(part, pin, &px, &py);
+        min_y = fminf(min_y, py - 5);
+        max_y = fmaxf(max_y, py + 5);
+    }
+    if (info->type != PART_BREADBOARD)
+        zoom = fminf(zoom, 520 / (max_y - min_y));
+    float center_y = (min_y + max_y) * .5f;
+    app->view = (BenchView){zoom, 530 * (1 - zoom), 295 - (center_y - 70) * zoom};
     app->selected = -1;
     app->dark_theme = dark;
     app->show_grid = 0;
@@ -52,6 +64,12 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         int closeup = component_closeup(app, argv[1]);
         if (closeup)
             return closeup < 0;
+    }
+    if (argc > 1 && !strcmp(argv[1], "--capture-environment"))
+    {
+        app->selected = bench_add(&app->bench, PART_LDR, 600, 400);
+        app->sim.sim_running = 0;
+        return 0;
     }
     if (argc > 1 && !strcmp(argv[1], "--capture-dark"))
     {
@@ -161,7 +179,7 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         bench_lead_insert(&app->bench, 2, 1, 1, (WirePoint){400, 450});
         app->selected = 2;
         app->dark_theme = 1;
-        app->status = "Sem fios: perninhas em contato fecham o circuito. Alt+arraste / Alt+duplo clique.";
+        app->status = "Sem fios: terminais em contato fecham o circuito. Alt+arraste / Alt+duplo clique.";
     }
     if (app->capture && !strcmp(argv[1], "--capture-catalog"))
     {
@@ -1060,6 +1078,23 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     }
     else if (app->selftest_phase == 182)
         queued = dev_test_click(window, 900, 410);
+    else if (app->selftest_phase == 183)
+    {
+        app->settings = 0;
+        app->selected = bench_add(&app->bench, PART_LDR, 600, 400);
+        queued = dev_test_click(window, 850, 257) && dev_test_drag_finish(window, 1097.5f, 257);
+    }
+    else if (app->selftest_phase == 184 || app->selftest_phase == 185)
+    {
+        SDL_SetModState(SDL_KMOD_CTRL);
+        queued = dev_test_key(window, app->selftest_phase == 184 ? SDLK_Z : SDLK_Y);
+    }
+    else if (app->selftest_phase == 186)
+    {
+        app->selected = app->bench.part_count - 1;
+        SDL_SetModState(SDL_KMOD_SHIFT);
+        queued = dev_test_wheel(window, 700, 400, 1);
+    }
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1397,6 +1432,12 @@ void dev_scenario_validate(AppState *app)
         valid = app->probe_pin == 13;
     else if (app->selftest_phase == 182)
         valid = app->probe_pin == 0;
+    else if (app->selftest_phase == 183 || app->selftest_phase == 185)
+        valid = fabs(app->bench.parts[app->bench.part_count - 1].control - .75) < 1e-6 && app->dragging_environment == -1;
+    else if (app->selftest_phase == 184)
+        valid = app->selected == -1 && fabs(app->bench.parts[app->bench.part_count - 1].control - .1) < 1e-6;
+    else if (app->selftest_phase == 186)
+        valid = fabs(app->bench.parts[app->selected].control - .8) < 1e-6;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1407,7 +1448,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 183)
+    if (++app->selftest_phase == 187)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

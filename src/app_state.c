@@ -9,6 +9,7 @@ void app_state_init(AppState *app)
     app->hovered_pin = (Pin){-1, -1};
     app->selected = -1;
     app->held_button = -1;
+    app->dragging_environment = -1;
     app->drag_lead.component = -1;
     app->mouse_world = (WirePoint){500, 300};
     app->placing = -1;

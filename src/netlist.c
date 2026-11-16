@@ -43,7 +43,7 @@ static void build_nets(const Workbench *b, int *parents, int unite_wires, int sh
     {
         int base = i * WORKBENCH_MAX_PINS;
         PartType type = b->parts[i].type;
-        if (switches && (type == PART_SWITCH || type == PART_BUTTON) && b->parts[i].on)
+        if (switches && (component_electrical_type(type) == PART_SWITCH || type == PART_BUTTON) && component_effective_on(&b->parts[i]))
             unite(parents, base, base + 1);
         if (type == PART_INDUCTOR && short_inductors)
             unite(parents, base, base + 1);
@@ -112,14 +112,14 @@ static int write_live_contacts(FILE *out, const Workbench *bench, int *parents, 
     {
         const Part *part = &bench->parts[i];
         if (component_electrical_type(part->type) != PART_SOURCE && part->type != PART_CLOCK &&
-            part->type != PART_SWITCH && part->type != PART_BUTTON)
+            component_electrical_type(part->type) != PART_SWITCH && part->type != PART_BUTTON)
             continue;
         int a = find_root(parents, i * WORKBENCH_MAX_PINS);
         int b = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
         a = a == ground ? 0 : a + 1;
         b = b == ground ? 0 : b + 1;
-        double resistance = part->on ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS;
-        if (part->type == PART_SWITCH || part->type == PART_BUTTON)
+        double resistance = component_effective_on(part) ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS;
+        if (component_electrical_type(part->type) == PART_SWITCH || part->type == PART_BUTTON)
         {
             if (fprintf(out, "Rcontact%d %d %d %.17g\n", i, a, b, resistance) < 0)
                 return 0;
@@ -139,9 +139,74 @@ static int write_live_contacts(FILE *out, const Workbench *bench, int *parents, 
         }
         else if (fprintf(out, "%s drive%d %d %.17g\n", name, i, b, part->value) < 0)
             return 0;
+        resistance = part->on ? component_source_resistance(part->type) : NETLIST_LIVE_OPEN_OHMS;
         if (fprintf(out, "Rpower%d drive%d %d %.17g\n", i, i, a, resistance) < 0)
             return 0;
     }
+    return 1;
+}
+
+static int write_supply(FILE *out, const Part *part, int index, int primary, int a, int b)
+{
+    char name[32];
+    if (primary)
+        snprintf(name, sizeof(name), "Vsource");
+    else
+        snprintf(name, sizeof(name), "Vsource%d", index);
+    if (component_source_resistance(part->type) > NETLIST_LIVE_CLOSED_OHMS)
+        return fprintf(out, "%s battery%d %d %.17g\nRpower%d battery%d %d %.17g\n", name,
+                       index, b, part->value, index, index, a,
+                       part->on ? component_source_resistance(part->type) : NETLIST_LIVE_OPEN_OHMS) >= 0;
+    return fprintf(out, "%s %d %d %.17g\n", name, a, b, part->on ? part->value : 0.0) >= 0;
+}
+
+static int write_temperature(FILE *out, const Part *part, int index, int supply, int output, int ground)
+{
+    const ComponentTemperatureModel *model = component_temperature_model();
+    char powered[160], sense[48];
+    snprintf(powered, sizeof(powered), "v(%d,%d)>=%.17g && v(%d,%d)<=%.17g", supply, ground,
+             model->supply_minimum, supply, ground, model->supply_maximum);
+    snprintf(sense, sizeof(sense), "Vtmp_sense%d", index);
+    if (fprintf(out, "Venv%d env%d 0 %.17g\n", index, index, component_environment_value(part)) < 0)
+        return 0;
+    /* Voltage feedback keeps an MNA slope at startup and under overload. */
+    if (fprintf(out, "Btmp%d tmp_raw%d %d V={%s ? (%.17g+%.17g*v(env%d))-%.17g*"
+                    "(max(0,i(%s)-%.17g)+min(0,i(%s)+%.17g)) : -%.17g*i(%s)}\n",
+                index, index, ground, powered, model->offset, model->volts_per_degree, index,
+                model->limiting_resistance, sense, model->current_limit, sense, model->current_limit,
+                model->off_resistance, sense) < 0)
+        return 0;
+    if (fprintf(out, "Rtmp_out%d tmp_raw%d tmp_sense%d %.17g\n%s tmp_sense%d %d 0\n",
+                index, index, index, model->output_resistance, sense, index, output) < 0)
+        return 0;
+    return fprintf(out, "Btmp_power%d %d %d I={%s ? %.17g+max(0,i(%s)) : 0}\n",
+                   index, supply, ground, powered, model->quiescent_current, sense) >= 0;
+}
+
+static int write_semiconductor(FILE *out, const Part *part, int index, int a, int b, int c)
+{
+    if (part->type == PART_SOIL)
+    {
+        double probe_resistance = component_effective_value(part);
+        return fprintf(out, "Rsoil%d %d %d %.17g\nRsoil_bias%d %d %d 10000\n", index, a, b,
+                       probe_resistance, index, b, c) >= 0;
+    }
+    if (part->type == PART_TEMPERATURE)
+        return write_temperature(out, part, index, a, b, c);
+    if (part->type == PART_DIODE || part->type == PART_PHOTODIODE)
+    {
+        if (fprintf(out, "D%d %d %d SILICON_GENERIC\n", index, a, b) < 0)
+            return 0;
+        if (part->type == PART_PHOTODIODE)
+            return fprintf(out, "Iphoto%d %d %d %.17g\n", index, b, a, component_photocurrent(part)) >= 0;
+    }
+    if (part->type == PART_NPN || part->type == PART_PNP)
+        return fprintf(out, "Q%d %d %d %d %s\n", index, c, b, a,
+                       part->type == PART_NPN ? "NPN_GENERIC" : "PNP_GENERIC") >= 0;
+    if (part->type == PART_AMBIENT_LIGHT)
+        return fprintf(out, "Q%d %d photo_base%d %d NPN_GENERIC\nIphoto%d %d photo_base%d %.17g\n"
+                       "Rphoto%d photo_base%d %d 1e9\n", index, a, index, b, index, b, index,
+                       component_photocurrent(part), index, index, b) >= 0;
     return 1;
 }
 
@@ -167,6 +232,9 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         PartType type = b->parts[i].type;
         const ComponentInfo *info = component_info(type);
         if (!info || (info->primary && !component_value_valid(type, b->parts[i].value)))
+            return NETLIST_INVALID;
+        if (component_environment(type) && (!isfinite(b->parts[i].control) ||
+            b->parts[i].control < 0 || b->parts[i].control > 1))
             return NETLIST_INVALID;
         switch (component_electrical_type(b->parts[i].type))
         {
@@ -195,6 +263,13 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_SWITCH:
         case PART_BREADBOARD:
         case PART_RESISTOR:
+        case PART_TEMPERATURE:
+        case PART_SOIL:
+        case PART_DIODE:
+        case PART_PHOTODIODE:
+        case PART_NPN:
+        case PART_PNP:
+        case PART_AMBIENT_LIGHT:
         case PART_LED:
         case PART_CAPACITOR:
         case PART_INDUCTOR:
@@ -255,17 +330,13 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                     period * .001, period * .499, period) < 0)
             return NETLIST_IO_ERROR;
     }
-    else if (fprintf(out, "Vsource %d 0 %.17g\n", positive + 1,
-                     b->parts[source].type == PART_CLOCK ? 0.0
-                     : b->parts[source].on               ? b->parts[source].value
-                                                         : 0.0) < 0)
+    else if (!write_supply(out, &b->parts[source], source, 1, positive + 1, 0))
         return NETLIST_IO_ERROR;
     for (i = 0; i < b->part_count; ++i)
         if (component_electrical_type(b->parts[i].type) == PART_SOURCE && i != source)
         {
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
-            if (fprintf(out, "Vsource%d %d %d %.17g\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1,
-                        b->parts[i].on ? b->parts[i].value : 0.0) < 0)
+            if (!write_supply(out, &b->parts[i], i, 0, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1))
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
@@ -315,6 +386,15 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                         i, wiper == ground ? 0 : wiper + 1, c == ground ? 0 : c + 1, second) < 0)
                 return NETLIST_IO_ERROR;
         }
+    for (i = 0; i < b->part_count; ++i)
+    {
+        int base = i * WORKBENCH_MAX_PINS;
+        int a = find_root(parents, base), c = find_root(parents, base + 1);
+        int third = find_root(parents, base + 2);
+        if (!write_semiconductor(out, &b->parts[i], i, a == ground ? 0 : a + 1,
+                                 c == ground ? 0 : c + 1, third == ground ? 0 : third + 1))
+            return NETLIST_IO_ERROR;
+    }
     for (i = 0; i < b->part_count; ++i)
         if (b->parts[i].type == PART_LED)
         {
@@ -446,6 +526,12 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             "d_inverter(rise_delay=1n fall_delay=1n)\n.model gate_dff d_dff(ic=0 clk_delay=1n rise_delay=1n "
             "fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n") < 0)
         return NETLIST_IO_ERROR;
+    static const char semiconductor_models[] =
+        ".model SILICON_GENERIC D(IS=1e-14 N=1.5 RS=1 BV=100 IBV=1e-6)\n"
+        ".model NPN_GENERIC NPN(IS=1e-14 BF=100 VAF=100 CJE=10p CJC=4p TF=.3n)\n"
+        ".model PNP_GENERIC PNP(IS=1e-14 BF=100 VAF=100 CJE=10p CJC=4p TF=.3n)\n";
+    if (fputs(semiconductor_models, out) == EOF)
+        return NETLIST_IO_ERROR;
     /* RS: series resistance so an LED wired straight to a source gives a finite current in this didactic model.
        rshunt: 1 TOhm from every node to ground so unfinished circuits (floating nodes) still solve. */
     if (fprintf(out, ".model LED_GENERIC D(IS=1e-18 N=2 RS=%.17g)\n.options rshunt=1e12\n", NETLIST_LED_SERIES_OHMS) <
@@ -494,8 +580,10 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 snprintf(vector, sizeof(vector), "@c%d[i]", component);
             else if (type == PART_INDUCTOR)
                 snprintf(vector, sizeof(vector), "@l%d[i]", component);
-            else if (type == PART_LED)
-                snprintf(vector, sizeof(vector), "@d%d[id]", component);
+            else if (component_current_vector(type, component, vector, sizeof(vector)))
+            {
+                /* Native device current: diode A->K or transistor C->E. */
+            }
             else
                 return NETLIST_UNSUPPORTED;
         }

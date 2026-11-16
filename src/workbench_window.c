@@ -143,7 +143,10 @@ int main(int argc, char **argv)
         SDL_GL_SwapWindow(window);
         if (app.capture)
         {
-            if (!dev_capture_save("build/bancada-capture.bmp", width, height))
+            const char *destination = "build/bancada-capture.bmp";
+            if (argc > 2 && !strncmp(argv[2], "--capture-output=", 17))
+                destination = argv[2] + 17;
+            if (!dev_capture_save(destination, width, height))
             {
                 fprintf(stderr, "Captura: %s\n", SDL_GetError());
                 app.exit_code = 1;

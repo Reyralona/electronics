@@ -16,6 +16,7 @@ typedef struct
 {
     int sim_running;
     int live_mode;
+    int display_pending; /* Last compatible sample remains visible while controls update. */
     double live_time;
     int dc_wire_valid;
     SimResultKind result_kind;

@@ -33,7 +33,7 @@ orientacao, polaridade, terminais e estados ativo/inativo antes de marcar como p
 
 ## Primeira correcao verificada
 Capturas apos ajustes em build/component-review/after. Terminais agora permanecem pequenos
-no zoom; perninhas tem espessura/material proporcional. Resistor axial arredondado com faixas
+no zoom; terminais tem espessura/material proporcional. Resistor axial arredondado com faixas
 nominais calculadas; capacitor nao polarizado com caixa de filme; indutor com ferrite/espiras.
 Fonte com faces graduadas; removidos backing cinza indevidos e falso pino central das portas.
 Anotacoes de pinos/portas usam fonte em tamanho de tela, evitando pixelizacao ao ampliar.

@@ -79,17 +79,8 @@ static int part_at(const Workbench *bench, float x, float y, float zoom)
             if (board != pass)
                 continue;
             WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
-            float half_width = 44, half_height = 30;
-            if (board)
-            {
-                half_width = 227;
-                half_height = 112;
-            }
-            else if (component_has_flag(part->type, COMPONENT_QUAD_GATE))
-            {
-                half_width = 50;
-                half_height = 20;
-            }
+            float half_width, half_height;
+            component_body_extent(part->type, &half_width, &half_height);
             float minimum_hit = 6 / (zoom * bench_part_scale(part));
             half_width = fmaxf(half_width, minimum_hit);
             half_height = fmaxf(half_height, minimum_hit);
@@ -324,7 +315,8 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
             return;
         }
         if (x >= 220 && y >= 70 && y < 660 && direction != 0 && (SDL_GetModState() & SDL_KMOD_SHIFT) &&
-            app->selected >= 0 && app->bench.parts[app->selected].type == PART_POTENTIOMETER)
+            app->selected >= 0 && (app->bench.parts[app->selected].type == PART_POTENTIOMETER ||
+                                   component_environment(app->bench.parts[app->selected].type)))
         {
             Workbench before BENCH_AUTO_CLEAR = {0};
             if (!bench_snapshot_clone(&before, &app->bench))
@@ -341,7 +333,7 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                     app->status = "Historico indisponivel; cursor anterior restaurado.";
                     return;
                 }
-            app->status = "Cursor ajustado. Shift+scroll: posicao; E: resistencia total; Ctrl+Z: desfazer.";
+            app->status = "Controle ajustado. Shift+scroll ou slider; Ctrl+Z: desfazer.";
             return;
         }
         if (x >= 220 && y >= 70 && y < 660 && direction != 0)
@@ -507,8 +499,30 @@ static int input_projects(AppState *app, float x, float y)
     return 1;
 }
 
+static void input_environment_position(AppState *app, float x)
+{
+    if (app->dragging_environment < 0 || app->dragging_environment >= app->bench.part_count)
+        return;
+    double position = fmin(1, fmax(0, (x - 850) / 330.0));
+    bench_set_control(&app->bench, app->dragging_environment, position);
+}
+
 static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
 {
+    if (!app->settings && !app->projects_open && app->selected >= 0 &&
+        !app->bench.parts[app->selected].group && component_environment(app->bench.parts[app->selected].type) &&
+        x >= 840 && x <= 1190 && y >= 245 && y <= 278)
+    {
+        if (!bench_history_record(app->history, &app->bench))
+        {
+            app->status = "Historico indisponivel; ambiente preservado.";
+            return 1;
+        }
+        app->dragging_environment = app->selected;
+        input_environment_position(app, x);
+        app->status = "Arraste para simular o ambiente. Ctrl+Z desfaz; o projeto salva o controle.";
+        return 1;
+    }
     if (app_editor_click(app, window, x, y))
         return 1;
     if (!app->settings && !app->projects_open && app->selected >= 0 &&
@@ -872,24 +886,24 @@ static int input_click_lead(AppState *app, float x, float y, int clicks)
                     Workbench before BENCH_AUTO_CLEAR = {0};
                     if (!bench_snapshot_clone(&before, &app->bench))
                     {
-                        app->status = "Memoria insuficiente para editar a perninha.";
+                        app->status = "Memoria insuficiente para editar o terminal.";
                         return 1;
                     }
                     if (!bench_lead_remove(&app->bench, i, pin, point) ||
                         !bench_history_record(app->history, &before))
                     {
                         bench_replace(&app->bench, &before);
-                        app->status = "Falha ao remover joelho; perninha anterior preservada.";
+                        app->status = "Falha ao remover joelho; terminal anterior preservado.";
                     }
                     else
-                        app->status = "Joelho da perninha removido. Ctrl+Z desfaz.";
+                        app->status = "Joelho do terminal removido. Ctrl+Z desfaz.";
                 }
                 else
                 {
                     app->drag_lead = (Pin){i, pin};
                     app->drag_lead_point = point;
                     app->move_recorded = 0;
-                    app->status = "Arraste a perninha; Alt+duplo clique insere/remove joelho.";
+                    app->status = "Arraste o terminal; Alt+duplo clique insere/remove joelho.";
                 }
                 return 1;
             }
@@ -902,17 +916,17 @@ static int input_click_lead(AppState *app, float x, float y, int clicks)
                 Workbench before BENCH_AUTO_CLEAR = {0};
                 if (!bench_snapshot_clone(&before, &app->bench))
                 {
-                    app->status = "Memoria insuficiente para editar a perninha.";
+                    app->status = "Memoria insuficiente para editar o terminal.";
                     return 1;
                 }
                 if (!bench_lead_insert(&app->bench, i, pin, slot, projected) ||
                     !bench_history_record(app->history, &before))
                 {
                     bench_replace(&app->bench, &before);
-                    app->status = "Falha ao inserir joelho; perninha anterior preservada.";
+                    app->status = "Falha ao inserir joelho; terminal anterior preservado.";
                 }
                 else
-                    app->status = "Joelho da perninha adicionado. Alt+arraste para dobrar.";
+                    app->status = "Joelho do terminal adicionado. Alt+arraste para dobrar.";
                 app->selected = i;
                 return 1;
             }
@@ -989,6 +1003,7 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
 
 static void input_release(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
+    app->dragging_environment = -1;
     (void)window;
     (void)event;
 
@@ -1045,13 +1060,13 @@ static void input_drag_lead(AppState *app, SDL_Window *window, const SDL_Event *
     {
         if (!bench_history_record(app->history, &app->bench))
         {
-            app->status = "Historico indisponivel; perninha preservada.";
+            app->status = "Historico indisponivel; terminal preservado.";
             return;
         }
         app->move_recorded = 1;
     }
     if (!bench_lead_move(&app->bench, component, pin, app->drag_lead_point, world))
-        app->status = "Falha ao mover perninha: coordenadas invalidas ou memoria insuficiente.";
+        app->status = "Falha ao mover terminal: coordenadas invalidas ou memoria insuficiente.";
 }
 
 static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *event)
@@ -1224,6 +1239,10 @@ void app_input_poll(AppState *app, SDL_Window *window)
         else if (e.type == SDL_EVENT_MOUSE_BUTTON_UP && e.button.button == SDL_BUTTON_LEFT)
         {
             input_release(app, window, &e);
+        }
+        else if (e.type == SDL_EVENT_MOUSE_MOTION && app->dragging_environment >= 0)
+        {
+            input_environment_position(app, app->mouse_screen.x);
         }
         else if (e.type == SDL_EVENT_MOUSE_MOTION && app->drag_lead.component >= 0)
         {

@@ -23,18 +23,19 @@ foreach ($component in $components) {
     foreach ($theme in @('light', 'dark')) {
         $argument = "--capture-component=$id"
         if ($theme -eq 'dark') { $argument = "--capture-component-dark=$id" }
-        $capture = Start-Process -FilePath $binary -ArgumentList $argument -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardError 'build/component-capture.err'
+        $target = Join-Path $output "$id-$theme.bmp"
+        $arguments = @($argument, ('--capture-output="' + $target + '"'))
+        $errorLog = Join-Path $output 'capture.err'
+        $capture = Start-Process -FilePath $binary -ArgumentList $arguments -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardError $errorLog
         $null = $capture.Handle
         if (!$capture.WaitForExit(10000)) {
             throw "Captura pendente: $id/$theme (PID $($capture.Id)); inspecione o processo antes de repetir."
         }
         $capture.Refresh()
         if ($capture.ExitCode -ne 0) {
-            Get-Content 'build/component-capture.err'
+            Get-Content -LiteralPath $errorLog
             throw "Falha na captura: $id/$theme"
         }
-        $target = Join-Path $output "$id-$theme.bmp"
-        Copy-Item -LiteralPath 'build/bancada-capture.bmp' -Destination $target
         $rows += [PSCustomObject]@{id=$id; name=$record[1]; theme=$theme; image="$id-$theme.bmp"}
     }
 }

@@ -31,6 +31,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_leads.exe "$ngspiceBin/ngspice_con.exe" } else { & ./build/test_leads.exe }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_analog_catalog.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/workbench.c src/bench_path.c src/component_registry.c src/spice_process.c src/netlist.c src/spice_live.c src/spice_session.c src/sim_auto.c -o build/test_analog_catalog.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_analog_catalog.exe "$ngspiceBin/ngspice_con.exe" } else { & ./build/test_analog_catalog.exe }
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_catalog.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench.c src/bench_path.c src/component_registry.c src/spice_process.c src/netlist.c -o build/test_catalog.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_catalog.exe "$ngspiceBin/ngspice_con.exe" } else { & ./build/test_catalog.exe }

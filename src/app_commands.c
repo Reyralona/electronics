@@ -25,6 +25,7 @@ static void command_example(AppState *app)
         app->selected = example_selected;
         app->selected_wire = -1;
         app->dragging = -1;
+        app->dragging_environment = -1;
         app->drag_wire = -1;
         app->drag_lead.component = -1;
         app->pending.component = -1;
@@ -99,6 +100,7 @@ static void command_history(AppState *app, SDL_Keycode key)
 
 static void command_cancel(AppState *app)
 {
+    app->dragging_environment = -1;
     app->selecting_area = 0;
     app->packed_placing = 0;
     bench_selection_clear(&app->selection);

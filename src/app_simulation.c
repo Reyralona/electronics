@@ -1,3 +1,4 @@
+#include "component_registry.h"
 #include "app_simulation.h"
 #include "spice_live.h"
 #include "spice_trace.h"
@@ -7,9 +8,9 @@
 #define LIVE_FRAME_INTERVAL_MS 16
 #define LIVE_FRAMES_PER_TRACE_SPAN 300.0
 
-/* Without a breadboard, explicit wire endpoints determine connectivity.
- * Moving bodies or wire knees then leaves the electrical system unchanged. */
-static int same_electrical_assembly(const Workbench *a, const Workbench *b)
+/* Wire endpoints and coincident terminals define connectivity, including breadboards.
+ * Parameter edits may retain a displayed sample without claiming it is up to date. */
+static int same_electrical_assembly(const Workbench *a, const Workbench *b, int compare_controls)
 {
     if (a->part_count != b->part_count || a->wire_count != b->wire_count)
         return 0;
@@ -17,9 +18,12 @@ static int same_electrical_assembly(const Workbench *a, const Workbench *b)
     {
         const Part *p = &a->parts[i];
         const Part *q = &b->parts[i];
-        if (p->type == PART_BREADBOARD || p->type != q->type || p->on != q->on ||
-            p->value != q->value || p->control != q->control)
+        if (p->type != q->type || p->group != q->group || p->board_layout != q->board_layout)
             return 0;
+        if (compare_controls && (p->on != q->on || p->value != q->value || p->control != q->control))
+            return 0;
+        if (p->type == PART_BREADBOARD)
+            continue;
         for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
         {
             int after = -1;
@@ -52,7 +56,7 @@ static void retain_visual_edit_result(AppState *app)
 {
     uint64_t previous = app->dc_job.snapshot.revision;
     if (!app->sim.auto_enabled || app->dc_job.live_reset_pending || previous == app->bench.revision ||
-        !same_electrical_assembly(&app->dc_job.snapshot, &app->bench))
+        !same_electrical_assembly(&app->dc_job.snapshot, &app->bench, 1))
         return;
     /* Never mutate the snapshot while its worker owns it. */
     if (app->dc_job.thread)
@@ -195,13 +199,21 @@ static void accept_transient_result(AppState *app)
     }
 }
 
+static int compatible_live_sample(const AppState *app)
+{
+    return app->sim.auto_enabled && app->sim.sim_running && app->dc_job.automatic &&
+           app->dc_job.continuous && !app->dc_job.live_reset_pending &&
+           same_electrical_assembly(&app->dc_job.snapshot, &app->bench, 0);
+}
+
 static void poll_result(AppState *app)
 {
     if (spice_job_poll(&app->dc_job))
     {
-        if (app->dc_job.snapshot.revision != app->bench.revision)
+        if (app->dc_job.snapshot.revision != app->bench.revision &&
+            !(app->dc_job.success && compatible_live_sample(app)))
         {
-            /* An automatic result for an older assembly is simply dropped; a newer analysis follows. */
+            /* Topology changes invalidate old samples; parameter updates can display a compatible sample. */
             if (!app->dc_job.automatic)
             {
                 sim_state_discard_result(&app->sim, SIM_RESULT_DC);
@@ -236,14 +248,16 @@ static int needs_live_session(const Workbench *bench)
     if (sim_auto_is_dynamic(bench))
         return 1;
     for (int i = 0; i < bench->part_count; ++i)
-        if (bench->parts[i].type == PART_DFF || bench->parts[i].type == PART_CLOCK)
+        if (component_electrical_type(bench->parts[i].type) == PART_SOURCE ||
+            bench->parts[i].type == PART_DFF || bench->parts[i].type == PART_CLOCK ||
+            component_environment(bench->parts[i].type))
             return 1;
     return 0;
 }
 
 static void schedule_analysis(AppState *app)
 {
-    /* Automatic analysis: once the assembly has been still for a moment, recalculate whatever changed. */
+    /* Powered circuits update continuously; only the unpowered batch fallback is debounced. */
     if (app->sim.frame_revision != app->bench.revision)
     {
         app->sim.frame_revision = app->bench.revision;
@@ -291,8 +305,12 @@ void app_simulation_update(AppState *app)
 {
     retain_visual_edit_result(app);
     poll_result(app);
-    schedule_analysis(app);
+    app->sim.display_pending = sim_state_has_result(&app->sim, SIM_RESULT_DC) &&
+                               app->sim.result_revision != app->bench.revision &&
+                               !app->sim.auto_failed && compatible_live_sample(app);
+    /* Validate against the old snapshot before scheduling replaces it. */
     const char *message = sim_state_invalidate(&app->sim, &app->bench);
+    schedule_analysis(app);
     if (message)
         app->status = message;
     message = sim_state_advance(&app->sim, SDL_GetTicks());

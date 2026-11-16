@@ -266,14 +266,14 @@ Os slots guardam montagens/configuracoes, nao o instante eletrico. Terminais fle
 Formato atual 22, leitura retrocompativel 1-21. Captura --capture-catalog mostra novos componentes.
 
 
-## Perninhas flexiveis e contato direto (0.26.0)
-Segure Alt e arraste a bolinha do terminal para mover apenas a perninha. Alt+duplo clique
+## Terminais flexiveis e contato direto (0.26.0)
+Segure Alt e arraste a bolinha do terminal para mover apenas o terminal. Alt+duplo clique
 no trajeto insere joelho; Alt+arraste move o joelho; Alt+duplo clique nele remove.
 O corpo permanece no lugar. Disponivel em LED, resistores, capacitores, indutores, fontes,
 interruptores, botoes, clocks e potenciometros; breadboard e pinos dos CIs permanecem rigidos.
 Terminais de pecas comuns coincidentes se conectam sem fio. A ponta encaixa em terminais
 proximos ao arrastar; cruzamento no meio de segmentos nao conecta. O encaixe da ponta da
-perninha e explicito mesmo com Alt pressionado (Alt suspende apenas o encaixe da grade/corpo).
+terminal e explicito mesmo com Alt pressionado (Alt suspende apenas o encaixe da grade/corpo).
 Caminhos de terminais sao dinamicos, conservados por undo/redo, clipboard, chips e slots.
 Formato 23 le versoes 1-22. Part possui geometria owned: codigo novo deve usar clone/clear.
 
@@ -299,4 +299,38 @@ Vetores do solver crescem com duracao da sessao; sao liberados ao reiniciar/fech
 O passo solicitado e aplicado ao iniciar o transitorio; para trocar a resolucao, reinicie o estado.
 A interface e nativa C; nao depende de Python. Distribuir tambem spice-live-host.exe junto da
 Bancada e o runtime ngspice. Capturas: --capture-live-rc, --capture-live-off e --capture-leads.
-Perninhas agora compartilham tambem os cantos arredondados dos fios e a geometria de hit testing.
+Terminais agora compartilham tambem os cantos arredondados dos fios e a geometria de hit testing.
+
+
+## Catalogo analogico e ambiente (0.28.0)
+Biblioteca Basicos inclui diodo, NPN/PNP, LDR, flex, FSR, inclinacao, fotodiodo,
+fototransistor de luz ambiente, TMP36, umidade do solo e baterias 9 V, AA 1.5 V e moeda 3 V.
+Selecione um sensor e arraste o slider de ambiente do inspector; Shift+scroll tambem ajusta.
+Lux, angulo, forca, luz relativa, temperatura e umidade relativa alteram o modelo eletrico.
+O projeto/slot salva o controle; Ctrl+Z desfaz o ajuste. Alterar estimulos conserva a sessao
+continua. Entrada de ambiente nao depende de fio e nao e uma saida eletrica forcada.
+
+LDR/flex/FSR e umidade sao curvas genericas, nao instrumentos calibrados. TMP36 usa
+500mV + 10mV/C, alimentacao 2.7..5.5 V e limitacao aproximada de 250 uA; sem dinamica termica.
+Baterias possuem resistencia interna constante e nao esgotam por capacidade; detalhes ficam
+no inspector e em DECISOES.md. Transistores sao genericos, com pinos E/B/C identificados,
+sem prometer pinagem ou parametros de um fabricante especifico.
+A corrente de transistor usa C->E; a leitura do TMP36 usa OUT->carga.
+Formato24 le tambem versoes1..23. A lista completa solicitada e o que falta estao em
+CATALOGO_COMPONENTES.md; displays no exterior de chips, motores e instrumentos ainda pendentes.
+
+Revisao de arte: ./tools/capture-components.ps1 -Destination build/component-review/final
+produz close-ups reais de cada tipo exceto CIs repetidos, em claro/escuro; gere o resumo com
+./tools/component-contact-sheet.ps1 -Directory build/component-review/final . Referencias,
+achados e correcoes constam em REVISAO_VISUAL.md. Build/testes:
+./build.ps1 -OutputName bancada-next -GuiTests .
+
+
+### Atualizacao continua de valores e controles
+Circuitos alimentados com fonte/bateria tambem usam a sessao continua, mesmo sem capacitor
+ou clock. Ajustar potenciometro, resistencia ou ambiente recalcula sem a espera do modo em
+lote. A ultima amostra compativel permanece visivel enquanto o worker calcula a seguinte;
+leituras numericas pendentes indicam "atualizando". Resultados intermediarios compativeis
+podem aparecer durante um arraste continuo, evitando esperar que o usuario pare de ajustar.
+Mudar conexoes invalida a imagem anterior; isso nao altera o limite conhecido de reinicio
+por topologia. Pausa/manual e falhas continuam distintos de atualizacao em andamento.

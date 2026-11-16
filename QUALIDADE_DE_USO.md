@@ -161,7 +161,7 @@ Persistencia de estado eletrico atraves de alteracoes e controles dimensionais c
 
 
 ## Estado 0.27.0
-Perninhas disponiveis com Alt+arraste e Alt+duplo clique, cantos iguais aos fios e controle
+Terminais disponiveis com Alt+arraste e Alt+duplo clique, cantos iguais aos fios e controle
 independente do corpo. Pontas coincidentes de pecas comuns conectam sem fio. Undo/clipboard/slots
 conservam caminhos. CIs e breadboard mantem pinos rigidos.
 Continuidade implementada para movimentos sem mudar conexoes e alteracoes de controles/valores,
@@ -169,3 +169,20 @@ com memoria de C/L e DFF no solver. Pause conserva estado; reinicio e explicito 
 Slots continuam sendo montagem/configuracao e carregam estado inicial. Interior usa outro processo.
 Novas conexoes/frequencia ainda reiniciam estado; limitacao indicada no rodape. Instrumentos
 posicionaveis e escala integral da GUI continuam pendentes. Nao marcar 1.0.
+
+
+## Sensores e revisao de arte
+Estimulos de ambiente devem estar visiveis no inspector com nome, unidade e valor;
+slider tem uma acao de historico por arraste e tambem aceita Shift+scroll. Persistir no
+projeto/slot. Curva generica e limites de alimentacao/calibracao precisam ser visiveis.
+Inspecao nao pode trocar leitura calculada por um estado de saida inventado. C/B/E e
+V+/OUT/GND devem ter papeis proprios, sem rotular emissor/coletor como pinos sem polaridade.
+Areas de selecao acompanham a silhueta de pecas altas; terminais devem tocar visualmente
+no corpo em qualquer zoom. Revisar capturas reais por tipo e tema antes de aprovar arte.
+
+
+## Painel tecnico e rodape (preferencia do usuario, 15/11/2026)
+O inspector mostra dados tecnicos, valores e controles efetivos. Dicas de teclado/mouse
+ficam no rodape contextual, sem ocupar o painel tecnico. Usar "terminais" na interface;
+nao usar apelidos informais para os pinos. Preservar informacoes sobre modelo, unidades,
+polaridade e limites eletricos. Botoes continuam identificados pela acao, sem legenda de atalho.

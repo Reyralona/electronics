@@ -330,16 +330,18 @@ static void draw_part_source(const Part *p)
 static void draw_part_switch(const Part *p)
 {
     float x = p->x, y = p->y;
-    color(.23f, .25f, .27f);
-    rect(x - 36, y - 22, 72, 42);
-    color(.77f, .79f, .79f);
-    rect(x - 31, y - 17, 62, 30);
-    color(.2f, .22f, .24f);
-    circle(x - 17, y, 5);
-    circle(x + 17, y, 5);
-    glLineWidth(5);
-    line(x - 17, y, x + 17, p->on ? y : y - 13);
-    glLineWidth(1);
+    color(.15f,.17f,.19f);
+    rect(x - 30, y - 17, 60, 36);
+    gradient_rect(x - 30, y - 20, 60, 32, (SurfaceColor){.78f,.81f,.83f}, (SurfaceColor){.43f,.47f,.50f});
+    color(.09f,.11f,.13f);
+    rect(x - 21, y - 13, 42, 20);
+    float actuator = x + (p->on ? 10 : -10);
+    gradient_rect(actuator - 9, y - 17, 18, 23, (SurfaceColor){.34f,.37f,.40f}, (SurfaceColor){.12f,.14f,.16f});
+    color(.55f,.58f,.61f);
+    for (int i = 0; i < 3; ++i)
+        rect(actuator - 5 + i * 4, y - 13, 1, 14);
+    color(p->on ? .16f : .45f, p->on ? .66f : .13f, .12f);
+    rect(x - 3, y + 8, 6, 2);
 }
 
 static void draw_part_clock(const Part *p)
@@ -518,7 +520,7 @@ static void draw_part_led(const Part *p, int led, float brightness)
     color(.38f, .08f, .07f);
     ellipse(x, y + 9, 17, 5);
     rect(x - 14, y - 12, 28, 21);
-    color(.75f, .75f, .72f);
+    color(.55f, .09f, .08f);
     ellipse(x, y + 8, 16, 4);
     /* led: -1 unknown, 0 off, 1 lit, 2 burnt */
     if (led == 2)
@@ -547,6 +549,202 @@ static void draw_part_led(const Part *p, int led, float brightness)
     glPopMatrix();
 }
 
+static void draw_polarity(float x, float y, int positive)
+{
+    color(.14f, .16f, .18f);
+    rect(x - 3, y - .7f, 6, 1.4f);
+    if (positive)
+        rect(x - .7f, y - 3, 1.4f, 6);
+}
+
+static void voltage_mark(float x, float y, int digit, int decimal)
+{
+    static const unsigned char segments[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f};
+    unsigned char mask = segments[digit];
+    const float bars[7][4] = {{1,0,4,1}, {5,1,1,4}, {5,6,1,4}, {1,10,4,1},
+                             {0,6,1,4}, {0,1,1,4}, {1,5,4,1}};
+    color(.18f,.20f,.22f);
+    for (int i = 0; i < 7; ++i)
+        if (mask & (1u << i))
+            rect(x + bars[i][0], y + bars[i][1], bars[i][2], bars[i][3]);
+    if (decimal)
+    {
+        rect(x + 8, y + 9, 1, 1);
+        voltage_mark(x + 12, y, 5, 0);
+        return;
+    }
+    glLineWidth(fmaxf(1, drawing_scale));
+    line(x + 10, y, x + 13, y + 10);
+    line(x + 13, y + 10, x + 16, y);
+    glLineWidth(1);
+}
+
+static void draw_battery(const Part *part)
+{
+    float x = part->x, y = part->y;
+    if (part->type == PART_BATTERY_9V)
+    {
+        color(.17f, .18f, .19f);
+        rect(x - 25, y - 36, 50, 81);
+        gradient_rect(x - 25, y - 36, 46, 78, (SurfaceColor){.84f,.86f,.87f}, (SurfaceColor){.43f,.46f,.48f});
+        gradient_rect(x - 25, y - 38, 46, 24, (SurfaceColor){.23f,.25f,.27f}, (SurfaceColor){.06f,.07f,.08f});
+        color(.16f,.18f,.20f);
+        ellipse(x - 13, y - 39, 9, 5);
+        color(.68f,.72f,.75f);
+        ellipse(x - 13, y - 42, 9, 5);
+        color(.27f,.30f,.33f);
+        ellipse(x - 13, y - 42, 5, 3);
+        color(.82f,.85f,.87f);
+        ellipse(x + 13, y - 43, 5, 3);
+        rect(x + 8, y - 43, 10, 5);
+        color(.94f,.95f,.96f);
+        ellipse(x + 13, y - 44, 5, 2);
+        draw_polarity(x + 13, y - 6, 1);
+        draw_polarity(x - 13, y - 6, 0);
+        voltage_mark(x - 9, y + 4, 9, 0);
+        color(.74f,.13f,.10f);
+        rect(x - 25, y + 22, 46, 9);
+    }
+    else if (part->type == PART_BATTERY_AA)
+    {
+        color(.40f,.43f,.45f);
+        ellipse(x, y + 42, 13, 4);
+        gradient_rect(x - 13, y - 40, 26, 82, (SurfaceColor){.69f,.71f,.72f}, (SurfaceColor){.21f,.24f,.27f});
+        gradient_rect(x - 10, y - 34, 7, 67, (SurfaceColor){.94f,.95f,.96f}, (SurfaceColor){.63f,.66f,.68f});
+        color(.13f,.15f,.17f);
+        rect(x - 13, y - 40, 26, 18);
+        color(.84f,.86f,.88f);
+        ellipse(x, y - 40, 13, 4);
+        rect(x - 4, y - 46, 8, 5);
+        color(.95f,.96f,.97f);
+        ellipse(x, y - 46, 4, 2);
+        draw_polarity(x, y - 12, 1);
+        glPushMatrix();
+        glTranslatef(x - 10, y + 1, 0);
+        glScalef(.65f, .65f, 1);
+        voltage_mark(0, 0, 1, 1);
+        glPopMatrix();
+        draw_polarity(x, y + 31, 0);
+    }
+    else
+    {
+        color(.30f,.33f,.36f);
+        ellipse(x, y + 3, 27, 24);
+        color(.72f,.75f,.78f);
+        ellipse(x, y - 1, 27, 24);
+        color(.91f,.93f,.94f);
+        ellipse(x - 1, y - 3, 24, 21);
+        color(.76f,.79f,.81f);
+        ellipse(x, y - 2, 21, 18);
+        draw_polarity(x, y - 8, 1);
+        voltage_mark(x - 9, y + 1, 3, 0);
+    }
+}
+
+static void draw_transistor(const Part *part)
+{
+    float x = part->x, y = part->y;
+    color(.08f,.09f,.10f);
+    ellipse(x, y - 10, 19, 12);
+    rect(x - 19, y - 10, 38, 22);
+    gradient_rect(x - 18, y - 7, 36, 19, (SurfaceColor){.29f,.31f,.33f}, (SurfaceColor){.09f,.10f,.11f});
+    color(.53f,.55f,.56f);
+    rect(x - 12, y - 3, 12, 1);
+    rect(x - 12, y + 1, 20, 1);
+    rect(x - 12, y + 5, part->type == PART_NPN ? 15 : 9, 1);
+    if (part->type == PART_TEMPERATURE)
+    {
+        color(.22f,.55f,.75f);
+        circle(x + 11, y - 2, 2);
+    }
+}
+
+static void draw_sensor(const Part *part)
+{
+    float x = part->x, y = part->y;
+    if (part->type == PART_SOIL)
+    {
+        gradient_rect(x - 18, y - 39, 36, 47, (SurfaceColor){.12f,.40f,.26f}, (SurfaceColor){.04f,.22f,.13f});
+        color(.07f,.23f,.14f);
+        rect(x - 18, y + 8, 12, 25);
+        rect(x + 6, y + 8, 12, 25);
+        color(.76f,.66f,.35f);
+        for (int trace = 0; trace < 3; ++trace)
+        {
+            rect(x - 16 + trace * 3, y + 2, 1, 29);
+            rect(x + 8 + trace * 3, y + 2, 1, 29);
+        }
+        color(.78f,.81f,.82f);
+        rect(x - 10, y - 30, 20, 8);
+        color(.18f,.19f,.20f);
+        rect(x - 4, y - 18, 8, 12);
+    }
+    else if (part->type == PART_FLEX || part->type == PART_FORCE)
+    {
+        color(.44f,.30f,.10f);
+        rect(x - 7, y - 22, 14, 44);
+        gradient_rect(x - 6, y - 40, 12, 60, (SurfaceColor){.82f,.61f,.23f}, (SurfaceColor){.48f,.33f,.11f});
+        color(.18f,.18f,.17f);
+        rect(x - 4, y - 36, 8, 52);
+        if (part->type == PART_FORCE)
+        {
+            color(.79f,.60f,.24f);
+            circle(x, y - 20, 20);
+            color(.17f,.18f,.18f);
+            circle(x, y - 20, 17);
+            color(.25f,.26f,.25f);
+            circle(x - 2, y - 23, 13);
+        }
+        else
+        {
+            color(.45f,.47f,.44f);
+            for (int i = 0; i < 8; ++i)
+                rect(x - 3, y - 32 + i * 6, 6, 2);
+        }
+    }
+    else if (part->type == PART_TILT)
+    {
+        gradient_rect(x - 13, y - 29, 26, 47, (SurfaceColor){.49f,.64f,.62f}, (SurfaceColor){.13f,.29f,.27f});
+        color(.72f,.81f,.78f);
+        ellipse(x, y - 29, 13, 4);
+        color(.82f,.84f,.82f);
+        circle(x, y + (component_effective_on(part) ? 10 : -19), 6);
+    }
+    else if (part->type == PART_LDR)
+    {
+        color(.45f,.32f,.15f);
+        ellipse(x, y - 3, 20, 20);
+        color(.89f,.76f,.51f);
+        ellipse(x, y - 6, 19, 18);
+        color(.59f,.23f,.15f);
+        for (int i = 0; i < 5; ++i)
+        {
+            float py = y - 17 + i * 5;
+            rect(x - 11, py, 22, 2);
+            if (i < 4)
+                rect(x + (i % 2 ? -11 : 9), py, 2, 6);
+        }
+    }
+    else
+    {
+        color(.16f,.18f,.20f);
+        ellipse(x, y - 3, 15, 19);
+        gradient_rect(x - 12, y - 17, 24, 29, (SurfaceColor){.33f,.22f,.28f}, (SurfaceColor){.09f,.10f,.12f});
+        color(.62f,.57f,.62f);
+        ellipse(x - 5, y - 14, 3, 7);
+    }
+}
+
+static void draw_diode(const Part *part)
+{
+    float x = part->x, y = part->y;
+    color(.12f,.13f,.14f);
+    ellipse(x - 18, y, 3, 8);
+    ellipse(x + 18, y, 3, 8);
+    gradient_rect(x - 18, y - 8, 36, 16, (SurfaceColor){.36f,.37f,.38f}, (SurfaceColor){.06f,.07f,.08f});
+    gradient_rect(x + 11, y - 8, 5, 16, (SurfaceColor){.91f,.92f,.93f}, (SurfaceColor){.54f,.57f,.60f});
+}
+
 static void part_draw(const Part *p, int selected, int led, float brightness)
 {
     float x = p->x, y = p->y;
@@ -568,7 +766,15 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
             rect(px < x ? x - 51 : x + 23, py - 2, 28, 4);
         }
     }
-    if (p->type == PART_SOURCE)
+    if (p->type == PART_BATTERY_9V || p->type == PART_BATTERY_AA || p->type == PART_BATTERY_COIN)
+        draw_battery(p);
+    else if (p->type == PART_DIODE)
+        draw_diode(p);
+    else if (p->type == PART_NPN || p->type == PART_PNP || p->type == PART_TEMPERATURE)
+        draw_transistor(p);
+    else if (component_environment(p->type))
+        draw_sensor(p);
+    else if (p->type == PART_SOURCE)
     {
         draw_part_source(p);
     }
@@ -576,8 +782,10 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     {
         color(.22f, .24f, .26f);
         rect(x - 25, y - 18, 50, 40);
-        color(.65f, .68f, .70f);
-        rect(x - 25, y - 22, 50, 36);
+        gradient_rect(x - 25, y - 22, 50, 36, (SurfaceColor){.78f,.81f,.83f}, (SurfaceColor){.49f,.53f,.56f});
+        color(.33f,.36f,.39f);
+        for (int corner = 0; corner < 4; ++corner)
+            circle(x + (corner % 2 ? 20 : -20), y + (corner / 2 ? 10 : -17), 2);
         color(.15f, .17f, .19f);
         circle(x, y - (p->on ? 1 : 6), 14);
         color(.25f, .28f, .31f);
@@ -605,13 +813,17 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
         circle(x, y + 5, 25);
         color(.10f, .35f, .65f);
         circle(x, y - 2, 25);
+        color(.65f,.68f,.71f);
+        rect(x - 28, y - 3, 7, 6);
+        rect(x + 21, y - 3, 7, 6);
+        rect(x - 3, y + 21, 6, 9);
         color(.65f, .69f, .73f);
         circle(x, y - 5, 13);
         color(.85f, .87f, .89f);
         circle(x - 2, y - 8, 10);
         float angle = (float)(.75 * 3.141592653589793 + p->control * 1.5 * 3.141592653589793);
         color(.12f, .14f, .17f);
-        glLineWidth(3);
+        glLineWidth(2 * drawing_scale);
         line(x, y - 8, x + cosf(angle) * 9, y - 8 + sinf(angle) * 9);
         glLineWidth(1);
     }
@@ -635,11 +847,13 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     {
         color(.12f, .49f, .84f);
         glLineWidth(2);
+        float half_width, half_height;
+        component_body_extent(p->type, &half_width, &half_height);
         glBegin(GL_LINE_LOOP);
-        glVertex2f(x - 46, y - 32);
-        glVertex2f(x + 46, y - 32);
-        glVertex2f(x + 46, y + 32);
-        glVertex2f(x - 46, y + 32);
+        glVertex2f(x - half_width - 2, y - half_height - 2);
+        glVertex2f(x + half_width + 2, y - half_height - 2);
+        glVertex2f(x + half_width + 2, y + half_height + 2);
+        glVertex2f(x - half_width - 2, y + half_height + 2);
         glEnd();
         glLineWidth(1);
     }
@@ -856,7 +1070,7 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
         rect(350, 12, 140, 44);
         color(.12f, .28f, .2f);
         text(font, 360, 41, "Aplicar ao chip");
-        text(font, 510, 42, "Renomear [F4]");
+        text(font, 510, 42, "Renomear");
         text(font, 700, 42, "Salvar modelo");
         text(font, 880, 42, "Voltar [Esc]");
     }
@@ -1204,7 +1418,7 @@ static void pin_role_color(ComponentPinRole role)
             color(1, .56f, .45f);
         else if (role == PIN_SUPPLY_RETURN || role == PIN_GROUND || role == PIN_CATHODE)
             color(.53f, .73f, 1);
-        else if (role == PIN_INPUT || role == PIN_CLOCK_INPUT)
+        else if (role == PIN_INPUT || role == PIN_CLOCK_INPUT || role == PIN_BASE)
             color(1, .76f, .40f);
         else if (role == PIN_OUTPUT)
             color(.47f, .91f, .65f);
@@ -1216,7 +1430,7 @@ static void pin_role_color(ComponentPinRole role)
         color(.78f, .22f, .15f);
     else if (role == PIN_SUPPLY_RETURN || role == PIN_GROUND || role == PIN_CATHODE)
         color(.15f, .37f, .7f);
-    else if (role == PIN_INPUT || role == PIN_CLOCK_INPUT)
+    else if (role == PIN_INPUT || role == PIN_CLOCK_INPUT || role == PIN_BASE)
         color(.65f, .36f, .1f);
     else if (role == PIN_OUTPUT)
         color(.08f, .48f, .28f);
@@ -1226,7 +1440,7 @@ static void pin_role_color(ComponentPinRole role)
 
 static char pin_role_symbol(ComponentPinRole role)
 {
-    static const char symbols[] = {'B', 'I', 'C', 'O', '+', '-', 'G', 'A', 'K', '.'};
+    static const char symbols[] = {'B', 'I', 'C', 'O', '+', '-', 'G', 'A', 'K', '.', 'C', 'B', 'E'};
     return (unsigned)role < sizeof(symbols) / sizeof(symbols[0]) ? symbols[role] : '?';
 }
 
@@ -1259,7 +1473,15 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
                 snprintf(label, sizeof(label), "%s", info->name);
             else
                 snprintf(label, sizeof(label), "%s %s", info->name, marker);
-            if (bench_part_scale(part) < .5f && bench_pin_count(part->type) == 2)
+            if (component_radial_pins(part->type))
+            {
+                int pins = bench_pin_count(part->type);
+                float offset = pin == 0 ? -36 : pin == pins - 1 ? 8 : -12;
+                line(x, y, x + (pin == 0 ? -6 : pin == pins - 1 ? 6 : 0) / app->view.zoom,
+                     y + 8 / app->view.zoom);
+                world_text(font, x + offset / app->view.zoom, y + 23 / app->view.zoom, label, app->view.zoom);
+            }
+            else if (bench_part_scale(part) < .5f && bench_pin_count(part->type) == 2)
             {
                 float label_x = x + (pin ? 8 : -40) / app->view.zoom;
                 float label_y = y + (pin ? 24 : -14) / app->view.zoom;
@@ -1432,12 +1654,12 @@ static void draw_inspector(const AppState *app, GLuint font)
         rect(850, 116, 194, 28);
         rect(1050, 116, 194, 28);
         color(.12f, .28f, .45f);
-        text(font, 858, 136, "Ver interior [Enter]");
-        text(font, 1058, 136, "Renomear [F4]");
+        text(font, 858, 136, "Ver interior");
+        text(font, 1058, 136, "Renomear");
         char dimensions[100];
-        snprintf(dimensions, sizeof(dimensions), "Largura: %.0f [Ctrl+scroll]", bench_group_width(&app->bench, group));
+        snprintf(dimensions, sizeof(dimensions), "Largura: %.0f", bench_group_width(&app->bench, group));
         text(font, 850, 170, dimensions);
-        snprintf(dimensions, sizeof(dimensions), "Altura: %.0f [Ctrl+Shift+scroll]", bench_group_height(&app->bench, group));
+        snprintf(dimensions, sizeof(dimensions), "Altura: %.0f", bench_group_height(&app->bench, group));
         text(font, 850, 193, dimensions);
         return;
     }
@@ -1448,38 +1670,72 @@ static void draw_inspector(const AppState *app, GLuint font)
         const ComponentInfo *info = component_info(part->type);
         const char *unit = info && info->primary ? info->primary->unit : NULL;
         int shows_current = sim_state_has_result(&app->sim, SIM_RESULT_DC) && !app->sim.burnt[app->selected] &&
-                            (part->type == PART_LED || part->type == PART_RESISTOR);
+                            component_current_vector(part->type, app->selected, reading, sizeof(reading));
         color(.97f, .98f, .98f);
-        rect(840, 80, 420, (shows_current || app->sim.burnt[app->selected]) ? 70 : 38);
+        int has_model_note = part->type == PART_POTENTIOMETER || part->type == PART_DIODE ||
+                             part->type == PART_NPN || part->type == PART_PNP ||
+                             (component_electrical_type(part->type) == PART_SOURCE && part->type != PART_SOURCE);
+        rect(840, 80, 420, component_environment(part->type) ? 250 : has_model_note ? 145 : 112);
         color(.14f, .22f, .28f);
         if (unit)
         {
-            snprintf(reading, sizeof(reading), "Valor: %.5g %s  [E / + / -]", part->value, unit);
+            snprintf(reading, sizeof(reading), "%s: %.5g %s", part_name(part->type), part->value, unit);
             text(font, 850, 105, reading);
         }
         else
-            text(font, 850, 105,
-                 part->type == PART_LED                               ? "LED generico"
-                 : (is_gate(part->type) || component_has_flag(part->type, COMPONENT_QUAD_GATE)) ? part_name(part->type)
-                                                                      : "Componente selecionado");
+            text(font, 850, 105, part_name(part->type));
         color(.86f, .91f, .95f);
         rect(850, 154, 330, 28);
         color(.12f, .34f, .52f);
-        snprintf(reading, sizeof(reading), "Tamanho: %.5g%% [Ctrl+scroll]", bench_part_scale(part) * 100);
+        snprintf(reading, sizeof(reading), "Tamanho: %.5g%%", bench_part_scale(part) * 100);
         text(font, 860, 174, reading);
-        if (bench_lead_count(part, 0))
-            text(font, 850, 235, "Perninhas: Alt+arraste / Alt+duplo clique");
         if (part->type == PART_POTENTIOMETER)
         {
-            snprintf(reading, sizeof(reading), "Cursor: %.0f%% [Shift+scroll]", part->control * 100);
+            snprintf(reading, sizeof(reading), "Cursor: %.0f%%", part->control * 100);
             text(font, 850, 210, reading);
         }
+        const ComponentEnvironment *environment = component_environment(part->type);
+        if (environment)
+        {
+            snprintf(reading, sizeof(reading), "%s: %.3g %s", environment->label,
+                     component_environment_value(part), environment->unit);
+            text(font, 850, 210, reading);
+            color(.75f, .79f, .82f);
+            rect(850, 254, 330, 6);
+            color(.12f, .49f, .84f);
+            rect(850, 254, (float)(330 * part->control), 6);
+            circle(850 + (float)(330 * part->control), 257, 7);
+            char note[128];
+            snprintf(note, sizeof(note), "%s", environment->note);
+            size_t split = strlen(note);
+            if (split > 43)
+            {
+                split = 43;
+                while (split > 0 && note[split] != ' ')
+                    --split;
+            }
+            if (split && note[split])
+            {
+                note[split] = 0;
+                text(font, 850, 313, note + split + 1);
+                text(font, 850, 293, note);
+            }
+            else
+                text(font, 850, 293, note);
+        }
+        else if (component_electrical_type(part->type) == PART_SOURCE && part->type != PART_SOURCE)
+        {
+            snprintf(reading, sizeof(reading), "R interna: %.3g ohm; sem descarga por capacidade", component_source_resistance(part->type));
+            text(font, 850, 210, reading);
+        }
+        else if (part->type == PART_DIODE || part->type == PART_NPN || part->type == PART_PNP)
+            text(font, 850, 210, "Modelo SPICE generico");
         if (part->type != PART_BREADBOARD)
         {
             color(.86f, .91f, .95f);
             rect(ROTATE_BUTTON_X, 86, 72, 26);
             color(.12f, .34f, .52f);
-            text(font, ROTATE_BUTTON_X + 8, 105, "Girar R");
+            text(font, ROTATE_BUTTON_X + 8, 105, "Girar");
         }
         if (app->sim.burnt[app->selected])
         {
@@ -1496,8 +1752,11 @@ static void draw_inspector(const AppState *app, GLuint font)
         }
         else if (shows_current)
         {
-            snprintf(reading, sizeof(reading), "Corrente: %.5g mA (pino 1 -> 2)",
-                     app->sim.dc_led_currents[app->selected] * 1000.0);
+            const char *direction = part->type == PART_NPN || part->type == PART_PNP || part->type == PART_AMBIENT_LIGHT
+                                        ? "C -> E" : part->type == PART_TEMPERATURE ? "OUT -> carga" : "pino 1 -> 2";
+            snprintf(reading, sizeof(reading), "Corrente%s: %.5g mA (%s)",
+                     app->sim.display_pending ? " (atualizando)" : "",
+                     app->sim.dc_led_currents[app->selected] * 1000.0, direction);
             text(font, 850, 137, reading);
         }
     }
@@ -1510,23 +1769,43 @@ static void draw_status(const AppState *app, GLuint font)
     color(.97f, .98f, .98f);
     rect(220, 660, 1060, 60);
     color(.2f, .26f, .3f);
-    text(font, 238, 685, app->status);
-    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic && app->show_trace)
-    {
-        text(font, 238, 709, "Curva separada desde o estado inicial | Espaco: reproduzir | P: voltar ao calculo automatico.");
-        return;
-    }
+    char status[384];
     if (app->sim.live_mode)
+        snprintf(status, sizeof(status), "t=%.6g s | Novas conexoes/frequencia reiniciam o tempo. | %s",
+                 app->sim.live_time, app->status);
+    else
+        snprintf(status, sizeof(status), "%s", app->status);
+    name_text(font, 238, 685, status, 1020);
+    if (app->selected >= 0 && app->bench.parts[app->selected].group)
     {
-        char time[180];
-        snprintf(time, sizeof(time), "Tempo: %.6g s | Ctrl+Espaco: reiniciar | Novas conexoes/frequencia reiniciam o tempo.",
-                 app->sim.live_time);
-        text(font, 238, 709, time);
+        name_text(font, 238, 709,
+                  "Enter: interior | F4: renomear | Ctrl+scroll: largura | Ctrl+Shift+scroll: altura | Ctrl+Z/Y: historico", 1020);
         return;
     }
-    text(font, 238, 709,
-         "Shift+arraste: area | Ctrl+C/X/V: copiar/recortar/colar | Delete: excluir | Ctrl+G: bloco | Ctrl+Z/Y: "
-         "historico");
+    if (app->selected >= 0)
+    {
+        const Part *part = &app->bench.parts[app->selected];
+        const ComponentInfo *info = component_info(part->type);
+        char controls[320];
+        snprintf(controls, sizeof(controls), "Ctrl+scroll: tamanho%s%s%s | Ctrl+Z/Y: historico",
+                 part->type == PART_BREADBOARD ? "" : " | R: girar",
+                 info && info->primary ? " | E: valor" : "",
+                 bench_lead_count(part, 0) ? " | Alt+arraste: terminais | Alt+duplo clique: joelhos" : "");
+        if (component_environment(part->type) || part->type == PART_POTENTIOMETER)
+        {
+            size_t length = strlen(controls);
+            snprintf(controls + length, sizeof(controls) - length, " | Shift+scroll: %s",
+                     part->type == PART_POTENTIOMETER ? "cursor" : "ambiente");
+        }
+        name_text(font, 238, 709, controls, 1020);
+        return;
+    }
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic && app->show_trace)
+        name_text(font, 238, 709, "Curva desde o estado inicial | Espaco: reproduzir | P: calculo automatico", 1020);
+    else if (app->sim.live_mode)
+        name_text(font, 238, 709, "Espaco: pausar/continuar | Ctrl+Espaco: reiniciar | Shift+arraste: area | Ctrl+C/X/V: copiar/recortar/colar", 1020);
+    else
+        name_text(font, 238, 709, "Shift+arraste: area | Ctrl+C/X/V: copiar/recortar/colar | Delete: excluir | Ctrl+G: bloco | Ctrl+Z/Y: historico", 1020);
 }
 
 static void draw_settings(const AppState *app, GLuint font)

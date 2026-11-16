@@ -165,7 +165,7 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
         if (component_electrical_type(part->type) == PART_SOURCE || part->type == PART_CLOCK)
         {
             snprintf(name, sizeof(name), "Rpower%d", i);
-            if (!alter(live, name, part->on ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS, message, capacity))
+            if (!alter(live, name, part->on ? component_source_resistance(part->type) : NETLIST_LIVE_OPEN_OHMS, message, capacity))
                 return 0;
             if (component_electrical_type(part->type) == PART_SOURCE)
             {
@@ -177,10 +177,10 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
                     return 0;
             }
         }
-        if (part->type == PART_SWITCH || part->type == PART_BUTTON)
+        if (component_electrical_type(part->type) == PART_SWITCH || part->type == PART_BUTTON)
         {
             snprintf(name, sizeof(name), "Rcontact%d", i);
-            if (!alter(live, name, part->on ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS, message, capacity))
+            if (!alter(live, name, component_effective_on(part) ? NETLIST_LIVE_CLOSED_OHMS : NETLIST_LIVE_OPEN_OHMS, message, capacity))
                 return 0;
         }
         if (component_electrical_type(part->type) == PART_RESISTOR || part->type == PART_CAPACITOR || part->type == PART_INDUCTOR)
@@ -192,6 +192,24 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
                 prefix = 'C';
             snprintf(name, sizeof(name), "%c%d", prefix, i);
             if (!alter(live, name, component_effective_value(part), message, capacity))
+                return 0;
+        }
+        if (part->type == PART_TEMPERATURE)
+        {
+            snprintf(name, sizeof(name), "Venv%d", i);
+            if (!alter(live, name, component_environment_value(part), message, capacity))
+                return 0;
+        }
+        if (part->type == PART_SOIL)
+        {
+            snprintf(name, sizeof(name), "Rsoil%d", i);
+            if (!alter(live, name, component_effective_value(part), message, capacity))
+                return 0;
+        }
+        if (part->type == PART_PHOTODIODE || part->type == PART_AMBIENT_LIGHT)
+        {
+            snprintf(name, sizeof(name), "Iphoto%d", i);
+            if (!alter(live, name, component_photocurrent(part), message, capacity))
                 return 0;
         }
         if (part->type == PART_LED)

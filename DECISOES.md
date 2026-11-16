@@ -354,3 +354,62 @@ Para a revisao visual: capturador por ID, sem modificar limites de zoom do usuar
 OpenGL e preferido a sprites raster por manter terminais editaveis, cores e zoom independentes.
 Inventario integral e ordem de trabalho em CATALOGO_COMPONENTES.md. Sensores devem atuar sobre
 parametros/modelos eletricos; sliders nao devem forcar arbitrariamente o estado de saidas.
+
+
+## Catalogo analogico: comparacao antes da implementacao (15/11/2026)
+Fatos: modelos D e Q nativos do ngspice resolvem juncao/BJT, ao contrario de
+um limiar booleano ou resistor substituto. Manual oficial consultado:
+https://ngspice.sourceforge.io/docs/ngspice-manual.pdf (capitulos D/BJT).
+Interlink documenta FSR como resistencia decrescente com forca:
+https://www.interlinkelectronics.com/fsr-400-series . Curva generica nao equivale a calibracao.
+Referencias mecanicas Energizer revisadas em PNG antes dos desenhos:
+https://data.energizer.com/pdfs/522.pdf , https://data.energizer.com/pdfs/E91NA0426.pdf ,
+https://data.energizer.com/pdfs/2032GL0626.pdf . AA nova: 150..300 mOhm.
+Comparacao: fonte ideal simplifica mas nao representa queda sob carga; fonte com Rserie
+permite queda e desligamento por contato sem criar um modelo quimico inexistente.
+Decisao: modelos SPICE genericos para D/NPN/PNP; LDR/flex/FSR com curvas aproximadas
+identificadas; inclinacao por contato dependente do angulo. Baterias com Rserie
+constante (AA .2 ohm, 9V 1 ohm e moeda 15 ohm; ultimas duas escolhas didaticas,
+nao curvas medidas). Capacidade, espectro/tempo dos sensores e envelhecimento pendentes.
+Sliders editam estimulo normalizado salvo, nunca forcam diretamente uma leitura de saida.
+Hipotese verificavel: alter de R/I permite controles ao vivo sem reiniciar C/L/DFF;
+validar com ngspice e GUI antes de publicar. Inventario completo de CIs e atuadores
+fica pendente, conforme CATALOGO_COMPONENTES.md; nao anunciar cobertura total.
+
+
+### Temperatura e solo (15/11/2026, antes da implementacao)
+Fato: TMP36 tem transferencia 500 mV + 10 mV/C, alimentacao 2.7..5.5 V, faixa
+-40..125 C e limite de corrente de saida tipico 250 uA. Fonte ADI consultada:
+https://www.analog.com/media/en/technical-documentation/data-sheets/tmp35_36_37.pdf .
+Decisao: modelo alimentado com transferencia nominal, Rsaida 100 ohm didatica,
+limite 250 uA e consumo em repouso 50 uA; alta impedancia fora da alimentacao.
+Nao simula aquecimento proprio, resposta termica nem comportamento garantido fora da faixa.
+Pinagem explicita V+/OUT/GND na UI; desenho usa frente plana, sem deduzir pinagem de foto.
+Solo: modulo resistivo generico de 3 pinos, Rsonda 100k..1k + divisor 10k;
+slider representa umidade relativa ilustrativa, nao concentracao volumetrica calibrada.
+Comparacao: fonte ideal na saida ignoraria alimentacao/carga; modelos escolhidos permitem
+medir queda sob carga e desligamento. Modulos capacitivos/comparador continuam distintos.
+
+
+Resultado de validacao TMP36: limitador por Bfonte de corrente saturada falhou com
+"Timestep too small" em UIC, embora o OP passasse. Substituido por fonte de tensao com
+realimentacao de corrente, Rsaida100 ohm e 1Gohm diferencial alem de +/-250uA. Mantem
+inclinacao na matriz MNA e convergiu sob carga de1Mohm/100ohm no backendbatch e continuo.
+Consumo50uA + corrente fornecida, alta impedancia fora da faixa de alimentacao. Comparacoes
+experimentais preservadas localmente em build/sensor-*.cir/log; teste automatico duravel em
+tests/test_analog_catalog.c. Nao usar sucesso apenas em DC para aprovar modelo dinamico.
+
+
+## LED/potenciometro sem intermitencia artificial (15/11/2026)
+Diagnostico no codigo: potenciais circuitos estaticos usavam batch/debounce120ms; revisao
+nova apagava resultado antes do retorno e descartava todos os resultados durante ajustes
+continuos. Decisao: sessao persistente para todo circuito com fonte/bateria, sem debounce;
+exibir ultima amostra compativel durante alteracao de parametros, marcada como pendente.
+Comparacao de compatibilidade ignora valores/on/controle, mas verifica tipos, grupos, layout
+de breadboard, contatos fisicos e ligacoes. Nunca atribuir revisao nova a leitura antiga.
+Aceitar amostras intermediarias compativeis evita starvation ao arrastar constantemente.
+Invalidar antes de agendar novo worker: o snapshot antigo precisa detectar desconexoes
+antes de ser substituido. Nao manter amostra antiga para nova topologia, erro ou modo manual.
+Nao usar interpolacao visual para esconder falta de calculo: corrente/brilho continuam
+vindos do ngspice. Suite de UI verifica80alteracoes consecutivas com LED sempre aceso e
+amostras novas durante ajuste, potenciometro/resistor e presenca de breadboard.

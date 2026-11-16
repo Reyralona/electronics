@@ -24,7 +24,7 @@ typedef struct AppState
     int route_count, drag_wire, drag_knee;
     int settings, show_grid, show_handles, round_wires, show_current;
     int wire_color, selected_wire, palette_page, example_index;
-    int palette_offset, held_button;
+    int palette_offset, held_button, dragging_environment;
     int leds[WORKBENCH_MAX_COMPONENTS];
     float offset_x, offset_y;
     SpiceJob dc_job;

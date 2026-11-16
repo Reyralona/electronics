@@ -10,6 +10,7 @@ int sim_state_has_result(const SimState *sim, SimResultKind kind)
 
 void sim_state_set_result(SimState *sim, SimResultKind kind, int success, uint64_t revision)
 {
+    sim->display_pending = 0;
     sim->result_kind = success ? kind : SIM_RESULT_NONE;
     sim->result_revision = revision;
     if (!success || kind != SIM_RESULT_DC)
@@ -18,6 +19,7 @@ void sim_state_set_result(SimState *sim, SimResultKind kind, int success, uint64
 
 void sim_state_clear_result(SimState *sim)
 {
+    sim->display_pending = 0;
     sim->result_kind = SIM_RESULT_NONE;
     sim->dc_wire_valid = 0;
 }
@@ -47,7 +49,8 @@ const char *sim_state_invalidate(SimState *sim, const Workbench *bench)
 {
     const char *message = NULL;
     /* Electrical results belong only to the exact assembly that produced them. */
-    int keep = sim->auto_enabled && sim->burn_revision == bench->revision;
+    int keep = sim->auto_enabled && (sim->burn_revision == bench->revision ||
+               (sim->sim_running && sim->display_pending));
     if (!keep && sim->burnt_count && sim->burn_revision != bench->revision)
     {
         memset(sim->burnt, 0, sizeof(sim->burnt));
