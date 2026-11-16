@@ -538,3 +538,23 @@ externa (so identidade, circuito intacto). Sem id (arquivos <= 27): usa o slot c
 e igual ao nome inicial do chip e adota o id dele. Id removido da lista -> nova entrada; slot
 reaproveitado por outro chip nunca e sobrescrito (id diferente). Renomear na bancada nao altera a
 biblioteca. Regressao: tests/test_chip_library_flow.c, passos de usuario (falhou antes no 1o salvar).
+
+## Idiomas da interface e estilo dos textos (16/11/2026)
+Pedido: revisar todos os textos no estilo do ASD-STE100 (o que é e o que faz, sem jargão, neutro) e
+trocar o idioma da interface por bandeiras, com pt-BR e en-US.
+Decisão: catálogo próprio em C, sem gettext. Cada texto é `UI_TEXT(ID, "pt-BR", "en-US")` em
+`src/text/<área>.def`; um X-macro gera o enum `TextId` e as tabelas. Motivos: tradução faltando não
+compila; os dois idiomas ficam lado a lado para revisão; o módulo é C puro (serve à camada de modelo,
+como nomes de peças e erros do compilador do Arduino); sem dependência nem arquivo externo para
+distribuir. Alternativa descartada: chave = texto em português (gettext-like), que quebra em silêncio
+quando o português muda.
+- `tests/test_ui_text.c` aplica o guia (docs/TEXTOS.md): especificadores printf iguais e na mesma ordem
+  nos dois idiomas, palavras proibidas, até 20 palavras por frase, português sem acento, espaços.
+- O idioma é preferência do programa (`language` em saves/preferences.txt, índice 0 = pt-BR,
+  1 = en-US, só acrescentar). Não entra em arquivos de projeto. Primeira execução: idioma do sistema
+  (SDL_GetPreferredLocales; "pt" -> pt-BR, outros -> en-US). "Restaurar padrões" mantém o idioma.
+- Bandeiras desenhadas com primitivas (a fonte da interface não tem emoji de bandeira), no topo do
+  diálogo de Configurações. `--language=en-US` força o idioma em capturas e revisões.
+- Textos já guardados em buffers (mensagens de status) ficam no idioma em que foram gerados até a
+  próxima mensagem; nomes que o usuário digitou (chips, código) não são traduzidos.
+Pendente: números em pt-BR ainda usam ponto decimal na exibição (%g); a entrada aceita os dois.
