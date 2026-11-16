@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.37.1. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.38.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
@@ -8,6 +8,8 @@ Este guia descreve o programa como ele está na versão 0.37.1. Para instalar, v
 - **Esquerda:** o catálogo de peças, em seis abas: **Básicos**, **Digital**, **Chips** (seus chips), **Sensores**, **Saídas** e **Medição**. `Tab` alterna entre as abas, e a roda do mouse rola a lista.
 - **Centro:** a bancada.
 - **Direita:** o painel da peça selecionada, com valor, tamanho, leitura de corrente e controles próprios (cursor do potenciômetro, ambiente dos sensores, código da placa).
+  O botão **–** no canto do painel o recolhe numa etiqueta pequena com o nome da peça; clique na etiqueta para abri-lo.
+  O painel continua recolhido ao trocar de peça.
 - **Rodapé:** mensagens, dicas da peça selecionada e o tempo simulado.
 
 ## Idioma

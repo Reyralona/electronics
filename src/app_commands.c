@@ -68,7 +68,7 @@ static void command_palette(AppState *app)
 
 static void command_settings(AppState *app)
 {
-    app->settings = !app->settings;
+    app_state_toggle_panel(app, APP_PANEL_SETTINGS);
     app->dragging = -1;
     app->drag_wire = -1;
     app->drag_lead.component = -1;

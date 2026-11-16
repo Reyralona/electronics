@@ -71,7 +71,7 @@ int app_editing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
 {
     if (key == SDLK_F3)
     {
-        app->projects_open = !app->projects_open;
+        app_state_toggle_panel(app, APP_PANEL_PROJECTS);
         app_projects_refresh(app);
         reset_interaction(app);
         return 1;

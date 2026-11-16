@@ -70,6 +70,7 @@ AppState *app_editor_open(AppState *parent)
     child->snap_grid = parent->snap_grid;
     child->snap_board = parent->snap_board;
     child->dark_theme = parent->dark_theme;
+    child->inspector_minimized = parent->inspector_minimized;
     child->gui_font_size = parent->gui_font_size;
     child->show_handles = parent->show_handles;
     child->round_wires = parent->round_wires;
@@ -372,7 +373,7 @@ int app_editor_click(AppState *app, SDL_Window *window, float x, float y)
         /* The editor header replaces the bench header; its free space must not reach bench actions. */
         return y < APP_HEADER_HEIGHT && x < app_layout_header(APP_HEADER_PLAY).x;
     }
-    if (app->selected < 0 || !app->bench.parts[app->selected].group)
+    if (app->inspector_minimized || app->selected < 0 || !app->bench.parts[app->selected].group)
         return 0;
     int button = app_layout_group_button_at(x, y);
     if (button == 0)

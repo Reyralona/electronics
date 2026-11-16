@@ -2903,9 +2903,88 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
     glDisable(GL_SCISSOR_TEST);
 }
 
-#define INSPECTOR_LINE_1 224.0f
-#define INSPECTOR_LINE_2 248.0f
-#define INSPECTOR_NOTE_WIDTH 390
+/* Compact inspector baselines (see app_layout.c for the panel geometry). */
+#define INSPECTOR_LINE_1 194.0f
+#define INSPECTOR_LINE_2 216.0f
+#define INSPECTOR_NOTE_TOP 280.0f
+#define INSPECTOR_LABEL_W 84.0f
+#define INSPECTOR_NOTE_LINES 2
+#define INSPECTOR_BOTTOM_PAD 12.0f
+#define INSPECTOR_LED_HEIGHT 176.0f
+#define INSPECTOR_ENVIRONMENT_HEIGHT 228.0f
+#define INSPECTOR_GROUP_HEIGHT 104.0f
+
+static float inspector_text_x(void)
+{
+    return app_layout_inspector_value().x;
+}
+
+static int inspector_text_w(void)
+{
+    return (int)app_layout_inspector_value().w;
+}
+
+static float inspector_line_height(void)
+{
+    return ui_font_pixels + 2.0f;
+}
+
+/* Panel height that ends just below the last text line starting at baseline. */
+static float inspector_height_to(float baseline, int lines)
+{
+    AppRect panel = app_layout_inspector(0);
+    return baseline + (lines - 1) * inspector_line_height() + INSPECTOR_BOTTOM_PAD - panel.y;
+}
+
+static int inspector_note_lines(GLuint font, const char *note)
+{
+    return ui_text_width(font, note) > inspector_text_w() ? INSPECTOR_NOTE_LINES : 1;
+}
+
+static void inspector_note_text(GLuint font, float baseline, const char *note)
+{
+    color(UI_MUTED);
+    ui_wrapped(font, inspector_text_x(), baseline, note, inspector_text_w(), INSPECTOR_NOTE_LINES,
+               inspector_line_height());
+}
+
+static void draw_inspector_title(const AppState *app, GLuint font, const char *name, float right)
+{
+    AppRect minimize = app_layout_inspector_minimize();
+    color(UI_INK);
+    name_text(font, inspector_text_x(), ui_baseline(minimize), name, (int)(right - inspector_text_x() - 8));
+    if (ui_hovered(app, minimize))
+    {
+        color(UI_SURFACE_ALT);
+        ui_rounded(minimize, UI_RADIUS);
+    }
+    color(UI_MUTED);
+    glLineWidth(2);
+    float cx = app_rect_center_x(minimize), cy = app_rect_center_y(minimize), arm = 6;
+    line(cx - arm, cy + 3, cx + arm, cy + 3);
+    glLineWidth(1);
+}
+
+/* Collapsed inspector: a small tab that keeps the name visible and expands on click. */
+static void draw_inspector_tab(const AppState *app, GLuint font, const char *name)
+{
+    AppRect tab = app_layout_inspector_tab();
+    const float icon_w = 24;
+    ui_panel(tab);
+    if (ui_hovered(app, tab))
+    {
+        color(UI_SURFACE_ALT);
+        rounded_rect(tab.x + 1, tab.y + 1, tab.w - 2, tab.h - 2, UI_RADIUS + 1);
+    }
+    color(UI_INK);
+    name_text(font, tab.x + 10, ui_baseline(tab), name, (int)(tab.w - 20 - icon_w));
+    color(UI_MUTED);
+    glLineWidth(2);
+    float cx = tab.x + tab.w - 10 - icon_w / 2, cy = app_rect_center_y(tab), arm = 5;
+    line(cx - arm, cy - 2, cx, cy + 3);
+    line(cx, cy + 3, cx + arm, cy - 2);
+    glLineWidth(1);
+}
 
 static void draw_inspector_row(const AppState *app, GLuint font, AppRect row, const char *label, const char *value,
                                int editable)
@@ -2914,7 +2993,7 @@ static void draw_inspector_row(const AppState *app, GLuint font, AppRect row, co
         ui_row_hover(app, row);
     color(UI_MUTED);
     text(font, row.x, ui_baseline(row), label);
-    AppRect box = {row.x + 110, row.y + 2, row.w - 110, row.h - 4};
+    AppRect box = {row.x + INSPECTOR_LABEL_W, row.y + 2, row.w - INSPECTOR_LABEL_W, row.h - 4};
     if (editable)
         ui_value_box(font, box, value, 1);
     else
@@ -2927,14 +3006,14 @@ static void draw_inspector_row(const AppState *app, GLuint font, AppRect row, co
 static void draw_group_inspector(const AppState *app, GLuint font)
 {
     int group = app->bench.parts[app->selected].group;
-    ui_panel(app_layout_inspector(150));
-    color(UI_INK);
-    name_text(font, 852, 112, app->bench.groups[group - 1].name, 396);
+    ui_panel(app_layout_inspector(INSPECTOR_GROUP_HEIGHT));
+    draw_inspector_title(app, font, app->bench.groups[group - 1].name, app_layout_inspector_minimize().x);
     ui_button(app, font, app_layout_group_button(0), tr(TXT_UI_VIEW_INSIDE), UI_BUTTON_PRIMARY);
     char dimensions[100];
     snprintf(dimensions, sizeof(dimensions), tr(TXT_UI_CHIP_DIMENSIONS), bench_group_width(&app->bench, group),
              bench_group_height(&app->bench, group));
-    ui_note(font, 852, 196, dimensions, 396);
+    AppRect button = app_layout_group_button(0);
+    ui_note(font, inspector_text_x(), button.y + button.h + 20, dimensions, inspector_text_w());
 }
 
 static void inspector_reading(const AppState *app, const Part *part, char *reading, size_t capacity)
@@ -3053,7 +3132,7 @@ static void draw_environment_control(GLuint font, const Part *part)
     snprintf(reading, sizeof(reading), "%s: %.3g %s", environment->label, component_environment_value(part),
              environment->unit);
     color(UI_INK);
-    text(font, 852, INSPECTOR_LINE_2 + 8, reading);
+    text(font, inspector_text_x(), INSPECTOR_LINE_2, reading);
     AppRect track = app_layout_environment_track();
     color(.80f, .84f, .87f);
     ui_rounded(track, track.h / 2);
@@ -3063,7 +3142,7 @@ static void draw_environment_control(GLuint font, const Part *part)
     circle(knob_x, knob_y, 9);
     ui_raw_white();
     circle(knob_x, knob_y, 5);
-    ui_note(font, 852, 326, environment->note, INSPECTOR_NOTE_WIDTH);
+    inspector_note_text(font, INSPECTOR_NOTE_TOP, environment->note);
 }
 
 static void draw_led_colors(const AppState *app, GLuint font, const Part *part)
@@ -3073,7 +3152,7 @@ static void draw_led_colors(const AppState *app, GLuint font, const Part *part)
     char label[64];
     snprintf(label, sizeof(label), tr(TXT_UI_LED_COLOR), component_led_color_name(part->states));
     color(UI_INK);
-    text(font, 852, INSPECTOR_LINE_2 + 2, label);
+    text(font, inspector_text_x(), INSPECTOR_LINE_2, label);
     for (int index = 0; index < APP_LED_SWATCHES; ++index)
     {
         AppRect r = app_layout_led_swatch(index);
@@ -3104,12 +3183,21 @@ static void draw_part_inspector(const AppState *app, GLuint font)
         device_note(part, measured ? app->sim.dc_elements[app->selected] : none, note, sizeof(note));
     }
     int environment = component_environment(part->type) != NULL;
-    float height = environment || part->type == PART_LED ? 296 : note[0] ? 186 : 162;
+    float height = inspector_height_to(INSPECTOR_LINE_1, 1);
+    if (environment)
+        height = INSPECTOR_ENVIRONMENT_HEIGHT;
+    else if (part->type == PART_LED)
+        height = INSPECTOR_LED_HEIGHT;
+    else if (note[0])
+        height = inspector_height_to(INSPECTOR_LINE_2, inspector_note_lines(font, note));
     ui_panel(app_layout_inspector(height));
-    color(UI_INK);
-    name_text(font, 852, 112, part_name(part->type), 300);
+    float title_right = app_layout_inspector_minimize().x;
     if (part->type != PART_BREADBOARD)
+    {
+        title_right = app_layout_inspector_rotate().x;
         ui_button(app, font, app_layout_inspector_rotate(), tr(TXT_UI_ROTATE), UI_BUTTON_NEUTRAL);
+    }
+    draw_inspector_title(app, font, part_name(part->type), title_right);
     if (mcu_board(part->type))
         draw_inspector_row(app, font, app_layout_inspector_value(), tr(TXT_UI_CODE), tr(TXT_UI_EDIT_CODE), 1);
     else
@@ -3125,20 +3213,24 @@ static void draw_part_inspector(const AppState *app, GLuint font)
         color(UI_DANGER);
     else
         color(UI_INK);
-    text(font, 852, INSPECTOR_LINE_1, reading[0] ? reading : tr(TXT_UI_NO_CURRENT_READING));
+    name_text(font, inspector_text_x(), INSPECTOR_LINE_1, reading[0] ? reading : tr(TXT_UI_NO_CURRENT_READING),
+              inspector_text_w());
     if (environment)
         draw_environment_control(font, part);
     else if (part->type == PART_LED)
         draw_led_colors(app, font, part);
     else if (note[0])
-        ui_note(font, 852, INSPECTOR_LINE_2, note, INSPECTOR_NOTE_WIDTH);
+        inspector_note_text(font, INSPECTOR_LINE_2, note);
 }
 
 static void draw_inspector(const AppState *app, GLuint font)
 {
     if (app->selected < 0 || app->settings || app->projects_open || app->examples_open || app->code_part >= 0)
         return;
-    if (app->bench.parts[app->selected].group)
+    const Part *part = &app->bench.parts[app->selected];
+    if (app->inspector_minimized)
+        draw_inspector_tab(app, font, part->group ? app->bench.groups[part->group - 1].name : part_name(part->type));
+    else if (part->group)
         draw_group_inspector(app, font);
     else
         draw_part_inspector(app, font);
