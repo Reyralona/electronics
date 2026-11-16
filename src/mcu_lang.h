@@ -1,5 +1,6 @@
 #ifndef MCU_LANG_H
 #define MCU_LANG_H
+#include "ui_text.h"
 #include <stddef.h>
 /* Arduino-style language subset for the simulated microcontrollers. Pure C: no SDL/OpenGL.
  * Supported: int/long/byte/bool/float/double (and unsigned/const/uint8_t...), 1-D arrays with
@@ -44,7 +45,7 @@ typedef struct
 #define MCU_OUTPUT 1
 #define MCU_INPUT_PULLUP 2
 
-/* Compiles source; on failure returns NULL and fills error with "linha N: motivo". */
+/* Compiles source; on failure returns NULL and fills error with "Line N: reason" in the interface language. */
 McuProgram *mcu_compile(const char *source, const McuConstant *constants, int constant_count, char *error,
                         size_t capacity, int *error_line);
 void mcu_program_free(McuProgram *program);
@@ -55,12 +56,12 @@ void mcu_vm_free(McuVm *vm);
  * error (message in error); the VM then stays stopped. */
 int mcu_vm_run(McuVm *vm, const McuHost *host, double now_ms, char *error, size_t capacity);
 
-/* Completion catalog for the editor: names and signatures. */
+/* Completion catalog for the editor: names, signatures and summaries (texts in the interface language). */
 typedef struct
 {
     const char *name;
-    const char *signature;
-    const char *summary;
+    TextId signature;
+    TextId summary;
 } McuCompletion;
 int mcu_completion_count(void);
 const McuCompletion *mcu_completion(int index);

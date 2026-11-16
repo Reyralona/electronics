@@ -3562,25 +3562,26 @@ static void code_editor_header(const AppState *app, GLuint font, AppRect panel)
 {
     const McuInstance *instance = &app->mcu->mcu[app->code_part];
     char title[96], state[256];
-    snprintf(title, sizeof(title), "Código · %s", part_name(app->bench.parts[app->code_part].type));
+    snprintf(title, sizeof(title), tr(TXT_MCU_EDITOR_TITLE), part_name(app->bench.parts[app->code_part].type));
     color(UI_INK);
     name_text(font, panel.x + 16, panel.y + 38, title, (int)(panel.w - 230));
-    ui_button(app, font, app_layout_code_run(), "Executar", app->code_dirty ? UI_BUTTON_PRIMARY : UI_BUTTON_NEUTRAL);
+    UiButtonStyle run_style = app->code_dirty ? UI_BUTTON_PRIMARY : UI_BUTTON_NEUTRAL;
+    ui_button(app, font, app_layout_code_run(), tr(TXT_MCU_RUN), run_style);
     ui_close_button(app, app_layout_code_close());
     if (instance->error[0])
     {
-        snprintf(state, sizeof(state), "Linha %d: %s", instance->error_line, instance->error);
+        snprintf(state, sizeof(state), "%s", instance->error);
         color(UI_DANGER);
     }
     else if (app->code_dirty)
     {
-        snprintf(state, sizeof(state), "Alterações não enviadas · Ctrl+Enter ou Executar");
+        snprintf(state, sizeof(state), "%s", tr(TXT_MCU_CHANGES_NOT_SENT));
         color(UI_MUTED);
     }
     else
     {
-        snprintf(state, sizeof(state), "%s",
-                 app->sim.sim_running ? "Rodando · Ctrl+Espaço sugere funções" : "Simulação pausada · Espaço continua");
+        TextId state_text = app->sim.sim_running ? TXT_MCU_STATE_RUNNING : TXT_MCU_STATE_PAUSED;
+        snprintf(state, sizeof(state), "%s", tr(state_text));
         color(UI_POSITIVE);
     }
     name_text(font, panel.x + 16, panel.y + 74, state, (int)(panel.w - 32));
@@ -3640,7 +3641,7 @@ static void code_editor_serial(const AppState *app, GLuint font, AppRect area)
 {
     const char *serial = app->mcu->mcu[app->code_part].serial;
     color(UI_MUTED);
-    name_text(font, area.x, area.y + 14, "Monitor serial", 200);
+    name_text(font, area.x, area.y + 14, tr(TXT_MCU_SERIAL_MONITOR), 200);
     AppRect box = {area.x, area.y + 22, area.w, area.h - 22};
     glColor3f(.08f, .09f, .11f);
     ui_rounded(box, 6);
@@ -3670,7 +3671,7 @@ static void code_editor_serial(const AppState *app, GLuint font, AppRect area)
     if (!serial[0])
     {
         glColor3f(.42f, .47f, .53f);
-        code_text_mono(box.x + 8, box.y + 18, "Serial.println(...) aparece aqui", (int)box.w - 16);
+        code_text_mono(box.x + 8, box.y + 18, tr(TXT_MCU_SERIAL_EMPTY), (int)box.w - 16);
     }
 }
 
@@ -3700,9 +3701,9 @@ static void code_editor_completions(const AppState *app)
     glColor3f(.11f, .12f, .15f);
     rect(detail.x, detail.y, detail.w, detail.h * 2);
     glColor3f(.95f, .80f, .30f);
-    code_text_mono(detail.x + 8, detail.y + 16, chosen->signature, (int)detail.w - 16);
+    code_text_mono(detail.x + 8, detail.y + 16, tr(chosen->signature), (int)detail.w - 16);
     glColor3f(.70f, .74f, .79f);
-    app_text_utf8(detail.x + 8, detail.y + 37, chosen->summary, (int)detail.w - 16);
+    app_text_utf8(detail.x + 8, detail.y + 37, tr(chosen->summary), (int)detail.w - 16);
 }
 
 static void draw_code_editor(const AppState *app, GLuint font)

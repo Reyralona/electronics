@@ -105,12 +105,34 @@ static void language(void)
     mcu_program_free(program);
 }
 
+/* error must be "Line N: reason" in the interface language. */
+static void assert_line_error(const char *error, int line, TextId reason, const char *argument)
+{
+    char text[160];
+    char expected[200];
+    snprintf(text, sizeof(text), tr(reason), argument);
+    snprintf(expected, sizeof(expected), tr(TXT_MCU_ERROR_LINE), line, text);
+    assert(!strcmp(error, expected));
+}
+
+static void errors_in_english(void)
+{
+    char error[200];
+    int line = 0;
+    ui_text_set_language(UI_LANG_EN_US);
+    const char *source = "void setup() {\n  pinMode(13 OUTPUT);\n}\nvoid loop() {}";
+    assert(!mcu_compile(source, NULL, 0, error, sizeof(error), &line));
+    assert(line == 2 && !strcmp(error, "Line 2: missing ')' before 'OUTPUT'."));
+    ui_text_set_language(UI_LANG_PT_BR);
+}
+
 static void errors(void)
 {
     char error[200];
     int line = 0;
     assert(!mcu_compile("void setup() {\n  int x = ;\n}\nvoid loop() {}", NULL, 0, error, sizeof(error), &line));
-    assert(line == 2 && strstr(error, "linha 2"));
+    assert(line == 2);
+    assert_line_error(error, 2, TXT_MCU_ERROR_BAD_EXPRESSION, ";");
     assert(!mcu_compile("void setup() { foo(); }\nvoid loop() {}", NULL, 0, error, sizeof(error), &line));
     assert(strstr(error, "foo"));
     assert(!mcu_compile("void loop() {}", NULL, 0, error, sizeof(error), &line));
@@ -120,7 +142,9 @@ static void errors(void)
     McuVm *vm = mcu_vm_create(program);
     FakeBoard board = {0};
     McuHost host = {&board, pin_mode, digital_write, digital_read, analog_read, analog_write, serial_write, lcd};
-    assert(!mcu_vm_run(vm, &host, 0, error, sizeof(error)) && strstr(error, "vetor"));
+    char expected[200];
+    snprintf(expected, sizeof(expected), tr(TXT_MCU_ERROR_STOPPED), tr(TXT_MCU_ERROR_ARRAY_INDEX));
+    assert(!mcu_vm_run(vm, &host, 0, error, sizeof(error)) && !strcmp(error, expected));
     mcu_vm_free(vm);
     mcu_program_free(program);
 }
@@ -130,6 +154,7 @@ int main(void)
     blink();
     language();
     errors();
+    errors_in_english();
     assert(mcu_completion_count() > 20);
     puts("MCU language: blink timing, loops, arrays, functions, Serial, LCD and errors passed.");
     return 0;
