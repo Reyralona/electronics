@@ -1,4 +1,4 @@
-# Caminho para a 1.0.0 — estado em 15/11/2026 (v0.31.0)
+# Caminho para a 1.0.0 — estado em 15/11/2026 (v0.32.0)
 
 Documento de continuidade para quem retomar o trabalho (pessoa, Codex ou Claude). Fatos verificados
 no repositório, decisões e pendências. Detalhes de cada item: `CONTINUIDADE.md`, `DECISOES.md`,
@@ -22,6 +22,7 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 | 15/11 (Claude) | 0.29.0 | Menus redesenhados, diálogo de configurações único, preferências persistentes, arte de capacitor/fonte/interruptor/fototransistor; `app_layout` compartilhado. |
 | 15/11 (Claude) | 0.30.0 | Diálogo com 15 exemplos verificados; correção do 74HC00 que abortava na sessão contínua. |
 | 15/11 (Claude) | 0.31.0 | Lâmpada; remoção do protótipo legado; este documento. |
+| 15/11 (Claude) | 0.32.0 | Várias medições e estado por peça; 17 dispositivos, sensores e instrumentos; displays no corpo de blocos; 18 exemplos. |
 
 ## 2. O que existe hoje
 
@@ -29,12 +30,12 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
   rotação, seleção por área, copiar/colar, desfazer/refazer, blocos com editor isolado, slots.
 - **Simulação**: ngspice em processo isolado por contexto; sessão contínua com `alter`/`resume`
   (C, L e DFF mantêm estado); corrente nos fios com direção; proteção didática contra queima.
-- **Catálogo (37 tipos)**: fonte, baterias (9 V, AA, moeda), interruptor, botão, resistor, potenciômetro,
+- **Catálogo (54 tipos)**: LED RGB, 7 segmentos, DIP, DPST, relé, motores CC/vibração/encoder, servo, piezo, gerador de função, multímetro, osciloscópio, sensores PIR/gás/IR/distância, e ainda fonte, baterias (9 V, AA, moeda), interruptor, botão, resistor, potenciômetro,
   capacitor, indutor, LED, lâmpada, diodo, NPN/PNP, LDR, flex, FSR, inclinação, fotodiodo,
   fototransistor, TMP36, umidade do solo, breadboard, AND/NAND/OR/XOR/NOT/NOR/XNOR, clock, DFF,
   74HC00/08/32/86.
 - **Interface**: cabeçalho, biblioteca com abas, inspector técnico, configurações persistentes,
-  15 exemplos, tema escuro, rodapé com dicas por contexto.
+  18 exemplos, tema escuro, rodapé com dicas por contexto.
 - **Qualidade**: build estrito (`-Wall -Wextra -Werror`), ~40 testes nativos, autoteste GUI com
   189 fases, capturas reprodutíveis (`--capture-*`, `tools/capture-components.ps1`).
 
@@ -46,15 +47,15 @@ remoção das teclas S/L legadas e do protótipo inteiro não usado.
 
 Dívidas encontradas, em ordem de impacto:
 
-1. **`app_render.c` com 2,5 mil linhas**: primitivas, widgets, componentes e painéis no mesmo
+1. **`app_render.c` com ~2,9 mil linhas** (cresceu com a arte dos dispositivos): primitivas, widgets, componentes e painéis no mesmo
    arquivo. Extrair `render_primitives`, `render_parts` e `render_ui` (refatoração pura, validar
    com capturas idênticas byte a byte).
 2. **`write_netlist` (~400 linhas)** em `netlist.c`: dividir por família (fontes, passivos,
    semicondutores, portas, CIs) antes de crescer o catálogo.
 3. **Autoteste GUI em duas funções gigantes** (`dev_scenario_queue`/`validate`, 550 e 350 linhas):
    migrar para uma tabela de fases `{ação, verificação}`; hoje inserir uma fase no meio exige renumerar.
-4. **Uma corrente por peça** (`SimAutoResult.currents[i]`) e um único `on` por peça: bloqueia LED RGB,
-   sete segmentos, DIP, LCD, relé com vários contatos (ver seção 4).
+4. ~~Uma corrente por peça~~: resolvido na 0.32.0 (`component_devices`, até 8 medições e `states`).
+   Falta proteção de queima por elemento (hoje RGB/7 segmentos não "queimam").
 5. **Limites fixos**: 64 peças, 128 fios, 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
    capacidades dinâmicas.
 6. **Tipos persistidos como códigos numéricos** (formato 25); a migração para IDs textuais já foi
@@ -65,7 +66,7 @@ Dívidas encontradas, em ordem de impacto:
 ## 4. O que falta para a 1.0.0, em ordem de dependência
 
 ### 4.1 Infraestrutura (antes do catálogo restante)
-- [ ] Elementos internos por peça: correntes, estados e proteção indexados por elemento; persistência.
+- [x] Elementos internos por peça e estado por peça (0.32.0). Falta proteção de queima por elemento (RGB/7 segmentos).
 - [ ] Capacidades dinâmicas (peças, fios, joelhos, blocos) sem copiar `Workbench` inteiro por valor.
 - [ ] IDs textuais no formato de arquivo.
 - [ ] Sessão contínua que preserve estado ao mudar topologia/frequência (hoje reinicia) e vetores do
@@ -73,12 +74,13 @@ Dívidas encontradas, em ordem de impacto:
 - [ ] Divisão de `app_render.c` e `write_netlist` (seção 3).
 
 ### 4.2 Catálogo pendente (`CATALOGO_COMPONENTES.md`)
-- Saídas: LED RGB, motor de vibração, motor CC, motor CC com encoder, micro servo, piezo.
-- Displays: sete segmentos e LCD 16x2 I2C, **visíveis no exterior de chips personalizados**.
-- Chaves: DIP e DPST configuráveis; relé.
-- Sensores: infravermelho, distância (trigger/echo), PIR, gás.
-- CIs: inventário verificável dos CIs do Tinkercad com pinagem conferida em datasheet.
-- Instrumentos com pontas reais: multímetro, osciloscópio, gerador de função.
+Feito na 0.32.0: saídas, 7 segmentos (visível no corpo de blocos), DIP 4 vias, DPST, relé,
+sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
+- LCD 16x2 I2C: exige um mestre I2C (microcontrolador), que a Bancada ainda não tem.
+- Sensor ultrassônico com trigger/echo (o de distância atual é IR analógico, declarado).
+- DIP de tamanho configurável (hoje 4 vias); servo por largura de pulso real.
+- CIs: inventário verificável do Tinkercad (555, 74HC02/04/14/595, 4511, L293D, LM741...).
+- Microcontrolador (tipo Arduino): pré-requisito para LCD e para servo/ultrassônico realistas.
 
 ### 4.3 Uso e acabamento (`QUALIDADE_DE_USO.md`)
 - [ ] Escala completa da interface (hoje só o tamanho do texto muda).
@@ -88,10 +90,10 @@ Dívidas encontradas, em ordem de impacto:
 
 ## 5. Próximo passo recomendado
 
-1. Refatorar elementos internos por peça (4.1, primeiro item) com testes no ngspice.
-2. Com isso, LED RGB e sete segmentos (este já tem o desenho de dígitos em `seven_segment_digit`).
-3. Exposição de displays no exterior de blocos, depois LCD.
-4. Instrumentos (multímetro primeiro, por reaproveitar a leitura de tensão/corrente).
+1. Proteção de queima por elemento (RGB e 7 segmentos) e divisão de `app_render.c`.
+2. CIs do inventário Tinkercad com pinagem conferida (começar por 74HC04, 74HC02 e 555).
+3. Decidir o microcontrolador (pré-requisito do LCD I2C e do ultrassônico) com comparação técnica.
+4. Capacidades dinâmicas e IDs textuais no formato de arquivo.
 
 Comandos de verificação: `./build.ps1 -OutputName bancada-next -GuiTests` (não fecha a Bancada aberta);
 revisão de arte: `./tools/capture-components.ps1 -Destination build/component-review/<nome>`.

@@ -113,3 +113,12 @@ LED RGB, sete segmentos, DIP, LCD e rele com varios contatos precisam de varias 
 por peca. Hoje SimAutoResult guarda uma corrente por componente e Part tem um unico `on`.
 Antes desses itens: introduzir elementos internos por peca (correntes e estados indexados),
 persistidos em formato novo, com protecao de queima por elemento. Nao improvisar com varias pecas.
+
+## Estado 0.32.0 (15/11/2026)
+Implementados nesta versao (modelos em DECISOES.md, teste em tests/test_devices.c): LED RGB,
+display 7 segmentos (visivel no exterior de blocos), chave DIP 4 vias, DPST, rele 5 V (NA/NF),
+motor CC, motor de vibracao, motor CC com encoder, micro servo (aprox. por nivel medio), piezo
+passivo, gerador de funcao, multimetro (V/A/Ohm), osciloscopio, sensores PIR, gas, infravermelho
+de obstaculo e distancia (IR analogico). 54 tipos no total.
+Pendentes: LCD 16x2 I2C (sem microcontrolador/mestre I2C), sensor ultrassonico com trigger/echo,
+DIP de tamanho configuravel (hoje 4 vias), inventario de CIs Tinkercad alem de 74HC00/08/32/86.

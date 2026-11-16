@@ -344,3 +344,13 @@ O botão Exemplos abre um catálogo com 15 circuitos prontos (básicos, semicond
 digitais), cada um com título e descrição. Clicar carrega o exemplo (Ctrl+Z desfaz); F2 avança
 para o próximo. Todos são verificados no ngspice pela sessão contínua (tests/test_examples_live.c).
 Captura de revisão: --capture-examples e --capture-example=N.
+
+## Dispositivos, sensores e instrumentos (0.32.0)
+A biblioteca tem seis abas: Básicos, Digital, Blocos, Sensores, Saídas e Medição.
+- Saídas: lâmpada, LED RGB, display de 7 segmentos, motores (CC, vibração, com encoder), micro servo e piezo.
+- Medição: multímetro (duplo clique alterna V, A e Ω), osciloscópio (CH1/GND, histórico na tela) e
+  gerador de função (duplo clique alterna seno, quadrada e triangular; Valor = frequência).
+- Chaves: DIP de 4 vias (duplo clique na alavanca), DPST e relé 5 V com contatos NA/NF.
+- Sensores com slider de ambiente: PIR, gás, infravermelho de obstáculo e distância.
+Displays de 7 segmentos e LEDs RGB dentro de um bloco aparecem no corpo do bloco.
+Modelos são aproximações didáticas; limites no inspector e em DECISOES.md. Formato 26 (lê 1–25).

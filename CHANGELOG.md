@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.32.0
+
+- Infraestrutura de várias medições por peça (até 8) e estado por peça (bits/modo), formato 26.
+- 17 dispositivos: LED RGB, 7 segmentos, DIP 4 vias, DPST, relé, motores CC/vibração/encoder,
+  micro servo, piezo, gerador de função, multímetro, osciloscópio, sensores PIR, gás, IR e distância.
+- Displays dentro de blocos aparecem no corpo do bloco; biblioteca em seis abas; 18 exemplos.
+- test_devices verifica cada dispositivo no ngspice; suíte completa e autoteste GUI passaram.
+
 ## 0.31.0
 
 - Lâmpada indicadora (resistência constante 250 Ω, brilho e halo pela corrente); formato 25 (lê 1–24).

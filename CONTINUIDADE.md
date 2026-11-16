@@ -533,3 +533,8 @@ Exemplos (15, dialogo), correcao do 74HC00, lampada, remocao do prototipo legado
 Proximo obrigatorio antes do resto do catalogo: elementos internos por peca (ROADMAP_1_0.md 4.1).
 Worktree ../electronics-claude (branch local claude/investigar-calculo-indisponivel) tem 9 arquivos
 nao commitados ja integrados; remover so com confirmacao do usuario. Remoto da branch ja apagado.
+
+
+## Estado 0.32.0 (15/11/2026, Claude)
+Dispositivos multi-elemento entregues (component_devices + netlist_devices, formato 26).
+Proximo: queima por elemento, divisao de app_render.c, CIs Tinkercad, decisao de microcontrolador.

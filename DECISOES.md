@@ -469,3 +469,27 @@ indices 0..2 preservados para testes e F2. Botao do cabecalho abre dialogo de ca
 avancando. Exemplos usam apenas componentes ja validados; cada um foi conferido no ngspice contra
 sua descricao (correntes de LED) antes do commit. Layouts evitam a zona do inspector (canto
 superior direito). Limite conhecido: o inspector ainda pode cobrir pecas do usuario nessa zona.
+
+
+## Elementos por peca e dispositivos (15/11/2026, Claude)
+Decisao: component_devices.c descreve pecas multi-elemento (terminais, corpo, medicoes, modos,
+bancos de contatos) e netlist_devices.c emite seus modelos e controles `alter`. Resultado guarda ate
+8 medicoes por peca (correntes, nos ou estados); Part.states guarda bits do DIP ou modo do
+instrumento, persistido no formato 26 (le 1-25). Mudanca de forma de onda/frequencia do gerador
+reconstroi a sessao (como o clock); bits do DIP, DPST, modo do multimetro e sensores usam `alter`.
+Modelos (aproximacoes didaticas, declaradas no inspector):
+- LED RGB/7 segmentos: lei do diodo; IS escolhidos para 10 mA em ~1,9/2,2/2,9 V; catodo comum.
+- Rele 5 V: bobina 100 ohm + 10 mH; contato NA/NF por chaves SW com histerese (fecha ~25 mA).
+- Motores: R-L + forca contraeletromotriz k*w + inercia (capacitor) + atrito (resistor); CC:
+  10 ohm, k 0,01; vibracao: 30 ohm, k 0,003. Encoder: 12 pulsos/volta em quadratura a partir do
+  angulo integrado, alimentado por VCC-GND.
+- Servo: posicao proporcional ao nivel MEDIO do sinal relativo a V+ (0-180 graus); nao decodifica
+  pulsos de 1-2 ms. Piezo passivo: 20 nF || 1 MOhm; indica vibracao com corrente alternada.
+- Gerador: 0-5 V, 50 ohm, seno/quadrada/triangular. Multimetro: V (10 MOhm), A (shunt ideal entre
+  A e COM), Ohm (injeta 1 mA; so sem alimentacao). Osciloscopio: 1 MOhm, historico de 160 amostras.
+- PIR, gas (MQ), IR de obstaculo e distancia IR analogica (tipo GP2Y0A21): modulos alimentados com
+  saida 100 ohm proporcional a V+; estimulo pelo slider de ambiente.
+Nao implementados com justificativa: LCD 16x2 I2C (exige mestre I2C/microcontrolador, inexistente
+na Bancada); sensor ultrassonico (trigger/echo exige temporizacao por pulso; o sensor de distancia
+atual e IR analogico, declarado). Displays 7 segmentos e RGB dentro de blocos aparecem no corpo.
+Regressao: tests/test_devices.c verifica cada dispositivo no ngspice.
