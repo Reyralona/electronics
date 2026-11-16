@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.30.0
+
+- Diálogo de Exemplos com 15 circuitos (título, categoria e descrição); F2 avança para o próximo.
+- Correção: exemplo 74HC00 abortava na sessão contínua ("Timestep too small"); CIs quad usam
+  acionamento contínuo entre limiares e chaves com histerese.
+- test_examples_live roda todos os exemplos no ngspice; autoteste GUI com 189 fases.
+
 ## 0.29.0
 
 - Interface revisada: cabeçalho com botões reais, biblioteca com abas e barra de rolagem, inspector
