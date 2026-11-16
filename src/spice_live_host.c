@@ -171,7 +171,21 @@ int main(int argc, char **argv)
     }
     int failed = initialize(output, NULL, controlled_exit, NULL, NULL, NULL, NULL);
     char model[MAX_PATH], input[SPICE_SESSION_COMMAND_CAPACITY];
-    if (!GetShortPathNameA(argv[2], model, sizeof(model)))
+    /* ngspice resolves relative codemodel paths against the host executable, not its CWD.
+     * The packaged layout therefore needs no quoting or Windows 8.3 short names. */
+    char executable[MAX_PATH], packaged[2 * MAX_PATH], requested[MAX_PATH];
+    DWORD length = GetModuleFileNameA(NULL, executable, sizeof(executable));
+    if (!length || length >= sizeof(executable))
+        executable[0] = 0;
+    char *separator = length && length < sizeof(executable) ? strrchr(executable, '\\') : NULL;
+    if (separator)
+        *separator = 0;
+    snprintf(packaged, sizeof(packaged), "%s\\spice-local\\ucrt64\\lib\\ngspice\\digital.cm", executable);
+    DWORD requested_length = GetFullPathNameA(argv[2], sizeof(requested), requested, NULL);
+    if (separator && requested_length && requested_length < sizeof(requested) &&
+        _stricmp(packaged, requested) == 0 && GetFileAttributesA(packaged) != INVALID_FILE_ATTRIBUTES)
+        snprintf(model, sizeof(model), "spice-local/ucrt64/lib/ngspice/digital.cm");
+    else if (!GetShortPathNameA(argv[2], model, sizeof(model)))
         snprintf(model, sizeof(model), "%s", argv[2]);
     for (size_t i = 0; model[i]; ++i)
         if (model[i] == '\\')

@@ -1,5 +1,19 @@
 # Histórico de versões
 
+## 0.36.0
+
+- Build incremental com CMake/Ninja e empacotamento ZIP com CPack; `Empacotar.cmd` e
+  `tools/package-windows.ps1` geram bundle, instalador NSIS por usuário, fontes e hashes SHA256.
+- Dependências fixadas por versão/hash, com licenças e fontes correspondentes num arquivo separado.
+  Os pacotes não exigem MSYS2, GCC ou ngspice instalados na máquina de destino.
+- ZIP salva ao lado do executável; instalação usa `%APPDATA%/Bancada/Bancada` e preserva os dados
+  ao desinstalar. Builds de desenvolvimento mantêm o comportamento anterior.
+- Carregamento do modelo digital no bundle independente de caminhos absolutos e nomes curtos 8.3.
+- Build otimizado revelou um buffer pequeno de expressão de porta; ampliado com limites nomeados.
+  Testes de integração corrigidos para evitar contatos involuntários e considerar a fuga de entrada.
+- Artefatos experimentais sem assinatura digital. Validação local com PATH mínimo e caminhos com
+  espaços; ainda é necessária validação numa VM Windows limpa antes de anunciar suporte amplo.
+
 ## 0.35.0
 
 - Interface em português (Brasil) e inglês (EUA), com seleção por bandeiras em Configurações

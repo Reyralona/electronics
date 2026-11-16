@@ -6,7 +6,7 @@ O cálculo elétrico é feito pelo [ngspice](https://ngspice.sourceforge.io/), u
 
 ![Bancada com um CI 74HC00 numa breadboard, um clock e um LED](docs/img/bancada.png)
 
-> **Estado do projeto:** em desenvolvimento (versão 0.35.0, antes da 1.0). Funciona só no Windows 10/11 de 64 bits, e a interface oferece português (Brasil) e inglês (EUA). Os modelos elétricos são aproximações didáticas: servem para aprender, não para dimensionar um circuito real.
+> **Estado do projeto:** em desenvolvimento (versão 0.36.0, antes da 1.0). Funciona só no Windows 10/11 de 64 bits, e a interface oferece português (Brasil) e inglês (EUA). Os modelos elétricos são aproximações didáticas: servem para aprender, não para dimensionar um circuito real.
 
 ## O que dá para fazer
 
@@ -20,7 +20,13 @@ O cálculo elétrico é feito pelo [ngspice](https://ngspice.sourceforge.io/), u
 
 ## Instalação
 
-Ainda não há instalador nem download pronto: é preciso compilar. São uns 10 minutos, quase todos esperando downloads.
+O projeto pode gerar um ZIP portátil e um instalador experimental para Windows x64. Eles ainda
+não estão publicados como release. Para gerar os pacotes, veja
+[Distribuição Windows](docs/DISTRIBUICAO_WINDOWS.md); para compilar pelo fluxo anterior, siga abaixo.
+
+Ao receber um pacote do projeto: extraia o ZIP inteiro e abra `bancada.exe`, ou execute o arquivo
+`-setup.exe`. Não é preciso instalar MSYS2 ou ngspice para usar os pacotes. O instalador funciona
+por usuário, sem administrador. Os artefatos ainda não têm assinatura digital.
 
 ### 1. Instale o MSYS2
 
@@ -104,10 +110,13 @@ Projetos, preferências e chips são salvos em pastas relativas à **pasta de on
 
 Abrindo com dois cliques em `build/build.exe`, elas ficam dentro de `build/`. Rodando `./build/build.exe` a partir da raiz do projeto, ficam na raiz. Nenhuma das duas vai para o Git.
 
+Nos pacotes: o ZIP usa `saves/` e `blocks/` ao lado de `bancada.exe`; a versão instalada usa
+`%APPDATA%/Bancada/Bancada`. Desinstalar preserva os dados. Não há migração automática de projetos antigos.
+
 ## Limites atuais
 
 - **Só Windows x64.** Não há versão para Linux ou macOS.
-- **Sem pacote de distribuição:** o programa depende do ngspice instalado em `build/spice-local`.
+- **Distribuição experimental:** os pacotes incluem o ngspice; ainda faltam assinatura digital e teste numa VM Windows limpa.
 - **Modelos didáticos:** LEDs, transistores, CIs e sensores usam parâmetros genéricos. Uma entrada lógica desligada é lida como 0; num CI real ela ficaria indefinida.
 - **Capacidade fixa:** até 64 peças e 128 fios por montagem, 9 slots de projeto e 8 chips na biblioteca.
 - **Microcontroladores** rodam um subconjunto da linguagem do Arduino (sem ponteiros, `String` ou bibliotecas além do LCD I2C), não o código de máquina real.
@@ -135,6 +144,7 @@ A arquitetura e as convenções de código estão em [docs/QUALIDADE_CODIGO.md](
 |---|---|
 | [docs/GUIA.md](docs/GUIA.md) | Guia de uso completo: montagem, simulação, chips, microcontroladores e atalhos |
 | [docs/TEXTOS.md](docs/TEXTOS.md) | Guia de estilo e glossário da interface em português e inglês |
+| [docs/DISTRIBUICAO_WINDOWS.md](docs/DISTRIBUICAO_WINDOWS.md) | Pesquisa, geração e testes do ZIP e instalador Windows |
 | [docs/DECISOES.md](docs/DECISOES.md) | Decisões técnicas e de modelo elétrico, com fontes e datas |
 | [docs/ROADMAP_1_0.md](docs/ROADMAP_1_0.md) | Histórico consolidado e o que falta para a 1.0 |
 | [docs/META_1_0.md](docs/META_1_0.md) | Critérios para declarar a versão 1.0 |
