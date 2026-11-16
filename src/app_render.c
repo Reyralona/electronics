@@ -2694,7 +2694,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
         if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
         {
             color(.85f, .88f, .9f);
-            text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_info(app->bench.parts[i].type)->display_name + 3);
+            text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_symbol(app->bench.parts[i].type));
         }
     for (i = 0; i < app->bench.part_count; ++i)
         if (!app->bench.parts[i].group && is_gate(app->bench.parts[i].type))
@@ -2705,7 +2705,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
                 color(.13f, .22f, .27f);
             world_text(font, app->bench.parts[i].x - 25 / app->view.zoom,
                        app->bench.parts[i].y + 35 * bench_part_scale(&app->bench.parts[i]) + 18 / app->view.zoom,
-                       part_name(app->bench.parts[i].type) + 6, app->view.zoom);
+                       component_symbol(app->bench.parts[i].type), app->view.zoom);
         }
     draw_selected_pin_labels(app, font);
 }

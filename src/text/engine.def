@@ -16,8 +16,8 @@ UI_TEXT(ENG_EXAMPLE_FLIP_FLOP_INFO, "O LED mostra Q. Q só muda na borda do cloc
 UI_TEXT(ENG_EXAMPLE_NAND_CHIP, "Porta NAND 74HC00", "74HC00 NAND gate")
 UI_TEXT(ENG_EXAMPLE_NAND_CHIP_INFO, "O CI inverte o clock e o LED pisca.", "The IC inverts the clock and the LED flashes.")
 UI_TEXT(ENG_EXAMPLE_DIMMER, "Dimmer com potenciômetro", "Potentiometer dimmer")
-UI_TEXT(ENG_EXAMPLE_DIMMER_INFO, "Gire o cursor (Shift+scroll). O brilho do LED muda.",
-        "Turn the wiper (Shift+scroll). The LED brightness changes.")
+UI_TEXT(ENG_EXAMPLE_DIMMER_INFO, "Mude a posição (Shift+roda). O brilho do LED muda.",
+        "Change the position (Shift+wheel). The LED brightness changes.")
 UI_TEXT(ENG_EXAMPLE_BUTTON_LED, "Botão acende LED", "Button lights an LED")
 UI_TEXT(ENG_EXAMPLE_BUTTON_LED_INFO, "Segure o botão com o mouse. O LED acende.",
         "Hold the button with the mouse. The LED comes on.")
