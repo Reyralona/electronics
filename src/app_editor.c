@@ -1,5 +1,6 @@
 #include "bench_scope.h"
 #include "app_editor.h"
+#include "ui_text.h"
 #include "app_packing.h"
 #include "app_layout.h"
 #include "workbench_group_edit.h"
@@ -35,13 +36,13 @@ AppState *app_editor_open(AppState *parent)
     if (parent->editor_parent || parent->selected < 0 || parent->selected >= parent->bench.part_count ||
         !parent->bench.parts[parent->selected].group)
     {
-        parent->status = "Selecione um bloco na bancada para abrir o editor isolado.";
+        parent->status = tr(TXT_APP_SELECT_CHIP_TO_EDIT);
         return NULL;
     }
     AppState *child = malloc(sizeof(*child));
     if (!child)
     {
-        parent->status = "Memoria insuficiente para abrir o editor isolado.";
+        parent->status = tr(TXT_APP_EDITOR_NO_MEMORY);
         return NULL;
     }
     app_state_init(child);
@@ -50,7 +51,7 @@ AppState *app_editor_open(AppState *parent)
     {
         app_state_dispose(child);
         free(child);
-        parent->status = "Nao foi possivel copiar o interior para o editor isolado.";
+        parent->status = tr(TXT_APP_EDITOR_COPY_FAILED);
         return NULL;
     }
     child->editor_parent = parent;
@@ -74,7 +75,7 @@ AppState *app_editor_open(AppState *parent)
     child->round_wires = parent->round_wires;
     child->sim.auto_enabled = parent->sim.auto_enabled;
     child->sim.sim_running = 0;
-    child->status = "EDITOR ISOLADO: a bancada externa esta preservada. Salvar modelo e aplicar sao acoes separadas.";
+    child->status = tr(TXT_APP_EDITOR_OPENED);
     fit_draft(child);
     parent->editor_child = child;
     return child;
@@ -86,13 +87,18 @@ int app_editor_dirty(const AppState *app)
            (app->bench.revision != app->editor_saved_revision || strcmp(app->editor_name, app->editor_saved_name));
 }
 
+void app_editor_report_invalid_name(AppState *app)
+{
+    snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_NAME_INVALID),
+             BENCH_GROUP_NAME_CAPACITY - 1);
+    app->status = app->selection_status;
+}
+
 int app_editor_set_name(AppState *app, const char *name)
 {
     if (!bench_group_name_valid(name))
     {
-        snprintf(app->selection_status, sizeof(app->selection_status),
-                 "Nome invalido: use UTF-8 sem controles e ate %d bytes.", BENCH_GROUP_NAME_CAPACITY - 1);
-        app->status = app->selection_status;
+        app_editor_report_invalid_name(app);
         return 0;
     }
     if (app->editor_parent)
@@ -103,18 +109,18 @@ int app_editor_set_name(AppState *app, const char *name)
         Workbench before BENCH_AUTO_CLEAR = {0};
         if (!bench_snapshot_clone(&before, &app->bench))
         {
-            app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+            app->status = tr(TXT_APP_OUT_OF_MEMORY);
             return 0;
         }
         if (!bench_group_set_name(&app->bench, group, name))
         {
-            app->status = "Selecione um bloco valido para renomear.";
+            app->status = tr(TXT_APP_SELECT_CHIP_TO_RENAME);
             return 0;
         }
         if (app->bench.revision != before.revision)
             bench_history_record(app->history, &before);
     }
-    app->status = "Nome atualizado. Salve para conservar a alteracao.";
+    app->status = tr(TXT_APP_NAME_CHANGED);
     return 1;
 }
 
@@ -123,12 +129,12 @@ int app_editor_begin_name(AppState *app, SDL_Window *window)
     int group = app->selected >= 0 && app->selected < app->bench.part_count ? app->bench.parts[app->selected].group : 0;
     if (!app->editor_parent && !group)
     {
-        app->status = "Selecione um bloco para renomear.";
+        app->status = tr(TXT_APP_SELECT_CHIP_TO_RENAME);
         return 0;
     }
     if (!window || !SDL_StartTextInput(window))
     {
-        app->status = "Nao foi possivel iniciar a edicao do nome.";
+        app->status = tr(TXT_APP_TEXT_INPUT_FAILED);
         return 0;
     }
     app->name_target_group = app->editor_parent ? 0 : group;
@@ -136,7 +142,7 @@ int app_editor_begin_name(AppState *app, SDL_Window *window)
     app->edit_select_all = 1;
     snprintf(app->edit_text, sizeof(app->edit_text), "%s",
              app->editor_parent ? app->editor_name : app->bench.groups[group - 1].name);
-    app->status = "Digite o nome do chip. Enter confirma; Esc cancela.";
+    app->status = tr(TXT_APP_TYPE_CHIP_NAME);
     return 1;
 }
 
@@ -166,7 +172,7 @@ int app_editor_save(AppState *app)
     Workbench model BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&model, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return 0;
     }
     BenchSelection all = {0};
@@ -183,13 +189,16 @@ int app_editor_save(AppState *app)
     int saved = app_packing_store_model(app, &model, &slot);
     if (saved < 1)
     {
-        app->status = saved < 0 ? app->selection_status : "Biblioteca cheia (8 slots); modelo nao foi salvo.";
+        if (!saved)
+            snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_LIBRARY_FULL),
+                     BLOCK_LIBRARY_SLOTS);
+        app->status = app->selection_status;
         return 0;
     }
     link_parent_instance(app);
     app->editor_saved_revision = app->bench.revision;
     memcpy(app->editor_saved_name, app->editor_name, sizeof(app->editor_saved_name));
-    app->status = "Modelo salvo na biblioteca. A bancada externa continua preservada.";
+    app->status = tr(TXT_APP_CHIP_SAVED);
     return 1;
 }
 
@@ -206,7 +215,7 @@ int app_editor_apply(AppState *app)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &parent->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return 0;
     }
     if (!bench_group_apply(&parent->bench, app->editor_group, app->editor_parent_revision, &app->bench,
@@ -223,7 +232,7 @@ int app_editor_apply(AppState *app)
     bench_selection_clear(&parent->selection);
     parent->selection.parts[parent->selected] = 1;
     bench_selection_expand_groups(&parent->selection, &parent->bench);
-    parent->status = "Modelo aplicado nesta instancia. Ctrl+Z desfaz; outras instancias foram preservadas.";
+    parent->status = tr(TXT_APP_CHIP_APPLIED);
     app->editor_close_requested = 1;
     return 1;
 }
@@ -312,7 +321,7 @@ int app_editor_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymo
     else if ((key == SDLK_RETURN && (mod & SDL_KMOD_CTRL)))
         app_editor_apply(app);
     else if (key == SDLK_F3 || key == SDLK_L)
-        app->status = "No editor use Salvar modelo; slots e arquivos da bancada externa ficam separados.";
+        app->status = tr(TXT_APP_EDITOR_NO_PROJECTS);
     else
         return 0;
     return 1;

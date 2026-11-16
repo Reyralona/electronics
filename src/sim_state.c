@@ -1,7 +1,9 @@
 #include "component_registry.h"
 #include "sim_state.h"
+#include "ui_text.h"
 #include "spice_trace.h"
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 
 int sim_state_has_result(const SimState *sim, SimResultKind kind)
@@ -57,12 +59,12 @@ const char *sim_state_invalidate(SimState *sim, const Workbench *bench)
         memset(sim->burnt, 0, sizeof(sim->burnt));
         sim->burnt_count = 0;
     }
-    const char *paused_text = "Pausado: a montagem mudou; aperte play para calcular.";
+    const char *paused_text = tr(TXT_APP_CHANGED_WHILE_PAUSED);
     if (!keep && sim_state_has_result(sim, SIM_RESULT_TRACE) && sim->result_revision != bench->revision)
     {
         sim_state_discard_result(sim, SIM_RESULT_TRACE);
         if (!sim->auto_enabled)
-            message = "Montagem alterada; transitorio descartado.";
+            message = tr(TXT_APP_CURVE_DISCARDED);
         else if (!sim->sim_running)
             message = paused_text;
     }
@@ -70,7 +72,7 @@ const char *sim_state_invalidate(SimState *sim, const Workbench *bench)
     {
         sim_state_discard_result(sim, SIM_RESULT_DC);
         if (!sim->auto_enabled)
-            message = "Montagem alterada; pressione P para recalcular.";
+            message = tr(TXT_APP_CHANGED_PRESS_P);
         else if (!sim->sim_running)
             message = paused_text;
     }
@@ -86,7 +88,7 @@ const char *sim_state_advance(SimState *sim, uint64_t now)
         if (index < 0)
         {
             sim->sim_running = 0;
-            return "Nao foi possivel reproduzir a curva.";
+            return tr(TXT_APP_CURVE_PLAY_FAILED);
         }
         else
         {
@@ -100,12 +102,29 @@ const char *sim_state_advance(SimState *sim, uint64_t now)
             else if (finished && !sim->trace_automatic)
             {
                 sim->sim_running = 0;
-                return "Fim da curva; Espaco reinicia, B volta.";
+                return tr(TXT_APP_CURVE_END);
             }
             /* An automatic, non-repeating curve (RC charging, for example) holds its final state. */
         }
     }
     return NULL;
+}
+
+static TextId trace_format(const SimState *sim)
+{
+    if (sim->trace_current == 2)
+        return TXT_APP_TRACE_WIRE_CURRENT;
+    if (sim->trace_current)
+        return TXT_APP_TRACE_PART_CURRENT;
+    return TXT_APP_TRACE_VOLTAGE;
+}
+
+const char *sim_state_trace_text(SimState *sim)
+{
+    int index = sim->trace_index;
+    snprintf(sim->trace_status, sizeof(sim->trace_status), tr(trace_format(sim)), sim->trace.samples[index].time,
+             sim->trace.samples[index].value, index + 1, sim->trace.count);
+    return sim->trace_status;
 }
 
 void sim_state_leds(const SimState *sim, const Workbench *bench, int leds[])

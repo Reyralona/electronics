@@ -110,6 +110,7 @@ int main(int argc, char **argv)
     if (!app.selftest && !app.capture)
         app_settings_load_preferences(&app);
     apply_language_option(argc, argv);
+    app.status = tr(TXT_APP_START);
 
     if (dev_scenario_prepare(&app, argc, argv))
         return 1;
