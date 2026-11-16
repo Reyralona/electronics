@@ -99,7 +99,7 @@ UI_TEXT(APP_EDITOR_NO_PROJECTS, "Projetos indisponíveis no editor do chip. Use 
         "Projects are not available in the chip editor. Use Save.")
 UI_TEXT(APP_NAME_INVALID, "Nome inválido ou longo demais. Use até %d bytes, sem caracteres de controle.",
         "Name invalid or too long. Use up to %d bytes, without control characters.")
-UI_TEXT(APP_SELECT_CHIP_TO_RENAME, "Selecione um chip para renomear.", "Select a chip to rename.")
+UI_TEXT(APP_SELECT_CHIP_TO_RENAME, "Abra o chip e clique em Renomear.", "Open the chip and click Rename.")
 UI_TEXT(APP_TYPE_CHIP_NAME, "Digite o nome do chip. Enter: confirmar · Esc: cancelar.",
         "Type the chip name. Enter: confirm · Esc: cancel.")
 UI_TEXT(APP_NAME_CHANGED, "Nome alterado. Salve para manter.", "Name changed. Save to keep it.")

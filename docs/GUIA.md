@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.37.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.37.1. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
@@ -100,8 +100,11 @@ O que aparece na tela:
 2. Na aba **Chips**, clique no chip e depois na bancada para colocar uma cópia independente.
    Selecione o chip e pressione `R` para girar 90°. As portas e os fios acompanham o corpo.
    A orientação fica salva no projeto e pode ser desfeita. Girar não muda a montagem interna.
-3. Selecione um chip e pressione `Enter` (ou **Ver interior**) para abrir o **editor isolado**. Ele tem bancada, simulação e histórico próprios, e nada do que você fizer lá altera a bancada externa até você aplicar.
-   - `F4` ou **Renomear**: muda o nome (aceita acentos).
+3. Selecione um chip e pressione `Enter` (ou **Ver interior**) para abrir o **editor isolado**.
+   Ele tem bancada, simulação e histórico próprios. Alterações no circuito só chegam à bancada ao aplicar.
+   - **Renomear:** este botão, dentro do chip, é o único lugar para mudar o nome. Digite e confirme com `Enter`.
+     O nome muda na bancada e na entrada existente da biblioteca. Aceita acentos.
+     Sair ou descartar o rascunho não apaga um nome confirmado. `Esc` cancela a digitação antes de confirmar.
    - `S` ou **Salvar modelo**: atualiza o chip na biblioteca. As cópias de um mesmo chip atualizam a mesma entrada; não aparece uma entrada nova.
    - `Ctrl+Enter` ou **Aplicar ao chip**: troca só esta cópia na bancada (`Ctrl+Z` desfaz).
    - `Esc` ou **Voltar**: sai, e pergunta se quer salvar quando houver mudanças.
@@ -169,7 +172,6 @@ Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canai
 | `Ctrl+S` / `Ctrl+L` | Salvar / carregar o slot escolhido |
 | `Ctrl+G` / `Ctrl+Shift+G` | Criar chip / desagrupar chip |
 | `Enter` | Abrir o chip selecionado |
-| `F4` | Renomear o chip |
 | `X` | Transparência das peças |
 | `Tab` | Próxima aba do catálogo |
 | `Home` | Vista inicial |

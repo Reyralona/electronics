@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.37.1
+
+- Renomear um chip no editor atualiza o nome na bancada e na entrada existente da biblioteca
+  ao confirmar com Enter. Não é preciso usar Aplicar ou Salvar modelo para confirmar o nome.
+- Descartar alterações do circuito não descarta um nome já confirmado. Renomear preserva o circuito
+  salvo na biblioteca; alterações do rascunho continuam dependendo de Salvar modelo ou Aplicar.
+- Renomeação disponível somente no botão Renomear dentro do chip. Removidos o botão externo e F4.
+- Regressões para confirmar “4and”, sair, salvar/reabrir o projeto e manter a entrada da biblioteca;
+  nomes inválidos e falhas de gravação preservam o nome anterior.
+
 ## 0.37.0
 
 - `R` gira chips personalizados em passos de 90°. Corpo, portas, clique e fios acompanham a orientação;

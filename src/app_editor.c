@@ -101,24 +101,43 @@ int app_editor_set_name(AppState *app, const char *name)
         app_editor_report_invalid_name(app);
         return 0;
     }
-    if (app->editor_parent)
-        memcpy(app->editor_name, name, strlen(name) + 1);
-    else
+    AppState *parent = app->editor_parent;
+    int group = app->editor_group;
+    if (!parent || group < 1 || group > WORKBENCH_MAX_COMPONENTS || !parent->bench.groups[group - 1].active)
     {
-        int group = app->name_target_group;
-        Workbench before BENCH_AUTO_CLEAR = {0};
-        if (!bench_snapshot_clone(&before, &app->bench))
-        {
-            app->status = tr(TXT_APP_OUT_OF_MEMORY);
-            return 0;
-        }
-        if (!bench_group_set_name(&app->bench, group, name))
-        {
-            app->status = tr(TXT_APP_SELECT_CHIP_TO_RENAME);
-            return 0;
-        }
-        if (app->bench.revision != before.revision)
-            bench_history_record(app->history, &before);
+        app->status = tr(TXT_APP_SELECT_CHIP_TO_RENAME);
+        return 0;
+    }
+    if (parent->bench.revision != app->editor_parent_revision)
+    {
+        app->status = tr(TXT_ENG_EDIT_BENCH_CHANGED);
+        return 0;
+    }
+    if (!strcmp(app->editor_name, name))
+        return 1;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &parent->bench))
+    {
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
+        return 0;
+    }
+    if (!app_packing_rename_model(app, app->editor_model, app->editor_initial_name, name))
+    {
+        app->status = app->selection_status;
+        return 0;
+    }
+    bench_group_set_name(&parent->bench, group, name);
+    int recorded = bench_history_record(parent->history, &before);
+    app->editor_parent_revision = parent->bench.revision;
+    memcpy(app->editor_name, name, strlen(name) + 1);
+    memcpy(app->editor_initial_name, name, strlen(name) + 1);
+    memcpy(app->editor_saved_name, name, strlen(name) + 1);
+    if (!recorded)
+    {
+        snprintf(app->selection_status, sizeof(app->selection_status), "%s %s",
+                 tr(TXT_APP_NAME_CHANGED), tr(TXT_APP_HISTORY_FAILED));
+        app->status = app->selection_status;
+        return 1;
     }
     app->status = tr(TXT_APP_NAME_CHANGED);
     return 1;
@@ -126,8 +145,7 @@ int app_editor_set_name(AppState *app, const char *name)
 
 int app_editor_begin_name(AppState *app, SDL_Window *window)
 {
-    int group = app->selected >= 0 && app->selected < app->bench.part_count ? app->bench.parts[app->selected].group : 0;
-    if (!app->editor_parent && !group)
+    if (!app->editor_parent)
     {
         app->status = tr(TXT_APP_SELECT_CHIP_TO_RENAME);
         return 0;
@@ -137,11 +155,11 @@ int app_editor_begin_name(AppState *app, SDL_Window *window)
         app->status = tr(TXT_APP_TEXT_INPUT_FAILED);
         return 0;
     }
-    app->name_target_group = app->editor_parent ? 0 : group;
+    app->name_target_group = 0;
     app->editing = APP_EDIT_GROUP_NAME;
     app->edit_select_all = 1;
     snprintf(app->edit_text, sizeof(app->edit_text), "%s",
-             app->editor_parent ? app->editor_name : app->bench.groups[group - 1].name);
+             app->editor_name);
     app->status = tr(TXT_APP_TYPE_CHIP_NAME);
     return 1;
 }
@@ -296,15 +314,11 @@ AppState *app_editor_route(AppState *active)
 
 int app_editor_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
+    (void)window;
     if (app->editor_confirm_close)
     {
         if (key == SDLK_ESCAPE)
             app_editor_confirm(app, 2);
-        return 1;
-    }
-    if (key == SDLK_F4)
-    {
-        app_editor_begin_name(app, window);
         return 1;
     }
     if (!app->editor_parent && key == SDLK_RETURN && app->selected >= 0 && app->bench.parts[app->selected].group)
@@ -363,7 +377,5 @@ int app_editor_click(AppState *app, SDL_Window *window, float x, float y)
     int button = app_layout_group_button_at(x, y);
     if (button == 0)
         app->editor_open_requested = 1;
-    else if (button == 1)
-        app_editor_begin_name(app, window);
     return button >= 0;
 }

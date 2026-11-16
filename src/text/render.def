@@ -80,8 +80,8 @@ UI_TEXT(UI_GRAPH_PIN_CURRENT, "Corrente, pino 1 → 2 (A)", "Current, pin 1 → 
 UI_TEXT(UI_GRAPH_VOLTAGE, "Tensão, terminal %d (V)", "Voltage, terminal %d (V)")
 /* Status bar key hints: "Key: action", joined by " · ". */
 UI_TEXT(UI_HINT_CHIP,
-        "R: girar · Enter: ver interior · F4: renomear · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
-        "R: rotate · Enter: view inside · F4: rename · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
+        "R: girar · Enter: ver interior · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
+        "R: rotate · Enter: view inside · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
 UI_TEXT(UI_HINT_ROTATE, "R: girar", "R: rotate")
 UI_TEXT(UI_HINT_VALUE, "E: valor", "E: value")
 UI_TEXT(UI_HINT_SIZE, "Ctrl+roda: tamanho", "Ctrl+wheel: size")

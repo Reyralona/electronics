@@ -8,6 +8,8 @@ int app_packing_store_model(AppState *app, const Workbench *model, int *slot);
 uint64_t app_packing_new_model(AppState *app);
 /* Slot listing model, or -1. Without identity (legacy chip) a unique legacy_name match is used. */
 int app_packing_model_slot(AppState *app, uint64_t model, const char *legacy_name);
+/* Rename only an existing library entry, preserving its saved circuit and settings. */
+int app_packing_rename_model(AppState *app, uint64_t model, const char *legacy_name, const char *name);
 int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod);
 void app_packing_refresh(AppState *app);
 void app_packing_choose(AppState *app, int index);

@@ -2,6 +2,7 @@
 #include "app_packing.h"
 #include "ui_text.h"
 #include "workbench_pack.h"
+#include "workbench_group_name.h"
 #include "workbench_file.h"
 #include <direct.h>
 #include <errno.h>
@@ -84,6 +85,31 @@ int app_packing_model_slot(AppState *app, uint64_t model, const char *legacy_nam
         if (app->library_available[i] && app->library_models[i] == model)
             return i;
     return -1;
+}
+
+int app_packing_rename_model(AppState *app, uint64_t model, const char *legacy_name, const char *name)
+{
+    int slot = app_packing_model_slot(app, model, legacy_name);
+    if (slot < 0)
+        return 1;
+    char path[128];
+    block_path(app, slot, path, sizeof(path));
+    Workbench saved BENCH_AUTO_CLEAR = {0};
+    WorkbenchSettings settings;
+    if (!workbench_load_project(path, &saved, &settings) || !saved.part_count || !saved.parts[0].group ||
+        !bench_group_set_name(&saved, saved.parts[0].group, name))
+    {
+        snprintf(app->selection_status, sizeof(app->selection_status), "%s: %s",
+                 tr(TXT_APP_CHIP_FILE_UNAVAILABLE), path);
+        return 0;
+    }
+    if (!workbench_save_project(path, &saved, &settings))
+    {
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_CHIP_SAVE_FAILED), path);
+        return 0;
+    }
+    app_packing_refresh(app);
+    return 1;
 }
 
 int app_packing_store_model(AppState *app, const Workbench *model, int *slot)

@@ -296,17 +296,14 @@ AppEditorButton app_layout_editor_header_at(float x, float y)
 
 AppRect app_layout_group_button(int index)
 {
-    if (index < 0 || index > 1)
+    if (index != 0)
         return NO_RECT;
-    return (AppRect){INSPECTOR_ROW_X + index * 202.0f, 132, 194, 32};
+    return (AppRect){INSPECTOR_ROW_X, 132, 396, 32};
 }
 
 int app_layout_group_button_at(float x, float y)
 {
-    for (int index = 0; index < 2; ++index)
-        if (app_rect_contains(app_layout_group_button(index), x, y))
-            return index;
-    return -1;
+    return app_rect_contains(app_layout_group_button(0), x, y) ? 0 : -1;
 }
 
 AppRect app_layout_confirm_panel(void)
