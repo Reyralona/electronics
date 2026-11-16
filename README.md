@@ -20,9 +20,10 @@ O cálculo elétrico é feito pelo [ngspice](https://ngspice.sourceforge.io/), u
 
 ## Instalação
 
-O projeto pode gerar um ZIP portátil e um instalador experimental para Windows x64. Eles ainda
-não estão publicados como release. Para gerar os pacotes, veja
-[Distribuição Windows](docs/DISTRIBUICAO_WINDOWS.md); para compilar pelo fluxo anterior, siga abaixo.
+Baixe o instalador ou o ZIP portátil na **[página de releases](https://github.com/Reyralona/electronics/releases)**.
+A versão [0.36.0](https://github.com/Reyralona/electronics/releases/tag/v0.36.0) é uma pré-release experimental.
+Para gerar os pacotes, veja [Distribuição Windows](docs/DISTRIBUICAO_WINDOWS.md);
+para compilar pelo fluxo anterior, siga abaixo.
 
 Ao receber um pacote do projeto: extraia o ZIP inteiro e abra `bancada.exe`, ou execute o arquivo
 `-setup.exe`. Não é preciso instalar MSYS2 ou ngspice para usar os pacotes. O instalador funciona
