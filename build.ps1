@@ -1,4 +1,4 @@
-param([switch]$GuiTests, [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$OutputName = 'bancada')
+param([switch]$GuiTests, [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$OutputName = 'build')
 $ErrorActionPreference = 'Stop'
 $toolchain = 'C:\msys64\ucrt64\bin'
 if (Test-Path (Join-Path $toolchain 'gcc.exe')) { $env:Path = "$toolchain;$env:Path" }
@@ -36,7 +36,7 @@ if (Test-Path "$ngspiceBin/ngspice_con.exe") {
     & ./build/test_spice_live.exe "$ngspiceBin/ngspice_con.exe"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
-& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/workbench_grid.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_settings.c src/mcu_lang.c src/mcu_runtime.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_render.c src/app_palette.c src/app_state.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/spice_process.c src/spice_job.c src/spice_live.c src/spice_session.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
+& gcc -std=c11 -Wall -Wextra -Werror src/workbench_window.c src/workbench_grid.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_code_editor.c src/app_render.c src/app_palette.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/spice_process.c src/spice_job.c src/spice_live.c src/spice_session.c src/spice_trace.c src/sim_auto.c -o "build/$OutputName.exe" -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_preferences.c src/app_preferences.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_preferences.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -53,6 +53,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Wno-unused-parameter -Isrc tests/test_mcu_lang.c src/mcu_lang.c -o build/test_mcu_lang.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_mcu_lang.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_code_text.c src/code_text.c src/mcu_lang.c -o build/test_code_text.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_code_text.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_mcu.c src/mcu_runtime.c src/mcu_board.c src/mcu_lang.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/component_devices.c src/workbench.c src/bench_path.c src/component_registry.c -o build/test_mcu.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -102,21 +106,21 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_sim_state.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_editor.c src/app_simulation.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_editor.exe -lSDL3
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_editor.c src/app_simulation.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_editor.exe -lSDL3
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_app_editor.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_commands.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_commands.exe -lSDL3
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_commands.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_commands.exe -lSDL3
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_app_commands.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_live.c src/workbench_history.c src/app_state.c src/app_simulation.c src/sim_state.c src/spice_trace.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_live.exe -lSDL3
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_live.c src/workbench_history.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_simulation.c src/sim_state.c src/spice_trace.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_live.exe -lSDL3
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path "$ngspiceBin/ngspice_con.exe") {
     & ./build/test_app_live.exe "$ngspiceBin/ngspice_con.exe"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
-& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_simulation.c src/workbench_history.c src/app_state.c src/app_simulation.c src/sim_state.c src/spice_trace.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_simulation.exe -lSDL3
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_app_simulation.c src/workbench_history.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_simulation.c src/sim_state.c src/spice_trace.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c -o build/test_app_simulation.exe -lSDL3
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_app_simulation.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

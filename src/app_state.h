@@ -6,6 +6,8 @@
 #include "workbench_view.h"
 #include "workbench_selection.h"
 #include "workbench_file.h"
+#include "mcu_runtime.h"
+#define MCU_CODE_CAPACITY 16384
 
 #define PROJECT_SLOT_COUNT 9
 #define BLOCK_LIBRARY_SLOTS 8
@@ -38,6 +40,7 @@ typedef struct AppState
     double grid_spacing;
     int snap_grid, snap_board;
     int dark_theme, gui_font_size, show_pin_labels;
+    int xray; /* X: transparent part bodies; covered terminals become reachable. */
     BenchHistory *history;
     int move_recorded;
     uint64_t live_last_scheduled;
@@ -70,6 +73,12 @@ typedef struct AppState
     uint64_t editor_parent_revision, editor_initial_revision, editor_saved_revision, editor_opened_at;
     char editor_name[BENCH_GROUP_NAME_CAPACITY];
     char editor_initial_name[BENCH_GROUP_NAME_CAPACITY], editor_saved_name[BENCH_GROUP_NAME_CAPACITY];
+    /* Microcontrollers: programs run on the wall clock; the code editor edits one board at a time. */
+    McuRuntime *mcu;
+    uint64_t mcu_last_ticks;
+    int code_part, code_cursor, code_scroll, code_dirty;
+    int completion_selected, completion_hidden;
+    char code_text[MCU_CODE_CAPACITY];
 } AppState;
 
 void app_state_init(AppState *app);

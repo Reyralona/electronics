@@ -10,6 +10,7 @@
 #include "app_packing.h"
 #include "workbench_pack.h"
 #include "app_layout.h"
+#include "app_code_editor.h"
 #include "component_devices.h"
 #include "app_settings.h"
 #include "app_palette.h"
@@ -579,6 +580,11 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
         start_settings_edit(app, window, APP_EDIT_SCALE, bench_part_scale(part) * 100);
         return 1;
     }
+    if (app_code_editable(app, app->selected) && app_rect_contains(app_layout_inspector_value(), x, y))
+    {
+        app_code_open(app, window, app->selected);
+        return 1;
+    }
     if (app_rect_contains(app_layout_inspector_value(), x, y))
     {
         push_shortcut(SDLK_E);
@@ -641,6 +647,25 @@ static int input_click_trace(AppState *app, float x, float y)
     return 1;
 }
 
+/* With a single ordinary part selected, choosing from the catalog swaps it in place. */
+static int input_swap_selected(AppState *app, PartType type)
+{
+    /* Same type: nothing to swap, so the click places a new one as usual. */
+    if (!selected_plain_part(app) || app->bench.parts[app->selected].type == PART_BREADBOARD ||
+        app->bench.parts[app->selected].type == type || bench_selection_count(&app->selection, &app->bench) > 1)
+        return 0;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench) || !bench_swap_type(&app->bench, app->selected, type))
+    {
+        app->status = "Nao foi possivel trocar o componente; montagem preservada.";
+        return 1;
+    }
+    bench_history_record(app->history, &before);
+    app->placing = -1;
+    app->status = "Componente trocado no lugar; fios mantidos por terminal. Ctrl+Z desfaz; Esc limpa a selecao.";
+    return 1;
+}
+
 static int input_click_palette(AppState *app, float x, float y)
 {
     int tab = app_layout_palette_tab_at(x, y);
@@ -673,8 +698,10 @@ static int input_click_palette(AppState *app, float x, float y)
     if (item >= palette_count(app->palette_page))
         return 1;
     app->packed_placing = 0;
-    app->placing = palette_part(app->palette_page, item);
     app->pending.component = -1;
+    if (input_swap_selected(app, palette_part(app->palette_page, item)))
+        return 1;
+    app->placing = palette_part(app->palette_page, item);
     app->status = "Clique na bancada para posicionar.";
     return 1;
 }
@@ -788,10 +815,11 @@ static void input_place_part(AppState *app, float x, float y)
 }
 
 /* A terminal hidden under another part body cannot be hovered or clicked: what you see is what you hit.
+ * X toggles transparent bodies (app->xray), which makes every terminal reachable.
  * Breadboards are drawn first, so any part body hides their holes; parts hide those drawn before them. */
 static int terminal_covered(const Workbench *bench, int owner, float x, float y)
 {
-    const float edge_margin = 2;
+    const float edge_margin = 6;
     int owner_is_board = bench->parts[owner].type == PART_BREADBOARD;
     for (int i = bench->part_count - 1; i >= 0; --i)
     {
@@ -807,7 +835,7 @@ static int terminal_covered(const Workbench *bench, int owner, float x, float y)
     return 0;
 }
 
-static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom)
+static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom, int see_through)
 {
     for (int i = bench->part_count - 1; i >= 0; --i)
         if (bench->parts[i].group)
@@ -840,7 +868,8 @@ static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom)
             {
                 float px, py;
                 bench_pin_position(&bench->parts[i], p, &px, &py);
-                if ((x - px) * (x - px) + (y - py) * (y - py) <= radius * radius && !terminal_covered(bench, i, px, py))
+                if ((x - px) * (x - px) + (y - py) * (y - py) <= radius * radius &&
+                    (see_through || !terminal_covered(bench, i, px, py)))
                 {
                     hit = i;
                     hitpin = p;
@@ -962,6 +991,11 @@ static void input_select(AppState *app, float x, float y, int clicks)
             bench_set_on(&app->bench, hit, 1);
             app->held_button = hit;
             app->status = "Botao pressionado; solte para abrir o contato. Contato ideal, sem bounce.";
+            return;
+        }
+        if (clicks >= 2 && app_code_editable(app, hit))
+        {
+            app_code_open(app, NULL, hit);
             return;
         }
         if (!app->bench.parts[hit].group && clicks >= 2 && input_toggle_device(app, hit, x, y))
@@ -1111,7 +1145,7 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         input_place_part(app, x, y);
         return;
     }
-    Pin clicked = input_pin_at(&app->bench, x, y, app->view.zoom);
+    Pin clicked = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
     hitpin = clicked.pin;
     if (hitpin >= 0)
     {
@@ -1342,7 +1376,7 @@ static void input_refresh_hover(AppState *app)
         app->selecting_area || app->editor_confirm_close || app->panning || app->dragging >= 0 || app->drag_wire >= 0)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
-    app->hovered_pin = input_pin_at(&app->bench, x, y, app->view.zoom);
+    app->hovered_pin = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
 }
 
 /* Dispatch in priority order: text editing consumes input before workspace interaction. */
@@ -1356,6 +1390,8 @@ void app_input_poll(AppState *app, SDL_Window *window)
             continue;
         if (e.type == SDL_EVENT_MOUSE_MOTION)
             input_mouse_position(app, window, &e);
+        if (e.type != SDL_EVENT_QUIT && app->editing < 0 && app_code_event(app, window, &e))
+            continue;
         if (e.type == SDL_EVENT_QUIT)
             app->running = 0;
         else if (e.type == SDL_EVENT_WINDOW_FOCUS_LOST)
@@ -1425,6 +1461,7 @@ void app_input_poll(AppState *app, SDL_Window *window)
             input_drag_part(app, window, &e);
         }
     }
+    app_code_validate(app, window);
     if (app->mouse_position_valid)
         input_refresh_hover(app);
 }

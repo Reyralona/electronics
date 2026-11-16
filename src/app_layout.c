@@ -369,3 +369,31 @@ int app_layout_led_swatch_at(float x, float y)
             return color;
     return -1;
 }
+
+AppRect app_layout_code_panel(void)
+{
+    return (AppRect){836, 76, 436, 578};
+}
+
+AppRect app_layout_code_run(void)
+{
+    AppRect panel = app_layout_code_panel();
+    return (AppRect){panel.x + panel.w - 200, panel.y + 14, 132, 34};
+}
+
+AppRect app_layout_code_close(void)
+{
+    return close_button(app_layout_code_panel());
+}
+
+AppRect app_layout_code_text(void)
+{
+    AppRect panel = app_layout_code_panel();
+    return (AppRect){panel.x + 12, panel.y + 90, panel.w - 24, 360};
+}
+
+AppRect app_layout_code_serial(void)
+{
+    AppRect panel = app_layout_code_panel();
+    return (AppRect){panel.x + 12, panel.y + 458, panel.w - 24, panel.h - 470};
+}
