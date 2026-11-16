@@ -13,7 +13,7 @@ Baixe o **[instalador ou ZIP portátil](https://github.com/Reyralona/electronics
 - **ZIP:** extraia a pasta inteira e abra `bancada.exe`.
 
 As dependências estão incluídas. A interface oferece português e inglês.
-A versão **0.37.1** é experimental, sem assinatura digital.
+A versão **0.38.0** é experimental, sem assinatura digital.
 
 Para começar, abra **Exemplos** e escolha **LED na breadboard**.
 Dê dois cliques na fonte para ligar ou desligar. O LED acompanha.

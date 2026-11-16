@@ -594,3 +594,15 @@ o nome não salva o projeto inteiro nem cria uma entrada nova na biblioteca. Có
 continuam independentes. Nomes inválidos ou falha ao gravar a entrada não alteram o nome da instância.
 O rascunho mantém os fluxos de salvar/aplicar/descartar para alterações elétricas. F4 e o botão
 externo são removidos. Não há mudança no formato de arquivo ou no modelo elétrico.
+
+## Painel da peça compacto e recolhível; um painel do topo por vez (16/11/2026, 0.38.0)
+
+Pedido: o painel da peça ocupava muito da bancada; precisa ser menor e poder ser minimizado,
+deixando algo visível. Projetos e Exemplos podiam ficar abertos ao mesmo tempo.
+Fato: o painel tinha 420 px de largura e até 296 px de altura (LED, sensores). Projetos (topo e F3)
+e Configurações por F1 só alternavam o próprio painel.
+Decisão: painel com 320 px, linhas de 26 px e notas em até duas linhas; botão – recolhe numa
+etiqueta com o nome, mantida ao trocar de peça e herdada pelo editor do chip. Recolhido, cliques
+nos controles ocultos não têm efeito. O estado não é salvo em preferências nem no projeto.
+`app_state_toggle_panel` é o único caminho para abrir Projetos, Exemplos e Configurações.
+Sem mudança no formato de arquivo ou no modelo elétrico.

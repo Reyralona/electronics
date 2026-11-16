@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.38.0
+
+- Painel da peça mais compacto (320 px de largura, linhas e cores menores), alinhado à mesma borda direita.
+- Botão **–** recolhe o painel numa etiqueta com o nome da peça; clicar na etiqueta o reabre.
+  Recolhido, o painel não aceita cliques em controles ocultos. O estado vale ao trocar de peça e no editor do chip.
+- Projetos, Exemplos e Configurações abrem um de cada vez: abrir um fecha o outro, pelo topo ou por F1/F3.
+- Autoteste: minimizar, clicar onde ficavam as cores (sem efeito), reabrir pela etiqueta e escolher uma cor.
+
 ## 0.37.1
 
 - Renomear um chip no editor atualiza o nome na bancada e na entrada existente da biblioteca
