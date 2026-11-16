@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.38.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.39.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
@@ -61,14 +61,17 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 
 ### Seleção, cópia e histórico
 
-- Arraste numa área vazia (ou `Shift`+arraste) para selecionar várias peças.
+- Arraste numa área vazia (ou `Shift`+arraste) para selecionar várias peças. Levando o mouse até a borda
+  da bancada durante o arraste, a vista rola sozinha, e dá para alcançar peças fora da tela.
 - `Ctrl+A` seleciona tudo. `Ctrl+C`, `Ctrl+X` e `Ctrl+V` copiam, recortam e colam perto do mouse.
 - `Ctrl+Z` e `Ctrl+Y` desfazem e refazem (24 passos por sessão). Desfazer muda a montagem, mas não volta o tempo da simulação.
 - `Esc` cancela o fio em andamento e limpa a seleção.
 
 ### Vista
 
-- A roda do mouse dá zoom ao redor do cursor. Arraste com o botão do meio para mover a vista.
+- A roda do mouse dá zoom ao redor do cursor (de 12% a 400%). Arraste com o botão do meio para mover a vista.
+- Abaixo de 100%, as bolinhas dos terminais encolhem junto com as peças. Abaixo de 60%, os nomes das portas
+  lógicas e os números dos terminais dos chips somem para não cobrir o circuito; voltam ao aproximar.
 - `Home` volta à vista inicial.
 
 ## Simular
@@ -110,8 +113,12 @@ O que aparece na tela:
    - `S` ou **Salvar modelo**: atualiza o chip na biblioteca. As cópias de um mesmo chip atualizam a mesma entrada; não aparece uma entrada nova.
    - `Ctrl+Enter` ou **Aplicar ao chip**: troca só esta cópia na bancada (`Ctrl+Z` desfaz).
    - `Esc` ou **Voltar**: sai, e pergunta se quer salvar quando houver mudanças.
-4. `Ctrl+Shift+G` desagrupa o chip na bancada e devolve as peças soltas.
-5. O **×** no cartão da aba Chips remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
+4. **Reorganizar terminais:** segure `Alt` e arraste um terminal do chip para o outro lado ou para outra
+   posição do mesmo lado. Os fios acompanham, e `Ctrl+Z` desfaz. Por exemplo, num 3AND feito com duas AND,
+   leve a terceira entrada para a esquerda: ficam as 3 entradas à esquerda e a saída à direita.
+   O arranjo fica salvo no projeto e no modelo da biblioteca. Até 64 terminais por chip.
+5. `Ctrl+Shift+G` desagrupa o chip na bancada e devolve as peças soltas.
+6. O **×** no cartão da aba Chips remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
 
 Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga ao exterior. Por exemplo, três AND formando uma AND de 4 entradas viram um chip de 5 terminais. Displays de 7 segmentos e LEDs RGB dentro de um chip aparecem no corpo do chip.
 
@@ -181,7 +188,7 @@ Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canai
 | `F1` / `F2` / `F3` | Configurações / próximo exemplo / projetos |
 | `Ctrl+roda` | Tamanho da peça (no chip: largura; com `Shift`: altura) |
 | `Shift+roda` | Cursor do potenciômetro / ambiente do sensor |
-| `Alt`+arrastar | Mover só a perna (terminal) ou suspender o encaixe na grade |
+| `Alt`+arrastar | Mover só a perna (terminal), reorganizar terminal de chip ou suspender o encaixe na grade |
 
 No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
 

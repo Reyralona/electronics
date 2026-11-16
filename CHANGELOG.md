@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.39.0
+
+- Zoom mínimo de 35% para 12%: circuitos grandes, como o do slot 3, cabem inteiros na tela.
+- Arrastar a seleção até a borda da bancada rola a vista, para alcançar peças fora da tela.
+- Com pouco zoom, as bolinhas dos terminais encolhem com as peças, e os nomes das portas e os números
+  dos terminais dos chips somem abaixo de 60%.
+- `Alt`+arrastar um terminal de chip o leva para o outro lado ou para outra posição (3AND: 3 entradas à
+  esquerda, saída à direita). O arranjo é salvo no formato de arquivo 30; arquivos antigos continuam abrindo.
+- A dica da bancada mostra `Ctrl+A`. O chip não tem mais a marca escura na borda; o pino 1 segue indicado pelo ponto claro no canto.
+
 ## 0.38.0
 
 - Painel da peça mais compacto (320 px de largura, linhas e cores menores), alinhado à mesma borda direita.

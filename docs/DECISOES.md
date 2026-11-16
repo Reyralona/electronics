@@ -606,3 +606,17 @@ etiqueta com o nome, mantida ao trocar de peça e herdada pelo editor do chip. R
 nos controles ocultos não têm efeito. O estado não é salvo em preferências nem no projeto.
 `app_state_toggle_panel` é o único caminho para abrir Projetos, Exemplos e Configurações.
 Sem mudança no formato de arquivo ou no modelo elétrico.
+
+## Circuitos grandes e terminais de chip reorganizáveis (16/11/2026, 0.39.0)
+
+Pedido: o circuito do slot 3 (34 peças, cerca de 990 × 1920 unidades) não cabia na tela; com pouco zoom,
+os nomes das portas e as bolinhas dos terminais cobriam o circuito; num chip, escolher o lado dos terminais.
+Fatos: `Ctrl+A` já existia, mas não aparecia na dica; o zoom mínimo era 0,35. Nomes usam fonte bitmap,
+que não escala, e bolinhas tinham tamanho fixo na tela. Terminais de chip: metade à esquerda, resto à direita,
+na ordem das peças.
+Decisões: zoom de 0,12 a 4. Bolinhas com tamanho fixo no mundo abaixo de 100% (mínimo de 1,5 px); rótulos
+ocultos abaixo de 60%. Seleção por área rola a vista a até 900 px/s nos 32 px junto às bordas.
+Cada chip guarda lado e ordem de até 64 terminais (`port_layout`, `port_places`). Se a contagem de terminais
+mudar (por exemplo, ao aplicar uma edição), volta o arranjo automático. Formato 30 grava o arranjo após a
+rotação; formatos anteriores leem arranjo automático. Lados de cima e de baixo ficaram fora deste incremento.
+Sem mudança no modelo elétrico: a posição do terminal muda só a geometria (desenho, clique, contato direto).
