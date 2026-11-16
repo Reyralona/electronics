@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.33.0
+
+- Terminal sobre terminal conecta: encaixe de 10 px ao arrastar ou posicionar peças.
+- Rótulos de terminais sem sobreposição; por padrão só no terminal sob o mouse (opção para todos).
+- Corrente nos fios como bolinhas amarelas em movimento, no lugar das setas.
+- Remover blocos da biblioteca (botão × com confirmação; arquivo vai para blocks/lixeira).
+- Relé com terminais B+/B−; autoteste GUI com 191 fases.
+
 ## 0.32.0
 
 - Infraestrutura de várias medições por peça (até 8) e estado por peça (bits/modo), formato 26.
