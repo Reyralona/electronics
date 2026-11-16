@@ -20,8 +20,27 @@
 #include "spice_trace.h"
 #include <math.h>
 _Static_assert(APP_EXAMPLE_CARDS == WORKBENCH_EXAMPLE_COUNT, "one examples card per example");
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+
+/* Limits of the typed settings, shown in their error messages. */
+enum
+{
+    GRID_SPACING_MIN = 1,
+    GRID_SPACING_MAX = 10000,
+    TRACE_MAX_POINTS = 500
+};
+
+/* Formats a status into selection_status, the buffer for messages with values. */
+static void report(AppState *app, TextId format, ...)
+{
+    va_list arguments;
+    va_start(arguments, format);
+    vsnprintf(app->selection_status, sizeof(app->selection_status), tr(format), arguments);
+    va_end(arguments);
+    app->status = app->selection_status;
+}
 
 static int hit_wire(const Workbench *bench, float x, float y, float tolerance, int rounded)
 {
@@ -53,17 +72,17 @@ static void input_insert_knee(AppState *app, float x, float y)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
     if (!bench_insert_knee(&app->bench, index, slot, projected))
     {
-        app->status = "Nao foi possivel inserir: limite atual de 16 joelhos por fio.";
+        report(app, TXT_APP_BEND_LIMIT, WIRE_MAX_KNEES);
         return;
     }
     bench_history_record(app->history, &before);
     app->show_handles = 1;
-    app->status = "Joelho adicionado. Arraste para dobrar; duplo clique remove; Ctrl+Z desfaz.";
+    app->status = tr(TXT_APP_BEND_ADDED);
 }
 
 static int part_at(const Workbench *bench, float x, float y, float zoom)
@@ -106,7 +125,7 @@ static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event
         if ((!bench_group_name_valid(input) && strspn(input, " ") != strlen(input)) ||
             before + strlen(input) >= sizeof(app->edit_text))
         {
-            app->status = "Nome invalido ou longo demais; limite atual de 127 bytes UTF-8.";
+            app_editor_report_invalid_name(app);
             return;
         }
         memcpy(app->edit_text + before, input, strlen(input) + 1);
@@ -134,7 +153,7 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
             app->editing = -1;
             app->name_target_group = -1;
             SDL_StopTextInput(window);
-            app->status = "Renomeacao cancelada.";
+            app->status = tr(TXT_APP_RENAME_CANCELED);
         }
         else if (event->key.key == SDLK_A && (event->key.mod & SDL_KMOD_CTRL))
             app->edit_select_all = 1;
@@ -167,7 +186,7 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
     {
         app->editing = -1;
         SDL_StopTextInput(window);
-        app->status = "Edicao cancelada.";
+        app->status = tr(TXT_APP_EDIT_CANCELED);
     }
     else if (event->key.key == SDLK_BACKSPACE)
     {
@@ -181,7 +200,7 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         Workbench before BENCH_AUTO_CLEAR = {0};
         if (!bench_snapshot_clone(&before, &app->bench))
         {
-            app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+            app->status = tr(TXT_APP_OUT_OF_MEMORY);
             return;
         }
         if (app->editing == APP_EDIT_SCALE)
@@ -193,22 +212,23 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
                     bench_history_record(app->history, &before);
                 app->editing = -1;
                 SDL_StopTextInput(window);
-                app->status = "Tamanho atualizado. Posicione os terminais nos furos desejados; Ctrl+Z desfaz.";
+                app->status = tr(TXT_APP_SIZE_CHANGED);
             }
             else
-                app->status = "Use tamanho entre 1% e 10000%.";
+                report(app, TXT_APP_SIZE_RANGE, PART_SCALE_MIN * 100.0, PART_SCALE_MAX * 100.0);
         }
         else if (app->editing == APP_EDIT_GRID)
         {
-            if (bench_parse_value(app->edit_text, &value) && value >= 1 && value <= 10000)
+            if (bench_parse_value(app->edit_text, &value) && value >= GRID_SPACING_MIN &&
+                value <= GRID_SPACING_MAX)
             {
                 app->grid_spacing = value;
                 app->editing = -1;
                 SDL_StopTextInput(window);
-                app->status = "Espacamento atualizado em unidades da montagem.";
+                app->status = tr(TXT_APP_GRID_SPACING_CHANGED);
             }
             else
-                app->status = "Use espacamento de 1 a 10000 unidades.";
+                report(app, TXT_APP_GRID_SPACING_RANGE, GRID_SPACING_MIN, GRID_SPACING_MAX);
         }
         else if (app->editing >= WORKBENCH_MAX_COMPONENTS)
         {
@@ -218,16 +238,16 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
                 step = value;
             else if (parsed)
                 stop = value;
-            if (parsed && step <= stop && stop / step <= 500.0 * (1.0 + 1e-12))
+            if (parsed && step <= stop && stop / step <= TRACE_MAX_POINTS * (1.0 + 1e-12))
             {
                 app->transient_step = step;
                 app->transient_stop = stop;
                 app->editing = -1;
                 SDL_StopTextInput(window);
-                app->status = "Parametro transitorio atualizado.";
+                app->status = tr(TXT_APP_TIME_CHANGED);
             }
             else
-                app->status = "Use tempos positivos: passo <= duracao e duracao/passo <= 500.";
+                report(app, TXT_APP_TIME_RANGE, TRACE_MAX_POINTS);
         }
         else if (bench_parse_value(app->edit_text, &value) && bench_set_value(&app->bench, app->editing, value))
         {
@@ -235,10 +255,10 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
                 bench_history_record(app->history, &before);
             app->editing = -1;
             SDL_StopTextInput(window);
-            app->status = "Valor alterado.";
+            app->status = tr(TXT_APP_VALUE_CHANGED);
         }
         else
-            app->status = "Valor invalido. Use um numero positivo entre 1e-12 e 1e12.";
+            app->status = tr(TXT_APP_VALUE_INVALID);
     }
 }
 
@@ -260,7 +280,6 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 app->palette_offset = 0;
             if (app->palette_offset > last)
                 app->palette_offset = last;
-            app->status = "Biblioteca: use o scroll para ver mais componentes.";
             return;
         }
         if (x >= 220 && y >= 70 && y < 660 && direction != 0 && (SDL_GetModState() & SDL_KMOD_CTRL))
@@ -271,7 +290,7 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 Workbench before BENCH_AUTO_CLEAR = {0};
                 if (!bench_snapshot_clone(&before, &app->bench))
                 {
-                    app->status = "Memoria insuficiente para redimensionar o chip.";
+                    app->status = tr(TXT_APP_OUT_OF_MEMORY);
                     return;
                 }
                 float width = bench_group_width(&app->bench, group);
@@ -282,25 +301,25 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 else
                     width = fminf(10000, fmaxf(64, width * factor));
                 if (!bench_group_resize(&app->bench, group, width, height))
-                    app->status = "Dimensoes invalidas para o chip.";
+                    app->status = tr(TXT_APP_CHIP_SIZE_INVALID);
                 else if (!bench_history_record(app->history, &before))
                 {
                     bench_replace(&app->bench, &before);
-                    app->status = "Historico indisponivel; dimensoes anteriores restauradas.";
+                    app->status = tr(TXT_APP_HISTORY_FAILED);
                 }
                 else
-                    app->status = "Chip: Ctrl+scroll ajusta largura; Ctrl+Shift+scroll ajusta altura; Ctrl+Z desfaz.";
+                    app->status = tr(TXT_APP_CHIP_RESIZED);
                 return;
             }
             if (app->selected < 0)
             {
-                app->status = "Selecione uma peca para ajustar o tamanho com Ctrl+scroll.";
+                app->status = tr(TXT_APP_SELECT_PART_FOR_SIZE);
                 return;
             }
             Workbench before BENCH_AUTO_CLEAR = {0};
             if (!bench_snapshot_clone(&before, &app->bench))
             {
-                app->status = "Memoria insuficiente para ajustar o tamanho.";
+                app->status = tr(TXT_APP_OUT_OF_MEMORY);
                 return;
             }
             float scale = bench_part_scale(&app->bench.parts[app->selected]);
@@ -309,11 +328,11 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
             if (bench_set_scale(&app->bench, app->selected, scale) && app->bench.revision != before.revision)
             {
                 if (bench_history_record(app->history, &before))
-                    app->status = "Tamanho ajustado. Ctrl+scroll redimensiona; Ctrl+Z desfaz.";
+                    app->status = tr(TXT_APP_SIZE_CHANGED);
                 else
                 {
                     bench_replace(&app->bench, &before);
-                    app->status = "Nao foi possivel registrar o historico; tamanho anterior restaurado.";
+                    app->status = tr(TXT_APP_HISTORY_FAILED);
                 }
             }
             bench_snapshot_clear(&before);
@@ -326,7 +345,7 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
             Workbench before BENCH_AUTO_CLEAR = {0};
             if (!bench_snapshot_clone(&before, &app->bench))
             {
-                app->status = "Memoria insuficiente para ajustar o potenciometro.";
+                app->status = tr(TXT_APP_OUT_OF_MEMORY);
                 return;
             }
             double position = app->bench.parts[app->selected].control + (direction > 0 ? .05 : -.05);
@@ -335,10 +354,10 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 if (!bench_history_record(app->history, &before))
                 {
                     bench_replace(&app->bench, &before);
-                    app->status = "Historico indisponivel; cursor anterior restaurado.";
+                    app->status = tr(TXT_APP_HISTORY_FAILED);
                     return;
                 }
-            app->status = "Controle ajustado. Shift+scroll ou slider; Ctrl+Z: desfazer.";
+            app->status = tr(TXT_APP_CONTROL_HINT);
             return;
         }
         if (x >= 220 && y >= 70 && y < 660 && direction != 0)
@@ -408,19 +427,19 @@ static void choose_wire_color(AppState *app, int chosen)
     int selected = app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count;
     if (!selected || app->bench.wires[app->selected_wire].color == chosen)
     {
-        app->status = "Cor dos próximos fios selecionada.";
+        app->status = tr(TXT_APP_NEW_WIRE_COLOR);
         return;
     }
     bench_history_record(app->history, &app->bench);
     bench_set_wire_color(&app->bench, app->selected_wire, chosen);
-    app->status = "Cor do fio selecionado alterada.";
+    app->status = tr(TXT_APP_WIRE_COLOR_CHANGED);
 }
 
 static void toggle_wire_current(AppState *app)
 {
     app->show_current = !app->show_current;
     if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace.measures_wires)
-        app->status = "Selecione um fio e pressione T para medir sua corrente transitória.";
+        app->status = tr(TXT_APP_SELECT_WIRE_FOR_CURRENT);
 }
 
 static void cycle_probe_pin(AppState *app)
@@ -568,12 +587,12 @@ static int input_click_environment(AppState *app, float x, float y)
         return 0;
     if (!bench_history_record(app->history, &app->bench))
     {
-        app->status = "Histórico indisponível; ambiente preservado.";
+        app->status = tr(TXT_APP_HISTORY_FAILED);
         return 1;
     }
     app->dragging_environment = app->selected;
     input_environment_position(app, x);
-    app->status = "Arraste para simular o ambiente. Ctrl+Z desfaz; o projeto salva o controle.";
+    app->status = tr(TXT_APP_ENVIRONMENT_DRAG);
     return 1;
 }
 
@@ -587,7 +606,7 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
     {
         if (part->states != (unsigned)swatch && bench_history_record(app->history, &app->bench))
             bench_set_states(&app->bench, app->selected, (unsigned)swatch);
-        app->status = "Cor do LED alterada. Ctrl+Z desfaz.";
+        app->status = tr(TXT_APP_LED_COLOR_CHANGED);
         return 1;
     }
     if (app_rect_contains(app_layout_inspector_scale(), x, y))
@@ -649,15 +668,7 @@ static int input_click_trace(AppState *app, float x, float y)
     {
         app->sim.trace_index = spice_trace_nearest(&app->sim.trace, (x - 918) / 302.0);
         app->sim.sim_running = 0;
-        const char *format = "Tensão: t=%.6g s; V=%.6g V (%d/%d).";
-        if (app->sim.trace_current == 2)
-            format = "Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).";
-        else if (app->sim.trace_current)
-            format = "Corrente terminal 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).";
-        snprintf(app->sim.trace_status, sizeof(app->sim.trace_status), format,
-                 app->sim.trace.samples[app->sim.trace_index].time,
-                 app->sim.trace.samples[app->sim.trace_index].value, app->sim.trace_index + 1, app->sim.trace.count);
-        app->status = app->sim.trace_status;
+        app->status = sim_state_trace_text(&app->sim);
     }
     return 1;
 }
@@ -672,12 +683,12 @@ static int input_swap_selected(AppState *app, PartType type)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench) || !bench_swap_type(&app->bench, app->selected, type))
     {
-        app->status = "Nao foi possivel trocar o componente; montagem preservada.";
+        app->status = tr(TXT_APP_SWAP_FAILED);
         return 1;
     }
     bench_history_record(app->history, &before);
     app->placing = -1;
-    app->status = "Componente trocado no lugar; fios mantidos por terminal. Ctrl+Z desfaz; Esc limpa a selecao.";
+    app->status = tr(TXT_APP_PART_SWAPPED);
     return 1;
 }
 
@@ -717,7 +728,7 @@ static int input_click_palette(AppState *app, float x, float y)
     if (input_swap_selected(app, palette_part(app->palette_page, item)))
         return 1;
     app->placing = palette_part(app->palette_page, item);
-    app->status = "Clique na bancada para posicionar.";
+    app->status = tr(TXT_APP_CLICK_TO_PLACE);
     return 1;
 }
 
@@ -767,12 +778,12 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
                 bench_history_record(app->history, &app->bench);
                 bench_remove_knee(&app->bench, app->drag_wire, app->drag_knee);
                 app->drag_wire = -1;
-                app->status = "Joelho removido.";
+                app->status = tr(TXT_APP_BEND_REMOVED);
             }
             else
             {
                 app->move_recorded = 0;
-                app->status = "Arraste o joelho; duplo clique remove.";
+                app->status = tr(TXT_APP_DRAG_BEND);
             }
             return 1;
         }
@@ -806,7 +817,7 @@ static void input_place_part(AppState *app, float x, float y)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
     int added = bench_add(&app->bench, (PartType)app->placing, x, y);
@@ -822,11 +833,11 @@ static void input_place_part(AppState *app, float x, float y)
         bench_history_record(app->history, &before);
         app->selected_wire = -1;
         app->status =
-            snapped ? "Componente encaixado na breadboard." : "Componente adicionado. Selecione terminais para ligar.";
+            snapped ? tr(TXT_APP_PART_SNAPPED) : tr(TXT_APP_PART_ADDED);
         app->placing = -1;
     }
     else
-        app->status = "Limite de componentes atingido.";
+        report(app, TXT_APP_PART_LIMIT, WORKBENCH_MAX_COMPONENTS);
 }
 
 /* A terminal hidden under another part body cannot be hovered or clicked: what you see is what you hit.
@@ -904,20 +915,20 @@ static void input_connect_pin(AppState *app, Pin clicked)
     {
         app->pending = clicked;
         app->route_count = 0;
-        app->status = "Clique para criar joelhos; termine em outro terminal.";
+        app->status = tr(TXT_APP_WIRE_STARTED);
     }
     else if (app->pending.component == clicked.component && app->pending.pin == clicked.pin)
     {
         app->pending.component = -1;
         app->route_count = 0;
-        app->status = "Conexao cancelada.";
+        app->status = tr(TXT_APP_WIRE_CANCELED);
     }
     else
     {
         Workbench before BENCH_AUTO_CLEAR = {0};
         if (!bench_snapshot_clone(&before, &app->bench))
         {
-            app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+            app->status = tr(TXT_APP_OUT_OF_MEMORY);
             return;
         }
         int result = bench_toggle_wire(&app->bench, app->pending, clicked);
@@ -930,11 +941,11 @@ static void input_connect_pin(AppState *app, Pin clicked)
         if (result)
             bench_history_record(app->history, &before);
         if (result == 1)
-            app->status = "Fio conectado.";
+            app->status = tr(TXT_APP_WIRE_CONNECTED);
         else if (result == 2)
-            app->status = "Fio removido.";
+            app->status = tr(TXT_APP_WIRE_DELETED);
         else
-            app->status = "Nao foi possivel conectar.";
+            app->status = tr(TXT_APP_CONNECT_FAILED);
         app->pending.component = -1;
         app->route_count = 0;
     }
@@ -966,12 +977,12 @@ static int input_toggle_device(AppState *app, int hit, float x, float y)
     }
     if (!bench_history_record(app->history, &app->bench))
     {
-        app->status = "Histórico indisponível; estado preservado.";
+        app->status = tr(TXT_APP_HISTORY_FAILED);
         return 1;
     }
     bench_set_states(&app->bench, hit, states);
     const char *mode = component_mode_label(part->type, states);
-    app->status = mode ? mode : "Contato alternado. Ctrl+Z desfaz.";
+    app->status = mode ? mode : tr(TXT_APP_CONTACT_TOGGLED);
     return 1;
 }
 
@@ -993,7 +1004,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
         {
             app->selected = -1;
             app->wire_color = app->bench.wires[app->selected_wire].color;
-            app->status = "Fio selecionado; duplo clique no trecho adiciona joelho; F1 abre as cores.";
+            app->status = tr(TXT_APP_WIRE_SELECTED);
             if (clicks >= 2)
                 input_insert_knee(app, x, y);
             return;
@@ -1005,7 +1016,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
         {
             bench_set_on(&app->bench, hit, 1);
             app->held_button = hit;
-            app->status = "Botao pressionado; solte para abrir o contato. Contato ideal, sem bounce.";
+            app->status = tr(TXT_APP_BUTTON_PRESSED);
             return;
         }
         if (clicks >= 2 && app_code_editable(app, hit))
@@ -1022,7 +1033,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
         {
             bench_history_record(app->history, &app->bench);
             bench_set_on(&app->bench, hit, !app->bench.parts[hit].on);
-            app->status = "Estado alterado.";
+            app->status = tr(TXT_APP_STATE_CHANGED);
         }
         else
         {
@@ -1030,7 +1041,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
             app->move_recorded = 0;
             app->offset_x = x - app->bench.parts[hit].x;
             app->offset_y = y - app->bench.parts[hit].y;
-            app->status = "Arraste para mover; dois cliques alternam fonte ou chave.";
+            app->status = tr(TXT_APP_DRAG_PART);
         }
     }
     else
@@ -1039,7 +1050,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
         app->selecting_area = 1;
         app->area_start = (WirePoint){x, y};
         app->area_end = app->area_start;
-        app->status = "Arraste para selecionar uma area. Ctrl+C/X/V; Delete remove.";
+        app->status = tr(TXT_APP_DRAG_AREA);
     }
 }
 
@@ -1066,24 +1077,24 @@ static int input_click_lead(AppState *app, float x, float y, int clicks)
                     Workbench before BENCH_AUTO_CLEAR = {0};
                     if (!bench_snapshot_clone(&before, &app->bench))
                     {
-                        app->status = "Memoria insuficiente para editar o terminal.";
+                        app->status = tr(TXT_APP_OUT_OF_MEMORY);
                         return 1;
                     }
                     if (!bench_lead_remove(&app->bench, i, pin, point) ||
                         !bench_history_record(app->history, &before))
                     {
                         bench_replace(&app->bench, &before);
-                        app->status = "Falha ao remover joelho; terminal anterior preservado.";
+                        app->status = tr(TXT_APP_LEG_BEND_REMOVE_FAILED);
                     }
                     else
-                        app->status = "Joelho do terminal removido. Ctrl+Z desfaz.";
+                        app->status = tr(TXT_APP_LEG_BEND_REMOVED);
                 }
                 else
                 {
                     app->drag_lead = (Pin){i, pin};
                     app->drag_lead_point = point;
                     app->move_recorded = 0;
-                    app->status = "Arraste o terminal; Alt+duplo clique insere/remove joelho.";
+                    app->status = tr(TXT_APP_DRAG_LEG);
                 }
                 return 1;
             }
@@ -1096,17 +1107,17 @@ static int input_click_lead(AppState *app, float x, float y, int clicks)
                 Workbench before BENCH_AUTO_CLEAR = {0};
                 if (!bench_snapshot_clone(&before, &app->bench))
                 {
-                    app->status = "Memoria insuficiente para editar o terminal.";
+                    app->status = tr(TXT_APP_OUT_OF_MEMORY);
                     return 1;
                 }
                 if (!bench_lead_insert(&app->bench, i, pin, slot, projected) ||
                     !bench_history_record(app->history, &before))
                 {
                     bench_replace(&app->bench, &before);
-                    app->status = "Falha ao inserir joelho; terminal anterior preservado.";
+                    app->status = tr(TXT_APP_LEG_BEND_ADD_FAILED);
                 }
                 else
-                    app->status = "Joelho do terminal adicionado. Alt+arraste para dobrar.";
+                    app->status = tr(TXT_APP_LEG_BEND_ADDED);
                 app->selected = i;
                 return 1;
             }
@@ -1172,10 +1183,10 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         if (app->route_count < WIRE_MAX_KNEES)
         {
             app->route[app->route_count++] = (WirePoint){x, y};
-            app->status = "Joelho adicionado; termine em um terminal.";
+            app->status = tr(TXT_APP_ROUTE_BEND_ADDED);
         }
         else
-            app->status = "Limite de 16 joelhos por fio.";
+            report(app, TXT_APP_BEND_LIMIT, WIRE_MAX_KNEES);
         return;
     }
     input_select(app, x, y, event->button.clicks);
@@ -1195,7 +1206,7 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
     app->selecting_area = 0;
     if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
         !app->bench.parts[app->dragging].group && app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, app->dragging))
-        app->status = "Componente encaixado na breadboard.";
+        app->status = tr(TXT_APP_PART_SNAPPED);
     app->dragging = -1;
     app->drag_wire = -1;
 }
@@ -1240,13 +1251,13 @@ static void input_drag_lead(AppState *app, SDL_Window *window, const SDL_Event *
     {
         if (!bench_history_record(app->history, &app->bench))
         {
-            app->status = "Historico indisponivel; terminal preservado.";
+            app->status = tr(TXT_APP_HISTORY_FAILED);
             return;
         }
         app->move_recorded = 1;
     }
     if (!bench_lead_move(&app->bench, component, pin, app->drag_lead_point, world))
-        app->status = "Falha ao mover terminal: coordenadas invalidas ou memoria insuficiente.";
+        app->status = tr(TXT_APP_LEG_MOVE_FAILED);
 }
 
 static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *event)
@@ -1375,10 +1386,7 @@ static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Ev
     for (int i = 0; i < app->bench.part_count; ++i)
         if (app->selection.parts[i])
             app->selected = i;
-    snprintf(app->selection_status, sizeof(app->selection_status),
-             "%d componentes selecionados. Ctrl+C/X/V; Delete remove.",
-             bench_selection_count(&app->selection, &app->bench));
-    app->status = app->selection_status;
+    report(app, TXT_APP_PARTS_SELECTED, bench_selection_count(&app->selection, &app->bench));
 }
 
 /* Coalesce hover hit testing to one pass per frame; drag/model events still all execute. */

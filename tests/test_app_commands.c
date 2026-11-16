@@ -1,5 +1,6 @@
 #include "app_commands.h"
 #include "app_packing.h"
+#include "ui_text.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -93,7 +94,7 @@ int main(void)
     fclose(invalid);
     uint64_t unchanged = app.bench.revision;
     app_commands_key(&app, NULL, SDLK_L, SDL_KMOD_CTRL);
-    assert(app.bench.revision == unchanged && strstr(app.status, "preservada"));
+    assert(app.bench.revision == unchanged && !strcmp(app.status, tr(TXT_APP_PROJECT_LOAD_FAILED)));
     remove("build/test-slots/slot-9.elec");
 
     for (int i = 1; i <= 8; ++i)

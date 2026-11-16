@@ -1,5 +1,6 @@
 #include "bench_scope.h"
 #include "app_packing.h"
+#include "ui_text.h"
 #include "workbench_pack.h"
 #include "workbench_file.h"
 #include <direct.h>
@@ -22,7 +23,7 @@ void app_packing_refresh(AppState *app)
         block_path(app, i, path, sizeof(path));
         struct _stat metadata;
         app->library_available[i] = _stat(path, &metadata) == 0 || errno != ENOENT;
-        snprintf(app->library_names[i], sizeof(app->library_names[i]), "Bloco %d", i + 1);
+        snprintf(app->library_names[i], sizeof(app->library_names[i]), tr(TXT_CHIP_DEFAULT_NAME), i + 1);
         app->library_models[i] = 0;
         if (app->library_available[i])
         {
@@ -35,7 +36,8 @@ void app_packing_refresh(AppState *app)
                 app->library_models[i] = group->model;
             }
             else
-                strcpy(app->library_names[i], "Arquivo indisponivel");
+                snprintf(app->library_names[i], sizeof(app->library_names[i]), "%s",
+                         tr(TXT_APP_CHIP_FILE_UNAVAILABLE));
         }
     }
 }
@@ -89,7 +91,7 @@ int app_packing_store_model(AppState *app, const Workbench *model, int *slot)
     const char *directory = app->selftest ? "build/test-blocks" : "blocks";
     if (_mkdir(directory) != 0 && errno != EEXIST)
     {
-        snprintf(app->selection_status, sizeof(app->selection_status), "Falha ao criar biblioteca: %s",
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_LIBRARY_FOLDER_FAILED),
                  strerror(errno));
         return -1;
     }
@@ -109,7 +111,7 @@ int app_packing_store_model(AppState *app, const Workbench *model, int *slot)
     WorkbenchSettings settings = workbench_settings_default();
     if (!workbench_save_project(path, model, &settings))
     {
-        snprintf(app->selection_status, sizeof(app->selection_status), "Falha ao gravar bloco: %s", path);
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_CHIP_SAVE_FAILED), path);
         return -1;
     }
     *slot = target;
@@ -134,7 +136,7 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return 1;
     }
     if (mod & SDL_KMOD_SHIFT)
@@ -142,10 +144,10 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
         if (bench_unpack_selection(&app->bench, &app->selection))
         {
             bench_history_record(app->history, &before);
-            app->status = "Interior restaurado. Os fios externos permanecem ligados aos terminais originais.";
+            app->status = tr(TXT_APP_CHIP_UNPACKED);
         }
         else
-            app->status = "Selecione um bloco para desempacotar.";
+            app->status = tr(TXT_APP_SELECT_CHIP_TO_UNPACK);
         return 1;
     }
     int group = bench_pack_selection(&app->bench, &app->selection, app->selection_status,
@@ -162,9 +164,9 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
     if (stored < 0)
         app->status = app->selection_status;
     else if (!stored)
-        app->status = "Bloco criado; biblioteca cheia (8 slots). Ctrl+C/V ainda copia o bloco.";
+        app->status = tr(TXT_APP_CHIP_CREATED_NOT_SAVED);
     else
-        app->status = "Bloco criado e salvo na aba Blocos [Tab]. Ctrl+Shift+G desempacota na bancada.";
+        app->status = tr(TXT_APP_CHIP_CREATED);
     app->palette_page = 2;
     app->pending.component = -1;
     app->route_count = 0;
@@ -184,13 +186,13 @@ void app_packing_choose(AppState *app, int index)
     block_path(app, index, path, sizeof(path));
     if (!workbench_load_project(path, &candidate, &settings) || !candidate.part_count || !candidate.parts[0].group)
     {
-        app->status = "Bloco ausente ou invalido. Selecione pecas e use Ctrl+G para criar um.";
+        app->status = tr(TXT_APP_CHIP_FILE_MISSING);
         return;
     }
     for (int i = 0; i < candidate.part_count; ++i)
         if (candidate.parts[i].group != candidate.parts[0].group)
         {
-            app->status = "Biblioteca invalida: o arquivo precisa conter um unico bloco.";
+            app->status = tr(TXT_APP_CHIP_FILE_INVALID);
             return;
         }
     bench_snapshot_move(&app->library_template.bench, &candidate);
@@ -200,7 +202,7 @@ void app_packing_choose(AppState *app, int index)
     app->placing = -1;
     app->pending.component = -1;
     app->route_count = 0;
-    app->status = "Clique na bancada para colocar uma instancia independente do bloco.";
+    app->status = tr(TXT_APP_CLICK_TO_PLACE_CHIP);
 }
 
 void app_packing_place(AppState *app, float x, float y)
@@ -208,7 +210,7 @@ void app_packing_place(AppState *app, float x, float y)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
     const Workbench *model = &app->library_template.bench;
@@ -220,14 +222,16 @@ void app_packing_place(AppState *app, float x, float y)
     }
     if (!bench_selection_paste(&app->bench, &app->selection, &app->library_template, x, y))
     {
-        app->status = "Instancia nao cabe: o limite atual conta 64 pecas internas e 128 fios.";
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_NO_ROOM), WORKBENCH_MAX_COMPONENTS,
+                 WORKBENCH_MAX_WIRES);
+        app->status = app->selection_status;
         return;
     }
     bench_history_record(app->history, &before);
     app->selected = before.part_count;
     app->selected_wire = -1;
     app->packed_placing = 0;
-    app->status = "Bloco colocado. Conecte seus terminais; Ctrl+Shift+G desempacota na bancada.";
+    app->status = tr(TXT_APP_CHIP_PLACED);
 }
 
 /* Two-step removal from the library: the first request arms the slot, the second moves the file to
@@ -240,7 +244,7 @@ int app_packing_delete(AppState *app, int index)
     {
         app->library_delete_armed = index;
         snprintf(app->selection_status, sizeof(app->selection_status),
-                 "Clique de novo no x para remover \"%.60s\" da biblioteca.", app->library_names[index]);
+                 tr(TXT_APP_CONFIRM_REMOVE_CHIP), app->library_names[index]);
         app->status = app->selection_status;
         return 0;
     }
@@ -252,7 +256,7 @@ int app_packing_delete(AppState *app, int index)
     snprintf(target, sizeof(target), "%s/block-%d-%lld.elec", trash, index + 1, (long long)time(NULL));
     if ((_mkdir(trash) != 0 && errno != EEXIST) || rename(path, target) != 0)
     {
-        snprintf(app->selection_status, sizeof(app->selection_status), "Não foi possível remover o bloco: %s",
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_CHIP_REMOVE_FAILED),
                  strerror(errno));
         app->status = app->selection_status;
         return 0;
@@ -260,6 +264,6 @@ int app_packing_delete(AppState *app, int index)
     if (app->library_index == index)
         app->packed_placing = 0;
     app_packing_refresh(app);
-    app->status = "Bloco removido da biblioteca (cópia em lixeira). Instâncias na bancada continuam.";
+    app->status = tr(TXT_APP_CHIP_REMOVED);
     return 1;
 }

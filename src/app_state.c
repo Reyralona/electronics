@@ -1,4 +1,5 @@
 #include "app_state.h"
+#include "ui_text.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -35,7 +36,7 @@ void app_state_init(AppState *app)
     app->library_delete_armed = -1;
     app->code_part = -1;
     app->mcu = mcu_runtime_create();
-    app->status = "Escolha um componente na biblioteca e clique na bancada.";
+    app->status = tr(TXT_APP_START);
     app->sim.sim_running = 1;
     app->sim.trace_wire = -1;
 }

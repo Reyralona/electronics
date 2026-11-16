@@ -56,6 +56,8 @@ Pin sim_state_probe(const Workbench *bench, int selected, int probe_pin);
  * The caller supplies monotonic time; no window, renderer or clock API is needed. */
 const char *sim_state_invalidate(SimState *sim, const Workbench *bench);
 const char *sim_state_advance(SimState *sim, uint64_t now);
+/* Status line for the trace sample at trace_index, written to trace_status. */
+const char *sim_state_trace_text(SimState *sim);
 void sim_state_leds(const SimState *sim, const Workbench *bench, int leds[]);
 /* Stores device measurements of an accepted sample and advances scope history and motor angles. */
 void sim_state_accept_elements(SimState *sim, const Workbench *bench,

@@ -1,5 +1,6 @@
 #include "bench_scope.h"
 #include "app_commands.h"
+#include "ui_text.h"
 #include "app_editor.h"
 #include "app_editing.h"
 #include "app_packing.h"
@@ -43,7 +44,7 @@ void app_commands_load_example(AppState *app, int choice)
         app->status = workbench_example_description(choice);
     }
     else
-        app->status = "Falha ao preparar exemplo.";
+        app->status = tr(TXT_APP_EXAMPLE_FAILED);
     return;
 }
 
@@ -59,11 +60,9 @@ static void command_palette(AppState *app)
     app->placing = -1;
     app->packed_placing = 0;
     app_packing_refresh(app);
-    static const char *labels[PALETTE_PAGES] = {"Componentes básicos.", "Portas lógicas, CIs, microcontroladores e LCD.",
-                                                "Blocos reutilizáveis. Ctrl+G cria um bloco.", "Sensores com controle de ambiente.",
-                                                "Saídas: lâmpada, LED RGB, display, motores, servo e piezo.",
-                                                "Instrumentos: multímetro, osciloscópio e gerador de função."};
-    app->status = labels[app->palette_page];
+    static const TextId labels[PALETTE_PAGES] = {TXT_APP_PAGE_BASIC,   TXT_APP_PAGE_LOGIC,   TXT_APP_PAGE_CHIPS,
+                                                 TXT_APP_PAGE_SENSORS, TXT_APP_PAGE_OUTPUTS, TXT_APP_PAGE_INSTRUMENTS};
+    app->status = tr(labels[app->palette_page]);
     return;
 }
 
@@ -79,7 +78,7 @@ static void command_settings(AppState *app)
 static void command_home(AppState *app)
 {
     app->view = (BenchView){1, 0, 0};
-    app->status = "Vista restaurada.";
+    app->status = tr(TXT_APP_VIEW_RESET);
     return;
 }
 
@@ -99,10 +98,10 @@ static void command_history(AppState *app, SDL_Keycode key)
         app->pending.component = -1;
         app->route_count = 0;
         memset(app->leds, 0, sizeof(app->leds));
-        app->status = key == SDLK_Z ? "Acao desfeita." : "Acao refeita.";
+        app->status = tr(key == SDLK_Z ? TXT_APP_UNDONE : TXT_APP_REDONE);
     }
     else
-        app->status = "Nenhuma acao disponivel.";
+        app->status = tr(key == SDLK_Z ? TXT_APP_NOTHING_TO_UNDO : TXT_APP_NOTHING_TO_REDO);
     return;
 }
 
@@ -120,7 +119,7 @@ static void command_cancel(AppState *app)
     app->drag_lead.component = -1;
     app->selected = -1;
     app->selected_wire = -1;
-    app->status = "Selecao cancelada.";
+    app->status = tr(TXT_APP_SELECTION_CANCELED);
 }
 
 static void command_playback(AppState *app)
@@ -132,17 +131,14 @@ static void command_playback(AppState *app)
             app->sim.trace_index = 0;
         app->sim.trace_play_start_index = app->sim.trace_index;
         app->sim.trace_play_started = SDL_GetTicks();
-        app->status = "Reproducao da curva: intervalo completo em 5 s reais.";
+        app->status = tr(TXT_APP_PLAYING_CURVE);
         if (app->sim.trace_automatic)
-            app->status = "Simulacao em execucao: o circuito e calculado automaticamente.";
+            app->status = tr(TXT_APP_SIM_RUNNING);
     }
     else if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
-        app->status = "Reproducao pausada; B/N percorrem as amostras.";
-    else if (app->sim.auto_enabled)
-        app->status = app->sim.sim_running ? "Simulacao em execucao: o circuito e calculado automaticamente."
-                                           : "Simulacao pausada. Espaco ou o botao de play continua.";
+        app->status = tr(TXT_APP_PLAYBACK_PAUSED);
     else
-        app->status = app->sim.sim_running ? "Simulacao executando." : "Simulacao pausada.";
+        app->status = tr(app->sim.sim_running ? TXT_APP_SIM_RUNNING : TXT_APP_SIM_PAUSED);
 }
 
 static void command_recalculate(AppState *app)
@@ -155,7 +151,7 @@ static void command_recalculate(AppState *app)
     app->sim.auto_requested_valid = 0;
     app->sim.bench_changed_at = 0;
     app->sim.sim_running = 1;
-    app->status = "Recalculando o circuito...";
+    app->status = tr(TXT_APP_RECALCULATING);
 }
 
 static void command_rotate(AppState *app)
@@ -163,7 +159,7 @@ static void command_rotate(AppState *app)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
     if (bench_rotate_part(&app->bench, app->selected))
@@ -173,30 +169,30 @@ static void command_rotate(AppState *app)
         app->dragging = -1;
         app->pending.component = -1;
         app->route_count = 0;
-        app->status = "Componente girado 90 graus.";
+        app->status = tr(TXT_APP_PART_ROTATED);
     }
     else
-        app->status = "Esta placa ainda nao gira.";
+        app->status = tr(TXT_APP_BOARD_NO_ROTATE);
 }
 
 static void command_graph(AppState *app)
 {
     app->show_trace = !app->show_trace;
-    app->status = app->show_trace ? "Grafico visivel." : "Grafico oculto; pressione G para mostrar.";
+    app->status = app->show_trace ? tr(TXT_APP_GRAPH_SHOWN) : tr(TXT_APP_GRAPH_HIDDEN);
 }
 
 static void command_trace_wire(AppState *app)
 {
     if (app->dc_job.thread)
-        app->status = "Analise em andamento.";
+        app->status = tr(TXT_APP_CALCULATION_BUSY);
     else if (spice_job_start_transient_wire(&app->dc_job, &app->bench, app->ngspice, app->selected_wire,
                                             app->transient_step, app->transient_stop))
     {
         sim_state_clear_result(&app->sim);
-        app->status = "Calculando corrente transitoria do fio...";
+        app->status = tr(TXT_APP_CALCULATING_WIRE_CURRENT);
     }
     else
-        app->status = "Falha ao iniciar tarefa de analise.";
+        app->status = tr(TXT_APP_CALCULATION_START_FAILED);
 }
 
 static int start_part_trace(AppState *app)
@@ -215,21 +211,21 @@ static int start_part_trace(AppState *app)
 static void command_trace_part(AppState *app)
 {
     if (app->dc_job.thread)
-        app->status = "Analise em andamento.";
+        app->status = tr(TXT_APP_CALCULATION_BUSY);
     else if (!app->probe_current && app->probe_pin >= bench_pin_count(app->bench.parts[app->selected].type))
-        app->status = "Terminal indisponivel para este componente.";
+        app->status = tr(TXT_APP_NO_SUCH_TERMINAL);
     else if (app->probe_current &&
              (is_gate(app->bench.parts[app->selected].type) || component_has_flag(app->bench.parts[app->selected].type, COMPONENT_QUAD_GATE)))
-        app->status = "Corrente interna da porta nao disponivel.";
+        app->status = tr(TXT_APP_GATE_CURRENT_UNAVAILABLE);
     else if (app->probe_current && app->bench.parts[app->selected].type == PART_SWITCH)
-        app->status = "Corrente transitoria indisponivel para interruptor ideal.";
+        app->status = tr(TXT_APP_SWITCH_CURRENT_UNAVAILABLE);
     else if (start_part_trace(app))
     {
         sim_state_clear_result(&app->sim);
-        app->status = "Calculando transitorio selecionado...";
+        app->status = tr(TXT_APP_CALCULATING_CURVE);
     }
     else
-        app->status = "Falha ao iniciar tarefa de analise.";
+        app->status = tr(TXT_APP_CALCULATION_START_FAILED);
 }
 
 static void command_trace_step(AppState *app, SDL_Keycode key)
@@ -238,15 +234,7 @@ static void command_trace_step(AppState *app, SDL_Keycode key)
         ++app->sim.trace_index;
     if (key == SDLK_B && app->sim.trace_index > 0)
         --app->sim.trace_index;
-    const char *format = "Tensao: t=%.6g s; V=%.6g V (%d/%d).";
-    if (app->sim.trace_current == 2)
-        format = "Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).";
-    else if (app->sim.trace_current)
-        format = "Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).";
-    snprintf(app->sim.trace_status, sizeof(app->sim.trace_status), format,
-             app->sim.trace.samples[app->sim.trace_index].time, app->sim.trace.samples[app->sim.trace_index].value,
-             app->sim.trace_index + 1, app->sim.trace.count);
-    app->status = app->sim.trace_status;
+    app->status = sim_state_trace_text(&app->sim);
 }
 
 static void command_logic_step(AppState *app)
@@ -254,23 +242,23 @@ static void command_logic_step(AppState *app)
     if (bench_boolean_supported(&app->bench))
     {
         bench_simulate(&app->bench, app->leds);
-        app->status = "Um passo executado.";
+        app->status = tr(TXT_APP_STEP_DONE);
     }
     else
-        app->status = "Calculo eletrico ainda indisponivel.";
+        app->status = tr(TXT_APP_STEP_UNAVAILABLE);
 }
 
 static void command_dc(AppState *app)
 {
     if (app->dc_job.thread)
-        app->status = "Analise em andamento.";
+        app->status = tr(TXT_APP_CALCULATION_BUSY);
     else if ((app->show_current ? spice_job_start_wires : spice_job_start)(&app->dc_job, &app->bench, app->ngspice))
     {
         sim_state_clear_result(&app->sim);
-        app->status = "Analisando ponto DC...";
+        app->status = tr(TXT_APP_CALCULATING_DC);
     }
     else
-        app->status = "Falha ao iniciar tarefa de analise.";
+        app->status = tr(TXT_APP_CALCULATION_START_FAILED);
 }
 
 static void command_edit_value(AppState *app, SDL_Window *window)
@@ -283,13 +271,13 @@ static void command_edit_value(AppState *app, SDL_Window *window)
         {
             app->editing = app->selected;
             snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", app->bench.parts[app->selected].value);
-            app->status = "Digite o valor em unidades SI; Enter confirma, Esc cancela.";
+            app->status = tr(TXT_APP_TYPE_VALUE);
         }
         else
-            app->status = "Nao foi possivel iniciar edicao de texto.";
+            app->status = tr(TXT_APP_TEXT_INPUT_FAILED);
     }
     else
-        app->status = "Este componente nao possui valor editavel.";
+        app->status = tr(TXT_APP_NO_VALUE);
 }
 
 static void command_scale_value(AppState *app, SDL_Keycode key)
@@ -298,16 +286,16 @@ static void command_scale_value(AppState *app, SDL_Keycode key)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
     if (bench_set_value(&app->bench, app->selected, app->bench.parts[app->selected].value * scale))
     {
         bench_history_record(app->history, &before);
-        app->status = "Valor alterado.";
+        app->status = tr(TXT_APP_VALUE_CHANGED);
     }
     else
-        app->status = "Valor nao editavel ou fora do limite.";
+        app->status = tr(TXT_APP_VALUE_OUT_OF_RANGE);
 }
 
 static void command_delete_part(AppState *app)
@@ -320,7 +308,7 @@ static void command_delete_part(AppState *app)
     app->selected_wire = -1;
     app->pending.component = -1;
     memset(app->leds, 0, sizeof(app->leds));
-    app->status = "Componente e seus fios removidos.";
+    app->status = tr(TXT_APP_PART_DELETED);
 }
 
 static void command_delete_wire(AppState *app)
@@ -328,14 +316,14 @@ static void command_delete_wire(AppState *app)
     bench_history_record(app->history, &app->bench);
     bench_remove_wire(&app->bench, app->selected_wire);
     app->selected_wire = -1;
-    app->status = "Fio removido.";
+    app->status = tr(TXT_APP_WIRE_DELETED);
 }
 
 static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key)
 {
     if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T)
     {
-        app->status = "Ctrl+Shift+G desempacota o bloco nesta bancada.";
+        app->status = tr(TXT_APP_CHIP_ACTION_UNAVAILABLE);
         return;
     }
     switch (key)
@@ -395,8 +383,8 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
         return;
     case SDLK_X:
         app->xray = !app->xray;
-        app->status = app->xray ? "Transparencia ligada: terminais atras dos componentes ficam acessiveis. X desliga."
-                                : "Transparencia desligada: terminais cobertos voltam a ficar ocultos. X liga.";
+        app->status = app->xray ? tr(TXT_APP_TRANSPARENCY_ON)
+                                : tr(TXT_APP_TRANSPARENCY_OFF);
         return;
     case SDLK_ESCAPE:
         command_cancel(app);
@@ -410,7 +398,7 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
             app->sim.auto_requested_valid = 0;
             app->sim.sim_running = 1;
             app->show_trace = 0;
-            app->status = "Reiniciando o estado eletrico. Espaco apenas pausa/continua.";
+            app->status = tr(TXT_APP_RESETTING);
         }
         else
             command_playback(app);
