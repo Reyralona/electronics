@@ -2,6 +2,7 @@
 #include "netlist.h"
 #include "component_devices.h"
 #include "component_registry.h"
+#include "mcu_board.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -31,7 +32,7 @@ int netlist_device_supported(PartType type)
 
 int netlist_device_rebuilds_on_change(PartType type)
 {
-    return type == PART_FUNCTION_GENERATOR;
+    return type == PART_FUNCTION_GENERATOR || type == PART_LED;
 }
 
 static int write_motor(FILE *out, int i, const int *n, const MotorModel *m)
@@ -143,6 +144,47 @@ static int write_contacts(FILE *out, const Part *part, int i, const int *n)
     return 1;
 }
 
+/* Board: optional on-board regulator(s); each IO is a level source scaled by the supply, a 25 ohm
+ * output resistance (open when input), an optional 30 kOhm pull-up and a voltage sense. */
+static int write_regulator(FILE *out, int i, const char *tag, int terminal_node, int ground, double volts)
+{
+    return fprintf(out, "Vmcu%d_%s mcu%d_%s %d DC %.17g\nRmcu%d_%s mcu%d_%s %d 0.05\n", i, tag, i, tag, ground, volts, i,
+                   tag, i, tag, terminal_node) >= 0;
+}
+
+static int write_board(FILE *out, const Part *part, int i, const int *n)
+{
+    const McuBoard *board = mcu_board(part->type);
+    int ground = n[board->ground_terminal], supply = n[board->supply_terminal];
+    if (board->supply_volts > 0 && !write_regulator(out, i, "reg", supply, ground, board->supply_volts))
+        return 0;
+    if (board->auxiliary_terminal >= 0 &&
+        !write_regulator(out, i, "aux", n[board->auxiliary_terminal], ground, board->auxiliary_volts))
+        return 0;
+    for (int k = 0; k < board->io_count; ++k)
+    {
+        int pin = n[board->io_terminal[k]];
+        char name[48];
+        double values[3];
+        for (int control = 0; control < 3; ++control)
+            netlist_device_control(part, i, k * 3 + control, name, sizeof(name), &values[control]);
+        if (fprintf(out,
+                    "Vmcu%d_l%d mcu%d_l%d 0 DC %.17g\nBmcu%d_d%d mcu%d_o%d %d V=V(mcu%d_l%d)*max(V(%d,%d),0)\n"
+                    "Rmcu%d_o%d mcu%d_o%d %d %.17g\nRmcu%d_u%d %d %d %.17g\nBmcu%d_s%d mcu%d_in%d 0 V=V(%d)-V(%d)\n",
+                    i, k, i, k, values[0], i, k, i, k, ground, i, k, supply, ground, i, k, i, k, pin, values[1], i, k,
+                    supply, pin, values[2], i, k, i, k, pin, ground) < 0)
+            return 0;
+    }
+    return 1;
+}
+
+static int write_lcd(FILE *out, int i, const int *n)
+{
+    const int gnd = 0, vcc = 1, sda = 2, scl = 3;
+    return fprintf(out, "Rlcd%d %d %d 1000\nBlcd%d lcd%d_pwr 0 V=V(%d)-V(%d)\nRlcd_sda%d %d %d 10000\nRlcd_scl%d %d %d 10000\n",
+                   i, n[vcc], n[gnd], i, i, n[vcc], n[gnd], i, n[sda], n[vcc], i, n[scl], n[vcc]) >= 0;
+}
+
 int netlist_device_write(FILE *out, const Part *part, int i, const int *n)
 {
     switch (part->type)
@@ -177,6 +219,12 @@ int netlist_device_write(FILE *out, const Part *part, int i, const int *n)
     case PART_OSCILLOSCOPE:
         return fprintf(out, "Rosc%d %d %d %.17g\nBosc%d oscv%d 0 V=V(%d)-V(%d)\n", i, n[0], n[1], SCOPE_INPUT_OHMS, i, i,
                        n[0], n[1]) >= 0;
+    case PART_ARDUINO_UNO:
+    case PART_ESP32:
+    case PART_ATTINY85:
+        return write_board(out, part, i, n);
+    case PART_LCD_I2C:
+        return write_lcd(out, i, n);
     case PART_PIR:
     case PART_GAS:
     case PART_IR_OBSTACLE:
@@ -191,11 +239,15 @@ int netlist_device_models(FILE *out)
 {
     /* Same diode law as LED_GENERIC, with saturation currents placing 10 mA near 1.9/2.2/2.9 V. */
     return fprintf(out, ".model LED_RED D(IS=1e-18 N=2 RS=2)\n.model LED_GREEN D(IS=3.6e-21 N=2 RS=2)\n"
+                        ".model LED_YELLOW D(IS=6.4e-20 N=2 RS=2)\n"
                         ".model LED_BLUE D(IS=4.7e-27 N=2 RS=2)\n.model relay_contact SW(Ron=.05 Roff=1e10 Vt=.5 Vh=.2)\n") >= 0;
 }
 
 int netlist_device_control_count(const Part *part)
 {
+    const McuBoard *board = mcu_board(part->type);
+    if (board)
+        return board->io_count * 3;
     switch (part->type)
     {
     case PART_DIP_SWITCH:
@@ -218,6 +270,19 @@ int netlist_device_control(const Part *part, int index, int control, char *name,
 {
     if (control < 0 || control >= netlist_device_control_count(part))
         return 0;
+    if (mcu_board(part->type))
+    {
+        int io = control / 3, kind = control % 3, mode = part->io_mode[io];
+        static const char *tags[] = {"Vmcu%d_l%d", "Rmcu%d_o%d", "Rmcu%d_u%d"};
+        snprintf(name, capacity, tags[kind], index, io);
+        if (kind == 0)
+            *value = mode == MCU_OUTPUT ? fmin(1, fmax(0, part->io_level[io])) : 0;
+        else if (kind == 1)
+            *value = mode == MCU_OUTPUT ? MCU_OUTPUT_OHMS : NETLIST_LIVE_OPEN_OHMS;
+        else
+            *value = mode == MCU_INPUT_PULLUP ? MCU_PULLUP_OHMS : NETLIST_LIVE_OPEN_OHMS;
+        return 1;
+    }
     switch (part->type)
     {
     case PART_DIP_SWITCH:

@@ -9,9 +9,62 @@
 #include "workbench_pack.h"
 #include "workbench_examples.h"
 #include "component_devices.h"
+#include "mcu_lang.h"
+#include "mcu_board.h"
+#include "code_text.h"
+#include "app_code_editor.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+/* Transparent ("raio-x") part bodies: every primitive of a part is drawn at XRAY_ALPHA through the
+ * constant blend colour, so terminals and wires behind it stay visible. glBlendColor is GL 1.4 and is
+ * loaded at run time; without it parts draw opaque and only hit testing changes. */
+#define XRAY_ALPHA .32f
+typedef void(APIENTRY *BlendColorProc)(GLfloat, GLfloat, GLfloat, GLfloat);
+static int xray_active;
+
+static int xray_begin(void)
+{
+    static BlendColorProc blend_color;
+    static int loaded;
+    if (!loaded)
+    {
+        blend_color = (BlendColorProc)(void *)wglGetProcAddress("glBlendColor");
+        loaded = 1;
+    }
+    if (!blend_color)
+        return 0;
+    blend_color(0, 0, 0, XRAY_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+    xray_active = 1;
+    return 1;
+}
+
+static void xray_end(void)
+{
+    if (!xray_active)
+        return;
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_BLEND);
+    xray_active = 0;
+}
+
+/* Glows inside part art use their own alpha, then return to the x-ray blend when it is on. */
+static void glow_blend_begin(void)
+{
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+}
+
+static void glow_blend_end(void)
+{
+    if (xray_active)
+        glBlendFunc(GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+    else
+        glDisable(GL_BLEND);
+}
 
 static void rect(float x, float y, float w, float h)
 {
@@ -560,10 +613,16 @@ static void draw_part_led(const Part *p, int led, float brightness)
     glTranslatef(x, y, 0);
     glRotatef(-p->rotation * 90.0f, 0, 0, 1);
     glTranslatef(-x, -y, 0);
-    color(.38f, .08f, .07f);
+    /* Per color: dark rim, unlit lens and lit lens (Part.states, see component_led_color_name). */
+    static const float palette[COMPONENT_LED_COLORS][3][3] = {
+        {{.38f, .08f, .07f}, {.48f, .08f, .08f}, {1, .33f, .26f}},  {{.06f, .30f, .12f}, {.10f, .40f, .16f}, {.40f, 1, .45f}},
+        {{.06f, .14f, .40f}, {.10f, .20f, .52f}, {.40f, .62f, 1}},  {{.42f, .36f, .04f}, {.55f, .48f, .08f}, {1, .92f, .30f}},
+        {{.55f, .56f, .58f}, {.80f, .82f, .84f}, {1, 1, 1}},        {{.45f, .20f, .03f}, {.62f, .30f, .06f}, {1, .62f, .18f}}};
+    const float(*tone)[3] = palette[p->states < COMPONENT_LED_COLORS ? p->states : 0];
+    glColor3f(tone[0][0], tone[0][1], tone[0][2]);
     ellipse(x, y + 9, 17, 5);
     rect(x - 14, y - 12, 28, 21);
-    color(.55f, .09f, .08f);
+    glColor3f(tone[1][0] * 1.15f, tone[1][1] * 1.15f, tone[1][2] * 1.15f);
     ellipse(x, y + 8, 16, 4);
     /* led: -1 unknown, 0 off, 1 lit, 2 burnt */
     if (led == 2)
@@ -576,16 +635,13 @@ static void draw_part_led(const Part *p, int led, float brightness)
     }
     else
     {
-        if (led < 0)
-            color(.48f, .48f, .48f);
-        else
-            color(.48f + .52f * brightness, .08f + .25f * brightness, .08f + .18f * brightness);
+        float glow = led < 0 ? 0 : brightness;
+        glColor3f(tone[1][0] + (tone[2][0] - tone[1][0]) * glow, tone[1][1] + (tone[2][1] - tone[1][1]) * glow,
+                  tone[1][2] + (tone[2][2] - tone[1][2]) * glow);
         circle(x, y - 14, 13);
         rect(x - 13, y - 14, 26, 23);
-        if (led < 0)
-            color(.7f, .7f, .7f);
-        else
-            color(.72f + .28f * brightness, .24f + .50f * brightness, .22f + .40f * brightness);
+        glColor3f(fminf(1, tone[1][0] + .3f + .3f * glow), fminf(1, tone[1][1] + .3f + .3f * glow),
+                  fminf(1, tone[1][2] + .3f + .3f * glow));
         circle(x - 4, y - 18, 4);
         rect(x - 8, y - 17, 3, 14);
     }
@@ -800,6 +856,7 @@ typedef struct
     const float *scope;
     int scope_count;
     double motor_angle;
+    const LcdScreen *lcd;
 } DeviceFrame;
 static DeviceFrame device_frame;
 
@@ -831,11 +888,10 @@ static void draw_rgb_led(const Part *p)
     float mix = fmaxf(r, fmaxf(g, b));
     if (mix > 0)
     {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glow_blend_begin();
         glColor4f(r, g, b, .35f * mix);
         circle(x, y - 6, 22 + 10 * mix);
-        glDisable(GL_BLEND);
+        glow_blend_end();
     }
     glColor3f(.70f, .72f, .74f);
     rounded_rect(x - 17, y + 10, 34, 6, 2);
@@ -1160,6 +1216,166 @@ static void draw_sensor_module(const Part *p)
     }
 }
 
+/* ---- Microcontroller boards and the character LCD ---- */
+/* Classic 5x7 character generator (columns, LSB at the top), ASCII 32..126. */
+static const unsigned char lcd_font[95][5] = {
+    {0x00,0x00,0x00,0x00,0x00},{0x00,0x00,0x5F,0x00,0x00},{0x00,0x07,0x00,0x07,0x00},{0x14,0x7F,0x14,0x7F,0x14},
+    {0x24,0x2A,0x7F,0x2A,0x12},{0x23,0x13,0x08,0x64,0x62},{0x36,0x49,0x55,0x22,0x50},{0x00,0x05,0x03,0x00,0x00},
+    {0x00,0x1C,0x22,0x41,0x00},{0x00,0x41,0x22,0x1C,0x00},{0x08,0x2A,0x1C,0x2A,0x08},{0x08,0x08,0x3E,0x08,0x08},
+    {0x00,0x50,0x30,0x00,0x00},{0x08,0x08,0x08,0x08,0x08},{0x00,0x60,0x60,0x00,0x00},{0x20,0x10,0x08,0x04,0x02},
+    {0x3E,0x51,0x49,0x45,0x3E},{0x00,0x42,0x7F,0x40,0x00},{0x42,0x61,0x51,0x49,0x46},{0x21,0x41,0x45,0x4B,0x31},
+    {0x18,0x14,0x12,0x7F,0x10},{0x27,0x45,0x45,0x45,0x39},{0x3C,0x4A,0x49,0x49,0x30},{0x01,0x71,0x09,0x05,0x03},
+    {0x36,0x49,0x49,0x49,0x36},{0x06,0x49,0x49,0x29,0x1E},{0x00,0x36,0x36,0x00,0x00},{0x00,0x56,0x36,0x00,0x00},
+    {0x00,0x08,0x14,0x22,0x41},{0x14,0x14,0x14,0x14,0x14},{0x41,0x22,0x14,0x08,0x00},{0x02,0x01,0x51,0x09,0x06},
+    {0x32,0x49,0x79,0x41,0x3E},{0x7E,0x11,0x11,0x11,0x7E},{0x7F,0x49,0x49,0x49,0x36},{0x3E,0x41,0x41,0x41,0x22},
+    {0x7F,0x41,0x41,0x22,0x1C},{0x7F,0x49,0x49,0x49,0x41},{0x7F,0x09,0x09,0x01,0x01},{0x3E,0x41,0x41,0x51,0x32},
+    {0x7F,0x08,0x08,0x08,0x7F},{0x00,0x41,0x7F,0x41,0x00},{0x20,0x40,0x41,0x3F,0x01},{0x7F,0x08,0x14,0x22,0x41},
+    {0x7F,0x40,0x40,0x40,0x40},{0x7F,0x02,0x04,0x02,0x7F},{0x7F,0x04,0x08,0x10,0x7F},{0x3E,0x41,0x41,0x41,0x3E},
+    {0x7F,0x09,0x09,0x09,0x06},{0x3E,0x41,0x51,0x21,0x5E},{0x7F,0x09,0x19,0x29,0x46},{0x46,0x49,0x49,0x49,0x31},
+    {0x01,0x01,0x7F,0x01,0x01},{0x3F,0x40,0x40,0x40,0x3F},{0x1F,0x20,0x40,0x20,0x1F},{0x7F,0x20,0x18,0x20,0x7F},
+    {0x63,0x14,0x08,0x14,0x63},{0x03,0x04,0x78,0x04,0x03},{0x61,0x51,0x49,0x45,0x43},{0x00,0x00,0x7F,0x41,0x41},
+    {0x02,0x04,0x08,0x10,0x20},{0x41,0x41,0x7F,0x00,0x00},{0x04,0x02,0x01,0x02,0x04},{0x40,0x40,0x40,0x40,0x40},
+    {0x00,0x01,0x02,0x04,0x00},{0x20,0x54,0x54,0x54,0x78},{0x7F,0x48,0x44,0x44,0x38},{0x38,0x44,0x44,0x44,0x20},
+    {0x38,0x44,0x44,0x48,0x7F},{0x38,0x54,0x54,0x54,0x18},{0x08,0x7E,0x09,0x01,0x02},{0x08,0x14,0x54,0x54,0x3C},
+    {0x7F,0x08,0x04,0x04,0x78},{0x00,0x44,0x7D,0x40,0x00},{0x20,0x40,0x44,0x3D,0x00},{0x00,0x7F,0x10,0x28,0x44},
+    {0x00,0x41,0x7F,0x40,0x00},{0x7C,0x04,0x18,0x04,0x78},{0x7C,0x08,0x04,0x04,0x78},{0x38,0x44,0x44,0x44,0x38},
+    {0x7C,0x14,0x14,0x14,0x08},{0x08,0x14,0x14,0x18,0x7C},{0x7C,0x08,0x04,0x04,0x08},{0x48,0x54,0x54,0x54,0x20},
+    {0x04,0x3F,0x44,0x40,0x20},{0x3C,0x40,0x40,0x20,0x7C},{0x1C,0x20,0x40,0x20,0x1C},{0x3C,0x40,0x30,0x40,0x3C},
+    {0x44,0x28,0x10,0x28,0x44},{0x0C,0x50,0x50,0x50,0x3C},{0x44,0x64,0x54,0x4C,0x44},{0x00,0x08,0x36,0x41,0x00},
+    {0x00,0x00,0x7F,0x00,0x00},{0x00,0x41,0x36,0x08,0x00},{0x08,0x08,0x2A,0x1C,0x08}};
+
+static void header_strip(float x, float y, int pins)
+{
+    glColor3f(.08f, .08f, .09f);
+    rect(x - 7, y - 6, pins * 14.0f, 12);
+    glColor3f(.30f, .30f, .32f);
+    for (int pin = 0; pin < pins; ++pin)
+        rect(x - 2 + pin * 14.0f, y - 2, 4, 4);
+}
+
+static void board_led(float x, float y, int lit, float r, float g, float b)
+{
+    glColor3f(lit ? r : r * .3f, lit ? g : g * .3f, lit ? b : b * .3f);
+    rounded_rect(x - 4, y - 2.5f, 8, 5, 1.5f);
+}
+
+static int io_high(const Part *p, int io)
+{
+    return p->io_mode[io] == MCU_OUTPUT && p->io_level[io] > .5f;
+}
+
+static void draw_arduino_uno(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.02f, .26f, .34f);
+    rounded_rect(x - 150, y - 76, 300, 156, 8);
+    glColor3f(.04f, .40f, .50f);
+    rounded_rect(x - 148, y - 78, 296, 152, 8);
+    glColor3f(.72f, .74f, .76f);
+    rect(x - 162, y - 50, 40, 34);
+    glColor3f(.08f, .08f, .09f);
+    rect(x - 160, y + 18, 30, 30);
+    header_strip(x - 56, y - 92, 14);
+    header_strip(x - 98, y + 92, 3);
+    header_strip(x - 28, y + 92, 6);
+    glColor3f(.10f, .11f, .12f);
+    rect(x - 20, y + 14, 120, 26);
+    glColor3f(.70f, .72f, .74f);
+    for (int leg = 0; leg < 14; ++leg)
+        rect(x - 17 + leg * 8.4f, y + 10, 3, 4);
+    glColor3f(.85f, .86f, .87f);
+    circle(x - 120, y - 62, 5);
+    circle(x + 130, y - 62, 5);
+    circle(x + 130, y + 62, 5);
+    board_led(x + 60, y - 60, io_high(p, 13), 1, .62f, .10f);
+    board_led(x + 92, y - 26, 1, .30f, .95f, .40f);
+    glColor3f(.92f, .95f, .96f);
+    rect(x - 100, y - 24, 60, 3);
+    rect(x - 100, y - 16, 44, 3);
+}
+
+static void draw_esp32(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.07f, .07f, .08f);
+    rounded_rect(x - 160, y - 46, 320, 92, 6);
+    header_strip(x - 140, y - 58, 11);
+    header_strip(x - 140, y + 58, 11);
+    glColor3f(.72f, .74f, .76f);
+    rounded_rect(x + 30, y - 32, 96, 64, 3);
+    glColor3f(.60f, .62f, .64f);
+    rect(x + 38, y - 24, 80, 48);
+    glColor3f(.85f, .70f, .20f);
+    glLineWidth(2);
+    line(x + 130, y - 30, x + 150, y - 30);
+    line(x + 150, y - 30, x + 150, y + 30);
+    line(x + 150, y + 30, x + 136, y + 30);
+    glLineWidth(1);
+    glColor3f(.72f, .74f, .76f);
+    rect(x - 174, y - 12, 20, 24);
+    board_led(x - 120, y + 20, io_high(p, 0), .30f, .55f, 1);
+    board_led(x - 120, y - 20, 1, 1, .20f, .15f);
+}
+
+static void draw_attiny(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.70f, .72f, .74f);
+    for (int leg = 0; leg < 4; ++leg)
+    {
+        rect(x - 23 + leg * 14.0f, y - 22, 4, 9);
+        rect(x - 23 + leg * 14.0f, y + 13, 4, 9);
+    }
+    glColor3f(.14f, .16f, .18f);
+    rect(x - 30, y - 12, 60, 26);
+    glColor3f(.24f, .27f, .30f);
+    rect(x - 30, y - 14, 60, 24);
+    glColor3f(.72f, .76f, .78f);
+    circle(x - 22, y + 5, 2.5f);
+    glColor3f(.14f, .16f, .18f);
+    circle(x - 30, y - 2, 5);
+}
+
+static void lcd_character(float x, float y, unsigned char c, float pixel, int lit)
+{
+    if (c < 32 || c > 126)
+        c = '?';
+    for (int column = 0; column < 5; ++column)
+        for (int row = 0; row < 7; ++row)
+        {
+            int on = lcd_font[c - 32][column] >> row & 1;
+            if (on)
+                glColor3f(lit ? .92f : .08f, lit ? .97f : .14f, lit ? 1 : .10f);
+            else
+                glColor3f(lit ? .14f : .46f, lit ? .30f : .56f, lit ? .80f : .20f);
+            rect(x + column * pixel, y + row * pixel, pixel * .82f, pixel * .82f);
+        }
+}
+
+static void draw_lcd(const Part *p)
+{
+    float x = p->x, y = p->y;
+    const LcdScreen *screen = device_frame.lcd;
+    int powered = device_element(0) > 4.0;
+    int lit = powered && screen && screen->backlight;
+    glColor3f(.04f, .30f, .12f);
+    rounded_rect(x - 124, y - 46, 248, 92, 5);
+    glColor3f(.85f, .86f, .87f);
+    for (int hole = 0; hole < 4; ++hole)
+        circle(x + (hole % 2 ? 116 : -116), y + (hole / 2 ? 38 : -38), 3.5f);
+    glColor3f(.06f, .07f, .08f);
+    rect(x - 108, y - 34, 220, 68);
+    glColor3f(lit ? .10f : .36f, lit ? .25f : .46f, lit ? .70f : .16f);
+    rect(x - 102, y - 28, 208, 56);
+    const float pixel = 2.0f, cell = 12.8f;
+    for (int row = 0; row < LCD_ROWS; ++row)
+        for (int column = 0; column < LCD_COLUMNS; ++column)
+        {
+            unsigned char c = powered && screen && screen->used ? (unsigned char)screen->text[row][column] : ' ';
+            lcd_character(x - 100 + column * cell, y - 23 + row * 26.0f, c ? c : ' ', pixel, lit);
+        }
+}
+
 /* Rigid multi-pin packages: metal legs from each terminal to the nearest body edge. */
 static void draw_device_legs(const Part *p)
 {
@@ -1223,6 +1439,18 @@ static int draw_device(const Part *p)
     case PART_OSCILLOSCOPE:
         draw_oscilloscope(p);
         return 1;
+    case PART_ARDUINO_UNO:
+        draw_arduino_uno(p);
+        return 1;
+    case PART_ESP32:
+        draw_esp32(p);
+        return 1;
+    case PART_ATTINY85:
+        draw_attiny(p);
+        return 1;
+    case PART_LCD_I2C:
+        draw_lcd(p);
+        return 1;
     case PART_PIR:
     case PART_GAS:
     case PART_IR_OBSTACLE:
@@ -1246,11 +1474,10 @@ static void draw_lamp(const Part *part, float brightness)
         rect(x - 14, y - 7 + ridge * 5, 28, 1.2f);
     if (glow > 0)
     {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glow_blend_begin();
         glColor4f(1, .86f, .40f, .35f * glow);
         circle(x, y - 30, 22 + 14 * glow);
-        glDisable(GL_BLEND);
+        glow_blend_end();
     }
     glColor3f(.78f + .2f * glow, .84f + .12f * glow, .88f - .25f * glow);
     circle(x, y - 30, 19);
@@ -1322,10 +1549,24 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
         color(.33f,.36f,.39f);
         for (int corner = 0; corner < 4; ++corner)
             circle(x + (corner % 2 ? 20 : -20), y + (corner / 2 ? 10 : -17), 2);
-        color(.15f, .17f, .19f);
-        circle(x, y - (p->on ? 1 : 6), 14);
-        color(.25f, .28f, .31f);
-        circle(x - 2, y - (p->on ? 3 : 8), 11);
+        /* Cap: raised with a drop shadow and highlight; pressed sinks into the bezel and darkens. */
+        float lift = p->on ? 0 : 4;
+        color(.10f, .11f, .12f);
+        circle(x, y - 4, 15.5f);
+        if (!p->on)
+        {
+            color(.06f, .07f, .08f);
+            circle(x + 1.5f, y - 1.5f, 13.5f);
+        }
+        color(p->on ? .12f : .20f, p->on ? .13f : .22f, p->on ? .15f : .25f);
+        circle(x, y - 4 - lift, p->on ? 12.5f : 13.5f);
+        color(p->on ? .18f : .32f, p->on ? .20f : .35f, p->on ? .22f : .39f);
+        circle(x - 2.5f, y - 6.5f - lift, p->on ? 8 : 9);
+        if (!p->on)
+        {
+            color(.55f, .58f, .62f);
+            ellipse(x - 5, y - 12 - lift, 3.5f, 2);
+        }
     }
     else if (p->type == PART_SWITCH)
     {
@@ -1463,8 +1704,7 @@ static void burnt_draw(GLuint font, const Part *part, Uint64 ticks)
 {
     int k;
     float x = part->x, y = part->y;
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glow_blend_begin();
     glColor4f(.10f, .07f, .05f, .55f);
     circle(x, y, 22);
     for (k = 0; k < 3; ++k)
@@ -1473,7 +1713,7 @@ static void burnt_draw(GLuint font, const Part *part, Uint64 ticks)
         glColor4f(.38f, .38f, .40f, .6f * (1.0f - phase));
         circle(x + sinf(phase * 6.0f + (float)k * 2.0f) * 7.0f, y - 20.0f - phase * 36.0f, 5.0f + phase * 8.0f);
     }
-    glDisable(GL_BLEND);
+    glow_blend_end();
     color(.86f, .12f, .08f);
     text(font, x - 36, y - 44, "QUEIMADO");
 }
@@ -2002,6 +2242,7 @@ static void set_device_frame(const AppState *app, int part)
     device_frame.scope = app->sim.scope_history[part];
     device_frame.scope_count = app->sim.scope_count[part];
     device_frame.motor_angle = app->sim.motor_angle[part];
+    device_frame.lcd = app->mcu ? &app->mcu->lcd[part] : NULL;
 }
 
 static void draw_workspace_boards(const AppState *app)
@@ -2132,9 +2373,13 @@ static void draw_workspace_route(const AppState *app)
                 continue;
             for (k = 0; k < app->bench.wires[i].knee_count; ++k)
             {
+                /* Screen-sized dots: visible as edit handles without hiding the wire at any zoom. */
                 WirePoint p = app->bench.wires[i].knees[k];
+                float radius = (app->selected_wire == i ? 3.5f : 2.2f) / app->view.zoom;
+                color(.85f, .88f, .92f);
+                circle(p.x, p.y, radius + .8f / app->view.zoom);
                 color(.1f, .3f, .45f);
-                rect(p.x - 4, p.y - 4, 8, 8);
+                circle(p.x, p.y, radius);
             }
         }
 }
@@ -2148,15 +2393,17 @@ static void draw_workspace_parts(const AppState *app)
         {
             int p;
             set_device_frame(app, i);
+            if (app->xray)
+                xray_begin();
             part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i], measured_led_brightness(app, i));
+            xray_end();
             if (app->show_handles && app->selected == i)
                 for (int pin = 0; pin < bench_pin_count(app->bench.parts[i].type); ++pin)
                     for (size_t point = 0; point + 1 < bench_lead_count(&app->bench.parts[i], pin); ++point)
                     {
                         WirePoint knee = bench_lead_point(&app->bench.parts[i], pin, point);
                         color(.25f, .65f, .9f);
-                        float radius = 4 / app->view.zoom;
-                        rect(knee.x - radius, knee.y - radius, 2 * radius, 2 * radius);
+                        circle(knee.x, knee.y, 2.8f / app->view.zoom);
                     }
             for (p = 0; p < bench_pin_count(app->bench.parts[i].type); ++p)
             {
@@ -2523,23 +2770,34 @@ static void draw_groups(const AppState *app, GLuint font)
                 lit |= app->leds[i] == 1 && app->bench.parts[i].type == PART_LED;
                 burnt |= app->sim.burnt[i];
             }
-        color(.65f, .69f, .72f);
-        rect(group->x - width * .5f + 3, group->y - height * .5f + 4, width, height);
-        color(burnt ? .45f : .16f, .2f, .25f);
-        rect(group->x - width * .5f, group->y - height * .5f, width, height);
-        color(selected ? .22f : .55f, .7f, .9f);
-        glLineWidth(selected ? 3 : 1);
-        glBegin(GL_LINE_LOOP);
-        glVertex2f(group->x - width * .5f - 1, group->y - height * .5f);
-        glVertex2f(group->x + width * .5f + 1, group->y - height * .5f);
-        glVertex2f(group->x + width * .5f + 1, group->y + height * .5f);
-        glVertex2f(group->x - width * .5f - 1, group->y + height * .5f);
-        glEnd();
-        glLineWidth(1);
+        /* Same package language as the DIP ICs: dark molded body, pin-1 notch, metal legs, small pads. */
+        float left = group->x - width * .5f, top = group->y - height * .5f;
+        glColor3f(.10f, .11f, .12f);
+        rect(left + 2, top + 3, width, height);
+        glColor3f(burnt ? .40f : .24f, burnt ? .16f : .27f, burnt ? .14f : .30f);
+        rect(left, top, width, height);
+        glColor3f(.18f, .20f, .22f);
+        rect(left, top + height - 4, width, 4);
+        glColor3f(.14f, .16f, .18f);
+        circle(left, group->y, 6);
+        glColor3f(.70f, .74f, .76f);
+        circle(left + 9, top + 9, 2.5f);
+        if (selected)
+        {
+            glColor3f(.12f, .49f, .84f);
+            glLineWidth(2);
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(left - 3, top - 3);
+            glVertex2f(left + width + 3, top - 3);
+            glVertex2f(left + width + 3, top + height + 3);
+            glVertex2f(left - 3, top + height + 3);
+            glEnd();
+            glLineWidth(1);
+        }
         char label[40];
         snprintf(label, sizeof(label), "Bloco %d", g + 1);
-        color(.9f, .94f, .98f);
-        name_text(font, group->x - width * .5f + 8, group->y + 5, group->name[0] ? group->name : label, (int)width - 16);
+        glColor3f(.86f, .89f, .91f);
+        name_text(font, left + 14, group->y + 5, group->name[0] ? group->name : label, (int)width - 24);
         if (lit)
         {
             color(.3f, .95f, .45f);
@@ -2551,16 +2809,16 @@ static void draw_groups(const AppState *app, GLuint font)
         {
             float x, y;
             bench_terminal_position(&app->bench, pin, &x, &y);
-            color(.45f, .52f, .58f);
-            line(x, y, x < group->x ? x + 10 : x - 10, y);
-            color(.18f, .23f, .28f);
-            circle(x, y, 8);
-            color(.94f, .96f, .98f);
-            circle(x, y, 5);
+            float edge = x < group->x ? left : left + width;
+            glColor3f(.70f, .72f, .74f);
+            rect(fminf(x, edge), y - 1.5f, fabsf(edge - x), 3);
+            circle(x, y, 3.5f);
+            if (!selected && !app->show_pin_labels)
+                continue;
             const ComponentPinInfo *info = component_pin_info(app->bench.parts[pin.component].type, pin.pin);
             pin_role_color(info->role);
-            snprintf(label, sizeof(label), "%d %s", index + 1, component_pin_marker(info->role));
-            text(font, x < group->x ? x - 56 : x + 12, y - 8, label);
+            snprintf(label, sizeof(label), "%d", index + 1);
+            world_text(font, x + (x < group->x ? -14 : 6) / app->view.zoom, y - 6 / app->view.zoom, label, app->view.zoom);
         }
     }
 }
@@ -2593,9 +2851,10 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
     draw_workspace_boards(app);
     draw_workspace_wires(app);
     draw_workspace_route(app);
+    /* Wire tips in breadboard holes belong under the parts plugged on top of them. */
+    draw_workspace_contacts(app);
     draw_workspace_parts(app);
     draw_groups(app, font);
-    draw_workspace_contacts(app);
     draw_workspace_labels(app, font);
     draw_workspace_probe(app, font);
     draw_workspace_burns(app, font);
@@ -2757,6 +3016,30 @@ static void draw_environment_control(GLuint font, const Part *part)
     ui_note(font, 852, 326, environment->note, INSPECTOR_NOTE_WIDTH);
 }
 
+static void draw_led_colors(const AppState *app, GLuint font, const Part *part)
+{
+    static const float swatches[APP_LED_SWATCHES][3] = {{.90f, .18f, .14f}, {.20f, .75f, .30f}, {.20f, .42f, .95f},
+                                                        {.98f, .85f, .15f}, {.96f, .97f, .98f}, {1, .55f, .10f}};
+    char label[64];
+    snprintf(label, sizeof(label), "Cor: %s", component_led_color_name(part->states));
+    color(UI_INK);
+    text(font, 852, INSPECTOR_LINE_2 + 2, label);
+    for (int index = 0; index < APP_LED_SWATCHES; ++index)
+    {
+        AppRect r = app_layout_led_swatch(index);
+        if (part->states == (unsigned)index)
+        {
+            glColor3f(UI_ACCENT);
+            rounded_rect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 7);
+        }
+        color(UI_BORDER);
+        ui_rounded(r, 5);
+        glColor3f(swatches[index][0], swatches[index][1], swatches[index][2]);
+        rounded_rect(r.x + 1, r.y + 1, r.w - 2, r.h - 2, 4);
+        (void)app;
+    }
+}
+
 static void draw_part_inspector(const AppState *app, GLuint font)
 {
     const Part *part = &app->bench.parts[app->selected];
@@ -2771,16 +3054,21 @@ static void draw_part_inspector(const AppState *app, GLuint font)
         device_note(part, measured ? app->sim.dc_elements[app->selected] : none, note, sizeof(note));
     }
     int environment = component_environment(part->type) != NULL;
-    float height = environment ? 268 : note[0] ? 186 : 162;
+    float height = environment || part->type == PART_LED ? 296 : note[0] ? 186 : 162;
     ui_panel(app_layout_inspector(height));
     color(UI_INK);
     name_text(font, 852, 112, part_name(part->type), 300);
     if (part->type != PART_BREADBOARD)
         ui_button(app, font, app_layout_inspector_rotate(), "Girar", UI_BUTTON_NEUTRAL);
-    if (info && info->primary)
-        snprintf(value, sizeof(value), "%.5g %s", part->value, info->primary->unit);
-    draw_inspector_row(app, font, app_layout_inspector_value(), "Valor",
-                       info && info->primary ? value : "Sem valor ajustável", info && info->primary);
+    if (mcu_board(part->type))
+        draw_inspector_row(app, font, app_layout_inspector_value(), "Programa", "Editar código", 1);
+    else
+    {
+        if (info && info->primary)
+            snprintf(value, sizeof(value), "%.5g %s", part->value, info->primary->unit);
+        draw_inspector_row(app, font, app_layout_inspector_value(), "Valor",
+                           info && info->primary ? value : "Sem valor ajustável", info && info->primary);
+    }
     snprintf(value, sizeof(value), "%.5g %%", bench_part_scale(part) * 100);
     draw_inspector_row(app, font, app_layout_inspector_scale(), "Tamanho", value, 1);
     if (app->sim.burnt[app->selected])
@@ -2790,13 +3078,15 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     text(font, 852, INSPECTOR_LINE_1, reading[0] ? reading : "Sem leitura de corrente");
     if (environment)
         draw_environment_control(font, part);
+    else if (part->type == PART_LED)
+        draw_led_colors(app, font, part);
     else if (note[0])
         ui_note(font, 852, INSPECTOR_LINE_2, note, INSPECTOR_NOTE_WIDTH);
 }
 
 static void draw_inspector(const AppState *app, GLuint font)
 {
-    if (app->selected < 0 || app->settings || app->projects_open || app->examples_open)
+    if (app->selected < 0 || app->settings || app->projects_open || app->examples_open || app->code_part >= 0)
         return;
     if (app->bench.parts[app->selected].group)
         draw_group_inspector(app, font);
@@ -2816,7 +3106,7 @@ static void status_hint(const AppState *app, char *hint, size_t capacity)
     {
         const Part *part = &app->bench.parts[app->selected];
         const ComponentInfo *info = component_info(part->type);
-        snprintf(hint, capacity, "%s%sCtrl+scroll: tamanho%s%s · T: gráfico · Delete: excluir",
+        snprintf(hint, capacity, "%s%sCtrl+scroll: tamanho%s%s · T: gráfico · Catálogo: trocar · Delete: excluir",
                  part->type == PART_BREADBOARD ? "" : "R: girar · ", info && info->primary ? "E: valor · " : "",
                  bench_lead_count(part, 0) ? " · Alt+arraste: terminais" : "",
                  part->type == PART_POTENTIOMETER ? " · Shift+scroll: cursor"
@@ -2836,7 +3126,7 @@ static void status_hint(const AppState *app, char *hint, size_t capacity)
         return;
     }
     snprintf(hint, capacity, "Espaço: pausar · Ctrl+Espaço: reiniciar · Shift+arraste: selecionar área · "
-                             "Ctrl+C/V: copiar/colar · Ctrl+G: criar bloco · Ctrl+Z/Y: desfazer/refazer");
+                             "Ctrl+C/V: copiar/colar · Ctrl+G: criar bloco · X: transparência · Ctrl+Z/Y: desfazer/refazer");
 }
 
 static void draw_status(const AppState *app, GLuint font)
@@ -2857,6 +3147,15 @@ static void draw_status(const AppState *app, GLuint font)
     status_hint(app, hint, sizeof(hint));
     color(UI_MUTED);
     name_text(font, 238, 709, hint, 1020);
+    if (app->xray)
+    {
+        const char *badge = "Transparência (X)";
+        float width = (float)app_text_utf8_width(badge, 2048) + 20;
+        color(UI_ACCENT);
+        rounded_rect(1268 - width, 668, width, 24, 12);
+        glColor3f(1, 1, 1);
+        text(font, 1278 - width, 685, badge);
+    }
 }
 
 static void draw_settings_appearance(const AppState *app, GLuint font)
@@ -3142,6 +3441,214 @@ static void draw_examples(const AppState *app, GLuint font)
         draw_example_card(app, font, index);
 }
 
+/* ---- Microcontroller code editor (side panel) ---- */
+#define CODE_SERIAL_LINES 4
+#define CODE_LINE_BYTES 512
+
+static void code_text_mono(float x, float baseline, const char *line, int maximum_width)
+{
+    app_text_utf8_set_monospace(1);
+    app_text_utf8(x, baseline, line, maximum_width);
+    app_text_utf8_set_monospace(0);
+}
+
+/* Offset of a "//" comment outside string literals, or -1. */
+static int code_comment_start(const char *line)
+{
+    int quoted = 0;
+    for (int i = 0; line[i]; ++i)
+    {
+        if (line[i] == '"' && (i == 0 || line[i - 1] != '\\'))
+            quoted = !quoted;
+        if (!quoted && line[i] == '/' && line[i + 1] == '/')
+            return i;
+    }
+    return -1;
+}
+
+static void code_line_draw(const char *line, float x, float baseline, float advance, int maximum_width)
+{
+    char head[CODE_LINE_BYTES];
+    int comment = code_comment_start(line);
+    glColor3f(.86f, .89f, .92f);
+    if (comment < 0)
+    {
+        code_text_mono(x, baseline, line, maximum_width);
+        return;
+    }
+    memcpy(head, line, (size_t)comment);
+    head[comment] = 0;
+    if (comment)
+        code_text_mono(x, baseline, head, maximum_width);
+    float offset = code_column(line, comment) * advance;
+    glColor3f(.45f, .70f, .48f);
+    if (offset < maximum_width)
+        code_text_mono(x + offset, baseline, line + comment, maximum_width - (int)offset);
+}
+
+static void code_editor_header(const AppState *app, GLuint font, AppRect panel)
+{
+    const McuInstance *instance = &app->mcu->mcu[app->code_part];
+    char title[96], state[256];
+    snprintf(title, sizeof(title), "Código · %s", part_name(app->bench.parts[app->code_part].type));
+    color(UI_INK);
+    name_text(font, panel.x + 16, panel.y + 38, title, (int)(panel.w - 230));
+    ui_button(app, font, app_layout_code_run(), "Executar", app->code_dirty ? UI_BUTTON_PRIMARY : UI_BUTTON_NEUTRAL);
+    ui_close_button(app, app_layout_code_close());
+    if (instance->error[0])
+    {
+        snprintf(state, sizeof(state), "Linha %d: %s", instance->error_line, instance->error);
+        color(UI_DANGER);
+    }
+    else if (app->code_dirty)
+    {
+        snprintf(state, sizeof(state), "Alterações não enviadas · Ctrl+Enter ou Executar");
+        color(UI_MUTED);
+    }
+    else
+    {
+        snprintf(state, sizeof(state), "%s",
+                 app->sim.sim_running ? "Rodando · Ctrl+Espaço sugere funções" : "Simulação pausada · Espaço continua");
+        color(UI_POSITIVE);
+    }
+    name_text(font, panel.x + 16, panel.y + 74, state, (int)(panel.w - 32));
+}
+
+static void code_line_background(const AppState *app, AppRect area, int line, float top)
+{
+    const McuInstance *instance = &app->mcu->mcu[app->code_part];
+    int error = instance->error[0] && instance->error_line == line + 1;
+    if (!error && line != code_line_index(app->code_text, app->code_cursor))
+        return;
+    if (error)
+        glColor3f(.38f, .12f, .12f);
+    else
+        glColor3f(.16f, .19f, .23f);
+    rect(area.x + APP_CODE_GUTTER, top, area.w - APP_CODE_GUTTER, APP_CODE_LINE_HEIGHT);
+}
+
+static void code_editor_cursor(const AppState *app, AppRect area, float text_x, float advance)
+{
+    int line = code_line_index(app->code_text, app->code_cursor);
+    if (line < app->code_scroll || line >= app->code_scroll + app_code_visible_lines() || SDL_GetTicks() / 530 % 2)
+        return;
+    float x = text_x + code_column(app->code_text, app->code_cursor) * advance;
+    float top = area.y + 6 + (line - app->code_scroll) * APP_CODE_LINE_HEIGHT;
+    glColor3f(.95f, .80f, .30f);
+    rect(x, top + 2, 2, APP_CODE_LINE_HEIGHT - 4);
+}
+
+static void code_editor_lines(const AppState *app, AppRect area, float advance)
+{
+    int visible = app_code_visible_lines(), total = code_line_count(app->code_text);
+    float text_x = area.x + APP_CODE_GUTTER + 6;
+    int text_width = (int)(area.x + area.w - text_x - 4);
+    for (int row = 0; row < visible && app->code_scroll + row < total; ++row)
+    {
+        int line = app->code_scroll + row;
+        float top = area.y + 6 + row * APP_CODE_LINE_HEIGHT, baseline = top + APP_CODE_LINE_HEIGHT - 5;
+        code_line_background(app, area, line, top);
+        char number[16], text_line[CODE_LINE_BYTES];
+        snprintf(number, sizeof(number), "%d", line + 1);
+        glColor3f(.42f, .47f, .53f);
+        code_text_mono(area.x + APP_CODE_GUTTER - 6 - (float)strlen(number) * advance, baseline, number,
+                       (int)APP_CODE_GUTTER);
+        int start = code_line_offset(app->code_text, line), end = code_line_end(app->code_text, start);
+        int length = end - start < CODE_LINE_BYTES - 1 ? end - start : CODE_LINE_BYTES - 1;
+        memcpy(text_line, app->code_text + start, (size_t)length);
+        text_line[length] = 0;
+        if (length)
+            code_line_draw(text_line, text_x, baseline, advance, text_width);
+    }
+    code_editor_cursor(app, area, text_x, advance);
+}
+
+/* Shows the newest serial lines, oldest on top. */
+static void code_editor_serial(const AppState *app, GLuint font, AppRect area)
+{
+    const char *serial = app->mcu->mcu[app->code_part].serial;
+    color(UI_MUTED);
+    name_text(font, area.x, area.y + 14, "Monitor serial", 200);
+    AppRect box = {area.x, area.y + 22, area.w, area.h - 22};
+    glColor3f(.08f, .09f, .11f);
+    ui_rounded(box, 6);
+    int starts[CODE_SERIAL_LINES], lengths[CODE_SERIAL_LINES], found = 0;
+    int end = (int)strlen(serial);
+    if (end > 0 && serial[end - 1] == '\n')
+        --end;
+    while (found < CODE_SERIAL_LINES && end > 0)
+    {
+        int start = end;
+        while (start > 0 && serial[start - 1] != '\n')
+            --start;
+        starts[found] = start;
+        lengths[found++] = end - start;
+        end = start - 1;
+    }
+    glColor3f(.62f, .90f, .66f);
+    for (int i = 0; i < found; ++i)
+    {
+        char line[CODE_LINE_BYTES];
+        int length = lengths[i] < CODE_LINE_BYTES - 1 ? lengths[i] : CODE_LINE_BYTES - 1;
+        memcpy(line, serial + starts[i], (size_t)length);
+        line[length] = 0;
+        if (length)
+            code_text_mono(box.x + 8, box.y + 18 + (found - 1 - i) * APP_CODE_LINE_HEIGHT, line, (int)box.w - 16);
+    }
+    if (!serial[0])
+    {
+        glColor3f(.42f, .47f, .53f);
+        code_text_mono(box.x + 8, box.y + 18, "Serial.println(...) aparece aqui", (int)box.w - 16);
+    }
+}
+
+static void code_editor_completions(const AppState *app)
+{
+    int matches[CODE_COMPLETION_MAX];
+    int count = app_code_completions(app, matches, CODE_COMPLETION_MAX);
+    if (!count)
+        return;
+    int selected = app->completion_selected < count ? app->completion_selected : 0;
+    AppRect first = app_code_completion_item(app, 0);
+    glColor3f(.30f, .34f, .40f);
+    ui_rounded((AppRect){first.x - 1, first.y - 1, first.w + 2, first.h * (count + 2) + 2}, 5);
+    for (int i = 0; i < count; ++i)
+    {
+        AppRect row = app_code_completion_item(app, i);
+        if (i == selected)
+            glColor3f(.16f, .36f, .62f);
+        else
+            glColor3f(.15f, .17f, .21f);
+        rect(row.x, row.y, row.w, row.h);
+        glColor3f(.92f, .94f, .97f);
+        code_text_mono(row.x + 8, row.y + row.h - 6, mcu_completion(matches[i])->name, (int)row.w - 16);
+    }
+    const McuCompletion *chosen = mcu_completion(matches[selected]);
+    AppRect detail = app_code_completion_item(app, count);
+    glColor3f(.11f, .12f, .15f);
+    rect(detail.x, detail.y, detail.w, detail.h * 2);
+    glColor3f(.95f, .80f, .30f);
+    code_text_mono(detail.x + 8, detail.y + 16, chosen->signature, (int)detail.w - 16);
+    glColor3f(.70f, .74f, .79f);
+    app_text_utf8(detail.x + 8, detail.y + 37, chosen->summary, (int)detail.w - 16);
+}
+
+static void draw_code_editor(const AppState *app, GLuint font)
+{
+    if (app->code_part < 0 || app->code_part >= app->bench.part_count || !app->mcu)
+        return;
+    AppRect panel = app_layout_code_panel(), area = app_layout_code_text();
+    ui_panel(panel);
+    code_editor_header(app, font, panel);
+    glColor3f(.11f, .13f, .16f);
+    ui_rounded(area, 6);
+    glColor3f(.09f, .10f, .13f);
+    rect(area.x, area.y + 3, APP_CODE_GUTTER, area.h - 6);
+    code_editor_lines(app, area, app_code_advance());
+    code_editor_serial(app, font, app_layout_code_serial());
+    code_editor_completions(app);
+}
+
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
     app_text_utf8_set_size(app->gui_font_size);
@@ -3156,6 +3663,7 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_workspace(app, font, width, height);
     interface_layer = 1;
     draw_inspector(app, font);
+    draw_code_editor(app, font);
     draw_status(app, font);
     draw_pin_help(app, font);
     draw_settings(app, font);

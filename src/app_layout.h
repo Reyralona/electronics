@@ -35,6 +35,16 @@ int app_layout_palette_item_at(float x, float y);
 AppRect app_layout_palette_scrollbar(void);
 /* Remove button on a saved block card (Blocos tab). */
 AppRect app_layout_palette_delete(int slot);
+#define APP_LED_SWATCHES 6
+AppRect app_layout_led_swatch(int color);
+int app_layout_led_swatch_at(float x, float y);
+/* Microcontroller code editor (right side panel). */
+#define APP_CODE_GUTTER 36.0f
+AppRect app_layout_code_panel(void);
+AppRect app_layout_code_run(void);
+AppRect app_layout_code_close(void);
+AppRect app_layout_code_text(void);
+AppRect app_layout_code_serial(void);
 
 typedef enum
 {

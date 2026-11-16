@@ -7,17 +7,18 @@
 #include <string.h>
 
 /* Eviction limits cached GPU resources, never the set of strings that can be displayed. */
-#define TEXT_CACHE_ENTRIES 128
+#define TEXT_CACHE_ENTRIES 256
 typedef struct
 {
     char *key;
-    int maximum_width, width, height, ascent, texture_width, texture_height;
+    int maximum_width, width, height, ascent, texture_width, texture_height, monospace;
     GLuint texture;
     uint64_t used;
 } TextImage;
 static TextImage cache[TEXT_CACHE_ENTRIES];
 static uint64_t sequence;
 static int font_pixels = 15;
+static int monospace; /* Code editor face (Consolas) instead of the interface face. */
 
 static void release_image(TextImage *image)
 {
@@ -154,7 +155,7 @@ static int create_image(TextImage *image, const char *text, int maximum_width)
     WCHAR *wide = wide_text(text);
     HDC dc = CreateCompatibleDC(NULL);
     HFONT font = CreateFontW(-font_pixels, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, ANTIALIASED_QUALITY,
-                             DEFAULT_PITCH, L"Segoe UI");
+                             monospace ? FIXED_PITCH : DEFAULT_PITCH, monospace ? L"Consolas" : L"Segoe UI");
     int ok = 0;
     if (wide && dc && font)
     {
@@ -189,7 +190,8 @@ static TextImage *cached_image(const char *text, int maximum_width)
     TextImage *image = NULL, *oldest = &cache[0];
     for (int i = 0; i < TEXT_CACHE_ENTRIES; ++i)
     {
-        if (cache[i].key && cache[i].maximum_width == maximum_width && !strcmp(cache[i].key, text))
+        if (cache[i].key && cache[i].maximum_width == maximum_width && cache[i].monospace == monospace &&
+            !strcmp(cache[i].key, text))
             image = &cache[i];
         if (cache[i].used < oldest->used)
             oldest = &cache[i];
@@ -201,6 +203,7 @@ static TextImage *cached_image(const char *text, int maximum_width)
         if (!create_image(image, text, maximum_width))
             return NULL;
         image->maximum_width = maximum_width;
+        image->monospace = monospace;
     }
     image->used = ++sequence;
     return image;
@@ -237,4 +240,9 @@ int app_text_utf8(float x, float baseline, const char *text, int maximum_width)
     glEnd();
     glPopAttrib();
     return 1;
+}
+
+void app_text_utf8_set_monospace(int enabled)
+{
+    monospace = enabled != 0;
 }

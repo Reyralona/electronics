@@ -59,7 +59,7 @@ static void command_palette(AppState *app)
     app->placing = -1;
     app->packed_placing = 0;
     app_packing_refresh(app);
-    static const char *labels[PALETTE_PAGES] = {"Componentes básicos.", "Portas lógicas e CIs.",
+    static const char *labels[PALETTE_PAGES] = {"Componentes básicos.", "Portas lógicas, CIs, microcontroladores e LCD.",
                                                 "Blocos reutilizáveis. Ctrl+G cria um bloco.", "Sensores com controle de ambiente.",
                                                 "Saídas: lâmpada, LED RGB, display, motores, servo e piezo.",
                                                 "Instrumentos: multímetro, osciloscópio e gerador de função."};
@@ -118,6 +118,8 @@ static void command_cancel(AppState *app)
     app->dragging = -1;
     app->drag_wire = -1;
     app->drag_lead.component = -1;
+    app->selected = -1;
+    app->selected_wire = -1;
     app->status = "Selecao cancelada.";
 }
 
@@ -391,12 +393,18 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
     case SDLK_HOME:
         command_home(app);
         return;
+    case SDLK_X:
+        app->xray = !app->xray;
+        app->status = app->xray ? "Transparencia ligada: terminais atras dos componentes ficam acessiveis. X desliga."
+                                : "Transparencia desligada: terminais cobertos voltam a ficar ocultos. X liga.";
+        return;
     case SDLK_ESCAPE:
         command_cancel(app);
         return;
     case SDLK_SPACE:
         if (mod & SDL_KMOD_CTRL)
         {
+            mcu_runtime_reset(app->mcu);
             spice_job_request_reset(&app->dc_job);
             sim_state_clear_result(&app->sim);
             app->sim.auto_requested_valid = 0;

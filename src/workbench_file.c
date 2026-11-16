@@ -85,6 +85,53 @@ static int read_states(FILE *file, Workbench *bench)
     return 1;
 }
 
+/* Format 27: program text of microcontroller parts, stored as byte length + raw UTF-8 bytes. */
+#define CODE_MAX_BYTES (256 * 1024)
+static int write_code(FILE *file, const Workbench *bench)
+{
+    int records = 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        records += bench->parts[i].code != NULL;
+    if (fprintf(file, "code %d\n", records) < 0)
+        return 0;
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        const char *code = bench->parts[i].code;
+        if (!code)
+            continue;
+        size_t length = strlen(code);
+        if (fprintf(file, "%d %zu\n", i, length) < 0 || fwrite(code, 1, length, file) != length || fputc('\n', file) == EOF)
+            return 0;
+    }
+    return 1;
+}
+
+static int read_code(FILE *file, Workbench *bench)
+{
+    char tag[32];
+    int records;
+    if (fscanf(file, "%31s %d", tag, &records) != 2 || strcmp(tag, "code") || records < 0 || records > bench->part_count)
+        return 0;
+    for (int k = 0; k < records; ++k)
+    {
+        int index;
+        size_t length;
+        if (fscanf(file, "%d %zu", &index, &length) != 2 || index < 0 || index >= bench->part_count ||
+            length > CODE_MAX_BYTES || fgetc(file) != '\n')
+            return 0;
+        char *text = malloc(length + 1);
+        if (!text)
+            return 0;
+        int ok = fread(text, 1, length, file) == length;
+        text[length] = 0;
+        ok = ok && strlen(text) == length && bench_set_code(bench, index, text);
+        free(text);
+        if (!ok)
+            return 0;
+    }
+    return 1;
+}
+
 static int read_leads(FILE *file, Workbench *bench)
 {
     char tag[32];
@@ -135,7 +182,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !workbench_settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 26\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 27\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -156,7 +203,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
         if (fputc('\n', f) == EOF)
             return 0;
     }
-    if (!bench_groups_write(f, b) || !write_leads(f, b) || !write_states(f, b))
+    if (!bench_groups_write(f, b) || !write_leads(f, b) || !write_states(f, b) || !write_code(f, b))
         return 0;
     if (fprintf(f, "settings %d %d %d %d %d %d %d %.17g %.17g\n", s->show_grid, s->show_handles, s->round_wires,
                 s->show_current, s->wire_color, s->probe_pin, s->probe_current, s->transient_step,
@@ -179,7 +226,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 26) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 27) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -266,6 +313,8 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (version >= 23 && !read_leads(f, &b))
         goto cleanup;
     if (version >= 26 && !read_states(f, &b))
+        goto cleanup;
+    if (version >= 27 && !read_code(f, &b))
         goto cleanup;
     if (version >= 10)
     {

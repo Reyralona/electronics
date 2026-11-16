@@ -1,8 +1,10 @@
 #include "netlist.h"
 #include "netlist_devices.h"
+#include "mcu_board.h"
 #include "component_devices.h"
 #include "component_registry.h"
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define PIN_TOTAL (WORKBENCH_MAX_COMPONENTS * WORKBENCH_MAX_PINS)
@@ -325,17 +327,23 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 break;
             }
     /* Instruments can be the only reference: generator COM (pin 1) or multimeter COM (pin 0). */
-    int reference_pin = 1;
+    int reference_pin = 1, supply_pin = -1;
     for (i = 0; source < 0 && session && i < b->part_count; ++i)
         if (b->parts[i].type == PART_FUNCTION_GENERATOR || b->parts[i].type == PART_MULTIMETER)
         {
             source = i;
             reference_pin = b->parts[i].type == PART_MULTIMETER ? 0 : 1;
         }
+        else if (mcu_board(b->parts[i].type) && mcu_board(b->parts[i].type)->supply_volts > 0)
+        {
+            source = i;
+            reference_pin = mcu_board(b->parts[i].type)->ground_terminal;
+            supply_pin = mcu_board(b->parts[i].type)->supply_terminal;
+        }
     if (source < 0)
         return NETLIST_INVALID;
     ground = find_root(parents, source * WORKBENCH_MAX_PINS + reference_pin);
-    positive = find_root(parents, source * WORKBENCH_MAX_PINS + 1 - reference_pin);
+    positive = find_root(parents, source * WORKBENCH_MAX_PINS + (supply_pin >= 0 ? supply_pin : 1 - reference_pin));
     if (!session && ground == positive)
         return NETLIST_INVALID;
     for (i = 0; i < b->part_count; ++i)
@@ -458,12 +466,13 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
             if (session)
             {
-                if (fprintf(out, "D%d led%d %d LED_GENERIC\nRguard%d %d led%d %.17g\n", i, i,
-                            c == ground ? 0 : c + 1, i, a == ground ? 0 : a + 1, i,
+                if (fprintf(out, "D%d led%d %d %s\nRguard%d %d led%d %.17g\n", i, i, c == ground ? 0 : c + 1,
+                            component_led_model(b->parts[i].states), i, a == ground ? 0 : a + 1, i,
                             NETLIST_LIVE_CLOSED_OHMS) < 0)
                     return NETLIST_IO_ERROR;
             }
-            else if (fprintf(out, "D%d %d %d LED_GENERIC\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1) < 0)
+            else if (fprintf(out, "D%d %d %d %s\n", i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1,
+                             component_led_model(b->parts[i].states)) < 0)
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
@@ -754,4 +763,18 @@ int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin)
     int ground = find_root(parents, source * WORKBENCH_MAX_PINS + 1);
     int node = find_root(parents, pin_index(pin));
     return node == ground ? 0 : node + 1;
+}
+
+int netlist_same_net(const Workbench *bench, Pin a, Pin b)
+{
+    if (!bench || a.component < 0 || b.component < 0 || a.component >= bench->part_count ||
+        b.component >= bench->part_count)
+        return 0;
+    int *parents = malloc(sizeof(int) * PIN_TOTAL);
+    if (!parents)
+        return 0;
+    build_nets(bench, parents, 1, 0, 0);
+    int same = find_root(parents, pin_index(a)) == find_root(parents, pin_index(b));
+    free(parents);
+    return same;
 }

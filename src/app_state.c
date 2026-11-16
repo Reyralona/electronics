@@ -34,6 +34,8 @@ void app_state_init(AppState *app)
     app->name_target_group = -1;
     app->editor_library_slot = -1;
     app->library_delete_armed = -1;
+    app->code_part = -1;
+    app->mcu = mcu_runtime_create();
     app->status = "Escolha um componente na biblioteca e clique na bancada.";
     app->sim.sim_running = 1;
     app->sim.trace_wire = -1;
@@ -43,6 +45,8 @@ void app_state_dispose(AppState *app)
 {
     if (!app)
         return;
+    mcu_runtime_destroy(app->mcu);
+    app->mcu = NULL;
     spice_job_clear(&app->dc_job);
     bench_history_clear(app->history);
     free(app->history);

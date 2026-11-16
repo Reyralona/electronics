@@ -2,8 +2,24 @@
 #include <math.h>
 #include "workbench.h"
 
+/* Swapping a part keeps its place and the wires on terminals the new type still has. */
+static void swap_keeps_wires(void)
+{
+    Workbench bench = {0};
+    int source = bench_add(&bench, PART_SOURCE, 100, 100), gate = bench_add(&bench, PART_AND, 300, 100);
+    assert(bench_rotate_part(&bench, gate));
+    assert(bench_toggle_wire(&bench, (Pin){source, 0}, (Pin){gate, 0}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){source, 1}, (Pin){gate, 2}) == 1);
+    assert(bench_swap_type(&bench, gate, PART_NOT));
+    assert(bench.parts[gate].type == PART_NOT && bench.parts[gate].x == 300 && bench.parts[gate].rotation == 1);
+    assert(bench.wire_count == 1 && bench.wires[0].b.pin == 0);
+    assert(!bench_swap_type(&bench, gate, PART_NOT) && !bench_swap_type(&bench, gate, PART_BREADBOARD));
+    bench_snapshot_clear(&bench);
+}
+
 int main(void)
 {
+    swap_keeps_wires();
     {
         double value=42;
         assert(bench_parse_value("2,2e-6",&value) && value>2.199e-6 && value<2.201e-6);

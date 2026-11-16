@@ -354,3 +354,46 @@ AppRect app_layout_palette_delete(int slot)
         return card;
     return (AppRect){card.x + card.w - 30, card.y + (card.h - 24) / 2, 24, 24};
 }
+
+AppRect app_layout_led_swatch(int color)
+{
+    if (color < 0 || color >= APP_LED_SWATCHES)
+        return NO_RECT;
+    return (AppRect){INSPECTOR_ROW_X + color * 38.0f, 258, 32, 24};
+}
+
+int app_layout_led_swatch_at(float x, float y)
+{
+    for (int color = 0; color < APP_LED_SWATCHES; ++color)
+        if (app_rect_contains(app_layout_led_swatch(color), x, y))
+            return color;
+    return -1;
+}
+
+AppRect app_layout_code_panel(void)
+{
+    return (AppRect){836, 76, 436, 578};
+}
+
+AppRect app_layout_code_run(void)
+{
+    AppRect panel = app_layout_code_panel();
+    return (AppRect){panel.x + panel.w - 200, panel.y + 14, 132, 34};
+}
+
+AppRect app_layout_code_close(void)
+{
+    return close_button(app_layout_code_panel());
+}
+
+AppRect app_layout_code_text(void)
+{
+    AppRect panel = app_layout_code_panel();
+    return (AppRect){panel.x + 12, panel.y + 90, panel.w - 24, 360};
+}
+
+AppRect app_layout_code_serial(void)
+{
+    AppRect panel = app_layout_code_panel();
+    return (AppRect){panel.x + 12, panel.y + 458, panel.w - 24, panel.h - 470};
+}

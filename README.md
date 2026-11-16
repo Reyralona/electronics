@@ -14,10 +14,10 @@ Para compilar e testar com GCC e SDL3 do MSYS2 UCRT64 instalados:
 
 ```powershell
 ./build.ps1
-./build/bancada.exe
+./build/build.exe
 ```
 
-Se `bancada.exe` estiver aberto, `./build.ps1 -OutputName bancada-next` compila uma cópia sem fechar a janela existente.
+Executável único: `build/build.exe`. Se ele estiver aberto, feche-o antes de compilar (ou use `-OutputName` temporário e apague a cópia depois).
 
 Escolha **Fonte**, **Interruptor**, **LED**, **Breadboard**, **Resistor**, **Capacitor**, **Indutor** ou **Porta AND** na biblioteca e clique na bancada para posicionar. Arraste um componente com o botão esquerdo para movê-lo e pressione `R` para girá-lo em 90°; a placa ainda não gira. Clique em dois terminais ou furos para conectar um fio; clique no mesmo par para removê-lo. Dois cliques na fonte ou no interruptor alternam seu estado. `Espaço` pausa/retoma, `N` avança um passo quando pausado e `Delete` remove o componente selecionado e seus fios.
 
@@ -39,7 +39,7 @@ Na bancada experimental, `Ctrl+Z` desfaz e `Ctrl+Y` refaz até 24 alterações p
 
 As placas recém-criadas têm furos mais espaçados. Placas carregadas de projetos anteriores mantêm a geometria original para preservar os contatos já montados.
 
-Para incluir um teste automatizado dos eventos de janela (componentes, fios, joelhos, desfazer/refazer, zoom e deslocamento), execute `./build.ps1 -OutputName bancada-next -GuiTests`. Esse teste requer uma sessão gráfica Windows com OpenGL; não substitui uma avaliação manual completa da interface.
+Para incluir um teste automatizado dos eventos de janela (componentes, fios, joelhos, desfazer/refazer, zoom e deslocamento), execute `./build.ps1 -GuiTests`. Esse teste requer uma sessão gráfica Windows com OpenGL; não substitui uma avaliação manual completa da interface.
 
 ## Protótipo anterior
 
@@ -363,3 +363,17 @@ Modelos são aproximações didáticas; limites no inspector e em DECISOES.md. F
 - Corrente nos fios: bolinhas amarelas andando no sentido da corrente; a velocidade indica a faixa.
 - Blocos: o × no cartão da aba Blocos remove o bloco da biblioteca (dois cliques). O arquivo vai
   para blocks/lixeira; blocos já colocados na bancada continuam.
+
+## Microcontroladores e LCD (0.34.0)
+- Aba Digital: Arduino Uno, ESP32 e ATtiny85 (precisa de VCC/GND externos) e LCD 16x2 I2C.
+- Duplo clique na placa (ou "Editar código" no inspector) abre o editor à direita. O programa usa
+  um subconjunto de Arduino: `int/float/bool`, vetores, funções, `if/for/while`, `pinMode`,
+  `digitalWrite/Read`, `analogRead/Write` (PWM como tensão média), `delay`, `millis`, `map`,
+  `random`, `Serial.print/println` e `LiquidCrystal_I2C lcd(0x27,16,2)` com `init/backlight/clear/
+  setCursor/print`. Digitar mostra sugestões (Tab/Enter aceita, setas escolhem, Ctrl+Espaço força).
+- Ctrl+Enter ou Executar envia o código; a placa reinicia. Erros aparecem na linha marcada em
+  vermelho e os pinos ficam em alta impedância. Ctrl+Espaço fora do editor reinicia tudo.
+- O LCD mostra texto só com GND/VCC ligados e SDA/SCL no mesmo nó dos pinos I2C da placa (Uno
+  A4/A5, ESP32 21/22). O barramento não é simulado bit a bit (ver DECISOES.md).
+- X: transparência das peças para alcançar terminais cobertos. Catálogo com peça selecionada troca
+  a peça no lugar. Blocos expõem só terminais livres ou ligados ao exterior.

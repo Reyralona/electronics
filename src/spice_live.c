@@ -2,6 +2,7 @@
 #include "spice_session.h"
 #include "netlist.h"
 #include "netlist_devices.h"
+#include "mcu_board.h"
 #include "component_devices.h"
 #include "component_registry.h"
 #include <windows.h>
@@ -64,6 +65,8 @@ static char *topology_key(const Workbench *bench, int *instrumented)
         part->control = .5;
         if (!netlist_device_rebuilds_on_change(part->type))
             part->states = 0;
+        memset(part->io_level, 0, sizeof(part->io_level));
+        memset(part->io_mode, 0, sizeof(part->io_mode));
         if (info->primary && part->type != PART_CLOCK && !netlist_device_rebuilds_on_change(part->type))
             part->value = info->primary->initial;
     }
@@ -308,7 +311,9 @@ static int controls_changed(const Workbench *previous, const Workbench *bench)
         return 1;
     for (int i = 0; i < bench->part_count; ++i)
         if (previous->parts[i].on != bench->parts[i].on || previous->parts[i].value != bench->parts[i].value ||
-            previous->parts[i].control != bench->parts[i].control || previous->parts[i].states != bench->parts[i].states)
+            previous->parts[i].control != bench->parts[i].control || previous->parts[i].states != bench->parts[i].states ||
+            memcmp(previous->parts[i].io_level, bench->parts[i].io_level, sizeof(bench->parts[i].io_level)) ||
+            memcmp(previous->parts[i].io_mode, bench->parts[i].io_mode, sizeof(bench->parts[i].io_mode)))
             return 1;
     return 0;
 }
@@ -373,7 +378,8 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
     memset(result, 0, sizeof(*result));
     live->restarted = 0;
     int rebuilt = 0;
-    if (!live->session || bench->revision != live->previous.revision)
+    /* Microcontroller pin drive changes without a model revision; it still needs `alter`. */
+    if (!live->session || bench->revision != live->previous.revision || controls_changed(&live->previous, bench))
     {
         int instrumented;
         char *key = topology_key(bench, &instrumented);
@@ -418,6 +424,8 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
     result->has_dc = 1;
     for (int i = 0; i < bench->part_count; ++i)
         if ((component_electrical_type(bench->parts[i].type) == PART_SOURCE || bench->parts[i].type == PART_CLOCK || bench->parts[i].type == PART_FUNCTION_GENERATOR) && bench->parts[i].on)
+            result->powered = 1;
+        else if (mcu_board(bench->parts[i].type) && mcu_board(bench->parts[i].type)->supply_volts > 0)
             result->powered = 1;
     live->restarted = rebuilt;
     const char *status = "Tempo continuo: %.6g s.";

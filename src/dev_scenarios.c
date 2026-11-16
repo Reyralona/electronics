@@ -779,9 +779,9 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 72)
         queued = dev_test_key(window, SDLK_UNKNOWN);
     else if (app->selftest_phase == 73)
-        queued = click_palette(window, 6) && dev_test_click(window, 750, 550);
+        queued = dev_test_key(window, SDLK_ESCAPE) && click_palette(window, 6) && dev_test_click(window, 750, 550);
     else if (app->selftest_phase == 74)
-        queued = click_palette(window, 7) && dev_test_click(window, 750, 450);
+        queued = dev_test_key(window, SDLK_ESCAPE) && click_palette(window, 7) && dev_test_click(window, 750, 450);
     else if (app->selftest_phase == 75)
         queued = dev_test_key(window, SDLK_F2);
     else if (app->selftest_phase == 76)
@@ -1027,7 +1027,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 163)
         queued = dev_test_wheel(window, 50, 400, -2);
     else if (app->selftest_phase == 164)
-        queued = dev_test_wheel(window, 50, 400, -1) && click_palette(window, 6);
+        queued = dev_test_key(window, SDLK_ESCAPE) && dev_test_wheel(window, 50, 400, -1) && click_palette(window, 6);
     else if (app->selftest_phase == 165)
         queued = dev_test_click(window, 700, 500);
     else if (app->selftest_phase == 166)

@@ -303,10 +303,22 @@ static void schedule_analysis(AppState *app)
     }
 }
 
+/* Programs run on the wall clock while the simulation runs; paused means frozen. */
+static void step_microcontrollers(AppState *app)
+{
+    uint64_t now = SDL_GetTicks();
+    double elapsed = app->mcu_last_ticks && app->sim.sim_running ? (double)(now - app->mcu_last_ticks) : 0;
+    app->mcu_last_ticks = now;
+    int measured = sim_state_has_result(&app->sim, SIM_RESULT_DC);
+    mcu_runtime_step(app->mcu, &app->bench, measured ? (const double(*)[COMPONENT_MAX_ELEMENTS])app->sim.dc_elements : NULL,
+                     elapsed);
+}
+
 void app_simulation_update(AppState *app)
 {
     retain_visual_edit_result(app);
     poll_result(app);
+    step_microcontrollers(app);
     app->sim.display_pending = sim_state_has_result(&app->sim, SIM_RESULT_DC) &&
                                app->sim.result_revision != app->bench.revision &&
                                !app->sim.auto_failed && compatible_live_sample(app);
