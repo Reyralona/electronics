@@ -1,6 +1,8 @@
 #include "spice_live.h"
 #include "spice_session.h"
 #include "netlist.h"
+#include "netlist_devices.h"
+#include "component_devices.h"
 #include "component_registry.h"
 #include <windows.h>
 #include <math.h>
@@ -60,7 +62,9 @@ static char *topology_key(const Workbench *bench, int *instrumented)
         }
         part->on = 1;
         part->control = .5;
-        if (info->primary && part->type != PART_CLOCK)
+        if (!netlist_device_rebuilds_on_change(part->type))
+            part->states = 0;
+        if (info->primary && part->type != PART_CLOCK && !netlist_device_rebuilds_on_change(part->type))
             part->value = info->primary->initial;
     }
     FILE *file = tmpfile();
@@ -212,6 +216,13 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
             if (!alter(live, name, component_photocurrent(part), message, capacity))
                 return 0;
         }
+        for (int control = 0; control < netlist_device_control_count(part); ++control)
+        {
+            double value;
+            if (netlist_device_control(part, i, control, name, sizeof(name), &value) &&
+                !alter(live, name, value, message, capacity))
+                return 0;
+        }
         if (part->type == PART_LED)
         {
             snprintf(name, sizeof(name), "Rguard%d", i);
@@ -269,7 +280,14 @@ static int read_currents(SpiceLive *live, const Workbench *bench, SimAutoResult 
         if (!spice_session_value(live->session, vector, &result->currents[i], result->message, sizeof(result->message)))
             return 0;
     }
-    if (!spice_session_value(live->session, "vsource#branch", &result->source_current,
+    for (int i = 0; i < bench->part_count; ++i)
+        for (int element = 0; element < COMPONENT_MAX_ELEMENTS; ++element)
+            if (component_element_vector(bench->parts[i].type, i, element, vector, sizeof(vector)) &&
+                !spice_session_value(live->session, vector, &result->elements[i][element], result->message,
+                                     sizeof(result->message)))
+                return 0;
+    if (primary_source(bench) >= 0 &&
+        !spice_session_value(live->session, "vsource#branch", &result->source_current,
                              result->message, sizeof(result->message)))
         return 0;
     if (live->measures_wires)
@@ -290,7 +308,7 @@ static int controls_changed(const Workbench *previous, const Workbench *bench)
         return 1;
     for (int i = 0; i < bench->part_count; ++i)
         if (previous->parts[i].on != bench->parts[i].on || previous->parts[i].value != bench->parts[i].value ||
-            previous->parts[i].control != bench->parts[i].control)
+            previous->parts[i].control != bench->parts[i].control || previous->parts[i].states != bench->parts[i].states)
             return 1;
     return 0;
 }
@@ -399,7 +417,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         result->burnt_count += live->burnt[i] != 0;
     result->has_dc = 1;
     for (int i = 0; i < bench->part_count; ++i)
-        if ((component_electrical_type(bench->parts[i].type) == PART_SOURCE || bench->parts[i].type == PART_CLOCK) && bench->parts[i].on)
+        if ((component_electrical_type(bench->parts[i].type) == PART_SOURCE || bench->parts[i].type == PART_CLOCK || bench->parts[i].type == PART_FUNCTION_GENERATOR) && bench->parts[i].on)
             result->powered = 1;
     live->restarted = rebuilt;
     const char *status = "Tempo continuo: %.6g s.";

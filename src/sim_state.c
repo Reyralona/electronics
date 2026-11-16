@@ -1,6 +1,7 @@
 #include "component_registry.h"
 #include "sim_state.h"
 #include "spice_trace.h"
+#include <math.h>
 #include <string.h>
 
 int sim_state_has_result(const SimState *sim, SimResultKind kind)
@@ -135,4 +136,26 @@ void sim_state_leds(const SimState *sim, const Workbench *bench, int leds[])
     for (i = 0; i < bench->part_count; ++i)
         if (sim->burnt[i] && bench->parts[i].type == PART_LED)
             leds[i] = 2;
+}
+
+void sim_state_accept_elements(SimState *sim, const Workbench *bench,
+                               const double elements[WORKBENCH_MAX_COMPONENTS][COMPONENT_MAX_ELEMENTS], double time)
+{
+    double elapsed = time > sim->element_time ? time - sim->element_time : 0;
+    memcpy(sim->dc_elements, elements, sizeof(sim->dc_elements));
+    sim->element_time = time;
+    for (int i = 0; i < bench->part_count && i < WORKBENCH_MAX_COMPONENTS; ++i)
+    {
+        PartType type = bench->parts[i].type;
+        if (type == PART_DC_MOTOR || type == PART_VIBRATION_MOTOR || type == PART_ENCODER_MOTOR)
+            sim->motor_angle[i] = fmod(sim->motor_angle[i] + elements[i][0] * elapsed, 6.283185307179586);
+        if (type != PART_OSCILLOSCOPE)
+            continue;
+        if (sim->scope_count[i] == COMPONENT_SCOPE_HISTORY)
+            memmove(sim->scope_history[i], sim->scope_history[i] + 1,
+                    (COMPONENT_SCOPE_HISTORY - 1) * sizeof(sim->scope_history[i][0]));
+        else
+            ++sim->scope_count[i];
+        sim->scope_history[i][sim->scope_count[i] - 1] = (float)elements[i][0];
+    }
 }

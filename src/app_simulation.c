@@ -1,6 +1,7 @@
 #include "component_registry.h"
 #include "app_simulation.h"
 #include "spice_live.h"
+#include "component_devices.h"
 #include "spice_trace.h"
 #include <stdio.h>
 #include <string.h>
@@ -142,6 +143,7 @@ static void accept_automatic_result(AppState *app)
 
             app->sim.dc_current = r->source_current;
             memcpy(app->sim.dc_led_currents, r->currents, sizeof(app->sim.dc_led_currents));
+            sim_state_accept_elements(&app->sim, &app->dc_job.snapshot, r->elements, app->sim.live_time);
             app->sim.dc_wire_valid = r->measures_wires;
             if (app->sim.dc_wire_valid)
                 memcpy(app->sim.dc_wire_currents, r->wire_currents, sizeof(app->sim.dc_wire_currents));
@@ -250,7 +252,7 @@ static int needs_live_session(const Workbench *bench)
     for (int i = 0; i < bench->part_count; ++i)
         if (component_electrical_type(bench->parts[i].type) == PART_SOURCE ||
             bench->parts[i].type == PART_DFF || bench->parts[i].type == PART_CLOCK ||
-            component_environment(bench->parts[i].type))
+            component_environment(bench->parts[i].type) || component_device(bench->parts[i].type))
             return 1;
     return 0;
 }

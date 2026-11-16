@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "workbench.h"
 #include "spice_process.h"
+#include "component_devices.h"
 
 typedef enum
 {
@@ -25,6 +26,12 @@ typedef struct
     char dc_status[160];
     double dc_led_currents[WORKBENCH_MAX_COMPONENTS];
     double dc_wire_currents[WORKBENCH_MAX_WIRES];
+    double dc_elements[WORKBENCH_MAX_COMPONENTS][COMPONENT_MAX_ELEMENTS];
+    /* Instrument and motor history derived from accepted live samples (simulated time). */
+    float scope_history[WORKBENCH_MAX_COMPONENTS][COMPONENT_SCOPE_HISTORY];
+    int scope_count[WORKBENCH_MAX_COMPONENTS];
+    double motor_angle[WORKBENCH_MAX_COMPONENTS];
+    double element_time;
     SpiceTrace trace;
     int trace_index, trace_pin, trace_current, trace_wire;
     char trace_status[128];
@@ -50,4 +57,7 @@ Pin sim_state_probe(const Workbench *bench, int selected, int probe_pin);
 const char *sim_state_invalidate(SimState *sim, const Workbench *bench);
 const char *sim_state_advance(SimState *sim, uint64_t now);
 void sim_state_leds(const SimState *sim, const Workbench *bench, int leds[]);
+/* Stores device measurements of an accepted sample and advances scope history and motor angles. */
+void sim_state_accept_elements(SimState *sim, const Workbench *bench,
+                               const double elements[WORKBENCH_MAX_COMPONENTS][COMPONENT_MAX_ELEMENTS], double time);
 #endif

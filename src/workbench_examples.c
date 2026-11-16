@@ -1,4 +1,5 @@
 #include "workbench_examples.h"
+#include "component_devices.h"
 #include <string.h>
 
 /* Wire colors follow the palette: 0 blue, 1 red, 2 black, 3 green, 4 yellow, 5 white. */
@@ -315,6 +316,56 @@ static int build_not_alternate(Workbench *b, int *selected)
     return 1;
 }
 
+static int build_generator_scope(Workbench *b, int *selected)
+{
+    const float y = 380;
+    if (add_valued(b, PART_FUNCTION_GENERATOR, CHAIN_SOURCE_X, y, 1000) != 0 ||
+        add_valued(b, PART_RESISTOR, CHAIN_FIRST_X, y, 220) != 1 || bench_add(b, PART_LED, 700, y) != 2 ||
+        bench_add(b, PART_OSCILLOSCOPE, 600, y + 160) != 3)
+        return 0;
+    if (!wire_lane(b, 0, 0, 1, 0, WIRE_SIGNAL, y - SUPPLY_LANE) || !wire(b, 1, 1, 2, 0, WIRE_SIGNAL) ||
+        !wire_lane(b, 2, 1, 0, 1, WIRE_RETURN, y + 90) || !wire_lane(b, 3, 0, 1, 0, WIRE_CONTROL, y + 280) ||
+        !wire_lane(b, 3, 1, 0, 1, WIRE_RETURN, y + 260))
+        return 0;
+    *selected = 3;
+    return 1;
+}
+
+static int build_relay_motor(Workbench *b, int *selected)
+{
+    const float y = 360;
+    if (bench_add(b, PART_SOURCE, CHAIN_SOURCE_X, y) != 0 || bench_add(b, PART_SWITCH, CHAIN_FIRST_X, y) != 1 ||
+        bench_add(b, PART_RELAY, 700, y) != 2 || bench_add(b, PART_DC_MOTOR, 900, y + 150) != 3)
+        return 0;
+    if (!wire_lane(b, 0, 0, 1, 0, WIRE_SUPPLY, y - SUPPLY_LANE) || !wire_lane(b, 1, 1, 2, 0, WIRE_CONTROL, y + 90) ||
+        !wire_lane(b, 2, 1, 0, 1, WIRE_RETURN, y + 260) || !wire_lane(b, 0, 0, 2, 2, WIRE_SUPPLY, y - SUPPLY_LANE - 30) ||
+        !wire_lane(b, 2, 3, 3, 0, WIRE_SIGNAL, y + 110) || !wire_lane(b, 3, 1, 0, 1, WIRE_RETURN, y + 260))
+        return 0;
+    *selected = 2;
+    return 1;
+}
+
+static int build_dip_display(Workbench *b, int *selected)
+{
+    const float y = 300;
+    static const int segment_pins[COMPONENT_DIP_POSITIONS] = {0, 1, 2, 3};
+    if (bench_add(b, PART_SOURCE, CHAIN_SOURCE_X, y) != 0 || bench_add(b, PART_DIP_SWITCH, CHAIN_FIRST_X, y) != 1 ||
+        bench_add(b, PART_SEVEN_SEGMENT, 900, y + 40) != 2 || !bench_set_states(b, 1, 0x3))
+        return 0;
+    for (int contact = 0; contact < COMPONENT_DIP_POSITIONS; ++contact)
+    {
+        int resistor = add_valued(b, PART_RESISTOR, 700, y + 120 + contact * 50.0f, 330);
+        if (resistor < 0 || !wire_lane(b, 0, 0, 1, contact, WIRE_SUPPLY, y - SUPPLY_LANE + contact * 6) ||
+            !wire_lane(b, 1, contact + 4, resistor, 0, WIRE_SIGNAL, y + 120 + contact * 50.0f) ||
+            !wire_lane(b, resistor, 1, 2, segment_pins[contact], WIRE_SIGNAL, y + 120 + contact * 50.0f))
+            return 0;
+    }
+    if (!wire_lane(b, 2, 4, 0, 1, WIRE_RETURN, y + 340))
+        return 0;
+    *selected = 1;
+    return 1;
+}
+
 static const ExampleInfo examples[] = {
     {"LED na breadboard", "Básico", "Fonte, resistor encaixado na breadboard e LED.", build_breadboard_led},
     {"Flip-flop D", "Digital", "Dois clocks: o LED mostra Q, que só muda na borda do clock.", build_flip_flop},
@@ -336,6 +387,9 @@ static const ExampleInfo examples[] = {
     {"Porta AND com botões", "Digital", "O LED só acende com os dois botões pressionados.", build_and_buttons},
     {"Pisca-pisca com clock", "Digital", "Um clock liga e desliga o LED periodicamente.", build_blinker},
     {"NOT alterna dois LEDs", "Digital", "Um LED segue o clock e o outro o inverso.", build_not_alternate},
+    {"Gerador no osciloscópio", "Medição", "Onda senoidal de 1 kHz no LED e na tela do osciloscópio.", build_generator_scope},
+    {"Relé liga o motor", "Saídas", "O interruptor energiza a bobina; o contato NA liga o motor.", build_relay_motor},
+    {"Chave DIP no display", "Saídas", "Cada alavanca acende um segmento (a-d). Duplo clique alterna.", build_dip_display},
 };
 
 _Static_assert(sizeof(examples) / sizeof(examples[0]) == WORKBENCH_EXAMPLE_COUNT, "example table size");

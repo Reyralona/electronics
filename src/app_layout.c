@@ -1,7 +1,7 @@
 #include "app_layout.h"
 
-#define PALETTE_ITEM_TOP 140.0f
-#define PALETTE_ITEM_PITCH 72.0f
+#define PALETTE_ITEM_TOP 172.0f
+#define PALETTE_ITEM_PITCH 64.0f
 #define HEADER_BUTTON_Y 14.0f
 #define HEADER_BUTTON_H 40.0f
 #define SETTINGS_LEFT 280.0f
@@ -59,7 +59,7 @@ AppRect app_layout_palette_tab(int tab)
 {
     if (tab < 0 || tab >= APP_PALETTE_TABS)
         return NO_RECT;
-    return (AppRect){14 + tab * 64.0f, 82, 64, 40};
+    return (AppRect){14 + (tab % 3) * 64.0f, 80 + (tab / 3) * 42.0f, 64, 38};
 }
 
 int app_layout_palette_tab_at(float x, float y)
@@ -74,7 +74,7 @@ AppRect app_layout_palette_item(int slot)
 {
     if (slot < 0 || slot >= APP_PALETTE_VISIBLE)
         return NO_RECT;
-    return (AppRect){14, PALETTE_ITEM_TOP + slot * PALETTE_ITEM_PITCH, 186, 64};
+    return (AppRect){14, PALETTE_ITEM_TOP + slot * PALETTE_ITEM_PITCH, 186, 58};
 }
 
 int app_layout_palette_item_at(float x, float y)
@@ -314,8 +314,8 @@ int app_layout_confirm_button_at(float x, float y)
 
 #define EXAMPLE_COLUMNS 3
 #define EXAMPLE_CARD_W 296.0f
-#define EXAMPLE_CARD_H 82.0f
-#define EXAMPLE_GAP 10.0f
+#define EXAMPLE_CARD_H 72.0f
+#define EXAMPLE_GAP 8.0f
 
 AppRect app_layout_examples_panel(void)
 {

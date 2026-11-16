@@ -8,6 +8,7 @@
 #include "component_registry.h"
 #include "workbench_pack.h"
 #include "workbench_examples.h"
+#include "component_devices.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -801,6 +802,447 @@ static void draw_sensor(const Part *part)
     }
 }
 
+/* ---- Multi-element devices: measurements come from the frame context set by the workspace pass. ---- */
+typedef struct
+{
+    const double *elements;
+    const float *scope;
+    int scope_count;
+    double motor_angle;
+} DeviceFrame;
+static DeviceFrame device_frame;
+
+static double device_element(int index)
+{
+    return device_frame.elements ? device_frame.elements[index] : 0;
+}
+
+static float led_glow(double amperes)
+{
+    return (float)sqrt(fmin(1.0, fmax(0.0, amperes / SPICE_LED_VISUAL_FULL_SCALE_AMPERES)));
+}
+
+static void radial_pcb(float x, float y, float w, float h, float r, float g, float b)
+{
+    glColor3f(r * .6f, g * .6f, b * .6f);
+    rounded_rect(x - w / 2 + 1, y - h / 2 + 2, w, h, 3);
+    glColor3f(r, g, b);
+    rounded_rect(x - w / 2, y - h / 2, w, h, 3);
+    glColor3f(.82f, .70f, .30f);
+    for (int hole = -1; hole <= 1; ++hole)
+        circle(x + hole * 14.0f, y + h / 2 - 5, 2.4f);
+}
+
+static void draw_rgb_led(const Part *p)
+{
+    float x = p->x, y = p->y;
+    float r = led_glow(device_element(0)), g = led_glow(device_element(1)), b = led_glow(device_element(2));
+    float mix = fmaxf(r, fmaxf(g, b));
+    if (mix > 0)
+    {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glColor4f(r, g, b, .35f * mix);
+        circle(x, y - 6, 22 + 10 * mix);
+        glDisable(GL_BLEND);
+    }
+    glColor3f(.70f, .72f, .74f);
+    rounded_rect(x - 17, y + 10, 34, 6, 2);
+    glColor3f(.86f + .14f * r, .88f + .12f * g, .90f + .10f * b);
+    if (mix > 0)
+        glColor3f(.55f + .45f * r, .55f + .45f * g, .55f + .45f * b);
+    ellipse(x, y - 8, 15, 15);
+    rect(x - 15, y - 8, 30, 18);
+    glColor3f(1, 1, 1);
+    ellipse(x - 6, y - 14, 3, 6);
+}
+
+static void segment_shape(float x, float y, float h, int segment, int lit, float glow)
+{
+    const float w = h * .55f, t = h * .11f, half = h / 2;
+    const float shapes[8][4] = {{t, 0, w - 2 * t, t},           {w - t, t, t, half - t * 1.5f},
+                                {w - t, half + t / 2, t, half - t * 1.5f}, {t, h - t, w - 2 * t, t},
+                                {0, half + t / 2, t, half - t * 1.5f},     {0, t, t, half - t * 1.5f},
+                                {t, half - t / 2, w - 2 * t, t},           {w + t, h - t, t, t}};
+    if (lit)
+        glColor3f(.45f + .55f * glow, .05f + .10f * glow, .04f);
+    else
+        glColor3f(.24f, .10f, .10f);
+    rect(x + shapes[segment][0], y + shapes[segment][1], shapes[segment][2], shapes[segment][3]);
+}
+
+static void draw_seven_segment(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.08f, .08f, .09f);
+    rounded_rect(x - 30, y - 44, 60, 88, 4);
+    glColor3f(.16f, .16f, .18f);
+    rounded_rect(x - 26, y - 40, 52, 80, 3);
+    for (int segment = 0; segment < COMPONENT_SEGMENTS; ++segment)
+    {
+        float glow = led_glow(device_element(segment));
+        segment_shape(x - 15, y - 30, 58, segment, glow > .02f, glow);
+    }
+}
+
+static void draw_dip_switch(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.55f, .08f, .08f);
+    rounded_rect(x - 30, y - 22, 60, 44, 3);
+    glColor3f(.95f, .95f, .93f);
+    for (int contact = 0; contact < COMPONENT_DIP_POSITIONS; ++contact)
+    {
+        float cx = component_device(PART_DIP_SWITCH)->pins[contact][0];
+        glColor3f(.25f, .04f, .04f);
+        rect(x + cx - 5, y - 12, 10, 22);
+        glColor3f(.96f, .96f, .94f);
+        rect(x + cx - 5, (p->states >> contact & 1u) ? y - 12 : y, 10, 10);
+    }
+    glColor3f(.95f, .95f, .93f);
+    rect(x - 26, y - 19, 8, 3);
+}
+
+static void draw_dpst(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.10f, .10f, .11f);
+    rounded_rect(x - 30, y - 20, 60, 40, 5);
+    glColor3f(.30f, .31f, .33f);
+    rounded_rect(x - 22, y - 14, 44, 28, 4);
+    glColor3f(p->on ? .16f : .62f, p->on ? .62f : .18f, .16f);
+    rounded_rect(x + (p->on ? 2 : -18), y - 11, 16, 22, 3);
+    glColor3f(.82f, .84f, .86f);
+    rect(x - 30, y - 11, 6, 2);
+    rect(x - 30, y + 9, 6, 2);
+    rect(x + 24, y - 11, 6, 2);
+    rect(x + 24, y + 9, 6, 2);
+}
+
+static void draw_relay(const Part *p)
+{
+    float x = p->x, y = p->y;
+    int closed = device_element(1) > .5;
+    glColor3f(.05f, .18f, .42f);
+    rounded_rect(x - 34, y - 30, 68, 60, 4);
+    gradient_rect(x - 31, y - 27, 62, 50, (SurfaceColor){.15f, .38f, .78f}, (SurfaceColor){.08f, .24f, .56f});
+    glColor3f(.88f, .92f, .98f);
+    rect(x - 22, y - 18, 30, 2);
+    rect(x - 22, y - 12, 22, 2);
+    rect(x - 22, y - 6, 26, 2);
+    glColor3f(closed ? .25f : .55f, closed ? .90f : .55f, .35f);
+    circle(x + 20, y - 15, 4);
+    glColor3f(.88f, .92f, .98f);
+    glLineWidth(2);
+    line(x - 10, y + 12, x + 12, closed ? y + 6 : y + 16);
+    glLineWidth(1);
+    circle(x - 12, y + 12, 2.5f);
+}
+
+static void draw_motor_can(float x, float y, float radius, float angle, float shaft)
+{
+    glColor3f(.40f, .42f, .45f);
+    circle(x + 1, y + 2, radius);
+    gradient_rect(x - radius, y - radius * .8f, radius * 2, radius * 1.6f, (SurfaceColor){.86f, .87f, .88f},
+                  (SurfaceColor){.55f, .57f, .60f});
+    glColor3f(.72f, .74f, .76f);
+    circle(x, y, radius * .62f);
+    glColor3f(.30f, .31f, .33f);
+    circle(x, y, radius * .22f);
+    glColor3f(.95f, .80f, .20f);
+    glLineWidth(3);
+    line(x, y, x + cosf(angle) * shaft, y + sinf(angle) * shaft);
+    glLineWidth(1);
+}
+
+static void draw_dc_motor(const Part *p)
+{
+    draw_motor_can(p->x, p->y, 24, (float)device_frame.motor_angle, 20);
+}
+
+static void draw_vibration_motor(const Part *p)
+{
+    float x = p->x, y = p->y, angle = (float)device_frame.motor_angle, shake = device_element(0) > 50 ? 1.5f : 0;
+    glColor3f(.62f, .64f, .66f);
+    circle(x + shake * cosf(angle * 7), y, 20);
+    glColor3f(.82f, .84f, .86f);
+    circle(x + shake * cosf(angle * 7), y, 16);
+    glColor3f(.30f, .31f, .33f);
+    circle(x + cosf(angle) * 8, y + sinf(angle) * 8, 6);
+}
+
+static void draw_encoder_motor(const Part *p)
+{
+    float x = p->x, y = p->y;
+    radial_pcb(x, y + 14, 80, 40, .10f, .42f, .22f);
+    draw_motor_can(x - 6, y - 8, 22, (float)device_frame.motor_angle, 18);
+    glColor3f(.10f, .10f, .11f);
+    circle(x + 26, y - 8, 9);
+    glColor3f(.85f, .86f, .87f);
+    for (int slot = 0; slot < 6; ++slot)
+    {
+        float a = (float)device_frame.motor_angle + slot * 1.047f;
+        circle(x + 26 + cosf(a) * 6, y - 8 + sinf(a) * 6, 1.3f);
+    }
+}
+
+static void draw_servo(const Part *p)
+{
+    float x = p->x, y = p->y, angle = (float)(device_element(0) * 3.14159265 / 180.0);
+    glColor3f(.05f, .22f, .55f);
+    rounded_rect(x - 36, y - 22, 72, 44, 4);
+    gradient_rect(x - 33, y - 19, 66, 38, (SurfaceColor){.20f, .48f, .90f}, (SurfaceColor){.10f, .32f, .70f});
+    glColor3f(.08f, .25f, .62f);
+    rect(x - 44, y - 6, 88, 10);
+    glColor3f(.96f, .96f, .96f);
+    circle(x - 12, y - 2, 9);
+    glLineWidth(6);
+    line(x - 12, y - 2, x - 12 - cosf(angle) * 28, y - 2 - sinf(angle) * 28);
+    glLineWidth(1);
+    glColor3f(.70f, .72f, .74f);
+    circle(x - 12, y - 2, 2.5f);
+}
+
+static void draw_piezo(const Part *p)
+{
+    float x = p->x, y = p->y;
+    if (fabs(device_element(0)) > 1e-5)
+    {
+        glColor3f(.40f, .60f, .90f);
+        for (int ring = 1; ring <= 2; ++ring)
+            for (int dot = -2; dot <= 2; ++dot)
+                circle(x + 26 + ring * 6, y - 8 + dot * (4 + ring * 2), 1.4f);
+    }
+    glColor3f(.06f, .06f, .07f);
+    circle(x, y - 6, 22);
+    glColor3f(.16f, .16f, .18f);
+    circle(x, y - 6, 18);
+    glColor3f(.04f, .04f, .05f);
+    circle(x, y - 6, 4);
+}
+
+static void draw_wave_icon(float x, float y, unsigned mode)
+{
+    glColor3f(.40f, .98f, .58f);
+    glBegin(GL_LINE_STRIP);
+    for (int step = 0; step <= 24; ++step)
+    {
+        float t = step / 24.0f, v;
+        if (mode == 1)
+            v = fmodf(t * 2, 1) < .5f ? -1 : 1;
+        else if (mode == 2)
+            v = 1 - 4 * fabsf(fmodf(t * 2, 1) - .5f);
+        else
+            v = sinf(t * 12.566f);
+        glVertex2f(x + t * 36, y - v * 6);
+    }
+    glEnd();
+}
+
+static void draw_function_generator(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.12f, .13f, .15f);
+    rounded_rect(x - 42, y - 30, 84, 60, 5);
+    gradient_rect(x - 39, y - 27, 78, 54, (SurfaceColor){.42f, .45f, .48f}, (SurfaceColor){.28f, .30f, .33f});
+    glColor3f(.04f, .07f, .06f);
+    rounded_rect(x - 34, y - 22, 44, 22, 3);
+    draw_wave_icon(x - 30, y - 11, p->states);
+    glColor3f(.16f, .17f, .19f);
+    circle(x + 24, y - 11, 8);
+    glColor3f(.62f, .64f, .66f);
+    circle(x + 24, y - 11, 6);
+    binding_post(x - 20, y + 15, .82f, .12f, .10f);
+    binding_post(x, y + 15, .10f, .10f, .11f);
+    glColor3f(p->on ? .30f : .30f, p->on ? .92f : .33f, p->on ? .40f : .34f);
+    circle(x + 24, y + 15, 2.6f);
+}
+
+static void draw_number(float x, float y, float h, double value, int decimals)
+{
+    char digits[16];
+    snprintf(digits, sizeof(digits), "%*.*f", 5, decimals, fabs(value) > 9999 ? 9999.0 : fabs(value));
+    float cursor = x;
+    for (const char *c = digits; *c; ++c)
+    {
+        if (*c == '.')
+        {
+            glColor3f(.10f, .10f, .10f);
+            rect(cursor - 2, y + h - 2, 2, 2);
+            continue;
+        }
+        if (*c >= '0' && *c <= '9')
+            seven_segment_digit(cursor, y, h, *c - '0', 1);
+        cursor += h * .62f;
+    }
+}
+
+static void draw_multimeter(const Part *p)
+{
+    float x = p->x, y = p->y;
+    double reading = p->states == 1 ? device_element(1) * 1000 : p->states == 2 ? device_element(0) / 1e-3 : device_element(0);
+    glColor3f(.55f, .45f, .05f);
+    rounded_rect(x - 36, y - 52, 72, 104, 8);
+    gradient_rect(x - 32, y - 48, 64, 96, (SurfaceColor){.98f, .80f, .15f}, (SurfaceColor){.88f, .66f, .08f});
+    glColor3f(.62f, .70f, .58f);
+    rounded_rect(x - 27, y - 42, 54, 24, 3);
+    draw_number(x - 25, y - 38, 15, reading, p->states == 2 ? 0 : 2);
+    glColor3f(.15f, .15f, .16f);
+    circle(x, y + 8, 16);
+    glColor3f(.85f, .85f, .86f);
+    float dial = -2.2f + p->states * .9f;
+    glLineWidth(3);
+    line(x, y + 8, x + cosf(dial) * 13, y + 8 + sinf(dial) * 13);
+    glLineWidth(1);
+    binding_post(x - 21, y + 38, .10f, .10f, .11f);
+    binding_post(x, y + 38, .82f, .12f, .10f);
+    binding_post(x + 21, y + 38, .82f, .12f, .10f);
+}
+
+static void draw_oscilloscope(const Part *p)
+{
+    float x = p->x, y = p->y;
+    const float screen_w = 100, screen_h = 64, volts_per_screen = 10;
+    glColor3f(.18f, .20f, .23f);
+    rounded_rect(x - 70, y - 52, 140, 104, 6);
+    glColor3f(.03f, .08f, .06f);
+    rect(x - 64, y - 46, screen_w, screen_h);
+    glColor3f(.08f, .22f, .16f);
+    for (int grid = 1; grid < 4; ++grid)
+    {
+        rect(x - 64 + grid * screen_w / 4, y - 46, 1, screen_h);
+        rect(x - 64, y - 46 + grid * screen_h / 4, screen_w, 1);
+    }
+    glColor3f(.40f, 1, .55f);
+    glBegin(GL_LINE_STRIP);
+    for (int i = 0; i < device_frame.scope_count; ++i)
+    {
+        float v = fmaxf(-1, fminf(1, device_frame.scope[i] / (volts_per_screen / 2)));
+        glVertex2f(x - 64 + screen_w * i / (float)(COMPONENT_SCOPE_HISTORY - 1), y - 46 + screen_h / 2 - v * screen_h / 2);
+    }
+    glEnd();
+    glColor3f(.55f, .57f, .60f);
+    for (int knob = 0; knob < 3; ++knob)
+        circle(x + 52, y - 36 + knob * 22, 6);
+    binding_post(x - 14, y + 34, .95f, .80f, .15f);
+    binding_post(x + 14, y + 34, .10f, .10f, .11f);
+}
+
+static void draw_sensor_module(const Part *p)
+{
+    float x = p->x, y = p->y;
+    if (p->type == PART_PIR)
+    {
+        radial_pcb(x, y + 8, 44, 40, .08f, .40f, .22f);
+        glColor3f(.95f, .95f, .93f);
+        circle(x, y - 6, 18);
+        glColor3f(.85f, .85f, .83f);
+        for (int ring = 0; ring < 3; ++ring)
+            circle(x - 6 + ring * 6, y - 8, 4);
+    }
+    else if (p->type == PART_GAS)
+    {
+        radial_pcb(x, y + 8, 48, 40, .08f, .28f, .62f);
+        glColor3f(.62f, .64f, .66f);
+        circle(x, y - 6, 17);
+        glColor3f(.45f, .47f, .49f);
+        for (int mesh = -2; mesh <= 2; ++mesh)
+            rect(x - 14, y - 6 + mesh * 5.0f, 28, 1.4f);
+    }
+    else if (p->type == PART_IR_OBSTACLE)
+    {
+        radial_pcb(x, y + 8, 48, 40, .10f, .12f, .14f);
+        glColor3f(.85f, .88f, .92f);
+        circle(x - 10, y - 8, 7);
+        glColor3f(.10f, .10f, .12f);
+        circle(x + 10, y - 8, 7);
+    }
+    else
+    {
+        glColor3f(.10f, .10f, .11f);
+        rounded_rect(x - 34, y - 14, 68, 28, 6);
+        glColor3f(.30f, .32f, .36f);
+        circle(x - 16, y, 8);
+        circle(x + 16, y, 8);
+        glColor3f(.70f, .20f, .25f);
+        circle(x - 16, y, 4);
+    }
+}
+
+/* Rigid multi-pin packages: metal legs from each terminal to the nearest body edge. */
+static void draw_device_legs(const Part *p)
+{
+    const ComponentDevice *device = component_device(p->type);
+    if (bench_pin_count(p->type) <= 3 || p->type == PART_RGB_LED)
+        return;
+    glColor3f(.70f, .72f, .74f);
+    for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
+    {
+        float px = device->pins[pin][0], py = device->pins[pin][1];
+        float ex = fmaxf(-device->half_width, fminf(device->half_width, px));
+        float ey = fmaxf(-device->half_height, fminf(device->half_height, py));
+        if (fabsf(py) > device->half_height)
+            rect(p->x + px - 1.5f, p->y + fminf(py, ey), 3, fabsf(py - ey));
+        else
+            rect(p->x + fminf(px, ex), p->y + py - 1.5f, fabsf(px - ex), 3);
+    }
+}
+
+static int draw_device(const Part *p)
+{
+    draw_device_legs(p);
+    switch (p->type)
+    {
+    case PART_RGB_LED:
+        draw_rgb_led(p);
+        return 1;
+    case PART_SEVEN_SEGMENT:
+        draw_seven_segment(p);
+        return 1;
+    case PART_DIP_SWITCH:
+        draw_dip_switch(p);
+        return 1;
+    case PART_DPST:
+        draw_dpst(p);
+        return 1;
+    case PART_RELAY:
+        draw_relay(p);
+        return 1;
+    case PART_DC_MOTOR:
+        draw_dc_motor(p);
+        return 1;
+    case PART_VIBRATION_MOTOR:
+        draw_vibration_motor(p);
+        return 1;
+    case PART_ENCODER_MOTOR:
+        draw_encoder_motor(p);
+        return 1;
+    case PART_SERVO:
+        draw_servo(p);
+        return 1;
+    case PART_PIEZO:
+        draw_piezo(p);
+        return 1;
+    case PART_FUNCTION_GENERATOR:
+        draw_function_generator(p);
+        return 1;
+    case PART_MULTIMETER:
+        draw_multimeter(p);
+        return 1;
+    case PART_OSCILLOSCOPE:
+        draw_oscilloscope(p);
+        return 1;
+    case PART_PIR:
+    case PART_GAS:
+    case PART_IR_OBSTACLE:
+    case PART_DISTANCE:
+        draw_sensor_module(p);
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 /* Indicator lamp on a socket: glass tint, filament color and halo follow the measured current. */
 static void draw_lamp(const Part *part, float brightness)
 {
@@ -865,7 +1307,9 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
             rect(px < x ? x - 51 : x + 23, py - 2, 28, 4);
         }
     }
-    if (p->type == PART_BATTERY_9V || p->type == PART_BATTERY_AA || p->type == PART_BATTERY_COIN)
+    if (component_device(p->type))
+        draw_device(p);
+    else if (p->type == PART_BATTERY_9V || p->type == PART_BATTERY_AA || p->type == PART_BATTERY_COIN)
         draw_battery(p);
     else if (p->type == PART_LAMP)
         draw_lamp(p, brightness);
@@ -1304,6 +1748,7 @@ static void play_button_draw(const AppState *app, GLuint font)
 }
 static void draw_thumbnail(PartType type, float x, float y)
 {
+    device_frame = (DeviceFrame){0};
     int previous_layer = interface_layer;
     float previous_scale = drawing_scale;
     interface_layer = 0;
@@ -1399,10 +1844,13 @@ static void draw_header(const AppState *app, GLuint font)
 
 static void draw_palette_tabs(const AppState *app, GLuint font)
 {
-    static const char *tabs[APP_PALETTE_TABS] = {"Básicos", "Digital", "Blocos"};
-    AppRect first = app_layout_palette_tab(0), last = app_layout_palette_tab(APP_PALETTE_TABS - 1);
+    const int per_row = 3;
     color(UI_SURFACE_ALT);
-    rounded_rect(first.x, first.y, last.x + last.w - first.x, first.h, UI_RADIUS);
+    for (int row = 0; row < APP_PALETTE_TABS / per_row; ++row)
+    {
+        AppRect first = app_layout_palette_tab(row * per_row), last = app_layout_palette_tab(row * per_row + per_row - 1);
+        rounded_rect(first.x, first.y, last.x + last.w - first.x, first.h, UI_RADIUS);
+    }
     for (int tab = 0; tab < APP_PALETTE_TABS; ++tab)
     {
         AppRect r = app_layout_palette_tab(tab);
@@ -1414,7 +1862,7 @@ static void draw_palette_tabs(const AppState *app, GLuint font)
         }
         else
             color(UI_MUTED);
-        ui_text_center(font, r, tabs[tab]);
+        ui_text_center(font, r, palette_page_name(tab));
     }
 }
 
@@ -1553,6 +2001,15 @@ static float measured_led_brightness(const AppState *app, int part)
     return app->leds[part] == 1 ? 1 : 0;
 }
 
+static void set_device_frame(const AppState *app, int part)
+{
+    int measured = sim_state_has_result(&app->sim, SIM_RESULT_DC);
+    device_frame.elements = measured ? app->sim.dc_elements[part] : NULL;
+    device_frame.scope = app->sim.scope_history[part];
+    device_frame.scope_count = app->sim.scope_count[part];
+    device_frame.motor_angle = app->sim.motor_angle[part];
+}
+
 static void draw_workspace_boards(const AppState *app)
 {
     int i;
@@ -1561,6 +2018,7 @@ static void draw_workspace_boards(const AppState *app)
         {
             int p;
             float hole_radius = 3 * fminf(1, bench_part_scale(&app->bench.parts[i]));
+            set_device_frame(app, i);
             part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i], measured_led_brightness(app, i));
             for (p = 0; p < bench_pin_count(PART_BREADBOARD); ++p)
             {
@@ -1723,6 +2181,7 @@ static void draw_workspace_parts(const AppState *app)
         if (!app->bench.parts[i].group && app->bench.parts[i].type != PART_BREADBOARD)
         {
             int p;
+            set_device_frame(app, i);
             part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i], measured_led_brightness(app, i));
             if (app->show_handles && app->selected == i)
                 for (int pin = 0; pin < bench_pin_count(app->bench.parts[i].type); ++pin)
@@ -1934,6 +2393,32 @@ static void draw_workspace_burns(const AppState *app, GLuint font)
             burnt_draw(font, &app->bench.parts[i], SDL_GetTicks());
 }
 
+/* Displays inside a packed block are mirrored on its compact body, right-aligned, with live data. */
+static void draw_group_displays(const AppState *app, int group, float width, float height)
+{
+    const BenchGroup *body = &app->bench.groups[group - 1];
+    const float display_w = 60, display_h = 88, gap = 6, margin = 8;
+    float scale = fminf(1, (height - 2 * margin) / display_h);
+    float right = body->x + width * .5f - margin;
+    for (int i = app->bench.part_count - 1; i >= 0; --i)
+    {
+        const Part *member = &app->bench.parts[i];
+        if (member->group != group || (member->type != PART_SEVEN_SEGMENT && member->type != PART_RGB_LED))
+            continue;
+        Part view = *member; /* borrowed view: terminals are not owned here */
+        view.x = 0;
+        view.y = 0;
+        set_device_frame(app, i);
+        glPushMatrix();
+        glTranslatef(right - display_w * scale * .5f, body->y, 0);
+        glScalef(scale, scale, 1);
+        draw_device(&view);
+        glPopMatrix();
+        right -= display_w * scale + gap;
+    }
+    device_frame = (DeviceFrame){0};
+}
+
 static void draw_groups(const AppState *app, GLuint font)
 {
     for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
@@ -1973,6 +2458,7 @@ static void draw_groups(const AppState *app, GLuint font)
             color(.3f, .95f, .45f);
             circle(group->x + width * .5f - 13, group->y - height * .5f + 8, 3);
         }
+        draw_group_displays(app, g + 1, width, height);
         Pin pin;
         for (int index = 0; bench_group_port(&app->bench, g + 1, index, &pin); ++index)
         {
@@ -2098,6 +2584,60 @@ static void inspector_reading(const AppState *app, const Part *part, char *readi
              app->sim.display_pending ? " · atualizando" : "");
 }
 
+static void device_note(const Part *part, const double *e, char *note, size_t capacity)
+{
+    const double rpm = 60 / 6.283185307179586;
+    switch (part->type)
+    {
+    case PART_RGB_LED:
+        snprintf(note, capacity, "R %.2f mA · G %.2f mA · B %.2f mA", e[0] * 1e3, e[1] * 1e3, e[2] * 1e3);
+        break;
+    case PART_SEVEN_SEGMENT:
+    {
+        static const char *names[COMPONENT_SEGMENTS] = {"a", "b", "c", "d", "e", "f", "g", "dp"};
+        size_t used = (size_t)snprintf(note, capacity, "Segmentos acesos:");
+        for (int segment = 0; segment < COMPONENT_SEGMENTS && used < capacity; ++segment)
+            if (e[segment] > 1e-4)
+                used += (size_t)snprintf(note + used, capacity - used, " %s", names[segment]);
+        break;
+    }
+    case PART_DIP_SWITCH:
+        snprintf(note, capacity, "Contatos 1-4: %s %s %s %s · duplo clique na alavanca", part->states & 1 ? "ON" : "off",
+                 part->states & 2 ? "ON" : "off", part->states & 4 ? "ON" : "off", part->states & 8 ? "ON" : "off");
+        break;
+    case PART_RELAY:
+        snprintf(note, capacity, "Bobina %.1f mA · contato NA %s", e[0] * 1e3, e[1] > .5 ? "fechado" : "aberto");
+        break;
+    case PART_DC_MOTOR:
+    case PART_VIBRATION_MOTOR:
+    case PART_ENCODER_MOTOR:
+        snprintf(note, capacity, "%.0f rpm · %.1f mA · modelo R-L com força contraeletromotriz", e[0] * rpm, e[1] * 1e3);
+        break;
+    case PART_SERVO:
+        snprintf(note, capacity, "Ângulo %.0f° · segue o nível médio do sinal (aprox.)", e[0]);
+        break;
+    case PART_PIEZO:
+        snprintf(note, capacity, "%s · piezo passivo: soa com sinal alternado", fabs(e[0]) > 1e-5 ? "Vibrando" : "Parado");
+        break;
+    case PART_FUNCTION_GENERATOR:
+        snprintf(note, capacity, "%s 0–5 V · duplo clique troca a forma de onda", component_mode_label(part->type, part->states));
+        break;
+    case PART_MULTIMETER:
+        if (part->states == 1)
+            snprintf(note, capacity, "Corrente: %.4g mA (entre A e COM)", e[1] * 1e3);
+        else if (part->states == 2)
+            snprintf(note, capacity, "Resistência: %.4g Ω (circuito sem alimentação)", e[0] / 1e-3);
+        else
+            snprintf(note, capacity, "Tensão: %.4g V (entre VΩ e COM)", e[0]);
+        break;
+    case PART_OSCILLOSCOPE:
+        snprintf(note, capacity, "CH1: %.3g V · escala ±5 V; histórico das últimas amostras", e[0]);
+        break;
+    default:
+        note[0] = 0;
+    }
+}
+
 static void inspector_note(const Part *part, char *note, size_t capacity)
 {
     note[0] = 0;
@@ -2137,6 +2677,12 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     char reading[160], note[160], value[64];
     inspector_reading(app, part, reading, sizeof(reading));
     inspector_note(part, note, sizeof(note));
+    if (component_device(part->type) && !component_environment(part->type))
+    {
+        static const double none[COMPONENT_MAX_ELEMENTS];
+        int measured = sim_state_has_result(&app->sim, SIM_RESULT_DC);
+        device_note(part, measured ? app->sim.dc_elements[app->selected] : none, note, sizeof(note));
+    }
     int environment = component_environment(part->type) != NULL;
     float height = environment ? 268 : note[0] ? 186 : 162;
     ui_panel(app_layout_inspector(height));
@@ -2491,8 +3037,8 @@ static void draw_example_card(const AppState *app, GLuint font, int index)
     color(UI_INK);
     name_text(font, r.x + 14, r.y + 24, workbench_example_name(index), (int)r.w - 28 - ui_text_width(font, category));
     color(UI_MUTED);
-    ui_wrapped(font, r.x + 14, r.y + 48, workbench_example_description(index), (int)r.w - 28, 2,
-               (float)ui_font_pixels + 4);
+    ui_wrapped(font, r.x + 14, r.y + 44, workbench_example_description(index), (int)r.w - 28, 2,
+               (float)ui_font_pixels + 3);
 }
 
 static void draw_examples(const AppState *app, GLuint font)

@@ -54,13 +54,15 @@ static void command_example(AppState *app)
 
 static void command_palette(AppState *app)
 {
-    app->palette_page = (app->palette_page + 1) % 3;
+    app->palette_page = (app->palette_page + 1) % PALETTE_PAGES;
     app->palette_offset = 0;
     app->placing = -1;
     app->packed_placing = 0;
     app_packing_refresh(app);
-    static const char *labels[] = {"Biblioteca de componentes.", "Biblioteca de portas logicas.",
-                                   "Biblioteca de blocos reutilizaveis. Ctrl+G cria um bloco."};
+    static const char *labels[PALETTE_PAGES] = {"Componentes básicos.", "Portas lógicas e CIs.",
+                                                "Blocos reutilizáveis. Ctrl+G cria um bloco.", "Sensores com controle de ambiente.",
+                                                "Saídas: lâmpada, LED RGB, display, motores, servo e piezo.",
+                                                "Instrumentos: multímetro, osciloscópio e gerador de função."};
     app->status = labels[app->palette_page];
     return;
 }

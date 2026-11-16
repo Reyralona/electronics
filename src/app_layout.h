@@ -13,7 +13,7 @@ float app_rect_center_y(AppRect rect);
 
 #define APP_HEADER_HEIGHT 68.0f
 #define APP_PALETTE_WIDTH 220.0f
-#define APP_PALETTE_TABS 3
+#define APP_PALETTE_TABS 6
 #define APP_PALETTE_VISIBLE 8
 
 typedef enum
@@ -99,7 +99,7 @@ AppRect app_layout_confirm_panel(void);
 AppRect app_layout_confirm_button(int index);
 int app_layout_confirm_button_at(float x, float y);
 /* Examples dialog: one card per example, three columns. */
-#define APP_EXAMPLE_CARDS 15
+#define APP_EXAMPLE_CARDS 18
 AppRect app_layout_examples_panel(void);
 AppRect app_layout_example_card(int index);
 int app_layout_example_card_at(float x, float y);

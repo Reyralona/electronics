@@ -1,5 +1,6 @@
 #include "bench_path.h"
 #include "workbench.h"
+#include "component_devices.h"
 #include "component_registry.h"
 #include <string.h>
 #include <math.h>
@@ -160,6 +161,19 @@ int bench_set_on(Workbench *bench, int component, int on)
     if (bench->parts[component].on != on)
     {
         bench->parts[component].on = on;
+        ++bench->revision;
+    }
+    return 1;
+}
+
+int bench_set_states(Workbench *bench, int component, unsigned states)
+{
+    if (!bench || component < 0 || component >= bench->part_count ||
+        !component_states_valid(bench->parts[component].type, states))
+        return 0;
+    if (bench->parts[component].states != states)
+    {
+        bench->parts[component].states = states;
         ++bench->revision;
     }
     return 1;
@@ -403,6 +417,13 @@ WirePoint bench_part_to_local(const Part *part, WirePoint world)
 
 static void pin_local_position(const Part *p, int pin, float *x, float *y)
 {
+    const ComponentDevice *device = component_device(p->type);
+    if (device)
+    {
+        *x = device->pins[pin][0];
+        *y = device->pins[pin][1];
+        return;
+    }
     if (p->type == PART_BREADBOARD)
     {
         int group = pin / 5, row = pin % 5;
@@ -475,11 +496,18 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
     }
 }
 
+/* Multi-row packages and instruments keep fixed terminals, like ICs. */
+static int rigid_device(PartType type)
+{
+    const ComponentDevice *device = component_device(type);
+    return device && bench_pin_count(type) > 3 && type != PART_RGB_LED;
+}
+
 static int lead_editable(const Part *part, int pin)
 {
     return part && pin >= 0 && pin < bench_pin_count(part->type) && part->type != PART_BREADBOARD &&
            !component_has_flag(part->type, COMPONENT_QUAD_GATE) &&
-           !component_has_flag(part->type, COMPONENT_GATE_SYMBOL);
+           !component_has_flag(part->type, COMPONENT_GATE_SYMBOL) && !rigid_device(part->type);
 }
 
 size_t bench_lead_count(const Part *part, int pin)

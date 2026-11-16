@@ -1,4 +1,5 @@
 #include "component_registry.h"
+#include "component_devices.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,6 +34,22 @@ static const ComponentParameter lamp_resistance = {"resistance", "Ω", 250, 1, 1
 static const ComponentPinInfo pins_bjt[] = {{"E", PIN_EMITTER}, {"B", PIN_BASE}, {"C", PIN_COLLECTOR}};
 static const ComponentPinInfo pins_photo_transistor[] = {{"C", PIN_COLLECTOR}, {"E", PIN_EMITTER}};
 static const ComponentPinInfo pins_sensor[] = {{"V+", PIN_SUPPLY_POSITIVE}, {"OUT", PIN_OUTPUT}, {"GND", PIN_GROUND}};
+static const ComponentPinInfo pins_rgb[] = {{"R", PIN_ANODE}, {"K", PIN_CATHODE}, {"G", PIN_ANODE}, {"B", PIN_ANODE}};
+static const ComponentPinInfo pins_seven[] = {{"a", PIN_ANODE}, {"b", PIN_ANODE}, {"c", PIN_ANODE}, {"d", PIN_ANODE}, {"COM", PIN_CATHODE},
+                                              {"e", PIN_ANODE}, {"f", PIN_ANODE}, {"g", PIN_ANODE}, {"dp", PIN_ANODE}};
+static const ComponentPinInfo pins_dip[] = {{"1", PIN_CONTACT}, {"2", PIN_CONTACT}, {"3", PIN_CONTACT}, {"4", PIN_CONTACT},
+                                            {"1'", PIN_CONTACT}, {"2'", PIN_CONTACT}, {"3'", PIN_CONTACT}, {"4'", PIN_CONTACT}};
+static const ComponentPinInfo pins_dpst[] = {{"1A", PIN_CONTACT}, {"1B", PIN_CONTACT}, {"2A", PIN_CONTACT}, {"2B", PIN_CONTACT}};
+static const ComponentPinInfo pins_relay[] = {{"Bobina+", PIN_PASSIVE}, {"Bobina-", PIN_PASSIVE}, {"COM", PIN_CONTACT},
+                                              {"NA", PIN_CONTACT}, {"NF", PIN_CONTACT}};
+static const ComponentPinInfo pins_motor[] = {{"M+", PIN_PASSIVE}, {"M-", PIN_PASSIVE}};
+static const ComponentPinInfo pins_encoder[] = {{"M+", PIN_PASSIVE}, {"M-", PIN_PASSIVE}, {"VCC", PIN_SUPPLY_POSITIVE},
+                                                {"GND", PIN_GROUND}, {"A", PIN_OUTPUT}, {"B", PIN_OUTPUT}};
+static const ComponentPinInfo pins_servo[] = {{"GND", PIN_GROUND}, {"V+", PIN_SUPPLY_POSITIVE}, {"SINAL", PIN_INPUT}};
+static const ComponentPinInfo pins_generator[] = {{"SAIDA", PIN_OUTPUT}, {"COM", PIN_SUPPLY_RETURN}};
+static const ComponentPinInfo pins_meter[] = {{"COM", PIN_SUPPLY_RETURN}, {"VΩ", PIN_INPUT}, {"A", PIN_INPUT}};
+static const ComponentPinInfo pins_scope[] = {{"CH1", PIN_INPUT}, {"GND", PIN_GROUND}};
+static const ComponentParameter generator_frequency = {"frequency", "Hz", 1000.0, 1e-3, 1e6};
 static const ComponentPinInfo board_contact = {"Contato", PIN_CONTACT};
 
 /* Enum indexes remain the legacy file codes; id is the durable external identity. */
@@ -78,12 +95,29 @@ static const ComponentInfo components[] = {
     [PART_TEMPERATURE] = {PART_TEMPERATURE, "temperature", "Sensor TMP36", 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
     [PART_SOIL] = {PART_SOIL, "soil", "Umidade do solo", 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
     [PART_LAMP] = {PART_LAMP, "lamp", "Lâmpada", 2, COMPONENT_ROTATES, 25, &lamp_resistance, pins_passive},
+    [PART_RGB_LED] = {PART_RGB_LED, "rgb-led", "LED RGB", 4, COMPONENT_ROTATES, 26, NULL, pins_rgb},
+    [PART_SEVEN_SEGMENT] = {PART_SEVEN_SEGMENT, "seven-segment", "Display 7 segmentos", 9, COMPONENT_ROTATES, 26, NULL, pins_seven},
+    [PART_DIP_SWITCH] = {PART_DIP_SWITCH, "dip-switch", "Chave DIP (4)", 8, COMPONENT_ROTATES, 26, NULL, pins_dip},
+    [PART_DPST] = {PART_DPST, "dpst", "Interruptor DPST", 4, COMPONENT_ROTATES, 26, NULL, pins_dpst},
+    [PART_RELAY] = {PART_RELAY, "relay", "Relé 5 V", 5, COMPONENT_ROTATES, 26, NULL, pins_relay},
+    [PART_DC_MOTOR] = {PART_DC_MOTOR, "dc-motor", "Motor CC", 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
+    [PART_VIBRATION_MOTOR] = {PART_VIBRATION_MOTOR, "vibration-motor", "Motor de vibração", 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
+    [PART_ENCODER_MOTOR] = {PART_ENCODER_MOTOR, "encoder-motor", "Motor CC com encoder", 6, COMPONENT_ROTATES, 26, NULL, pins_encoder},
+    [PART_SERVO] = {PART_SERVO, "servo", "Micro servo", 3, COMPONENT_ROTATES, 26, NULL, pins_servo},
+    [PART_PIEZO] = {PART_PIEZO, "piezo", "Piezo", 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
+    [PART_FUNCTION_GENERATOR] = {PART_FUNCTION_GENERATOR, "function-generator", "Gerador de função", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 26, &generator_frequency, pins_generator},
+    [PART_MULTIMETER] = {PART_MULTIMETER, "multimeter", "Multímetro", 3, 0, 26, NULL, pins_meter},
+    [PART_OSCILLOSCOPE] = {PART_OSCILLOSCOPE, "oscilloscope", "Osciloscópio", 2, 0, 26, NULL, pins_scope},
+    [PART_PIR] = {PART_PIR, "pir", "Sensor PIR", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_GAS] = {PART_GAS, "gas", "Sensor de gás", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_IR_OBSTACLE] = {PART_IR_OBSTACLE, "ir-obstacle", "Sensor infravermelho", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_DISTANCE] = {PART_DISTANCE, "distance", "Sensor de distância", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
 };
 
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE};
 
 size_t component_registry_count(void)
 {
@@ -242,12 +276,24 @@ const ComponentEnvironment *component_environment(PartType type)
     static const ComponentEnvironment photo = {"Luz relativa", "%", 0, 100, 0, "Fotocorrente genérica; sem calibração espectral"};
     static const ComponentEnvironment temperature = {"Temperatura", "°C", -40, 125, 25, "TMP36: alimentação 2,7–5,5 V; sem aquecimento próprio"};
     static const ComponentEnvironment soil = {"Umidade relativa", "%", 0, 100, 25, "Sonda resistiva genérica; não calibrada em VWC"};
+    static const ComponentEnvironment motion = {"Movimento", "%", 0, 100, 0, "Módulo PIR digital: saída alta acima de 50%; sem tempo de retenção"};
+    static const ComponentEnvironment gas = {"Gás", "ppm", 0, 1000, 100, "Módulo MQ genérico: saída analógica 10–90% de V+; sem aquecimento"};
+    static const ComponentEnvironment obstacle = {"Obstáculo a", "cm", 0, 30, 20, "Módulo IR de reflexão: saída baixa abaixo de 10 cm"};
+    static const ComponentEnvironment range = {"Distância", "cm", 10, 80, 30, "IR analógico tipo GP2Y0A21: V ≈ 27/d (a 5 V); não é ultrassônico"};
     switch (type)
     {
     case PART_TEMPERATURE:
         return &temperature;
     case PART_SOIL:
         return &soil;
+    case PART_PIR:
+        return &motion;
+    case PART_GAS:
+        return &gas;
+    case PART_IR_OBSTACLE:
+        return &obstacle;
+    case PART_DISTANCE:
+        return &range;
     case PART_LDR:
         return &light;
     case PART_FLEX:
@@ -290,6 +336,13 @@ int component_radial_pins(PartType type)
 
 void component_body_extent(PartType type, float *half_width, float *half_height)
 {
+    const ComponentDevice *device = component_device(type);
+    if (device)
+    {
+        *half_width = device->half_width;
+        *half_height = device->half_height;
+        return;
+    }
     *half_width = 44;
     *half_height = 30;
     if (type == PART_BREADBOARD)

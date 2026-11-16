@@ -2,6 +2,7 @@
 #define SIM_AUTO_H
 #include <stddef.h>
 #include "workbench.h"
+#include "component_devices.h"
 #include "spice_process.h"
 
 /* Automatic analysis used while the simulation is running.
@@ -48,6 +49,7 @@ typedef struct {
     int has_dc;
     double source_current;
     double currents[WORKBENCH_MAX_COMPONENTS];     /* LED and resistor currents, pin 1 -> 2 */
+    double elements[WORKBENCH_MAX_COMPONENTS][COMPONENT_MAX_ELEMENTS]; /* per-device measurements */
     double wire_currents[WORKBENCH_MAX_WIRES];
     int measures_wires;
     int has_trace;

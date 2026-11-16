@@ -1,4 +1,6 @@
 #include "netlist.h"
+#include "netlist_devices.h"
+#include "component_devices.h"
 #include "component_registry.h"
 #include <math.h>
 #include <string.h>
@@ -309,7 +311,9 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_CLOCK:
             break;
         default:
-            return NETLIST_UNSUPPORTED;
+            if (!netlist_device_supported(component_electrical_type(b->parts[i].type)))
+                return NETLIST_UNSUPPORTED;
+            break;
         }
     }
     build_nets(b, parents, !measure_wires, 0, !session);
@@ -320,10 +324,18 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 source = i;
                 break;
             }
+    /* Instruments can be the only reference: generator COM (pin 1) or multimeter COM (pin 0). */
+    int reference_pin = 1;
+    for (i = 0; source < 0 && session && i < b->part_count; ++i)
+        if (b->parts[i].type == PART_FUNCTION_GENERATOR || b->parts[i].type == PART_MULTIMETER)
+        {
+            source = i;
+            reference_pin = b->parts[i].type == PART_MULTIMETER ? 0 : 1;
+        }
     if (source < 0)
         return NETLIST_INVALID;
-    ground = find_root(parents, source * WORKBENCH_MAX_PINS + 1);
-    positive = find_root(parents, source * WORKBENCH_MAX_PINS);
+    ground = find_root(parents, source * WORKBENCH_MAX_PINS + reference_pin);
+    positive = find_root(parents, source * WORKBENCH_MAX_PINS + 1 - reference_pin);
     if (!session && ground == positive)
         return NETLIST_INVALID;
     for (i = 0; i < b->part_count; ++i)
@@ -428,6 +440,18 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                                  c == ground ? 0 : c + 1, third == ground ? 0 : third + 1))
             return NETLIST_IO_ERROR;
     }
+    for (i = 0; i < b->part_count; ++i)
+        if (netlist_device_supported(b->parts[i].type))
+        {
+            int nodes[COMPONENT_MAX_DEVICE_PINS] = {0};
+            for (int pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
+            {
+                int root = find_root(parents, i * WORKBENCH_MAX_PINS + pin);
+                nodes[pin] = root == ground ? 0 : root + 1;
+            }
+            if (!netlist_device_write(out, &b->parts[i], i, nodes))
+                return NETLIST_IO_ERROR;
+        }
     for (i = 0; i < b->part_count; ++i)
         if (b->parts[i].type == PART_LED)
         {
@@ -551,6 +575,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         return NETLIST_IO_ERROR;
     /* RS: series resistance so an LED wired straight to a source gives a finite current in this didactic model.
        rshunt: 1 TOhm from every node to ground so unfinished circuits (floating nodes) still solve. */
+    if (!netlist_device_models(out))
+        return NETLIST_IO_ERROR;
     if (fprintf(out, ".model LED_GENERIC D(IS=1e-18 N=2 RS=%.17g)\n.options rshunt=1e12\n", NETLIST_LED_SERIES_OHMS) <
         0)
         return NETLIST_IO_ERROR;
@@ -564,6 +590,10 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             if (component_current_vector(b->parts[i].type, i, vector, sizeof(vector)) &&
                 fprintf(out, " %s", vector) < 0)
                 return NETLIST_IO_ERROR;
+            for (int element = 0; element < COMPONENT_MAX_ELEMENTS; ++element)
+                if (component_element_vector(b->parts[i].type, i, element, vector, sizeof(vector)) && vector[0] == '@' &&
+                    fprintf(out, " %s", vector) < 0)
+                    return NETLIST_IO_ERROR;
         }
         if (fprintf(out, "\n.end\n") < 0)
             return NETLIST_IO_ERROR;

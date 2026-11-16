@@ -10,6 +10,7 @@
 #include "app_packing.h"
 #include "workbench_pack.h"
 #include "app_layout.h"
+#include "component_devices.h"
 #include "app_settings.h"
 #include "app_palette.h"
 #include "workbench_file.h"
@@ -855,6 +856,33 @@ static void input_connect_pin(AppState *app, Pin clicked)
     }
 }
 
+/* Double click on a DIP lever toggles that contact; on an instrument it cycles the mode. */
+static int input_toggle_device(AppState *app, int hit, float x, float y)
+{
+    const Part *part = &app->bench.parts[hit];
+    const ComponentDevice *device = component_device(part->type);
+    if (!device || (!device->switch_count && device->mode_count < 2))
+        return 0;
+    unsigned states = (part->states + 1) % (unsigned)(device->mode_count > 1 ? device->mode_count : 1);
+    if (device->switch_count)
+    {
+        WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
+        int contact = component_switch_at(part->type, local.x);
+        if (contact < 0)
+            return 0;
+        states = part->states ^ (1u << contact);
+    }
+    if (!bench_history_record(app->history, &app->bench))
+    {
+        app->status = "Histórico indisponível; estado preservado.";
+        return 1;
+    }
+    bench_set_states(&app->bench, hit, states);
+    const char *mode = component_mode_label(part->type, states);
+    app->status = mode ? mode : "Contato alternado. Ctrl+Z desfaz.";
+    return 1;
+}
+
 static void input_select(AppState *app, float x, float y, int clicks)
 {
     int hit;
@@ -888,9 +916,12 @@ static void input_select(AppState *app, float x, float y, int clicks)
             app->status = "Botao pressionado; solte para abrir o contato. Contato ideal, sem bounce.";
             return;
         }
+        if (!app->bench.parts[hit].group && clicks >= 2 && input_toggle_device(app, hit, x, y))
+            return;
         if (!app->bench.parts[hit].group && clicks >= 2 &&
             (component_electrical_type(app->bench.parts[hit].type) == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
-             app->bench.parts[hit].type == PART_CLOCK))
+             app->bench.parts[hit].type == PART_CLOCK || app->bench.parts[hit].type == PART_DPST ||
+             app->bench.parts[hit].type == PART_FUNCTION_GENERATOR))
         {
             bench_history_record(app->history, &app->bench);
             bench_set_on(&app->bench, hit, !app->bench.parts[hit].on);

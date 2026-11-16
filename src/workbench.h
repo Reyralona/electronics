@@ -49,7 +49,24 @@ typedef enum
     PART_AMBIENT_LIGHT,
     PART_TEMPERATURE,
     PART_SOIL,
-    PART_LAMP
+    PART_LAMP,
+    PART_RGB_LED,
+    PART_SEVEN_SEGMENT,
+    PART_DIP_SWITCH,
+    PART_DPST,
+    PART_RELAY,
+    PART_DC_MOTOR,
+    PART_VIBRATION_MOTOR,
+    PART_ENCODER_MOTOR,
+    PART_SERVO,
+    PART_PIEZO,
+    PART_FUNCTION_GENERATOR,
+    PART_MULTIMETER,
+    PART_OSCILLOSCOPE,
+    PART_PIR,
+    PART_GAS,
+    PART_IR_OBSTACLE,
+    PART_DISTANCE
 } PartType;
 typedef struct
 {
@@ -59,6 +76,7 @@ typedef struct
     int on;
     double value;
     double control; /* Potentiometer wiper position, 0..1. */
+    unsigned states; /* Per-element switches (DIP bits) or instrument mode; see component_devices.h. */
     int rotation;
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
@@ -128,6 +146,8 @@ int bench_set_control(Workbench *bench, int component, double position);
 int bench_set_scale(Workbench *bench, int component, float scale);
 int bench_move_part(Workbench *bench, int component, float x, float y);
 int bench_set_on(Workbench *bench, int component, int on);
+/* Replaces the per-part state word; rejects values the component does not accept. */
+int bench_set_states(Workbench *bench, int component, unsigned states);
 int bench_set_wire_color(Workbench *bench, int wire, int color);
 int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count);
 int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point);

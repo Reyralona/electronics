@@ -1,4 +1,5 @@
 #include "workbench_file.h"
+#include "component_devices.h"
 #include "bench_path.h"
 #include <stdlib.h>
 #include "workbench_pack_file.h"
@@ -47,6 +48,39 @@ static int write_leads(FILE *file, const Workbench *bench)
                 if (fputc('\n', file) == EOF)
                     return 0;
             }
+    return 1;
+}
+
+/* Format 26: per-part state words (DIP bits, instrument modes); only non-zero entries are listed. */
+static int write_states(FILE *file, const Workbench *bench)
+{
+    int records = 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        records += bench->parts[i].states != 0;
+    if (fprintf(file, "states %d\n", records) < 0)
+        return 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].states && fprintf(file, "%d %u\n", i, bench->parts[i].states) < 0)
+            return 0;
+    return 1;
+}
+
+static int read_states(FILE *file, Workbench *bench)
+{
+    char tag[32];
+    int records;
+    if (fscanf(file, "%31s %d", tag, &records) != 2 || strcmp(tag, "states") || records < 0 ||
+        records > bench->part_count)
+        return 0;
+    for (int k = 0; k < records; ++k)
+    {
+        int index;
+        unsigned states;
+        if (fscanf(file, "%d %u", &index, &states) != 2 || index < 0 || index >= bench->part_count ||
+            !component_states_valid(bench->parts[index].type, states))
+            return 0;
+        bench->parts[index].states = states;
+    }
     return 1;
 }
 
@@ -100,7 +134,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !workbench_settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 25\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 26\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -121,7 +155,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
         if (fputc('\n', f) == EOF)
             return 0;
     }
-    if (!bench_groups_write(f, b) || !write_leads(f, b))
+    if (!bench_groups_write(f, b) || !write_leads(f, b) || !write_states(f, b))
         return 0;
     if (fprintf(f, "settings %d %d %d %d %d %d %d %.17g %.17g\n", s->show_grid, s->show_handles, s->round_wires,
                 s->show_current, s->wire_color, s->probe_pin, s->probe_current, s->transient_step,
@@ -144,7 +178,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 25) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 26) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -229,6 +263,8 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (version >= 16 && !bench_groups_read(f, &b, version))
         goto cleanup;
     if (version >= 23 && !read_leads(f, &b))
+        goto cleanup;
+    if (version >= 26 && !read_states(f, &b))
         goto cleanup;
     if (version >= 10)
     {
