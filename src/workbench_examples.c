@@ -1,5 +1,6 @@
 #include "workbench_examples.h"
 #include "component_devices.h"
+#include "ui_text.h"
 #include <string.h>
 
 /* Wire colors follow the palette: 0 blue, 1 red, 2 black, 3 green, 4 yellow, 5 white. */
@@ -17,7 +18,7 @@ typedef int (*ExampleBuilder)(Workbench *bench, int *selected);
 
 typedef struct
 {
-    const char *title, *category, *description;
+    TextId title, category, description;
     ExampleBuilder build;
 } ExampleInfo;
 
@@ -367,46 +368,45 @@ static int build_dip_display(Workbench *b, int *selected)
 }
 
 static const ExampleInfo examples[] = {
-    {"LED na breadboard", "Básico", "Fonte, resistor encaixado na breadboard e LED.", build_breadboard_led},
-    {"Flip-flop D", "Digital", "Dois clocks: o LED mostra Q, que só muda na borda do clock.", build_flip_flop},
-    {"Porta NAND 74HC00", "Digital", "CI na breadboard inverte o clock e pisca o LED.", build_nand_chip},
-    {"Dimmer com potenciômetro", "Básico", "Gire o cursor (Shift+scroll) e veja o brilho mudar.", build_dimmer},
-    {"Botão acende LED", "Básico", "Segure o botão com o mouse para fechar o circuito.", build_button_led},
-    {"Capacitor segura o LED", "Básico", "Abra o interruptor: o capacitor descarrega e o LED apaga aos poucos.",
-     build_capacitor_hold},
-    {"LEDs em série e em paralelo", "Básico", "Compare correntes e brilho nas duas ligações.", build_series_parallel},
-    {"Diodo direto e reverso", "Semicondutores", "Só o ramo com o diodo polarizado diretamente acende.",
+    {TXT_ENG_EXAMPLE_BREADBOARD_LED, TXT_ENG_CATEGORY_BASIC, TXT_ENG_EXAMPLE_BREADBOARD_LED_INFO, build_breadboard_led},
+    {TXT_ENG_EXAMPLE_FLIP_FLOP, TXT_ENG_CATEGORY_DIGITAL, TXT_ENG_EXAMPLE_FLIP_FLOP_INFO, build_flip_flop},
+    {TXT_ENG_EXAMPLE_NAND_CHIP, TXT_ENG_CATEGORY_DIGITAL, TXT_ENG_EXAMPLE_NAND_CHIP_INFO, build_nand_chip},
+    {TXT_ENG_EXAMPLE_DIMMER, TXT_ENG_CATEGORY_BASIC, TXT_ENG_EXAMPLE_DIMMER_INFO, build_dimmer},
+    {TXT_ENG_EXAMPLE_BUTTON_LED, TXT_ENG_CATEGORY_BASIC, TXT_ENG_EXAMPLE_BUTTON_LED_INFO, build_button_led},
+    {TXT_ENG_EXAMPLE_CAPACITOR_HOLD, TXT_ENG_CATEGORY_BASIC, TXT_ENG_EXAMPLE_CAPACITOR_HOLD_INFO, build_capacitor_hold},
+    {TXT_ENG_EXAMPLE_SERIES_PARALLEL, TXT_ENG_CATEGORY_BASIC, TXT_ENG_EXAMPLE_SERIES_PARALLEL_INFO,
+     build_series_parallel},
+    {TXT_ENG_EXAMPLE_DIODE_POLARITY, TXT_ENG_CATEGORY_SEMICONDUCTORS, TXT_ENG_EXAMPLE_DIODE_POLARITY_INFO,
      build_diode_polarity},
-    {"Bateria de 9 V", "Básico", "Bateria com resistência interna; resistor maior limita a corrente.",
-     build_battery_led},
-    {"Transistor como chave", "Semicondutores", "O botão injeta corrente na base e o NPN acende o LED.",
+    {TXT_ENG_EXAMPLE_BATTERY_LED, TXT_ENG_CATEGORY_BASIC, TXT_ENG_EXAMPLE_BATTERY_LED_INFO, build_battery_led},
+    {TXT_ENG_EXAMPLE_TRANSISTOR_SWITCH, TXT_ENG_CATEGORY_SEMICONDUCTORS, TXT_ENG_EXAMPLE_TRANSISTOR_SWITCH_INFO,
      build_transistor_switch},
-    {"Sensor de luz com LDR", "Sensores", "Mais luz no LDR (slider) liga o transistor e o LED.", build_light_sensor},
-    {"Indutor atrasa o LED", "Básico", "O LED acende devagar; o diodo protege ao abrir o interruptor.",
-     build_inductor_delay},
-    {"Porta AND com botões", "Digital", "O LED só acende com os dois botões pressionados.", build_and_buttons},
-    {"Pisca-pisca com clock", "Digital", "Um clock liga e desliga o LED periodicamente.", build_blinker},
-    {"NOT alterna dois LEDs", "Digital", "Um LED segue o clock e o outro o inverso.", build_not_alternate},
-    {"Gerador no osciloscópio", "Medição", "Onda senoidal de 1 kHz no LED e na tela do osciloscópio.", build_generator_scope},
-    {"Relé liga o motor", "Saídas", "O interruptor energiza a bobina; o contato NA liga o motor.", build_relay_motor},
-    {"Chave DIP no display", "Saídas", "Cada alavanca acende um segmento (a-d). Duplo clique alterna.", build_dip_display},
+    {TXT_ENG_EXAMPLE_LIGHT_SENSOR, TXT_ENG_CATEGORY_SENSORS, TXT_ENG_EXAMPLE_LIGHT_SENSOR_INFO, build_light_sensor},
+    {TXT_ENG_EXAMPLE_INDUCTOR_DELAY, TXT_ENG_CATEGORY_BASIC, TXT_ENG_EXAMPLE_INDUCTOR_DELAY_INFO, build_inductor_delay},
+    {TXT_ENG_EXAMPLE_AND_BUTTONS, TXT_ENG_CATEGORY_DIGITAL, TXT_ENG_EXAMPLE_AND_BUTTONS_INFO, build_and_buttons},
+    {TXT_ENG_EXAMPLE_BLINKER, TXT_ENG_CATEGORY_DIGITAL, TXT_ENG_EXAMPLE_BLINKER_INFO, build_blinker},
+    {TXT_ENG_EXAMPLE_NOT_ALTERNATE, TXT_ENG_CATEGORY_DIGITAL, TXT_ENG_EXAMPLE_NOT_ALTERNATE_INFO, build_not_alternate},
+    {TXT_ENG_EXAMPLE_GENERATOR_SCOPE, TXT_ENG_CATEGORY_MEASUREMENT, TXT_ENG_EXAMPLE_GENERATOR_SCOPE_INFO,
+     build_generator_scope},
+    {TXT_ENG_EXAMPLE_RELAY_MOTOR, TXT_ENG_CATEGORY_OUTPUTS, TXT_ENG_EXAMPLE_RELAY_MOTOR_INFO, build_relay_motor},
+    {TXT_ENG_EXAMPLE_DIP_DISPLAY, TXT_ENG_CATEGORY_OUTPUTS, TXT_ENG_EXAMPLE_DIP_DISPLAY_INFO, build_dip_display},
 };
 
 _Static_assert(sizeof(examples) / sizeof(examples[0]) == WORKBENCH_EXAMPLE_COUNT, "example table size");
 
 const char *workbench_example_name(int index)
 {
-    return index >= 0 && index < WORKBENCH_EXAMPLE_COUNT ? examples[index].title : NULL;
+    return index >= 0 && index < WORKBENCH_EXAMPLE_COUNT ? tr(examples[index].title) : NULL;
 }
 
 const char *workbench_example_category(int index)
 {
-    return index >= 0 && index < WORKBENCH_EXAMPLE_COUNT ? examples[index].category : NULL;
+    return index >= 0 && index < WORKBENCH_EXAMPLE_COUNT ? tr(examples[index].category) : NULL;
 }
 
 const char *workbench_example_description(int index)
 {
-    return index >= 0 && index < WORKBENCH_EXAMPLE_COUNT ? examples[index].description : NULL;
+    return index >= 0 && index < WORKBENCH_EXAMPLE_COUNT ? tr(examples[index].description) : NULL;
 }
 
 int workbench_example_create(int index, Workbench *destination, int *selected)

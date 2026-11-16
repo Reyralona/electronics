@@ -7,6 +7,8 @@ AppState *app_editor_dispose(AppState *active);
 int app_editor_dirty(const AppState *app);
 int app_editor_save(AppState *app);
 int app_editor_apply(AppState *app);
+/* Status line for a rejected chip name. */
+void app_editor_report_invalid_name(AppState *app);
 int app_editor_set_name(AppState *app, const char *name);
 int app_editor_begin_name(AppState *app, SDL_Window *window);
 void app_editor_request_close(AppState *app, int quit);

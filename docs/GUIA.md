@@ -1,14 +1,22 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.34.1. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.35.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
-- **Topo:** **Projetos** (slots de salvamento), **Exemplos**, **Configurações** e o botão **Executando/Pausado** da simulação.
-- **Esquerda:** o catálogo de peças, em seis abas: **Básicos**, **Digital**, **Blocos** (seus chips), **Sensores**, **Saídas** e **Medição**. `Tab` alterna entre as abas, e a roda do mouse rola a lista.
+- **Topo:** **Projetos** (slots de salvamento), **Exemplos**, **Configurações** e o botão **Simulando/Pausado** da simulação.
+- **Esquerda:** o catálogo de peças, em seis abas: **Básicos**, **Digital**, **Chips** (seus chips), **Sensores**, **Saídas** e **Medição**. `Tab` alterna entre as abas, e a roda do mouse rola a lista.
 - **Centro:** a bancada.
 - **Direita:** o painel da peça selecionada, com valor, tamanho, leitura de corrente e controles próprios (cursor do potenciômetro, ambiente dos sensores, código da placa).
 - **Rodapé:** mensagens, dicas da peça selecionada e o tempo simulado.
+
+## Idioma
+
+Abra **Configurações** e clique na bandeira do Brasil ou dos Estados Unidos para escolher
+português ou inglês. A escolha fica salva nas preferências do programa. Projetos não mudam o idioma.
+Na primeira execução, o programa usa português se o idioma do sistema for português; caso contrário, inglês.
+Nomes de chips digitados e código das placas mantêm o conteúdo original. Mensagens de status já exibidas
+mudam de idioma quando uma nova ação gera outra mensagem.
 
 ## Montar
 

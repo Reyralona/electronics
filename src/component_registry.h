@@ -46,7 +46,7 @@ typedef struct
 {
     PartType type;
     const char *id;
-    const char *display_name;
+    const char *display_name; /* in the current interface language */
     int pin_count;
     unsigned flags;
     int first_file_version;
@@ -91,4 +91,7 @@ int component_legacy_supported(PartType type, int version);
 const ComponentPinInfo *component_pin_info(PartType type, int pin);
 const char *component_pin_role_label(ComponentPinRole role);
 const char *component_pin_marker(ComponentPinRole role);
+/* Short label drawn on gate and IC bodies ("AND", "DFF", "74HC00"), the same in every language; NULL
+ * for other parts. Use it instead of cutting a prefix off display_name. */
+const char *component_symbol(PartType type);
 #endif

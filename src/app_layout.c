@@ -17,6 +17,9 @@
 #define INSPECTOR_ROW_X 852.0f
 #define INSPECTOR_ROW_W 396.0f
 #define CLOSE_BUTTON 36.0f
+#define FLAG_W 42.0f
+#define FLAG_H 28.0f
+#define FLAG_GAP 10.0f
 #define NO_RECT ((AppRect){0, 0, 0, 0})
 
 int app_rect_contains(AppRect rect, float x, float y)
@@ -112,6 +115,14 @@ static AppRect close_button(AppRect panel)
     return (AppRect){panel.x + panel.w - CLOSE_BUTTON - 16, panel.y + 14, CLOSE_BUTTON, CLOSE_BUTTON};
 }
 
+/* Language flags sit in the dialog header, left of the close button: 0 = pt-BR, 1 = en-US. */
+static AppRect language_flag(AppRect panel, int index)
+{
+    AppRect close = close_button(panel);
+    float right = close.x - 16 - (1 - index) * (FLAG_W + FLAG_GAP);
+    return (AppRect){right - FLAG_W, close.y + (close.h - FLAG_H) * .5f, FLAG_W, FLAG_H};
+}
+
 AppRect app_layout_setting(AppSetting setting)
 {
     AppRect panel = app_layout_settings_panel();
@@ -147,6 +158,10 @@ AppRect app_layout_setting(AppSetting setting)
         return settings_row(SETTINGS_RIGHT, 7);
     case APP_SETTING_STOP:
         return settings_row(SETTINGS_RIGHT, 8);
+    case APP_SETTING_LANGUAGE_PT_BR:
+        return language_flag(panel, 0);
+    case APP_SETTING_LANGUAGE_EN_US:
+        return language_flag(panel, 1);
     case APP_SETTING_RESET:
         return (AppRect){panel.x + panel.w - 236, panel.y + panel.h - 54, 220, 36};
     case APP_SETTING_CLOSE:

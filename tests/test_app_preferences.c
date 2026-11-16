@@ -29,6 +29,16 @@ static void roundtrip(void)
     assert(app_preferences_equal(&original, &loaded));
 }
 
+/* An unknown language index is rejected without touching the other settings. */
+static void invalid_language(void)
+{
+    FILE *file = text_file("bancada-preferences 1\ndark_theme 1\nlanguage 7\n");
+    WorkbenchSettings loaded = workbench_settings_default();
+    assert(!app_preferences_read(file, &loaded));
+    fclose(file);
+    assert(loaded.language == 0 && loaded.dark_theme == 0);
+}
+
 static void tolerant_keys(void)
 {
     FILE *file = text_file("bancada-preferences 2\nfuture_option 7 extra words\ndark_theme 1\n");
@@ -70,6 +80,7 @@ static void save_replaces_file(void)
 int main(void)
 {
     roundtrip();
+    invalid_language();
     tolerant_keys();
     rejects_invalid("not-preferences 1\n");
     rejects_invalid("bancada-preferences 1\ngui_font_size 99\n");

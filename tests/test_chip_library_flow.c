@@ -6,6 +6,8 @@
 #include "app_packing.h"
 #include "workbench_file.h"
 #include <assert.h>
+#include <direct.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -102,7 +104,9 @@ static void leave_chip(AppState *inside)
 /* Save the bench to a project file and open it again, as after closing and reopening the program. */
 static void reopen_project(AppState *app)
 {
+    const char *folder = "build/test-slots";
     const char *path = "build/test-slots/chip-flow.elec";
+    assert(_mkdir(folder) == 0 || errno == EEXIST);
     WorkbenchSettings settings = workbench_settings_default();
     assert(workbench_save_project(path, &app->bench, &settings));
     assert(workbench_load_project(path, &app->bench, &settings));

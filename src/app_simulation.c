@@ -1,5 +1,6 @@
 #include "component_registry.h"
 #include "app_simulation.h"
+#include "ui_text.h"
 #include "spice_live.h"
 #include "component_devices.h"
 #include "spice_trace.h"
@@ -80,16 +81,13 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
         if (!burnt[i])
             continue;
         if (reason[i] == BURN_SHORT)
-            snprintf(buffer, capacity, "%s em curto-circuito queimou. Corrija a ligacao e ela volta a funcionar.",
-                     bench->parts[i].type == PART_CLOCK ? "Clock" : "Fonte");
+            snprintf(buffer, capacity, "%s",
+                     tr(bench->parts[i].type == PART_CLOCK ? TXT_APP_BURN_CLOCK_SHORT : TXT_APP_BURN_SOURCE_SHORT));
         else if (reason[i] == BURN_OVERPOWER)
-            snprintf(buffer, capacity,
-                     "Resistor queimou: %.3g W (limite %.3g W). Corrija o circuito e ele volta a funcionar.", value[i],
-                     burn_limits_default().resistor_max_power);
+            snprintf(buffer, capacity, tr(TXT_APP_BURN_RESISTOR), value[i], burn_limits_default().resistor_max_power);
         else
-            snprintf(buffer, capacity,
-                     "LED queimou: %.3g mA (limite %.3g mA). Use um resistor em serie; ele volta a funcionar.",
-                     value[i] * 1000.0, burn_limits_default().led_max_current * 1000.0);
+            snprintf(buffer, capacity, tr(TXT_APP_BURN_LED), value[i] * 1000.0,
+                     burn_limits_default().led_max_current * 1000.0);
         return buffer;
     }
     return NULL;
@@ -111,7 +109,8 @@ static void accept_automatic_result(AppState *app)
     if (app->sim.auto_failed)
     {
         sim_state_clear_result(&app->sim);
-        snprintf(app->sim.auto_status, sizeof(app->sim.auto_status), "Nao foi possivel calcular: %s", r->message);
+        snprintf(app->sim.auto_status, sizeof(app->sim.auto_status), tr(TXT_APP_CALCULATION_FAILED),
+                 r->message);
         app->status = app->sim.auto_status;
     }
     else
@@ -160,12 +159,12 @@ static void accept_automatic_result(AppState *app)
                 app->status = app->sim.auto_status;
             }
             else if (spice_live_restarted(app->dc_job.live))
-                app->status = "Conexoes/frequencia alteradas: estado eletrico reiniciado.";
+                app->status = tr(TXT_APP_LIVE_RESTARTED);
             else if (app->dc_job.reset_live)
-                app->status = "Estado eletrico reiniciado; Espaco pausa/continua sem apagar a memoria.";
+                app->status = tr(TXT_APP_LIVE_RESET);
             else if (!was_live || was_failed || had_burnt)
-                app->status = r->powered ? "Simulacao continua em execucao." :
-                                          "Alimentacao desligada; estado eletrico preservado.";
+                app->status = r->powered ? tr(TXT_APP_SIM_RUNNING) :
+                                          tr(TXT_APP_SUPPLY_OFF);
             /* Steady live samples update the footer, preserving action/error feedback in the status line. */
         }
     }
@@ -187,12 +186,7 @@ static void accept_transient_result(AppState *app)
         app->sim.trace = app->dc_job.trace;
         app->show_trace = 1;
         app->sim.sim_running = 0;
-        snprintf(app->sim.trace_status, sizeof(app->sim.trace_status),
-                 app->sim.trace_current == 2 ? "Corrente fio A -> B: t=%.6g s; I=%.6g A (1/%d)."
-                 : app->sim.trace_current    ? "Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (1/%d)."
-                                             : "Tensao: t=%.6g s; V=%.6g V (1/%d).",
-                 app->sim.trace.samples[0].time, app->sim.trace.samples[0].value, app->sim.trace.count);
-        app->status = app->sim.trace_status;
+        app->status = sim_state_trace_text(&app->sim);
     }
     else
     {
@@ -219,7 +213,7 @@ static void poll_result(AppState *app)
             if (!app->dc_job.automatic)
             {
                 sim_state_discard_result(&app->sim, SIM_RESULT_DC);
-                app->status = "Montagem mudou durante analise; resultado descartado.";
+                app->status = tr(TXT_APP_RESULT_DISCARDED);
             }
         }
         else if (app->dc_job.automatic)
@@ -297,7 +291,7 @@ static void schedule_analysis(AppState *app)
             if (!started)
             {
                 app->sim.auto_failed = 1;
-                app->status = "Falha ao iniciar o calculo automatico.";
+                app->status = tr(TXT_APP_SIMULATION_START_FAILED);
             }
         }
     }

@@ -4,8 +4,10 @@
 #include "mcu_board.h"
 #include "workbench_history.h"
 #include "bench_scope.h"
+#include "ui_text.h"
 #include <ctype.h>
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 
 #define CODE_TEXT_PADDING 6.0f
@@ -13,6 +15,7 @@
 #define CODE_PAGE_LINES 16
 #define CODE_POPUP_WIDTH 300.0f
 #define CODE_POPUP_ROW 22.0f
+#define BYTES_PER_KILOBYTE 1024
 
 int app_code_editable(const AppState *app, int part)
 {
@@ -70,7 +73,7 @@ void app_code_open(AppState *app, SDL_Window *window, int part)
     app->settings = app->projects_open = app->examples_open = 0;
     if (window)
         SDL_StartTextInput(window);
-    app->status = "Editor de codigo: Ctrl+Enter executa · Ctrl+Espaco sugere · Esc fecha (aplica alteracoes).";
+    app->status = tr(TXT_MCU_EDITOR_KEYS);
 }
 
 int app_code_apply(AppState *app)
@@ -86,12 +89,12 @@ int app_code_apply(AppState *app)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench) || !bench_set_code(&app->bench, app->code_part, app->code_text))
     {
-        app->status = "Memoria insuficiente para guardar o programa; o anterior continua rodando.";
+        app->status = tr(TXT_MCU_CODE_NO_MEMORY);
         return 0;
     }
     bench_history_record(app->history, &before);
     app->code_dirty = 0;
-    app->status = "Programa enviado para a placa; ela reinicia com o codigo novo. Ctrl+Z desfaz.";
+    app->status = tr(TXT_MCU_CODE_SENT);
     return 1;
 }
 
@@ -103,7 +106,7 @@ void app_code_close(AppState *app, SDL_Window *window)
     app->code_part = -1;
     app->code_dirty = 0;
     SDL_StopTextInput(window);
-    app->status = applied ? "Editor fechado; programa novo aplicado. Ctrl+Z desfaz." : "Editor de codigo fechado.";
+    app->status = applied ? tr(TXT_MCU_CODE_APPLIED) : tr(TXT_MCU_EDITOR_CLOSED);
 }
 
 void app_code_validate(AppState *app, SDL_Window *window)
@@ -119,7 +122,7 @@ void app_code_validate(AppState *app, SDL_Window *window)
     app->code_part = -1;
     app->code_dirty = 0;
     SDL_StopTextInput(window);
-    app->status = "Editor fechado: a placa foi removida ou trocada.";
+    app->status = tr(TXT_MCU_BOARD_GONE);
 }
 
 int app_code_completions(const AppState *app, int *matches, int capacity)
@@ -165,7 +168,9 @@ static void edited(AppState *app, int changed)
 {
     if (!changed)
     {
-        app->status = "Limite do programa atingido (16 KB); apague algo antes de continuar.";
+        int kilobytes = (int)(sizeof(app->code_text) / BYTES_PER_KILOBYTE);
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_MCU_CODE_FULL), kilobytes);
+        app->status = app->selection_status;
         return;
     }
     app->code_dirty = 1;
@@ -243,7 +248,7 @@ static void editing_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_
     if ((mod & SDL_KMOD_CTRL) && (key == SDLK_RETURN || key == SDLK_KP_ENTER))
     {
         if (!app_code_apply(app))
-            app->status = "Sem alteracoes no programa; a placa continua rodando.";
+            app->status = tr(TXT_MCU_NO_CHANGES);
         return;
     }
     if ((mod & SDL_KMOD_CTRL) && key == SDLK_SPACE)
@@ -320,7 +325,7 @@ static int panel_click(AppState *app, SDL_Window *window, float x, float y)
     else if (app_rect_contains(app_layout_code_run(), x, y))
     {
         if (!app_code_apply(app))
-            app->status = "Sem alteracoes no programa; a placa continua rodando.";
+            app->status = tr(TXT_MCU_NO_CHANGES);
     }
     else if (app_rect_contains(app_layout_code_text(), x, y))
         place_cursor(app, x, y);

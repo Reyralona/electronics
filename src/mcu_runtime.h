@@ -20,6 +20,7 @@ typedef struct
     char serial[MCU_SERIAL_CAPACITY];
     char error[200];
     int error_line;
+    int runs_default; /* running the board's default program (Part.code is NULL) */
 } McuInstance;
 
 typedef struct

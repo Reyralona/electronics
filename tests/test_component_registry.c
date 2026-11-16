@@ -1,10 +1,34 @@
 #include "component_registry.h"
+#include "component_devices.h"
+#include "ui_text.h"
 #include <assert.h>
 #include <math.h>
 #include <string.h>
 
+/* Display texts follow the interface language; persistent ids and pin symbols do not. */
+static void check_localized_texts(void)
+{
+    const ComponentInfo *source = component_by_id("source");
+    assert(!strcmp(source->display_name, tr(TXT_CAT_SOURCE)));
+    assert(!strcmp(component_pin_info(PART_SERVO, 2)->name, tr(TXT_CAT_PIN_SIGNAL)));
+    ui_text_set_language(UI_LANG_EN_US);
+    assert(!strcmp(component_by_id("source")->display_name, tr_in(UI_LANG_EN_US, TXT_CAT_SOURCE)));
+    assert(!strcmp(component_info(PART_SOURCE)->id, "source"));
+    assert(!strcmp(component_pin_info(PART_BREADBOARD, 0)->name, tr_in(UI_LANG_EN_US, TXT_CAT_PIN_CONTACT)));
+    assert(!strcmp(component_pin_info(PART_74HC00, 7)->name, "3Y"));
+    assert(!strcmp(component_environment(PART_LDR)->note, tr_in(UI_LANG_EN_US, TXT_CAT_ENV_LIGHT_NOTE)));
+    assert(!strcmp(component_mode_label(PART_MULTIMETER, 2), tr_in(UI_LANG_EN_US, TXT_CAT_METER_RESISTANCE)));
+    assert(!strcmp(component_element_label(PART_SEVEN_SEGMENT, 7), "dp"));
+    assert(!component_element_label(PART_ARDUINO_UNO, 0));
+    assert(!strcmp(component_symbol(PART_DFF), "DFF") && !strcmp(component_symbol(PART_74HC00), "74HC00"));
+    assert(!component_symbol(PART_RESISTOR));
+    ui_text_set_language(UI_LANG_PT_BR);
+    assert(!strcmp(source->display_name, tr_in(UI_LANG_PT_BR, TXT_CAT_SOURCE)));
+}
+
 int main(void)
 {
+    check_localized_texts();
     /* This is the historical file contract, not the current enum's declaration order. */
     static const char *legacy_ids[] = {"source",    "switch",   "led",   "breadboard", "resistor",
                                        "capacitor", "inductor", "and",   "nand",       "or",

@@ -1,5 +1,6 @@
 #include "component_registry.h"
 #include "component_devices.h"
+#include "ui_text.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,12 +42,12 @@ static const ComponentPinInfo pins_dip[] = {{"1", PIN_CONTACT}, {"2", PIN_CONTAC
                                             {"1'", PIN_CONTACT}, {"2'", PIN_CONTACT}, {"3'", PIN_CONTACT}, {"4'", PIN_CONTACT}};
 static const ComponentPinInfo pins_dpst[] = {{"1A", PIN_CONTACT}, {"1B", PIN_CONTACT}, {"2A", PIN_CONTACT}, {"2B", PIN_CONTACT}};
 static const ComponentPinInfo pins_relay[] = {{"B+", PIN_PASSIVE}, {"B-", PIN_PASSIVE}, {"COM", PIN_CONTACT},
-                                              {"NA", PIN_CONTACT}, {"NF", PIN_CONTACT}};
+                                              {NULL, PIN_CONTACT}, {NULL, PIN_CONTACT}};
 static const ComponentPinInfo pins_motor[] = {{"M+", PIN_PASSIVE}, {"M-", PIN_PASSIVE}};
 static const ComponentPinInfo pins_encoder[] = {{"M+", PIN_PASSIVE}, {"M-", PIN_PASSIVE}, {"VCC", PIN_SUPPLY_POSITIVE},
                                                 {"GND", PIN_GROUND}, {"A", PIN_OUTPUT}, {"B", PIN_OUTPUT}};
-static const ComponentPinInfo pins_servo[] = {{"GND", PIN_GROUND}, {"V+", PIN_SUPPLY_POSITIVE}, {"SINAL", PIN_INPUT}};
-static const ComponentPinInfo pins_generator[] = {{"SAIDA", PIN_OUTPUT}, {"COM", PIN_SUPPLY_RETURN}};
+static const ComponentPinInfo pins_servo[] = {{"GND", PIN_GROUND}, {"V+", PIN_SUPPLY_POSITIVE}, {NULL, PIN_INPUT}};
+static const ComponentPinInfo pins_generator[] = {{NULL, PIN_OUTPUT}, {"COM", PIN_SUPPLY_RETURN}};
 static const ComponentPinInfo pins_meter[] = {{"COM", PIN_SUPPLY_RETURN}, {"VΩ", PIN_INPUT}, {"A", PIN_INPUT}};
 static const ComponentPinInfo pins_scope[] = {{"CH1", PIN_INPUT}, {"GND", PIN_GROUND}};
 static const ComponentParameter generator_frequency = {"frequency", "Hz", 1000.0, 1e-3, 1e6};
@@ -67,73 +68,251 @@ static const ComponentPinInfo pins_tiny[] = {{"PB5", PIN_PASSIVE}, {"PB3", PIN_P
                                              {"PB2 SCL", PIN_PASSIVE}, {"VCC", PIN_SUPPLY_POSITIVE}};
 static const ComponentPinInfo pins_lcd[] = {{"GND", PIN_GROUND}, {"VCC", PIN_SUPPLY_POSITIVE}, {"SDA", PIN_INPUT},
                                             {"SCL", PIN_INPUT}};
-static const ComponentPinInfo board_contact = {"Contato", PIN_CONTACT};
 
-/* Enum indexes remain the legacy file codes; id is the durable external identity. */
+/* Enum indexes remain the legacy file codes; id is the durable external identity. display_name and word pin
+ * names are NULL here: localized_catalog() fills them in each language. */
 static const ComponentInfo components[] = {
-    [PART_SOURCE] = {PART_SOURCE, "source", "Fonte", 2,
+    [PART_SOURCE] = {PART_SOURCE, "source", NULL, 2,
                      COMPONENT_ROTATES | COMPONENT_STARTS_ON | COMPONENT_CONNECTIVITY, 1, &voltage, pins_source},
-    [PART_SWITCH] = {PART_SWITCH, "switch", "Interruptor", 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 1, NULL,
+    [PART_SWITCH] = {PART_SWITCH, "switch", NULL, 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 1, NULL,
                      pins_passive},
-    [PART_LED] = {PART_LED, "led", "LED", 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 1, NULL, pins_led},
-    [PART_BREADBOARD] = {PART_BREADBOARD, "breadboard", "Breadboard", BREADBOARD_PINS, COMPONENT_CONNECTIVITY, 1, NULL,
+    [PART_LED] = {PART_LED, "led", NULL, 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 1, NULL, pins_led},
+    [PART_BREADBOARD] = {PART_BREADBOARD, "breadboard", NULL, BREADBOARD_PINS, COMPONENT_CONNECTIVITY, 1, NULL,
                          NULL},
-    [PART_RESISTOR] = {PART_RESISTOR, "resistor", "Resistor", 2, COMPONENT_ROTATES, 2, &resistance, pins_passive},
-    [PART_CAPACITOR] = {PART_CAPACITOR, "capacitor", "Capacitor", 2, COMPONENT_ROTATES, 2, &capacitance, pins_passive},
-    [PART_INDUCTOR] = {PART_INDUCTOR, "inductor", "Indutor", 2, COMPONENT_ROTATES, 3, &inductance, pins_passive},
-    [PART_AND] = {PART_AND, "and", "Porta AND", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 11, NULL, pins_gate},
-    [PART_NAND] = {PART_NAND, "nand", "Porta NAND", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_gate},
-    [PART_OR] = {PART_OR, "or", "Porta OR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_gate},
-    [PART_XOR] = {PART_XOR, "xor", "Porta XOR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_gate},
-    [PART_NOT] = {PART_NOT, "not", "Porta NOT", 2, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_not},
-    [PART_CLOCK] = {PART_CLOCK, "clock", "Clock", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 13, &frequency,
+    [PART_RESISTOR] = {PART_RESISTOR, "resistor", NULL, 2, COMPONENT_ROTATES, 2, &resistance, pins_passive},
+    [PART_CAPACITOR] = {PART_CAPACITOR, "capacitor", NULL, 2, COMPONENT_ROTATES, 2, &capacitance, pins_passive},
+    [PART_INDUCTOR] = {PART_INDUCTOR, "inductor", NULL, 2, COMPONENT_ROTATES, 3, &inductance, pins_passive},
+    [PART_AND] = {PART_AND, "and", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 11, NULL, pins_gate},
+    [PART_NAND] = {PART_NAND, "nand", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_gate},
+    [PART_OR] = {PART_OR, "or", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_gate},
+    [PART_XOR] = {PART_XOR, "xor", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_gate},
+    [PART_NOT] = {PART_NOT, "not", NULL, 2, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 12, NULL, pins_not},
+    [PART_CLOCK] = {PART_CLOCK, "clock", NULL, 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 13, &frequency,
                     pins_clock},
-    [PART_DFF] = {PART_DFF, "dff", "Bloco DFF", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 14, NULL, pins_dff},
-    [PART_NOR] = {PART_NOR, "nor", "Porta NOR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
-    [PART_XNOR] = {PART_XNOR, "xnor", "Porta XNOR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
-    [PART_POTENTIOMETER] = {PART_POTENTIOMETER, "potentiometer", "Potenciômetro", 3, COMPONENT_ROTATES, 21, &resistance, pins_pot},
-    [PART_BUTTON] = {PART_BUTTON, "button", "Botão", 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 21, NULL, pins_passive},
-    [PART_74HC08] = {PART_74HC08, "74hc08", "CI 74HC08", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
-    [PART_74HC32] = {PART_74HC32, "74hc32", "CI 74HC32", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
-    [PART_74HC86] = {PART_74HC86, "74hc86", "CI 74HC86", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
-    [PART_74HC00] = {PART_74HC00, "74hc00", "CI 74HC00", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 15, NULL, pins_74hc00},
-    [PART_DIODE] = {PART_DIODE, "diode", "Diodo de silício", 2, COMPONENT_ROTATES, 24, NULL, pins_led},
-    [PART_LDR] = {PART_LDR, "ldr", "Fotoresistor", 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
-    [PART_FLEX] = {PART_FLEX, "flex", "Sensor flexível", 2, COMPONENT_ROTATES, 24, &flex_resistance, pins_passive},
-    [PART_FORCE] = {PART_FORCE, "force", "Sensor de força", 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
-    [PART_TILT] = {PART_TILT, "tilt", "Sensor de inclinação", 2, COMPONENT_ROTATES, 24, NULL, pins_passive},
-    [PART_NPN] = {PART_NPN, "npn", "Transistor NPN", 3, COMPONENT_ROTATES, 24, NULL, pins_bjt},
-    [PART_PNP] = {PART_PNP, "pnp", "Transistor PNP", 3, COMPONENT_ROTATES, 24, NULL, pins_bjt},
-    [PART_BATTERY_9V] = {PART_BATTERY_9V, "battery-9v", "Bateria 9 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_9v, pins_source},
-    [PART_BATTERY_AA] = {PART_BATTERY_AA, "battery-aa", "Pilha AA 1,5 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_aa, pins_source},
-    [PART_BATTERY_COIN] = {PART_BATTERY_COIN, "battery-coin", "Bateria moeda 3 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_coin, pins_source},
-    [PART_PHOTODIODE] = {PART_PHOTODIODE, "photodiode", "Fotodiodo", 2, COMPONENT_ROTATES, 24, NULL, pins_led},
-    [PART_AMBIENT_LIGHT] = {PART_AMBIENT_LIGHT, "ambient-light", "Fototransistor", 2, COMPONENT_ROTATES, 24, NULL, pins_photo_transistor},
-    [PART_TEMPERATURE] = {PART_TEMPERATURE, "temperature", "Sensor TMP36", 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
-    [PART_SOIL] = {PART_SOIL, "soil", "Umidade do solo", 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
-    [PART_LAMP] = {PART_LAMP, "lamp", "Lâmpada", 2, COMPONENT_ROTATES, 25, &lamp_resistance, pins_passive},
-    [PART_RGB_LED] = {PART_RGB_LED, "rgb-led", "LED RGB", 4, COMPONENT_ROTATES, 26, NULL, pins_rgb},
-    [PART_SEVEN_SEGMENT] = {PART_SEVEN_SEGMENT, "seven-segment", "Display 7 segmentos", 9, COMPONENT_ROTATES, 26, NULL, pins_seven},
-    [PART_DIP_SWITCH] = {PART_DIP_SWITCH, "dip-switch", "Chave DIP (4)", 8, COMPONENT_ROTATES, 26, NULL, pins_dip},
-    [PART_DPST] = {PART_DPST, "dpst", "Interruptor DPST", 4, COMPONENT_ROTATES, 26, NULL, pins_dpst},
-    [PART_RELAY] = {PART_RELAY, "relay", "Relé 5 V", 5, COMPONENT_ROTATES, 26, NULL, pins_relay},
-    [PART_DC_MOTOR] = {PART_DC_MOTOR, "dc-motor", "Motor CC", 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
-    [PART_VIBRATION_MOTOR] = {PART_VIBRATION_MOTOR, "vibration-motor", "Motor de vibração", 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
-    [PART_ENCODER_MOTOR] = {PART_ENCODER_MOTOR, "encoder-motor", "Motor CC com encoder", 6, COMPONENT_ROTATES, 26, NULL, pins_encoder},
-    [PART_SERVO] = {PART_SERVO, "servo", "Micro servo", 3, COMPONENT_ROTATES, 26, NULL, pins_servo},
-    [PART_PIEZO] = {PART_PIEZO, "piezo", "Piezo", 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
-    [PART_FUNCTION_GENERATOR] = {PART_FUNCTION_GENERATOR, "function-generator", "Gerador de função", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 26, &generator_frequency, pins_generator},
-    [PART_MULTIMETER] = {PART_MULTIMETER, "multimeter", "Multímetro", 3, 0, 26, NULL, pins_meter},
-    [PART_OSCILLOSCOPE] = {PART_OSCILLOSCOPE, "oscilloscope", "Osciloscópio", 2, 0, 26, NULL, pins_scope},
-    [PART_PIR] = {PART_PIR, "pir", "Sensor PIR", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
-    [PART_GAS] = {PART_GAS, "gas", "Sensor de gás", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
-    [PART_IR_OBSTACLE] = {PART_IR_OBSTACLE, "ir-obstacle", "Sensor infravermelho", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
-    [PART_DISTANCE] = {PART_DISTANCE, "distance", "Sensor de distância", 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
-    [PART_ARDUINO_UNO] = {PART_ARDUINO_UNO, "arduino-uno", "Arduino Uno", 23, COMPONENT_ROTATES, 27, NULL, pins_uno},
-    [PART_ESP32] = {PART_ESP32, "esp32", "ESP32 DevKit", 22, COMPONENT_ROTATES, 27, NULL, pins_esp32},
-    [PART_ATTINY85] = {PART_ATTINY85, "attiny85", "ATtiny85", 8, COMPONENT_ROTATES, 27, NULL, pins_tiny},
-    [PART_LCD_I2C] = {PART_LCD_I2C, "lcd-16x2-i2c", "LCD 16x2 I2C", 4, COMPONENT_ROTATES, 27, NULL, pins_lcd},
+    [PART_DFF] = {PART_DFF, "dff", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 14, NULL, pins_dff},
+    [PART_NOR] = {PART_NOR, "nor", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
+    [PART_XNOR] = {PART_XNOR, "xnor", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
+    [PART_POTENTIOMETER] = {PART_POTENTIOMETER, "potentiometer", NULL, 3, COMPONENT_ROTATES, 21, &resistance, pins_pot},
+    [PART_BUTTON] = {PART_BUTTON, "button", NULL, 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 21, NULL, pins_passive},
+    [PART_74HC08] = {PART_74HC08, "74hc08", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
+    [PART_74HC32] = {PART_74HC32, "74hc32", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
+    [PART_74HC86] = {PART_74HC86, "74hc86", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
+    [PART_74HC00] = {PART_74HC00, "74hc00", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 15, NULL, pins_74hc00},
+    [PART_DIODE] = {PART_DIODE, "diode", NULL, 2, COMPONENT_ROTATES, 24, NULL, pins_led},
+    [PART_LDR] = {PART_LDR, "ldr", NULL, 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
+    [PART_FLEX] = {PART_FLEX, "flex", NULL, 2, COMPONENT_ROTATES, 24, &flex_resistance, pins_passive},
+    [PART_FORCE] = {PART_FORCE, "force", NULL, 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
+    [PART_TILT] = {PART_TILT, "tilt", NULL, 2, COMPONENT_ROTATES, 24, NULL, pins_passive},
+    [PART_NPN] = {PART_NPN, "npn", NULL, 3, COMPONENT_ROTATES, 24, NULL, pins_bjt},
+    [PART_PNP] = {PART_PNP, "pnp", NULL, 3, COMPONENT_ROTATES, 24, NULL, pins_bjt},
+    [PART_BATTERY_9V] = {PART_BATTERY_9V, "battery-9v", NULL, 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_9v, pins_source},
+    [PART_BATTERY_AA] = {PART_BATTERY_AA, "battery-aa", NULL, 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_aa, pins_source},
+    [PART_BATTERY_COIN] = {PART_BATTERY_COIN, "battery-coin", NULL, 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_coin, pins_source},
+    [PART_PHOTODIODE] = {PART_PHOTODIODE, "photodiode", NULL, 2, COMPONENT_ROTATES, 24, NULL, pins_led},
+    [PART_AMBIENT_LIGHT] = {PART_AMBIENT_LIGHT, "ambient-light", NULL, 2, COMPONENT_ROTATES, 24, NULL, pins_photo_transistor},
+    [PART_TEMPERATURE] = {PART_TEMPERATURE, "temperature", NULL, 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
+    [PART_SOIL] = {PART_SOIL, "soil", NULL, 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
+    [PART_LAMP] = {PART_LAMP, "lamp", NULL, 2, COMPONENT_ROTATES, 25, &lamp_resistance, pins_passive},
+    [PART_RGB_LED] = {PART_RGB_LED, "rgb-led", NULL, 4, COMPONENT_ROTATES, 26, NULL, pins_rgb},
+    [PART_SEVEN_SEGMENT] = {PART_SEVEN_SEGMENT, "seven-segment", NULL, 9, COMPONENT_ROTATES, 26, NULL, pins_seven},
+    [PART_DIP_SWITCH] = {PART_DIP_SWITCH, "dip-switch", NULL, 8, COMPONENT_ROTATES, 26, NULL, pins_dip},
+    [PART_DPST] = {PART_DPST, "dpst", NULL, 4, COMPONENT_ROTATES, 26, NULL, pins_dpst},
+    [PART_RELAY] = {PART_RELAY, "relay", NULL, 5, COMPONENT_ROTATES, 26, NULL, pins_relay},
+    [PART_DC_MOTOR] = {PART_DC_MOTOR, "dc-motor", NULL, 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
+    [PART_VIBRATION_MOTOR] = {PART_VIBRATION_MOTOR, "vibration-motor", NULL, 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
+    [PART_ENCODER_MOTOR] = {PART_ENCODER_MOTOR, "encoder-motor", NULL, 6, COMPONENT_ROTATES, 26, NULL, pins_encoder},
+    [PART_SERVO] = {PART_SERVO, "servo", NULL, 3, COMPONENT_ROTATES, 26, NULL, pins_servo},
+    [PART_PIEZO] = {PART_PIEZO, "piezo", NULL, 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
+    [PART_FUNCTION_GENERATOR] = {PART_FUNCTION_GENERATOR, "function-generator", NULL, 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 26, &generator_frequency, pins_generator},
+    [PART_MULTIMETER] = {PART_MULTIMETER, "multimeter", NULL, 3, 0, 26, NULL, pins_meter},
+    [PART_OSCILLOSCOPE] = {PART_OSCILLOSCOPE, "oscilloscope", NULL, 2, 0, 26, NULL, pins_scope},
+    [PART_PIR] = {PART_PIR, "pir", NULL, 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_GAS] = {PART_GAS, "gas", NULL, 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_IR_OBSTACLE] = {PART_IR_OBSTACLE, "ir-obstacle", NULL, 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_DISTANCE] = {PART_DISTANCE, "distance", NULL, 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
+    [PART_ARDUINO_UNO] = {PART_ARDUINO_UNO, "arduino-uno", NULL, 23, COMPONENT_ROTATES, 27, NULL, pins_uno},
+    [PART_ESP32] = {PART_ESP32, "esp32", NULL, 22, COMPONENT_ROTATES, 27, NULL, pins_esp32},
+    [PART_ATTINY85] = {PART_ATTINY85, "attiny85", NULL, 8, COMPONENT_ROTATES, 27, NULL, pins_tiny},
+    [PART_LCD_I2C] = {PART_LCD_I2C, "lcd-16x2-i2c", NULL, 4, COMPONENT_ROTATES, 27, NULL, pins_lcd},
 };
+
+/* Display names; component_info() returns them in the current language. */
+static const TextId display_texts[] = {
+    [PART_SOURCE] = TXT_CAT_SOURCE,
+    [PART_SWITCH] = TXT_CAT_SWITCH,
+    [PART_LED] = TXT_CAT_LED,
+    [PART_BREADBOARD] = TXT_CAT_BREADBOARD,
+    [PART_RESISTOR] = TXT_CAT_RESISTOR,
+    [PART_CAPACITOR] = TXT_CAT_CAPACITOR,
+    [PART_INDUCTOR] = TXT_CAT_INDUCTOR,
+    [PART_AND] = TXT_CAT_AND,
+    [PART_NAND] = TXT_CAT_NAND,
+    [PART_OR] = TXT_CAT_OR,
+    [PART_XOR] = TXT_CAT_XOR,
+    [PART_NOT] = TXT_CAT_NOT,
+    [PART_CLOCK] = TXT_CAT_CLOCK,
+    [PART_DFF] = TXT_CAT_DFF,
+    [PART_NOR] = TXT_CAT_NOR,
+    [PART_XNOR] = TXT_CAT_XNOR,
+    [PART_POTENTIOMETER] = TXT_CAT_POTENTIOMETER,
+    [PART_BUTTON] = TXT_CAT_BUTTON,
+    [PART_74HC08] = TXT_CAT_74HC08,
+    [PART_74HC32] = TXT_CAT_74HC32,
+    [PART_74HC86] = TXT_CAT_74HC86,
+    [PART_74HC00] = TXT_CAT_74HC00,
+    [PART_DIODE] = TXT_CAT_DIODE,
+    [PART_LDR] = TXT_CAT_LDR,
+    [PART_FLEX] = TXT_CAT_FLEX,
+    [PART_FORCE] = TXT_CAT_FORCE,
+    [PART_TILT] = TXT_CAT_TILT,
+    [PART_NPN] = TXT_CAT_NPN,
+    [PART_PNP] = TXT_CAT_PNP,
+    [PART_BATTERY_9V] = TXT_CAT_BATTERY_9V,
+    [PART_BATTERY_AA] = TXT_CAT_BATTERY_AA,
+    [PART_BATTERY_COIN] = TXT_CAT_BATTERY_COIN,
+    [PART_PHOTODIODE] = TXT_CAT_PHOTODIODE,
+    [PART_AMBIENT_LIGHT] = TXT_CAT_AMBIENT_LIGHT,
+    [PART_TEMPERATURE] = TXT_CAT_TEMPERATURE,
+    [PART_SOIL] = TXT_CAT_SOIL,
+    [PART_LAMP] = TXT_CAT_LAMP,
+    [PART_RGB_LED] = TXT_CAT_RGB_LED,
+    [PART_SEVEN_SEGMENT] = TXT_CAT_SEVEN_SEGMENT,
+    [PART_DIP_SWITCH] = TXT_CAT_DIP_SWITCH,
+    [PART_DPST] = TXT_CAT_DPST,
+    [PART_RELAY] = TXT_CAT_RELAY,
+    [PART_DC_MOTOR] = TXT_CAT_DC_MOTOR,
+    [PART_VIBRATION_MOTOR] = TXT_CAT_VIBRATION_MOTOR,
+    [PART_ENCODER_MOTOR] = TXT_CAT_ENCODER_MOTOR,
+    [PART_SERVO] = TXT_CAT_SERVO,
+    [PART_PIEZO] = TXT_CAT_PIEZO,
+    [PART_FUNCTION_GENERATOR] = TXT_CAT_FUNCTION_GENERATOR,
+    [PART_MULTIMETER] = TXT_CAT_MULTIMETER,
+    [PART_OSCILLOSCOPE] = TXT_CAT_OSCILLOSCOPE,
+    [PART_PIR] = TXT_CAT_PIR,
+    [PART_GAS] = TXT_CAT_GAS,
+    [PART_IR_OBSTACLE] = TXT_CAT_IR_OBSTACLE,
+    [PART_DISTANCE] = TXT_CAT_DISTANCE,
+    [PART_ARDUINO_UNO] = TXT_CAT_ARDUINO_UNO,
+    [PART_ESP32] = TXT_CAT_ESP32,
+    [PART_ATTINY85] = TXT_CAT_ATTINY85,
+    [PART_LCD_I2C] = TXT_CAT_LCD_I2C,
+};
+
+/* Pins whose names are words; symbols such as GND or 1A are the same in every language. */
+typedef struct
+{
+    PartType type;
+    int pin;
+    TextId name;
+} PinText;
+
+static const PinText pin_texts[] = {
+    {PART_SERVO, 2, TXT_CAT_PIN_SIGNAL},
+    {PART_FUNCTION_GENERATOR, 0, TXT_CAT_PIN_OUTPUT},
+    {PART_RELAY, 3, TXT_CAT_PIN_NORMALLY_OPEN},
+    {PART_RELAY, 4, TXT_CAT_PIN_NORMALLY_CLOSED},
+};
+
+/* Environment controls: the stimulus a sensor reads and the limits of its model. */
+typedef struct
+{
+    PartType type;
+    TextId label;
+    const char *unit;
+    double minimum, maximum, initial;
+    TextId note;
+} EnvironmentText;
+
+static const EnvironmentText environment_texts[] = {
+    {PART_LDR, TXT_CAT_ENV_LIGHT, "lux", 0, 1000, 100, TXT_CAT_ENV_LIGHT_NOTE},
+    {PART_FLEX, TXT_CAT_ENV_BEND, "°", 0, 90, 0, TXT_CAT_ENV_BEND_NOTE},
+    {PART_FORCE, TXT_CAT_ENV_FORCE, "N", 0, 20, 0, TXT_CAT_ENV_FORCE_NOTE},
+    {PART_TILT, TXT_CAT_ENV_TILT, "°", 0, 180, 0, TXT_CAT_ENV_TILT_NOTE},
+    {PART_PHOTODIODE, TXT_CAT_ENV_PHOTO, "%", 0, 100, 0, TXT_CAT_ENV_PHOTO_NOTE},
+    {PART_AMBIENT_LIGHT, TXT_CAT_ENV_PHOTO, "%", 0, 100, 0, TXT_CAT_ENV_PHOTO_NOTE},
+    {PART_TEMPERATURE, TXT_CAT_ENV_TEMPERATURE, "°C", -40, 125, 25, TXT_CAT_ENV_TEMPERATURE_NOTE},
+    {PART_SOIL, TXT_CAT_ENV_SOIL, "%", 0, 100, 25, TXT_CAT_ENV_SOIL_NOTE},
+    {PART_PIR, TXT_CAT_ENV_MOTION, "%", 0, 100, 0, TXT_CAT_ENV_MOTION_NOTE},
+    {PART_GAS, TXT_CAT_ENV_GAS, "ppm", 0, 1000, 100, TXT_CAT_ENV_GAS_NOTE},
+    {PART_IR_OBSTACLE, TXT_CAT_ENV_OBSTACLE, "cm", 0, 30, 20, TXT_CAT_ENV_OBSTACLE_NOTE},
+    {PART_DISTANCE, TXT_CAT_ENV_DISTANCE, "cm", 10, 80, 30, TXT_CAT_ENV_DISTANCE_NOTE},
+};
+
+enum
+{
+    COMPONENT_TABLE_SIZE = sizeof(components) / sizeof(components[0]),
+    PIN_TEXT_COUNT = sizeof(pin_texts) / sizeof(pin_texts[0]),
+    ENVIRONMENT_COUNT = sizeof(environment_texts) / sizeof(environment_texts[0])
+};
+
+_Static_assert(sizeof(display_texts) / sizeof(display_texts[0]) == COMPONENT_TABLE_SIZE,
+               "every part needs a display text");
+
+/* The tables above with their texts in one language; callers keep plain const char * fields. */
+typedef struct
+{
+    ComponentInfo components[COMPONENT_TABLE_SIZE];
+    ComponentPinInfo pins[PIN_TEXT_COUNT];
+    ComponentPinInfo board_contact;
+    ComponentEnvironment environments[ENVIRONMENT_COUNT];
+} LocalizedCatalog;
+
+static LocalizedCatalog localized[UI_LANG_COUNT];
+static int localized_ready;
+
+static void localize_components(UiLanguage language, LocalizedCatalog *catalog)
+{
+    for (size_t i = 0; i < COMPONENT_TABLE_SIZE; ++i)
+    {
+        catalog->components[i] = components[i];
+        if (components[i].id)
+            catalog->components[i].display_name = tr_in(language, display_texts[i]);
+    }
+}
+
+static void localize_pins(UiLanguage language, LocalizedCatalog *catalog)
+{
+    for (size_t i = 0; i < PIN_TEXT_COUNT; ++i)
+    {
+        const PinText *text = &pin_texts[i];
+        catalog->pins[i] = components[text->type].pins[text->pin];
+        catalog->pins[i].name = tr_in(language, text->name);
+    }
+    catalog->board_contact.name = tr_in(language, TXT_CAT_PIN_CONTACT);
+    catalog->board_contact.role = PIN_CONTACT;
+}
+
+static void localize_environments(UiLanguage language, LocalizedCatalog *catalog)
+{
+    for (size_t i = 0; i < ENVIRONMENT_COUNT; ++i)
+    {
+        const EnvironmentText *text = &environment_texts[i];
+        ComponentEnvironment *environment = &catalog->environments[i];
+        environment->label = tr_in(language, text->label);
+        environment->unit = text->unit;
+        environment->minimum = text->minimum;
+        environment->maximum = text->maximum;
+        environment->initial = text->initial;
+        environment->note = tr_in(language, text->note);
+    }
+}
+
+/* Built once, on first use from the main thread, for every language. The texts are static, so a pointer
+ * taken before a language switch stays valid (it keeps the old language). */
+static const LocalizedCatalog *localized_catalog(void)
+{
+    if (!localized_ready)
+    {
+        for (int language = 0; language < UI_LANG_COUNT; ++language)
+        {
+            localize_components((UiLanguage)language, &localized[language]);
+            localize_pins((UiLanguage)language, &localized[language]);
+            localize_environments((UiLanguage)language, &localized[language]);
+        }
+        localized_ready = 1;
+    }
+    return &localized[ui_text_language()];
+}
 
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
@@ -149,7 +328,7 @@ const ComponentInfo *component_info(PartType type)
 {
     if ((unsigned)type >= component_registry_count() || !components[type].id)
         return NULL;
-    return &components[type];
+    return &localized_catalog()->components[type];
 }
 
 const ComponentInfo *component_from_legacy(int code, int version)
@@ -166,7 +345,7 @@ const ComponentInfo *component_by_id(const char *id)
         return NULL;
     for (size_t i = 0; i < component_registry_count(); ++i)
         if (components[i].id && !strcmp(components[i].id, id))
-            return &components[i];
+            return &localized_catalog()->components[i];
     return NULL;
 }
 
@@ -194,27 +373,42 @@ const ComponentPinInfo *component_pin_info(PartType type, int pin)
     const ComponentInfo *info = component_info(type);
     if (!info || pin < 0 || pin >= info->pin_count)
         return NULL;
-    return info->pins ? &info->pins[pin] : &board_contact;
+    if (!info->pins)
+        return &localized_catalog()->board_contact;
+    for (size_t i = 0; i < PIN_TEXT_COUNT; ++i)
+        if (pin_texts[i].type == type && pin_texts[i].pin == pin)
+            return &localized_catalog()->pins[i];
+    return &info->pins[pin];
 }
 
 const char *component_pin_role_label(ComponentPinRole role)
 {
-    static const char *labels[] = {"Sem polaridade / bidirecional",
-                                   "Entrada",
-                                   "Entrada de clock",
-                                   "Saída",
-                                   "Alimentação positiva",
-                                   "Retorno / referência",
-                                   "Terra (GND)",
-                                   "Ânodo",
-                                   "Cátodo",
-                                   "Contato sem polaridade própria",
-                                   "Coletor (modelo NPN/PNP)",
-                                   "Base (controle do transistor)",
-                                   "Emissor (modelo NPN/PNP)"};
+    static const TextId labels[] = {
+        TXT_CAT_ROLE_PASSIVE,  TXT_CAT_ROLE_INPUT,   TXT_CAT_ROLE_CLOCK_INPUT, TXT_CAT_ROLE_OUTPUT,
+        TXT_CAT_ROLE_SUPPLY_POSITIVE, TXT_CAT_ROLE_SUPPLY_RETURN, TXT_CAT_ROLE_GROUND, TXT_CAT_ROLE_ANODE,
+        TXT_CAT_ROLE_CATHODE,  TXT_CAT_ROLE_CONTACT, TXT_CAT_ROLE_COLLECTOR,   TXT_CAT_ROLE_BASE,
+        TXT_CAT_ROLE_EMITTER};
     if ((unsigned)role >= sizeof(labels) / sizeof(labels[0]))
-        return "Função não definida";
-    return labels[role];
+        return tr(TXT_CAT_ROLE_UNKNOWN);
+    return tr(labels[role]);
+}
+
+typedef struct
+{
+    PartType type;
+    const char *symbol;
+} PartSymbol;
+
+const char *component_symbol(PartType type)
+{
+    static const PartSymbol symbols[] = {
+        {PART_AND, "AND"},       {PART_NAND, "NAND"},     {PART_OR, "OR"},         {PART_XOR, "XOR"},
+        {PART_NOT, "NOT"},       {PART_NOR, "NOR"},       {PART_XNOR, "XNOR"},     {PART_DFF, "DFF"},
+        {PART_74HC08, "74HC08"}, {PART_74HC32, "74HC32"}, {PART_74HC86, "74HC86"}, {PART_74HC00, "74HC00"}};
+    for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); ++i)
+        if (symbols[i].type == type)
+            return symbols[i].symbol;
+    return NULL;
 }
 
 const char *component_pin_marker(ComponentPinRole role)
@@ -290,45 +484,10 @@ int component_current_vector(PartType type, int index, char *vector, size_t capa
 
 const ComponentEnvironment *component_environment(PartType type)
 {
-    static const ComponentEnvironment light = {"Luz", "lux", 0, 1000, 100, "LDR genérico: R(10 lux) e gama 0,7"};
-    static const ComponentEnvironment bend = {"Dobra", "°", 0, 90, 0, "Aproximação: R = Rplano × (1 + 3·ângulo/90)"};
-    static const ComponentEnvironment force = {"Força", "N", 0, 20, 0, "FSR genérico: R(1 N)/F; aberto abaixo de 0,2 N"};
-    static const ComponentEnvironment tilt = {"Inclinação", "°", 0, 180, 0, "Contato genérico: fechado abaixo de 45°"};
-    static const ComponentEnvironment photo = {"Luz relativa", "%", 0, 100, 0, "Fotocorrente genérica; sem calibração espectral"};
-    static const ComponentEnvironment temperature = {"Temperatura", "°C", -40, 125, 25, "TMP36: alimentação 2,7–5,5 V; sem aquecimento próprio"};
-    static const ComponentEnvironment soil = {"Umidade relativa", "%", 0, 100, 25, "Sonda resistiva genérica; não calibrada em VWC"};
-    static const ComponentEnvironment motion = {"Movimento", "%", 0, 100, 0, "Módulo PIR digital: saída alta acima de 50%; sem tempo de retenção"};
-    static const ComponentEnvironment gas = {"Gás", "ppm", 0, 1000, 100, "Módulo MQ genérico: saída analógica 10–90% de V+; sem aquecimento"};
-    static const ComponentEnvironment obstacle = {"Obstáculo a", "cm", 0, 30, 20, "Módulo IR de reflexão: saída baixa abaixo de 10 cm"};
-    static const ComponentEnvironment range = {"Distância", "cm", 10, 80, 30, "IR analógico tipo GP2Y0A21: V ≈ 27/d (a 5 V); não é ultrassônico"};
-    switch (type)
-    {
-    case PART_TEMPERATURE:
-        return &temperature;
-    case PART_SOIL:
-        return &soil;
-    case PART_PIR:
-        return &motion;
-    case PART_GAS:
-        return &gas;
-    case PART_IR_OBSTACLE:
-        return &obstacle;
-    case PART_DISTANCE:
-        return &range;
-    case PART_LDR:
-        return &light;
-    case PART_FLEX:
-        return &bend;
-    case PART_FORCE:
-        return &force;
-    case PART_TILT:
-        return &tilt;
-    case PART_PHOTODIODE:
-    case PART_AMBIENT_LIGHT:
-        return &photo;
-    default:
-        return NULL;
-    }
+    for (size_t i = 0; i < ENVIRONMENT_COUNT; ++i)
+        if (environment_texts[i].type == type)
+            return &localized_catalog()->environments[i];
+    return NULL;
 }
 
 double component_environment_value(const Part *part)

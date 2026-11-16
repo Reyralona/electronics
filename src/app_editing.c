@@ -1,5 +1,6 @@
 #include "bench_scope.h"
 #include "app_editing.h"
+#include "ui_text.h"
 #include "app_settings.h"
 #include "workbench_file.h"
 #include <direct.h>
@@ -26,8 +27,8 @@ static void copy_selection(AppState *app)
     if (!bench_selection_count(&app->selection, &app->bench) && app->selected >= 0)
         app->selection.parts[app->selected] = 1;
     app->status = bench_selection_copy(&app->bench, &app->selection, &app->clipboard)
-                      ? "Selecao copiada com seus fios internos. Ctrl+V cola na posicao do mouse."
-                      : "Selecione componentes para copiar.";
+                      ? tr(TXT_APP_SELECTION_COPIED)
+                      : tr(TXT_APP_SELECT_TO_COPY);
 }
 
 static void delete_selection(AppState *app)
@@ -37,7 +38,7 @@ static void delete_selection(AppState *app)
     bench_history_record(app->history, &app->bench);
     bench_selection_delete(&app->bench, &app->selection);
     reset_interaction(app);
-    app->status = "Selecao e fios ligados a ela removidos. Ctrl+Z desfaz.";
+    app->status = tr(TXT_APP_SELECTION_DELETED);
 }
 
 static void paste_selection(AppState *app)
@@ -45,13 +46,17 @@ static void paste_selection(AppState *app)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
     if (!bench_selection_paste(&app->bench, &app->selection, &app->clipboard, app->mouse_world.x, app->mouse_world.y))
     {
-        app->status = app->clipboard.valid ? "Nao cabe: limite atual de 64 componentes ou 128 fios."
-                                           : "Copie uma selecao com Ctrl+C antes de colar.";
+        app->status = tr(TXT_APP_NOTHING_TO_PASTE);
+        if (!app->clipboard.valid)
+            return;
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_NO_ROOM), WORKBENCH_MAX_COMPONENTS,
+                 WORKBENCH_MAX_WIRES);
+        app->status = app->selection_status;
         return;
     }
     bench_history_record(app->history, &before);
@@ -59,7 +64,7 @@ static void paste_selection(AppState *app)
     app->selected = before.part_count;
     app->mouse_world.x += 24;
     app->mouse_world.y += 24;
-    app->status = "Selecao colada. Arraste para mover; Ctrl+Z desfaz.";
+    app->status = tr(TXT_APP_SELECTION_PASTED);
 }
 
 int app_editing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
@@ -97,7 +102,7 @@ int app_editing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
         for (int i = 0; i < app->bench.part_count; ++i)
             app->selection.parts[i] = 1;
         app->selected = app->bench.part_count ? 0 : -1;
-        app->status = "Todos os componentes selecionados. Ctrl+C/X/V; Delete remove.";
+        app->status = tr(TXT_APP_ALL_SELECTED);
         return 1;
     }
     if ((mod & SDL_KMOD_CTRL) && (key == SDLK_C || key == SDLK_X))
@@ -144,7 +149,8 @@ void app_projects_save(AppState *app)
     const char *directory = app->selftest ? "build/test-slots" : "saves";
     if (_mkdir(directory) != 0 && errno != EEXIST)
     {
-        snprintf(app->selection_status, sizeof(app->selection_status), "Falha ao criar slots: %s", strerror(errno));
+        snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_PROJECT_FOLDER_FAILED),
+                 strerror(errno));
         app->status = app->selection_status;
         return;
     }
@@ -152,9 +158,7 @@ void app_projects_save(AppState *app)
     slot_path(app, app->save_slot, path, sizeof(path));
     int saved = workbench_save_project(path, &app->bench, &settings);
     snprintf(app->selection_status, sizeof(app->selection_status),
-             saved ? "Montagem e configurações salvas no slot %d."
-                   : "Falha ao gravar o slot %d; arquivo anterior preservado.",
-             app->save_slot + 1);
+             tr(saved ? TXT_APP_PROJECT_SAVED : TXT_APP_PROJECT_SAVE_FAILED), app->save_slot + 1);
     app->status = app->selection_status;
     app_projects_refresh(app);
 }
@@ -165,14 +169,14 @@ void app_projects_load(AppState *app)
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
     WorkbenchSettings settings;
     slot_path(app, app->save_slot, path, sizeof(path));
     if (!workbench_load_project(path, &app->bench, &settings))
     {
-        app->status = "Slot vazio ou inválido; montagem atual preservada.";
+        app->status = tr(TXT_APP_PROJECT_LOAD_FAILED);
         return;
     }
     bench_history_record(app->history, &before);
@@ -183,5 +187,5 @@ void app_projects_load(AppState *app)
     sim_state_clear_result(&app->sim);
     memset(app->leds, 0, sizeof(app->leds));
     app->projects_open = 0;
-    app->status = "Slot carregado. Ctrl+Z restaura a montagem anterior.";
+    app->status = tr(TXT_APP_PROJECT_LOADED);
 }

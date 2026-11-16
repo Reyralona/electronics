@@ -1,0 +1,215 @@
+/* Texts of the app area: actions and status line messages. Format: UI_TEXT(ID, "pt-BR", "en-US"); style and
+ * glossary: docs/TEXTOS.md. */
+UI_TEXT(APP_START, "Escolha uma peça no catálogo e clique na bancada.", "Select a part in the catalog and click the bench.")
+UI_TEXT(APP_OUT_OF_MEMORY, "Memória insuficiente. A montagem não mudou.", "Not enough memory. The circuit did not change.")
+UI_TEXT(APP_HISTORY_FAILED, "Não foi possível registrar a ação para desfazer. A montagem não mudou.",
+        "Cannot record the action for undo. The circuit did not change.")
+UI_TEXT(APP_TEXT_INPUT_FAILED, "Não foi possível abrir a entrada de texto.", "Cannot open the text input.")
+
+/* Commands: examples, catalog pages, view, undo, simulation. */
+UI_TEXT(APP_EXAMPLE_FAILED, "Não foi possível carregar o exemplo.", "Cannot load the example.")
+UI_TEXT(APP_PAGE_BASIC, "Peças básicas.", "Basic parts.")
+UI_TEXT(APP_PAGE_LOGIC, "Portas lógicas, CIs, placas e LCD.", "Logic gates, ICs, boards and LCD.")
+UI_TEXT(APP_PAGE_CHIPS, "Chips salvos. Ctrl+G: criar chip.", "Saved chips. Ctrl+G: create chip.")
+UI_TEXT(APP_PAGE_SENSORS, "Sensores com controle de ambiente.", "Sensors with environment control.")
+UI_TEXT(APP_PAGE_OUTPUTS, "Saídas: lâmpada, LED RGB, display, motores, servo e piezo.",
+        "Outputs: lamp, RGB LED, display, motors, servo and piezo.")
+UI_TEXT(APP_PAGE_INSTRUMENTS, "Instrumentos: multímetro, osciloscópio e gerador de função.",
+        "Instruments: multimeter, oscilloscope and function generator.")
+UI_TEXT(APP_VIEW_RESET, "Vista inicial restaurada.", "Default view restored.")
+UI_TEXT(APP_UNDONE, "Ação desfeita.", "Action undone.")
+UI_TEXT(APP_REDONE, "Ação refeita.", "Action redone.")
+UI_TEXT(APP_NOTHING_TO_UNDO, "Nada para desfazer.", "Nothing to undo.")
+UI_TEXT(APP_NOTHING_TO_REDO, "Nada para refazer.", "Nothing to redo.")
+UI_TEXT(APP_SELECTION_CANCELED, "Seleção cancelada.", "Selection canceled.")
+UI_TEXT(APP_PLAYING_CURVE, "Reproduzindo a curva em 5 s.", "Playing the curve in 5 s.")
+UI_TEXT(APP_SIM_RUNNING, "Simulação em execução.", "Simulation running.")
+UI_TEXT(APP_SIM_PAUSED, "Simulação pausada. Espaço: continuar.", "Simulation paused. Space: resume.")
+UI_TEXT(APP_PLAYBACK_PAUSED, "Reprodução pausada. B: anterior · N: próxima.", "Playback paused. B: previous · N: next.")
+UI_TEXT(APP_RECALCULATING, "Recalculando o circuito...", "Recalculating the circuit...")
+UI_TEXT(APP_RESETTING, "Reiniciando o estado elétrico...", "Resetting the electrical state...")
+UI_TEXT(APP_PART_ROTATED, "Peça girada.", "Part rotated.")
+UI_TEXT(APP_BOARD_NO_ROTATE, "Esta placa não gira.", "This board cannot rotate.")
+UI_TEXT(APP_GRAPH_SHOWN, "Gráfico visível.", "Graph shown.")
+UI_TEXT(APP_GRAPH_HIDDEN, "Gráfico oculto. G: mostrar.", "Graph hidden. G: show.")
+UI_TEXT(APP_CALCULATION_BUSY, "Cálculo em andamento. Aguarde o resultado.", "Calculation in progress. Wait for the result.")
+UI_TEXT(APP_CALCULATION_START_FAILED, "Não foi possível iniciar o cálculo.", "Cannot start the calculation.")
+UI_TEXT(APP_CALCULATING_WIRE_CURRENT, "Calculando a corrente do fio no tempo...",
+        "Calculating the wire current over time...")
+UI_TEXT(APP_CALCULATING_CURVE, "Calculando a curva no tempo...", "Calculating the curve over time...")
+UI_TEXT(APP_CALCULATING_DC, "Calculando o ponto de operação DC...", "Calculating the DC operating point...")
+UI_TEXT(APP_NO_SUCH_TERMINAL, "Esta peça não tem este terminal.", "This part does not have this terminal.")
+UI_TEXT(APP_GATE_CURRENT_UNAVAILABLE, "Não é possível medir a corrente interna de uma porta.",
+        "Cannot measure the internal current of a gate.")
+UI_TEXT(APP_SWITCH_CURRENT_UNAVAILABLE, "Não é possível medir a corrente de uma chave ideal.",
+        "Cannot measure the current of an ideal switch.")
+UI_TEXT(APP_TRACE_VOLTAGE, "Tensão: t=%.6g s; V=%.6g V (%d/%d).", "Voltage: t=%.6g s; V=%.6g V (%d/%d).")
+UI_TEXT(APP_TRACE_WIRE_CURRENT, "Corrente no fio, de A para B: t=%.6g s; I=%.6g A (%d/%d).",
+        "Wire current, A to B: t=%.6g s; I=%.6g A (%d/%d).")
+UI_TEXT(APP_TRACE_PART_CURRENT, "Corrente do terminal 1 para o 2: t=%.6g s; I=%.6g A (%d/%d).",
+        "Current, terminal 1 to 2: t=%.6g s; I=%.6g A (%d/%d).")
+UI_TEXT(APP_STEP_DONE, "Um passo calculado.", "One step calculated.")
+UI_TEXT(APP_STEP_UNAVAILABLE, "Este circuito não permite o cálculo passo a passo.",
+        "This circuit cannot be calculated step by step.")
+UI_TEXT(APP_TYPE_VALUE, "Digite o valor em unidades SI. Enter: confirmar · Esc: cancelar.",
+        "Type the value in SI units. Enter: confirm · Esc: cancel.")
+UI_TEXT(APP_NO_VALUE, "Esta peça não tem valor.", "This part has no value.")
+UI_TEXT(APP_VALUE_CHANGED, "Valor alterado.", "Value changed.")
+UI_TEXT(APP_VALUE_OUT_OF_RANGE, "Valor fora do limite. O valor não mudou.", "Value out of range. The value did not change.")
+UI_TEXT(APP_VALUE_INVALID, "Valor inválido. Use um número positivo de 1e-12 a 1e12.",
+        "Invalid value. Use a positive number from 1e-12 to 1e12.")
+UI_TEXT(APP_PART_DELETED, "Peça e seus fios apagados.", "Part and its wires deleted.")
+UI_TEXT(APP_WIRE_DELETED, "Fio apagado.", "Wire deleted.")
+UI_TEXT(APP_CHIP_ACTION_UNAVAILABLE, "Esta ação não vale para chips. Ctrl+Shift+G: desagrupar o chip.",
+        "This action does not apply to chips. Ctrl+Shift+G: ungroup the chip.")
+UI_TEXT(APP_TRANSPARENCY_ON, "Transparência ligada. Terminais cobertos ficam acessíveis.",
+        "Transparency on. Covered terminals are accessible.")
+UI_TEXT(APP_TRANSPARENCY_OFF, "Transparência desligada.", "Transparency off.")
+
+/* Selection, clipboard and project slots. */
+UI_TEXT(APP_SELECTION_COPIED, "Seleção copiada. Ctrl+V: colar no ponteiro.",
+        "Selection copied. Ctrl+V: paste at the pointer.")
+UI_TEXT(APP_SELECT_TO_COPY, "Selecione peças para copiar.", "Select parts to copy.")
+UI_TEXT(APP_SELECTION_DELETED, "Seleção e seus fios apagados. Ctrl+Z: desfazer.",
+        "Selection and its wires deleted. Ctrl+Z: undo.")
+UI_TEXT(APP_NO_ROOM, "Não cabe na bancada. Limite: %d peças e %d fios.",
+        "Does not fit on the bench. Limit: %d parts and %d wires.")
+UI_TEXT(APP_NOTHING_TO_PASTE, "Nada para colar. Ctrl+C: copiar uma seleção.", "Nothing to paste. Ctrl+C: copy a selection.")
+UI_TEXT(APP_SELECTION_PASTED, "Seleção colada.", "Selection pasted.")
+UI_TEXT(APP_ALL_SELECTED, "Todas as peças selecionadas.", "All parts selected.")
+UI_TEXT(APP_PARTS_SELECTED, "%d peças selecionadas.", "%d parts selected.")
+UI_TEXT(APP_PROJECT_FOLDER_FAILED, "Não foi possível criar a pasta dos projetos: %s",
+        "Cannot create the project folder: %s")
+UI_TEXT(APP_PROJECT_SAVED, "Projeto salvo no slot %d.", "Project saved in slot %d.")
+UI_TEXT(APP_PROJECT_SAVE_FAILED, "Não foi possível salvar no slot %d. O arquivo anterior não mudou.",
+        "Cannot save in slot %d. The previous file did not change.")
+UI_TEXT(APP_PROJECT_LOAD_FAILED, "Slot vazio ou arquivo inválido. A montagem não mudou.",
+        "Empty slot or invalid file. The circuit did not change.")
+UI_TEXT(APP_PROJECT_LOADED, "Projeto carregado. Ctrl+Z: voltar à montagem anterior.",
+        "Project loaded. Ctrl+Z: return to the previous circuit.")
+
+/* Chips: create, edit, rename, library. */
+UI_TEXT(APP_SELECT_CHIP_TO_EDIT, "Selecione um chip na bancada para editar.", "Select a chip on the bench to edit it.")
+UI_TEXT(APP_EDITOR_NO_MEMORY, "Memória insuficiente para abrir o editor do chip.",
+        "Not enough memory to open the chip editor.")
+UI_TEXT(APP_EDITOR_COPY_FAILED, "Não foi possível copiar o chip para o editor.", "Cannot copy the chip into the editor.")
+UI_TEXT(APP_EDITOR_OPENED, "Editor do chip. Salvar: atualiza a biblioteca · Aplicar: muda a bancada.",
+        "Chip editor. Save: update the library · Apply: change the bench.")
+UI_TEXT(APP_EDITOR_NO_PROJECTS, "Projetos indisponíveis no editor do chip. Use Salvar.",
+        "Projects are not available in the chip editor. Use Save.")
+UI_TEXT(APP_NAME_INVALID, "Nome inválido ou longo demais. Use até %d bytes, sem caracteres de controle.",
+        "Name invalid or too long. Use up to %d bytes, without control characters.")
+UI_TEXT(APP_SELECT_CHIP_TO_RENAME, "Selecione um chip para renomear.", "Select a chip to rename.")
+UI_TEXT(APP_TYPE_CHIP_NAME, "Digite o nome do chip. Enter: confirmar · Esc: cancelar.",
+        "Type the chip name. Enter: confirm · Esc: cancel.")
+UI_TEXT(APP_NAME_CHANGED, "Nome alterado. Salve para manter.", "Name changed. Save to keep it.")
+UI_TEXT(APP_RENAME_CANCELED, "Renomeação cancelada.", "Rename canceled.")
+UI_TEXT(APP_LIBRARY_FULL, "Biblioteca cheia (%d chips). Remova um chip e salve de novo.",
+        "Library full (%d chips). Remove a chip and save again.")
+UI_TEXT(APP_CHIP_SAVED, "Chip salvo na biblioteca.", "Chip saved in the library.")
+UI_TEXT(APP_CHIP_APPLIED, "Chip aplicado nesta cópia. As outras cópias não mudaram.",
+        "Chip applied to this copy. Other copies did not change.")
+UI_TEXT(APP_CHIP_FILE_UNAVAILABLE, "Arquivo indisponível", "File not available")
+UI_TEXT(APP_LIBRARY_FOLDER_FAILED, "Não foi possível criar a pasta da biblioteca: %s",
+        "Cannot create the library folder: %s")
+UI_TEXT(APP_CHIP_SAVE_FAILED, "Não foi possível salvar o chip: %s", "Cannot save the chip: %s")
+UI_TEXT(APP_CHIP_UNPACKED, "Chip desagrupado. Os fios externos continuam nos mesmos terminais.",
+        "Chip ungrouped. The outer wires stay on the same terminals.")
+UI_TEXT(APP_SELECT_CHIP_TO_UNPACK, "Selecione um chip para desagrupar.", "Select a chip to ungroup.")
+UI_TEXT(APP_CHIP_CREATED, "Chip criado.", "Chip created.")
+UI_TEXT(APP_CHIP_CREATED_NOT_SAVED, "Chip criado, mas a biblioteca está cheia. Ele não foi salvo.",
+        "Chip created, but the library is full. It was not saved.")
+UI_TEXT(APP_CHIP_FILE_MISSING, "Chip ausente ou inválido. Selecione peças e use Ctrl+G para criar um.",
+        "Chip missing or invalid. Select parts and press Ctrl+G to create one.")
+UI_TEXT(APP_CHIP_FILE_INVALID, "Arquivo inválido: ele precisa ter um só chip.",
+        "Invalid file: it must contain one chip only.")
+UI_TEXT(APP_CLICK_TO_PLACE_CHIP, "Clique na bancada para colocar o chip.", "Click the bench to place the chip.")
+UI_TEXT(APP_CHIP_PLACED, "Chip colocado. Ligue os terminais.", "Chip placed. Connect its terminals.")
+UI_TEXT(APP_CONFIRM_REMOVE_CHIP, "Clique de novo no x para remover \"%.60s\" da biblioteca.",
+        "Click the x again to remove \"%.60s\" from the library.")
+UI_TEXT(APP_CHIP_REMOVE_FAILED, "Não foi possível remover o chip: %s", "Cannot remove the chip: %s")
+UI_TEXT(APP_CHIP_REMOVED, "Chip removido da biblioteca. Cópia na pasta lixeira; a bancada não mudou.",
+        "Chip removed from the library. Copy in the lixeira folder; the bench did not change.")
+
+/* Simulation results. */
+UI_TEXT(APP_BURN_SOURCE_SHORT, "Fonte queimada por curto-circuito. Corrija a ligação para ela funcionar de novo.",
+        "Source burned by a short circuit. Correct the connection to make it work again.")
+UI_TEXT(APP_BURN_CLOCK_SHORT, "Clock queimado por curto-circuito. Corrija a ligação para ele funcionar de novo.",
+        "Clock burned by a short circuit. Correct the connection to make it work again.")
+UI_TEXT(APP_BURN_RESISTOR, "Resistor queimado: %.3g W (limite %.3g W). Corrija o circuito para ele funcionar de novo.",
+        "Resistor burned: %.3g W (limit %.3g W). Correct the circuit to make it work again.")
+UI_TEXT(APP_BURN_LED, "LED queimado: %.3g mA (limite %.3g mA). Use um resistor em série.",
+        "LED burned: %.3g mA (limit %.3g mA). Use a series resistor.")
+UI_TEXT(APP_CALCULATION_FAILED, "Não foi possível calcular: %s", "Cannot calculate: %s")
+UI_TEXT(APP_LIVE_RESTARTED, "Ligações ou frequência mudaram. Estado elétrico reiniciado.",
+        "Connections or frequency changed. Electrical state reset.")
+UI_TEXT(APP_LIVE_RESET, "Estado elétrico reiniciado.", "Electrical state reset.")
+UI_TEXT(APP_SUPPLY_OFF, "Alimentação desligada. O estado elétrico foi mantido.",
+        "Supply off. The electrical state is kept.")
+UI_TEXT(APP_RESULT_DISCARDED, "O circuito mudou durante o cálculo. Resultado descartado.",
+        "The circuit changed during the calculation. Result discarded.")
+UI_TEXT(APP_SIMULATION_START_FAILED, "Não foi possível iniciar a simulação.", "Cannot start the simulation.")
+UI_TEXT(APP_CHANGED_WHILE_PAUSED, "Circuito alterado. Espaço: continuar a simulação.",
+        "Circuit changed. Space: resume the simulation.")
+UI_TEXT(APP_CURVE_DISCARDED, "Circuito alterado. Curva descartada.", "Circuit changed. Curve discarded.")
+UI_TEXT(APP_CHANGED_PRESS_P, "Circuito alterado. P: calcular de novo.", "Circuit changed. P: calculate again.")
+UI_TEXT(APP_CURVE_PLAY_FAILED, "Não foi possível reproduzir a curva.", "Cannot play the curve.")
+UI_TEXT(APP_CURVE_END, "Fim da curva. Espaço: repetir · B: voltar.", "End of curve. Space: replay · B: back.")
+
+/* Editing on the bench: values, size, wires, bends, legs. */
+UI_TEXT(APP_EDIT_CANCELED, "Edição cancelada.", "Edit canceled.")
+UI_TEXT(APP_SIZE_CHANGED, "Tamanho alterado. Ajuste os terminais nos furos.",
+        "Size changed. Align the terminals with the holes.")
+UI_TEXT(APP_SIZE_RANGE, "Use um tamanho de %g%% a %g%%.", "Use a size from %g%% to %g%%.")
+UI_TEXT(APP_GRID_SPACING_CHANGED, "Espaçamento da grade alterado.", "Grid spacing changed.")
+UI_TEXT(APP_GRID_SPACING_RANGE, "Use um espaçamento de %d a %d.", "Use a spacing from %d to %d.")
+UI_TEXT(APP_TIME_CHANGED, "Passo e duração alterados.", "Step and duration changed.")
+UI_TEXT(APP_TIME_RANGE, "Use tempos positivos, com passo ≤ duração e duração ÷ passo ≤ %d.",
+        "Use positive times, with step ≤ duration and duration ÷ step ≤ %d.")
+UI_TEXT(APP_CHIP_SIZE_INVALID, "Tamanho inválido para o chip.", "Invalid size for the chip.")
+UI_TEXT(APP_CHIP_RESIZED, "Ctrl+scroll: largura · Ctrl+Shift+scroll: altura.",
+        "Ctrl+scroll: width · Ctrl+Shift+scroll: height.")
+UI_TEXT(APP_SELECT_PART_FOR_SIZE, "Selecione uma peça. Ctrl+scroll: tamanho.", "Select a part. Ctrl+scroll: size.")
+UI_TEXT(APP_CONTROL_HINT, "Shift+scroll: ajustar o controle.", "Shift+scroll: adjust the control.")
+UI_TEXT(APP_NEW_WIRE_COLOR, "Cor dos novos fios escolhida.", "Color of new wires selected.")
+UI_TEXT(APP_WIRE_COLOR_CHANGED, "Cor do fio alterada.", "Wire color changed.")
+UI_TEXT(APP_SELECT_WIRE_FOR_CURRENT, "Selecione um fio e aperte T para medir a corrente no tempo.",
+        "Select a wire and press T to measure its current over time.")
+UI_TEXT(APP_ENVIRONMENT_DRAG, "Arraste para mudar o ambiente.", "Drag to change the environment.")
+UI_TEXT(APP_LED_COLOR_CHANGED, "Cor do LED alterada.", "LED color changed.")
+UI_TEXT(APP_SWAP_FAILED, "Não foi possível trocar a peça. A montagem não mudou.",
+        "Cannot replace the part. The circuit did not change.")
+UI_TEXT(APP_PART_SWAPPED, "Peça trocada. Os fios continuam nos mesmos terminais.",
+        "Part replaced. The wires stay on the same terminals.")
+UI_TEXT(APP_CLICK_TO_PLACE, "Clique na bancada para colocar a peça.", "Click the bench to place the part.")
+UI_TEXT(APP_PART_ADDED, "Peça colocada. Clique em terminais para ligar.", "Part placed. Click terminals to connect them.")
+UI_TEXT(APP_PART_SNAPPED, "Peça encaixada na breadboard.", "Part snapped to the breadboard.")
+UI_TEXT(APP_PART_LIMIT, "Limite de %d peças atingido.", "Limit of %d parts reached.")
+UI_TEXT(APP_WIRE_STARTED, "Clique para criar dobras. Termine em outro terminal.",
+        "Click to add bends. End on another terminal.")
+UI_TEXT(APP_WIRE_CANCELED, "Ligação cancelada.", "Connection canceled.")
+UI_TEXT(APP_WIRE_CONNECTED, "Fio ligado.", "Wire connected.")
+UI_TEXT(APP_CONNECT_FAILED, "Não foi possível ligar estes terminais.", "Cannot connect these terminals.")
+UI_TEXT(APP_WIRE_SELECTED, "Fio selecionado. Clique duplo: nova dobra · F1: cores.",
+        "Wire selected. Double-click: add bend · F1: colors.")
+UI_TEXT(APP_BEND_LIMIT, "Limite atingido: %d dobras por fio.", "Limit reached: %d bends per wire.")
+UI_TEXT(APP_BEND_ADDED, "Dobra criada. Arraste: mover · Clique duplo: remover.",
+        "Bend added. Drag: move · Double-click: remove.")
+UI_TEXT(APP_ROUTE_BEND_ADDED, "Dobra criada. Termine em um terminal.", "Bend added. End on a terminal.")
+UI_TEXT(APP_BEND_REMOVED, "Dobra removida.", "Bend removed.")
+UI_TEXT(APP_DRAG_BEND, "Arraste a dobra. Clique duplo: remover.", "Drag the bend. Double-click: remove.")
+UI_TEXT(APP_CONTACT_TOGGLED, "Contato alternado.", "Contact switched.")
+UI_TEXT(APP_BUTTON_PRESSED, "Botão pressionado. Solte para abrir o contato.", "Button pressed. Release to open the contact.")
+UI_TEXT(APP_STATE_CHANGED, "Estado alterado.", "State changed.")
+UI_TEXT(APP_DRAG_PART, "Arraste: mover · Clique duplo em fonte ou chave: ligar ou desligar.",
+        "Drag: move · Double-click a source or switch: turn on or off.")
+UI_TEXT(APP_DRAG_AREA, "Arraste para selecionar uma área.", "Drag to select an area.")
+UI_TEXT(APP_DRAG_LEG, "Arraste a perna. Alt+clique duplo: criar ou remover dobra.",
+        "Drag the leg. Alt+double-click: add or remove a bend.")
+UI_TEXT(APP_LEG_BEND_ADDED, "Dobra da perna criada. Alt+arraste para mover.", "Leg bend added. Alt+drag to move it.")
+UI_TEXT(APP_LEG_BEND_REMOVED, "Dobra da perna removida.", "Leg bend removed.")
+UI_TEXT(APP_LEG_BEND_ADD_FAILED, "Não foi possível criar a dobra. A perna não mudou.",
+        "Cannot add the bend. The leg did not change.")
+UI_TEXT(APP_LEG_BEND_REMOVE_FAILED, "Não foi possível remover a dobra. A perna não mudou.",
+        "Cannot remove the bend. The leg did not change.")
+UI_TEXT(APP_LEG_MOVE_FAILED, "Não foi possível mover a perna.", "Cannot move the leg.")

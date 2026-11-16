@@ -1,0 +1,128 @@
+/* Texts of the render area. Format: UI_TEXT(ID, "pt-BR", "en-US"); style and glossary: docs/TEXTOS.md. */
+/* Catalog tabs and part names. */
+UI_TEXT(UI_PAGE_BASICS, "Básicos", "Basics")
+UI_TEXT(UI_PAGE_DIGITAL, "Digital", "Digital")
+UI_TEXT(UI_PAGE_CHIPS, "Chips", "Chips")
+UI_TEXT(UI_PAGE_SENSORS, "Sensores", "Sensors")
+UI_TEXT(UI_PAGE_OUTPUTS, "Saídas", "Outputs")
+UI_TEXT(UI_PAGE_METERS, "Medição", "Meters")
+UI_TEXT(UI_UNKNOWN_PART, "Peça desconhecida", "Unknown part")
+UI_TEXT(UI_TEXT_MISSING, "[texto ausente]", "[text missing]")
+/* Header and simulation state. */
+UI_TEXT(UI_PROJECTS, "Projetos", "Projects")
+UI_TEXT(UI_EXAMPLES, "Exemplos", "Examples")
+UI_TEXT(UI_RUNNING, "Simulando", "Simulating")
+UI_TEXT(UI_PAUSED, "Pausado", "Paused")
+UI_TEXT(UI_PART_BURNED, "Peça queimada", "Part burned")
+UI_TEXT(UI_CALCULATION_ERROR, "Erro no cálculo", "Calculation error")
+UI_TEXT(UI_CALCULATING, "Calculando...", "Calculating...")
+UI_TEXT(UI_BURNED_MARK, "QUEIMADO", "BURNED")
+/* Chip editor. */
+UI_TEXT(UI_EDITING_CHIP, "Editando: %s%s", "Editing: %s%s")
+UI_TEXT(UI_EDITOR_APPLY, "Aplicar ao chip", "Apply to chip")
+UI_TEXT(UI_RENAME, "Renomear", "Rename")
+UI_TEXT(UI_EDITOR_SAVE, "Salvar chip", "Save chip")
+UI_TEXT(UI_BACK, "Voltar", "Back")
+UI_TEXT(UI_UNSAVED_CHANGES, "Alterações não salvas", "Unsaved changes")
+UI_TEXT(UI_MAIN_BENCH_KEPT, "A bancada principal não mudou.", "The main bench did not change.")
+UI_TEXT(UI_SAVE_AND_BACK, "Salvar e voltar", "Save and go back")
+UI_TEXT(UI_DISCARD, "Descartar", "Discard")
+UI_TEXT(UI_CANCEL, "Cancelar", "Cancel")
+/* Chip library and chips on the bench. */
+UI_TEXT(UI_LIBRARY_NEW, "Novo: Ctrl+G", "New: Ctrl+G")
+UI_TEXT(UI_VIEW_INSIDE, "Ver interior", "View inside")
+UI_TEXT(UI_CHIP_DIMENSIONS, "Largura %.0f · Altura %.0f", "Width %.0f · Height %.0f")
+/* Inspector. */
+UI_TEXT(UI_ROTATE, "Girar", "Rotate")
+UI_TEXT(UI_CODE, "Código", "Code")
+UI_TEXT(UI_EDIT_CODE, "Editar código", "Edit code")
+UI_TEXT(UI_VALUE, "Valor", "Value")
+UI_TEXT(UI_NO_VALUE, "Sem valor ajustável", "No adjustable value")
+UI_TEXT(UI_SIZE, "Tamanho", "Size")
+UI_TEXT(UI_NO_CURRENT_READING, "Sem leitura de corrente", "No current reading")
+UI_TEXT(UI_BURNED_SHORT, "Queimado: curto-circuito nos terminais", "Burned: short circuit at the terminals")
+UI_TEXT(UI_BURNED_POWER, "Queimado: %.3g W (limite %.3g W)", "Burned: %.3g W (limit %.3g W)")
+UI_TEXT(UI_BURNED_CURRENT, "Queimado: %.4g mA (limite %.3g mA)", "Burned: %.4g mA (limit %.3g mA)")
+UI_TEXT(UI_DIRECTION_TERMINALS, "terminal 1 → 2", "terminal 1 → 2")
+UI_TEXT(UI_DIRECTION_TO_LOAD, "OUT → carga", "OUT → load")
+UI_TEXT(UI_CURRENT_READING, "Corrente: %.4g mA (%s)", "Current: %.4g mA (%s)")
+UI_TEXT(UI_CURRENT_READING_UPDATING, "Corrente: %.4g mA (%s) · atualizando", "Current: %.4g mA (%s) · updating")
+UI_TEXT(UI_SEGMENTS_LIT, "Segmentos acesos: %s", "Lit segments: %s")
+UI_TEXT(UI_SEGMENTS_NONE, "Nenhum segmento aceso", "No segments lit")
+UI_TEXT(UI_DIP_CONTACTS, "Contatos 1-4: %s %s %s %s · Duplo clique na alavanca: mudar",
+        "Contacts 1-4: %s %s %s %s · Double-click a lever: toggle")
+UI_TEXT(UI_RELAY_CLOSED, "Bobina %.1f mA · Contato NA fechado", "Coil %.1f mA · NO contact closed")
+UI_TEXT(UI_RELAY_OPEN, "Bobina %.1f mA · Contato NA aberto", "Coil %.1f mA · NO contact open")
+UI_TEXT(UI_MOTOR_NOTE, "%.0f rpm · %.1f mA · Modelo R-L com força contraeletromotriz",
+        "%.0f rpm · %.1f mA · R-L model with back EMF")
+UI_TEXT(UI_SERVO_NOTE, "Ângulo %.0f° · Segue o nível médio do sinal (aproximado)",
+        "Angle %.0f° · Follows the mean signal level (approximate)")
+UI_TEXT(UI_PIEZO_VIBRATING, "Vibrando · Piezo passivo: soa com sinal alternado",
+        "Vibrating · Passive piezo: makes sound with an AC signal")
+UI_TEXT(UI_PIEZO_STOPPED, "Parado · Piezo passivo: soa com sinal alternado",
+        "Stopped · Passive piezo: makes sound with an AC signal")
+UI_TEXT(UI_GENERATOR_NOTE, "%s 0–5 V · Duplo clique: mudar a forma de onda",
+        "%s 0–5 V · Double-click: change the waveform")
+UI_TEXT(UI_METER_CURRENT, "Corrente: %.4g mA (entre A e COM)", "Current: %.4g mA (between A and COM)")
+UI_TEXT(UI_METER_RESISTANCE, "Resistência: %.4g Ω (circuito sem alimentação)",
+        "Resistance: %.4g Ω (circuit without supply)")
+UI_TEXT(UI_METER_VOLTAGE, "Tensão: %.4g V (entre VΩ e COM)", "Voltage: %.4g V (between VΩ and COM)")
+UI_TEXT(UI_SCOPE_NOTE, "CH1: %.3g V · Escala ±5 V · Mostra as últimas amostras",
+        "CH1: %.3g V · Scale ±5 V · Shows the last samples")
+UI_TEXT(UI_WIPER_POSITION, "Posição: %.0f%%", "Position: %.0f%%")
+UI_TEXT(UI_SOURCE_NOTE, "Resistência interna %.3g Ω · Não descarrega",
+        "Internal resistance %.3g Ω · Does not discharge")
+UI_TEXT(UI_GENERIC_SPICE_MODEL, "Modelo SPICE genérico", "Generic SPICE model")
+UI_TEXT(UI_LED_COLOR, "Cor: %s", "Color: %s")
+/* Graph. */
+UI_TEXT(UI_GRAPH_WIRE_CURRENT, "Corrente no fio, A → B (A)", "Wire current, A → B (A)")
+UI_TEXT(UI_GRAPH_PIN_CURRENT, "Corrente, pino 1 → 2 (A)", "Current, pin 1 → 2 (A)")
+UI_TEXT(UI_GRAPH_VOLTAGE, "Tensão, terminal %d (V)", "Voltage, terminal %d (V)")
+/* Status bar key hints: "Key: action", joined by " · ". */
+UI_TEXT(UI_HINT_CHIP,
+        "Enter: ver interior · F4: renomear · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
+        "Enter: view inside · F4: rename · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
+UI_TEXT(UI_HINT_ROTATE, "R: girar", "R: rotate")
+UI_TEXT(UI_HINT_VALUE, "E: valor", "E: value")
+UI_TEXT(UI_HINT_SIZE, "Ctrl+roda: tamanho", "Ctrl+wheel: size")
+UI_TEXT(UI_HINT_LEGS, "Alt+arrastar: pernas", "Alt+drag: legs")
+UI_TEXT(UI_HINT_WIPER, "Shift+roda: posição", "Shift+wheel: position")
+UI_TEXT(UI_HINT_ENVIRONMENT, "Shift+roda: ambiente", "Shift+wheel: environment")
+UI_TEXT(UI_HINT_GRAPH, "T: gráfico", "T: graph")
+UI_TEXT(UI_HINT_REPLACE, "Catálogo: trocar peça", "Catalog: replace part")
+UI_TEXT(UI_HINT_DELETE, "Delete: apagar", "Delete: delete")
+UI_TEXT(UI_HINT_WIRE, "Duplo clique: adicionar ou remover dobra · T: gráfico da corrente · Delete: apagar",
+        "Double-click: add or remove bend · T: current graph · Delete: delete")
+UI_TEXT(UI_HINT_GRAPH_PLAYBACK,
+        "Gráfico desde o estado inicial · Espaço: reproduzir · B/N: amostra anterior/próxima · P: voltar à simulação",
+        "Graph from the initial state · Space: play · B/N: previous/next sample · P: back to simulation")
+UI_TEXT(UI_HINT_BENCH,
+        "Espaço: pausar · Ctrl+Espaço: reiniciar · Shift+arrastar: selecionar · Ctrl+C/V: copiar/colar · "
+        "Ctrl+G: criar chip · X: transparência · Ctrl+Z/Y: desfazer/refazer",
+        "Space: pause · Ctrl+Space: reset · Shift+drag: select · Ctrl+C/V: copy/paste · "
+        "Ctrl+G: create chip · X: transparency · Ctrl+Z/Y: undo/redo")
+UI_TEXT(UI_TRANSPARENCY_BADGE, "Transparência (X)", "Transparency (X)")
+/* Value editor. */
+UI_TEXT(UI_EDIT_CHIP_NAME, "Nome do chip", "Chip name")
+UI_TEXT(UI_EDIT_SIZE, "Tamanho em porcentagem (1 a 10000)", "Size in percent (1 to 10000)")
+UI_TEXT(UI_EDIT_GRID, "Espaçamento da grade (1 a 10000)", "Grid spacing (1 to 10000)")
+UI_TEXT(UI_EDIT_STEP, "Passo do gráfico, em segundos", "Graph step, in seconds")
+UI_TEXT(UI_EDIT_DURATION, "Duração do gráfico, em segundos", "Graph duration, in seconds")
+UI_TEXT(UI_EDIT_VALUE, "Valor (exemplos: 4k7, 10u, 2.2e-3)", "Value (examples: 4k7, 10u, 2.2e-3)")
+UI_TEXT(UI_EDIT_KEYS, "Enter: confirmar · Esc: cancelar", "Enter: confirm · Esc: cancel")
+/* Projects. */
+UI_TEXT(UI_PROJECTS_NOTE, "Cada slot guarda o circuito e as configurações.",
+        "Each slot keeps the circuit and the settings.")
+UI_TEXT(UI_SLOT_NUMBER, "Slot %d", "Slot %d")
+UI_TEXT(UI_SLOT_SAVED, "Salvo", "Saved")
+UI_TEXT(UI_SLOT_EMPTY, "Vazio", "Empty")
+UI_TEXT(UI_SAVE_TO_SLOT, "Salvar no slot %d", "Save to slot %d")
+UI_TEXT(UI_LOAD_SLOT, "Carregar slot %d", "Load slot %d")
+/* Terminal help. */
+UI_TEXT(UI_PIN_HELP, "%s · terminal %d (%s)", "%s · terminal %d (%s)")
+UI_TEXT(UI_PIN_HELP_IN_CHIP, "Chip %d › %s · terminal %d (%s)", "Chip %d › %s · terminal %d (%s)")
+UI_TEXT(UI_PIN_HELP_NOTE, "Função do terminal. Não é uma medição de tensão.",
+        "Terminal function. This is not a voltage reading.")
+/* Examples. */
+UI_TEXT(UI_EXAMPLES_NOTE, "Escolha um exemplo. Ele substitui o circuito da bancada. Ctrl+Z: desfazer.",
+        "Select an example. It replaces the circuit on the bench. Ctrl+Z: undo.")

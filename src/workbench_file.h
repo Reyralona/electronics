@@ -10,6 +10,7 @@ typedef struct {
     int snap_grid, snap_board;
     int dark_theme, gui_font_size;
     int show_pin_labels; /* app preference only; not stored in project files */
+    int language; /* UiLanguage; app preference only, not stored in project files */
 } WorkbenchSettings;
 WorkbenchSettings workbench_settings_default(void);
 int workbench_settings_valid(const WorkbenchSettings *settings);

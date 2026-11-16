@@ -13,6 +13,7 @@
 #include "mcu_board.h"
 #include "code_text.h"
 #include "app_code_editor.h"
+#include "ui_text.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -128,7 +129,8 @@ static void circle(float x, float y, float radius);
 static void rounded_rect(float x, float y, float w, float h, float radius);
 static const float wire_palette[WIRE_COLOR_COUNT][3] = {{.12f, .36f, .48f}, {.75f, .12f, .12f}, {.12f, .12f, .14f},
                                                         {.12f, .52f, .25f}, {.9f, .7f, .08f},   {.84f, .86f, .87f}};
-static const char *wire_color_names[WIRE_COLOR_COUNT] = {"Azul", "Vermelho", "Preto", "Verde", "Amarelo", "Branco"};
+static const TextId wire_color_names[WIRE_COLOR_COUNT] = {TXT_WIRE_COLOR_BLUE,  TXT_WIRE_COLOR_RED,    TXT_WIRE_COLOR_BLACK,
+                                                         TXT_WIRE_COLOR_GREEN, TXT_WIRE_COLOR_YELLOW, TXT_WIRE_COLOR_WHITE};
 static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
 {
     float dx = next.x - hole.x, dy = next.y - hole.y, length = hypotf(dx, dy);
@@ -235,7 +237,7 @@ static void text(GLuint font, float x, float y, const char *str)
 static void name_text(GLuint font, float x, float y, const char *name, int maximum_width)
 {
     if (!app_text_utf8(x, y, name, maximum_width))
-        text(font, x, y, "[texto indisponivel]");
+        text(font, x, y, tr(TXT_UI_TEXT_MISSING));
 }
 
 static void world_text(GLuint font, float x, float y, const char *label, float zoom)
@@ -245,6 +247,17 @@ static void world_text(GLuint font, float x, float y, const char *label, float z
     glScalef(1 / zoom, 1 / zoom, 1);
     text(font, 0, 0, label);
     glPopMatrix();
+}
+
+/* Graph title; current is 0 for terminal voltage, 1 for part current, 2 for wire current. */
+static void trace_title(char *title, size_t capacity, int pin, int current)
+{
+    if (current == 2)
+        snprintf(title, capacity, "%s", tr(TXT_UI_GRAPH_WIRE_CURRENT));
+    else if (current)
+        snprintf(title, capacity, "%s", tr(TXT_UI_GRAPH_PIN_CURRENT));
+    else
+        snprintf(title, capacity, tr(TXT_UI_GRAPH_VOLTAGE), pin + 1);
 }
 
 static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int pin, int current)
@@ -271,11 +284,7 @@ static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int p
     color(.98f, .98f, .99f);
     rect(840, 384, 400, 244);
     color(.14f, .22f, .28f);
-    snprintf(label, sizeof(label),
-             current == 2 ? "CORRENTE FIO - A -> B (A)"
-             : current    ? "CORRENTE - PINO 1 -> 2 (A)"
-                          : "TENSAO - TERMINAL %d (V)",
-             pin + 1);
+    trace_title(label, sizeof(label), pin, current);
     text(font, 856, 410, label);
     snprintf(label, sizeof(label), current ? "%.4g A" : "%.4g V", high);
     text(font, 856, 433, label);
@@ -1715,7 +1724,7 @@ static void burnt_draw(GLuint font, const Part *part, Uint64 ticks)
     }
     glow_blend_end();
     color(.86f, .12f, .08f);
-    text(font, x - 36, y - 44, "QUEIMADO");
+    text(font, x - 36, y - 44, tr(TXT_UI_BURNED_MARK));
 }
 
 /* ---- Interface widgets: geometry comes from app_layout; colors pass through the theme mapping. ---- */
@@ -1796,6 +1805,22 @@ static int ui_text_width(GLuint font, const char *label)
 {
     int width = app_text_utf8_width(label, 2048);
     return width > 0 || !font ? width : (int)strlen(label) * 8;
+}
+
+static void ui_wrapped(GLuint font, float x, float baseline, const char *source, int width, int max_lines,
+                       float line_height);
+
+/* Keep short names centered and use the card height for longer translations. */
+static void palette_name(GLuint font, AppRect r, const char *name)
+{
+    const int text_offset = 62;
+    const int right_padding = 4;
+    const float line_height = ui_font_pixels + 2.0f;
+    int width = (int)r.w - text_offset - right_padding;
+    float baseline = ui_baseline(r);
+    if (ui_text_width(font, name) > width)
+        baseline -= line_height / 2;
+    ui_wrapped(font, r.x + text_offset, baseline, name, width, 2, line_height);
 }
 
 static void ui_text_center(GLuint font, AppRect r, const char *label)
@@ -1933,25 +1958,25 @@ static void play_button_draw(const AppState *app, GLuint font)
 {
     AppRect r = app_layout_header(APP_HEADER_PLAY);
     int running = app->sim.sim_running, burnt = app->sim.burnt_count;
-    const char *label = "Executando";
+    const char *label = tr(TXT_UI_RUNNING);
     float fill[3] = {.84f, .94f, .87f};
     if (!running)
     {
-        label = "Pausado";
+        label = tr(TXT_UI_PAUSED);
         fill[0] = .89f, fill[1] = .91f, fill[2] = .93f;
     }
     else if (burnt)
     {
-        label = "Componente queimado";
+        label = tr(TXT_UI_PART_BURNED);
         fill[0] = .99f, fill[1] = .87f, fill[2] = .85f;
     }
     else if (app->sim.auto_failed)
     {
-        label = "Erro no cálculo";
+        label = tr(TXT_UI_CALCULATION_ERROR);
         fill[0] = .99f, fill[1] = .91f, fill[2] = .80f;
     }
     else if (app->dc_job.thread)
-        label = "Calculando...";
+        label = tr(TXT_UI_CALCULATING);
     color(fill[0] - (ui_hovered(app, r) ? .04f : 0), fill[1] - (ui_hovered(app, r) ? .04f : 0), fill[2]);
     ui_rounded(r, r.h / 2);
     float cx = r.x + 24, cy = app_rect_center_y(r);
@@ -2043,12 +2068,12 @@ static void draw_brand(GLuint font)
 static void draw_editor_header(const AppState *app, GLuint font)
 {
     char context[BENCH_GROUP_NAME_CAPACITY + 40];
-    snprintf(context, sizeof(context), "Editando: %s%s", app->editor_name, app_editor_dirty(app) ? " *" : "");
+    snprintf(context, sizeof(context), tr(TXT_UI_EDITING_CHIP), app->editor_name, app_editor_dirty(app) ? " *" : "");
     color(UI_INK);
     name_text(font, 24, 42, context, 320);
-    static const char *labels[APP_EDITOR_COUNT] = {"Aplicar ao chip", "Renomear", "Salvar modelo", "Voltar"};
+    static const TextId labels[APP_EDITOR_COUNT] = {TXT_UI_EDITOR_APPLY, TXT_UI_RENAME, TXT_UI_EDITOR_SAVE, TXT_UI_BACK};
     for (int button = 0; button < APP_EDITOR_COUNT; ++button)
-        ui_button(app, font, app_layout_editor_header((AppEditorButton)button), labels[button],
+        ui_button(app, font, app_layout_editor_header((AppEditorButton)button), tr(labels[button]),
                   button == APP_EDITOR_APPLY ? UI_BUTTON_PRIMARY : UI_BUTTON_NEUTRAL);
 }
 
@@ -2063,11 +2088,11 @@ static void draw_header(const AppState *app, GLuint font)
     else
     {
         draw_brand(font);
-        ui_button(app, font, app_layout_header(APP_HEADER_PROJECTS), "Projetos",
+        ui_button(app, font, app_layout_header(APP_HEADER_PROJECTS), tr(TXT_UI_PROJECTS),
                   app->projects_open ? UI_BUTTON_ACTIVE : UI_BUTTON_NEUTRAL);
-        ui_button(app, font, app_layout_header(APP_HEADER_EXAMPLES), "Exemplos",
+        ui_button(app, font, app_layout_header(APP_HEADER_EXAMPLES), tr(TXT_UI_EXAMPLES),
                   app->examples_open ? UI_BUTTON_ACTIVE : UI_BUTTON_NEUTRAL);
-        ui_button(app, font, app_layout_header(APP_HEADER_SETTINGS), "Configurações",
+        ui_button(app, font, app_layout_header(APP_HEADER_SETTINGS), tr(TXT_SETTINGS_TITLE),
                   app->settings ? UI_BUTTON_ACTIVE : UI_BUTTON_NEUTRAL);
     }
     play_button_draw(app, font);
@@ -2144,12 +2169,12 @@ static void draw_block_library(const AppState *app, GLuint font)
             continue;
         }
         char label[48];
-        snprintf(label, sizeof(label), "Bloco %d", slot + 1);
+        snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), slot + 1);
         if (app->library_available[slot])
             color(UI_INK);
         else
             color(UI_MUTED);
-        text(font, r.x + 62, ui_baseline(r), app->library_available[slot] ? label : "Novo: Ctrl+G");
+        text(font, r.x + 62, ui_baseline(r), app->library_available[slot] ? label : tr(TXT_UI_LIBRARY_NEW));
     }
 }
 
@@ -2176,7 +2201,7 @@ static void draw_palette(const AppState *app, GLuint font)
         draw_palette_card(app, r, app->placing == (int)type);
         draw_thumbnail(type, r.x + 28, app_rect_center_y(r));
         color(UI_INK);
-        name_text(font, r.x + 62, ui_baseline(r), part_name(type), 120);
+        palette_name(font, r, part_name(type));
     }
     draw_palette_scrollbar(app->palette_offset, count);
 }
@@ -2685,7 +2710,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
         if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
         {
             color(.85f, .88f, .9f);
-            text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_info(app->bench.parts[i].type)->display_name + 3);
+            text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_symbol(app->bench.parts[i].type));
         }
     for (i = 0; i < app->bench.part_count; ++i)
         if (!app->bench.parts[i].group && is_gate(app->bench.parts[i].type))
@@ -2696,7 +2721,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
                 color(.13f, .22f, .27f);
             world_text(font, app->bench.parts[i].x - 25 / app->view.zoom,
                        app->bench.parts[i].y + 35 * bench_part_scale(&app->bench.parts[i]) + 18 / app->view.zoom,
-                       part_name(app->bench.parts[i].type) + 6, app->view.zoom);
+                       component_symbol(app->bench.parts[i].type), app->view.zoom);
         }
     draw_selected_pin_labels(app, font);
 }
@@ -2795,7 +2820,7 @@ static void draw_groups(const AppState *app, GLuint font)
             glLineWidth(1);
         }
         char label[40];
-        snprintf(label, sizeof(label), "Bloco %d", g + 1);
+        snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), g + 1);
         glColor3f(.86f, .89f, .91f);
         name_text(font, left + 14, group->y + 5, group->name[0] ? group->name : label, (int)width - 24);
         if (lit)
@@ -2890,10 +2915,10 @@ static void draw_group_inspector(const AppState *app, GLuint font)
     ui_panel(app_layout_inspector(150));
     color(UI_INK);
     name_text(font, 852, 112, app->bench.groups[group - 1].name, 396);
-    ui_button(app, font, app_layout_group_button(0), "Ver interior", UI_BUTTON_PRIMARY);
-    ui_button(app, font, app_layout_group_button(1), "Renomear", UI_BUTTON_NEUTRAL);
+    ui_button(app, font, app_layout_group_button(0), tr(TXT_UI_VIEW_INSIDE), UI_BUTTON_PRIMARY);
+    ui_button(app, font, app_layout_group_button(1), tr(TXT_UI_RENAME), UI_BUTTON_NEUTRAL);
     char dimensions[100];
-    snprintf(dimensions, sizeof(dimensions), "Largura %.0f  ·  Altura %.0f", bench_group_width(&app->bench, group),
+    snprintf(dimensions, sizeof(dimensions), tr(TXT_UI_CHIP_DIMENSIONS), bench_group_width(&app->bench, group),
              bench_group_height(&app->bench, group));
     ui_note(font, 852, 196, dimensions, 396);
 }
@@ -2905,12 +2930,12 @@ static void inspector_reading(const AppState *app, const Part *part, char *readi
     if (app->sim.burnt[index])
     {
         if (app->sim.burn_reason[index] == BURN_SHORT)
-            snprintf(reading, capacity, "Queimado: curto-circuito nos terminais");
+            snprintf(reading, capacity, "%s", tr(TXT_UI_BURNED_SHORT));
         else if (app->sim.burn_reason[index] == BURN_OVERPOWER)
-            snprintf(reading, capacity, "Queimado: %.3g W (limite %.3g W)", app->sim.burn_value[index],
+            snprintf(reading, capacity, tr(TXT_UI_BURNED_POWER), app->sim.burn_value[index],
                      limits.resistor_max_power);
         else
-            snprintf(reading, capacity, "Queimado: %.4g mA (limite %.3g mA)", app->sim.burn_value[index] * 1000.0,
+            snprintf(reading, capacity, tr(TXT_UI_BURNED_CURRENT), app->sim.burn_value[index] * 1000.0,
                      limits.led_max_current * 1000.0);
         return;
     }
@@ -2921,13 +2946,30 @@ static void inspector_reading(const AppState *app, const Part *part, char *readi
         reading[0] = 0;
         return;
     }
-    const char *direction = "terminal 1 → 2";
+    const char *direction = tr(TXT_UI_DIRECTION_TERMINALS);
     if (part->type == PART_NPN || part->type == PART_PNP || part->type == PART_AMBIENT_LIGHT)
         direction = "C → E";
     else if (part->type == PART_TEMPERATURE)
-        direction = "OUT → carga";
-    snprintf(reading, capacity, "Corrente: %.4g mA (%s)%s", app->sim.dc_led_currents[index] * 1000.0, direction,
-             app->sim.display_pending ? " · atualizando" : "");
+        direction = tr(TXT_UI_DIRECTION_TO_LOAD);
+    TextId format = app->sim.display_pending ? TXT_UI_CURRENT_READING_UPDATING : TXT_UI_CURRENT_READING;
+    snprintf(reading, capacity, tr(format), app->sim.dc_led_currents[index] * 1000.0, direction);
+}
+
+static void lit_segments_note(const double *e, char *note, size_t capacity)
+{
+    static const char *names[COMPONENT_SEGMENTS] = {"a", "b", "c", "d", "e", "f", "g", "dp"};
+    char lit[COMPONENT_SEGMENTS * 3 + 1] = "";
+    size_t used = 0;
+    for (int segment = 0; segment < COMPONENT_SEGMENTS; ++segment)
+    {
+        if (e[segment] <= 1e-4)
+            continue;
+        used += (size_t)snprintf(lit + used, sizeof(lit) - used, used ? " %s" : "%s", names[segment]);
+    }
+    if (used)
+        snprintf(note, capacity, tr(TXT_UI_SEGMENTS_LIT), lit);
+    else
+        snprintf(note, capacity, "%s", tr(TXT_UI_SEGMENTS_NONE));
 }
 
 static void device_note(const Part *part, const double *e, char *note, size_t capacity)
@@ -2939,45 +2981,39 @@ static void device_note(const Part *part, const double *e, char *note, size_t ca
         snprintf(note, capacity, "R %.2f mA · G %.2f mA · B %.2f mA", e[0] * 1e3, e[1] * 1e3, e[2] * 1e3);
         break;
     case PART_SEVEN_SEGMENT:
-    {
-        static const char *names[COMPONENT_SEGMENTS] = {"a", "b", "c", "d", "e", "f", "g", "dp"};
-        size_t used = (size_t)snprintf(note, capacity, "Segmentos acesos:");
-        for (int segment = 0; segment < COMPONENT_SEGMENTS && used < capacity; ++segment)
-            if (e[segment] > 1e-4)
-                used += (size_t)snprintf(note + used, capacity - used, " %s", names[segment]);
+        lit_segments_note(e, note, capacity);
         break;
-    }
     case PART_DIP_SWITCH:
-        snprintf(note, capacity, "Contatos 1-4: %s %s %s %s · duplo clique na alavanca", part->states & 1 ? "ON" : "off",
+        snprintf(note, capacity, tr(TXT_UI_DIP_CONTACTS), part->states & 1 ? "ON" : "off",
                  part->states & 2 ? "ON" : "off", part->states & 4 ? "ON" : "off", part->states & 8 ? "ON" : "off");
         break;
     case PART_RELAY:
-        snprintf(note, capacity, "Bobina %.1f mA · contato NA %s", e[0] * 1e3, e[1] > .5 ? "fechado" : "aberto");
+        snprintf(note, capacity, tr(e[1] > .5 ? TXT_UI_RELAY_CLOSED : TXT_UI_RELAY_OPEN), e[0] * 1e3);
         break;
     case PART_DC_MOTOR:
     case PART_VIBRATION_MOTOR:
     case PART_ENCODER_MOTOR:
-        snprintf(note, capacity, "%.0f rpm · %.1f mA · modelo R-L com força contraeletromotriz", e[0] * rpm, e[1] * 1e3);
+        snprintf(note, capacity, tr(TXT_UI_MOTOR_NOTE), e[0] * rpm, e[1] * 1e3);
         break;
     case PART_SERVO:
-        snprintf(note, capacity, "Ângulo %.0f° · segue o nível médio do sinal (aprox.)", e[0]);
+        snprintf(note, capacity, tr(TXT_UI_SERVO_NOTE), e[0]);
         break;
     case PART_PIEZO:
-        snprintf(note, capacity, "%s · piezo passivo: soa com sinal alternado", fabs(e[0]) > 1e-5 ? "Vibrando" : "Parado");
+        snprintf(note, capacity, "%s", tr(fabs(e[0]) > 1e-5 ? TXT_UI_PIEZO_VIBRATING : TXT_UI_PIEZO_STOPPED));
         break;
     case PART_FUNCTION_GENERATOR:
-        snprintf(note, capacity, "%s 0–5 V · duplo clique troca a forma de onda", component_mode_label(part->type, part->states));
+        snprintf(note, capacity, tr(TXT_UI_GENERATOR_NOTE), component_mode_label(part->type, part->states));
         break;
     case PART_MULTIMETER:
         if (part->states == 1)
-            snprintf(note, capacity, "Corrente: %.4g mA (entre A e COM)", e[1] * 1e3);
+            snprintf(note, capacity, tr(TXT_UI_METER_CURRENT), e[1] * 1e3);
         else if (part->states == 2)
-            snprintf(note, capacity, "Resistência: %.4g Ω (circuito sem alimentação)", e[0] / 1e-3);
+            snprintf(note, capacity, tr(TXT_UI_METER_RESISTANCE), e[0] / 1e-3);
         else
-            snprintf(note, capacity, "Tensão: %.4g V (entre VΩ e COM)", e[0]);
+            snprintf(note, capacity, tr(TXT_UI_METER_VOLTAGE), e[0]);
         break;
     case PART_OSCILLOSCOPE:
-        snprintf(note, capacity, "CH1: %.3g V · escala ±5 V; histórico das últimas amostras", e[0]);
+        snprintf(note, capacity, tr(TXT_UI_SCOPE_NOTE), e[0]);
         break;
     default:
         note[0] = 0;
@@ -2988,12 +3024,12 @@ static void inspector_note(const Part *part, char *note, size_t capacity)
 {
     note[0] = 0;
     if (part->type == PART_POTENTIOMETER)
-        snprintf(note, capacity, "Cursor: %.0f%%", part->control * 100);
+        snprintf(note, capacity, tr(TXT_UI_WIPER_POSITION), part->control * 100);
     else if (component_electrical_type(part->type) == PART_SOURCE && part->type != PART_SOURCE)
-        snprintf(note, capacity, "Resistência interna %.3g Ω · não descarrega por capacidade",
+        snprintf(note, capacity, tr(TXT_UI_SOURCE_NOTE),
                  component_source_resistance(part->type));
     else if (part->type == PART_DIODE || part->type == PART_NPN || part->type == PART_PNP)
-        snprintf(note, capacity, "Modelo SPICE genérico");
+        snprintf(note, capacity, "%s", tr(TXT_UI_GENERIC_SPICE_MODEL));
 }
 
 static void draw_environment_control(GLuint font, const Part *part)
@@ -3021,7 +3057,7 @@ static void draw_led_colors(const AppState *app, GLuint font, const Part *part)
     static const float swatches[APP_LED_SWATCHES][3] = {{.90f, .18f, .14f}, {.20f, .75f, .30f}, {.20f, .42f, .95f},
                                                         {.98f, .85f, .15f}, {.96f, .97f, .98f}, {1, .55f, .10f}};
     char label[64];
-    snprintf(label, sizeof(label), "Cor: %s", component_led_color_name(part->states));
+    snprintf(label, sizeof(label), tr(TXT_UI_LED_COLOR), component_led_color_name(part->states));
     color(UI_INK);
     text(font, 852, INSPECTOR_LINE_2 + 2, label);
     for (int index = 0; index < APP_LED_SWATCHES; ++index)
@@ -3059,23 +3095,23 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     color(UI_INK);
     name_text(font, 852, 112, part_name(part->type), 300);
     if (part->type != PART_BREADBOARD)
-        ui_button(app, font, app_layout_inspector_rotate(), "Girar", UI_BUTTON_NEUTRAL);
+        ui_button(app, font, app_layout_inspector_rotate(), tr(TXT_UI_ROTATE), UI_BUTTON_NEUTRAL);
     if (mcu_board(part->type))
-        draw_inspector_row(app, font, app_layout_inspector_value(), "Programa", "Editar código", 1);
+        draw_inspector_row(app, font, app_layout_inspector_value(), tr(TXT_UI_CODE), tr(TXT_UI_EDIT_CODE), 1);
     else
     {
         if (info && info->primary)
             snprintf(value, sizeof(value), "%.5g %s", part->value, info->primary->unit);
-        draw_inspector_row(app, font, app_layout_inspector_value(), "Valor",
-                           info && info->primary ? value : "Sem valor ajustável", info && info->primary);
+        draw_inspector_row(app, font, app_layout_inspector_value(), tr(TXT_UI_VALUE),
+                           info && info->primary ? value : tr(TXT_UI_NO_VALUE), info && info->primary);
     }
     snprintf(value, sizeof(value), "%.5g %%", bench_part_scale(part) * 100);
-    draw_inspector_row(app, font, app_layout_inspector_scale(), "Tamanho", value, 1);
+    draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), value, 1);
     if (app->sim.burnt[app->selected])
         color(UI_DANGER);
     else
         color(UI_INK);
-    text(font, 852, INSPECTOR_LINE_1, reading[0] ? reading : "Sem leitura de corrente");
+    text(font, 852, INSPECTOR_LINE_1, reading[0] ? reading : tr(TXT_UI_NO_CURRENT_READING));
     if (environment)
         draw_environment_control(font, part);
     else if (part->type == PART_LED)
@@ -3094,39 +3130,49 @@ static void draw_inspector(const AppState *app, GLuint font)
         draw_part_inspector(app, font);
 }
 
+#define PART_HINT_MAX 8
+
+/* Key hints of the selected part, joined by " · " (each hint is a whole "Key: action" text). */
+static void part_hint(const Part *part, char *hint, size_t capacity)
+{
+    const ComponentInfo *info = component_info(part->type);
+    TextId hints[PART_HINT_MAX];
+    int count = 0;
+    if (part->type != PART_BREADBOARD)
+        hints[count++] = TXT_UI_HINT_ROTATE;
+    if (info && info->primary)
+        hints[count++] = TXT_UI_HINT_VALUE;
+    hints[count++] = TXT_UI_HINT_SIZE;
+    if (bench_lead_count(part, 0))
+        hints[count++] = TXT_UI_HINT_LEGS;
+    if (part->type == PART_POTENTIOMETER)
+        hints[count++] = TXT_UI_HINT_WIPER;
+    else if (component_environment(part->type))
+        hints[count++] = TXT_UI_HINT_ENVIRONMENT;
+    hints[count++] = TXT_UI_HINT_GRAPH;
+    hints[count++] = TXT_UI_HINT_REPLACE;
+    hints[count++] = TXT_UI_HINT_DELETE;
+    size_t used = 0;
+    hint[0] = 0;
+    for (int index = 0; index < count && used < capacity; ++index)
+        used += (size_t)snprintf(hint + used, capacity - used, index ? " · %s" : "%s", tr(hints[index]));
+}
+
 static void status_hint(const AppState *app, char *hint, size_t capacity)
 {
+    TextId fixed = TXT_UI_HINT_BENCH;
     if (app->selected >= 0 && app->bench.parts[app->selected].group)
+        fixed = TXT_UI_HINT_CHIP;
+    else if (app->selected >= 0)
     {
-        snprintf(hint, capacity, "Enter: ver interior · F4: renomear · Ctrl+scroll: largura · "
-                                 "Ctrl+Shift+scroll: altura · Delete: excluir");
+        part_hint(&app->bench.parts[app->selected], hint, capacity);
         return;
     }
-    if (app->selected >= 0)
-    {
-        const Part *part = &app->bench.parts[app->selected];
-        const ComponentInfo *info = component_info(part->type);
-        snprintf(hint, capacity, "%s%sCtrl+scroll: tamanho%s%s · T: gráfico · Catálogo: trocar · Delete: excluir",
-                 part->type == PART_BREADBOARD ? "" : "R: girar · ", info && info->primary ? "E: valor · " : "",
-                 bench_lead_count(part, 0) ? " · Alt+arraste: terminais" : "",
-                 part->type == PART_POTENTIOMETER ? " · Shift+scroll: cursor"
-                 : component_environment(part->type) ? " · Shift+scroll: ambiente"
-                                                      : "");
-        return;
-    }
-    if (app->selected_wire >= 0)
-    {
-        snprintf(hint, capacity, "Duplo clique: adicionar/remover joelho · T: gráfico da corrente · Delete: excluir");
-        return;
-    }
-    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic && app->show_trace)
-    {
-        snprintf(hint, capacity, "Gráfico desde o estado inicial · Espaço: reproduzir · B/N: amostra anterior/próxima · "
-                                 "P: voltar ao cálculo ao vivo");
-        return;
-    }
-    snprintf(hint, capacity, "Espaço: pausar · Ctrl+Espaço: reiniciar · Shift+arraste: selecionar área · "
-                             "Ctrl+C/V: copiar/colar · Ctrl+G: criar bloco · X: transparência · Ctrl+Z/Y: desfazer/refazer");
+    else if (app->selected_wire >= 0)
+        fixed = TXT_UI_HINT_WIRE;
+    else if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic && app->show_trace)
+        fixed = TXT_UI_HINT_GRAPH_PLAYBACK;
+    snprintf(hint, capacity, "%s", tr(fixed));
 }
 
 static void draw_status(const AppState *app, GLuint font)
@@ -3149,7 +3195,7 @@ static void draw_status(const AppState *app, GLuint font)
     name_text(font, 238, 709, hint, 1020);
     if (app->xray)
     {
-        const char *badge = "Transparência (X)";
+        const char *badge = tr(TXT_UI_TRANSPARENCY_BADGE);
         float width = (float)app_text_utf8_width(badge, 2048) + 20;
         color(UI_ACCENT);
         rounded_rect(1268 - width, 668, width, 24, 12);
@@ -3161,35 +3207,35 @@ static void draw_status(const AppState *app, GLuint font)
 static void draw_settings_appearance(const AppState *app, GLuint font)
 {
     char value[32];
-    ui_section(font, app_layout_settings_section(0, 0), "Aparência");
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_DARK_THEME), "Tema escuro", app->dark_theme);
+    ui_section(font, app_layout_settings_section(0, 0), tr(TXT_SETTINGS_APPEARANCE));
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_DARK_THEME), tr(TXT_SETTINGS_DARK_THEME), app->dark_theme);
     snprintf(value, sizeof(value), "%d px", app->gui_font_size);
     AppRect minus = app_layout_setting(APP_SETTING_FONT_SMALLER), plus = app_layout_setting(APP_SETTING_FONT_LARGER);
     ui_stepper(app, font, (AppRect){app_layout_setting(APP_SETTING_DARK_THEME).x, minus.y, 400, minus.h}, minus, plus,
-               "Tamanho do texto", value);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_SHOW_GRID), "Mostrar grade", app->show_grid);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_ROUND_WIRES), "Cantos arredondados nos fios",
+               tr(TXT_SETTINGS_TEXT_SIZE), value);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_SHOW_GRID), tr(TXT_SETTINGS_SHOW_GRID), app->show_grid);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_ROUND_WIRES), tr(TXT_SETTINGS_ROUND_WIRES),
               app->round_wires);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_HANDLES), "Mostrar joelhos dos fios", app->show_handles);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_PIN_LABELS), "Mostrar nomes dos terminais", app->show_pin_labels);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_HANDLES), tr(TXT_SETTINGS_SHOW_BENDS), app->show_handles);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_PIN_LABELS), tr(TXT_SETTINGS_SHOW_TERMINAL_NAMES), app->show_pin_labels);
 }
 
 static void draw_settings_snapping(const AppState *app, GLuint font)
 {
     char value[48];
-    ui_section(font, app_layout_settings_section(0, 7), "Grade e encaixe");
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_GRID), "Encaixar na grade", app->snap_grid);
+    ui_section(font, app_layout_settings_section(0, 7), tr(TXT_SETTINGS_GRID_AND_SNAP));
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_GRID), tr(TXT_SETTINGS_SNAP_GRID), app->snap_grid);
     snprintf(value, sizeof(value), "%.6g", app->grid_spacing);
-    ui_field(app, font, app_layout_setting(APP_SETTING_GRID_SPACING), "Espaçamento da grade", value);
-    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_BOARD), "Encaixar na breadboard", app->snap_board);
+    ui_field(app, font, app_layout_setting(APP_SETTING_GRID_SPACING), tr(TXT_SETTINGS_GRID_SPACING), value);
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_SNAP_BOARD), tr(TXT_SETTINGS_SNAP_BREADBOARD), app->snap_board);
 }
 
 static void draw_settings_wires(const AppState *app, GLuint font)
 {
-    ui_section(font, app_layout_settings_section(1, 0), "Fios");
+    ui_section(font, app_layout_settings_section(1, 0), tr(TXT_SETTINGS_WIRES));
     AppRect first = app_layout_wire_swatch(0);
     color(UI_INK);
-    text(font, first.x, first.y - 8, app->selected_wire >= 0 ? "Cor do fio selecionado" : "Cor dos próximos fios");
+    text(font, first.x, first.y - 8, app->selected_wire >= 0 ? tr(TXT_SETTINGS_SELECTED_WIRE_COLOR) : tr(TXT_SETTINGS_NEW_WIRE_COLOR));
     for (int swatch = 0; swatch < WIRE_COLOR_COUNT; ++swatch)
     {
         AppRect r = app_layout_wire_swatch(swatch);
@@ -3205,26 +3251,95 @@ static void draw_settings_wires(const AppState *app, GLuint font)
     }
     color(UI_MUTED);
     AppRect last = app_layout_wire_swatch(WIRE_COLOR_COUNT - 1);
-    text(font, last.x + last.w + 12, ui_baseline(last), wire_color_names[app->wire_color]);
+    text(font, last.x + last.w + 12, ui_baseline(last), tr(wire_color_names[app->wire_color]));
     AppRect current = app_layout_setting(APP_SETTING_SHOW_CURRENT);
-    ui_toggle(app, font, current, "Mostrar corrente nos fios", app->show_current);
-    ui_note(font, current.x, current.y + current.h + 22, "Velocidade das bolinhas: 1–100 µA · até 10 mA · ≥ 10 mA", 400);
+    ui_toggle(app, font, current, tr(TXT_SETTINGS_SHOW_CURRENT), app->show_current);
+    ui_note(font, current.x, current.y + current.h + 22, tr(TXT_SETTINGS_CURRENT_SPEED), 400);
 }
 
 static void draw_settings_trace(const AppState *app, GLuint font)
 {
     char value[48];
-    ui_section(font, app_layout_settings_section(1, 5), "Gráfico transitório (T)");
-    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_MEASURE), "Grandeza medida",
-             app->probe_current ? "Corrente" : "Tensão");
-    snprintf(value, sizeof(value), "Terminal %d", app->probe_pin + 1);
-    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_PIN), "Terminal medido", value);
+    ui_section(font, app_layout_settings_section(1, 5), tr(TXT_SETTINGS_GRAPH));
+    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_MEASURE), tr(TXT_SETTINGS_MEASURE),
+             app->probe_current ? tr(TXT_QUANTITY_CURRENT) : tr(TXT_QUANTITY_VOLTAGE));
+    snprintf(value, sizeof(value), tr(TXT_TERMINAL_NUMBER), app->probe_pin + 1);
+    ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_PIN), tr(TXT_SETTINGS_TERMINAL), value);
     snprintf(value, sizeof(value), "%.6g s", app->transient_step);
-    ui_field(app, font, app_layout_setting(APP_SETTING_STEP), "Passo", value);
+    ui_field(app, font, app_layout_setting(APP_SETTING_STEP), tr(TXT_SETTINGS_STEP), value);
     snprintf(value, sizeof(value), "%.6g s", app->transient_stop);
-    ui_field(app, font, app_layout_setting(APP_SETTING_STOP), "Duração", value);
+    ui_field(app, font, app_layout_setting(APP_SETTING_STOP), tr(TXT_SETTINGS_DURATION), value);
     AppRect stop = app_layout_setting(APP_SETTING_STOP);
-    ui_note(font, stop.x, stop.y + stop.h + 22, "Ao vivo, cada quadro avança duração ÷ 300.", 400);
+    ui_note(font, stop.x, stop.y + stop.h + 22, tr(TXT_SETTINGS_LIVE_FRAME), 400);
+}
+
+/* Flags keep their real colors in both themes, so they use glColor directly instead of color(). */
+#define US_STRIPES 13
+#define US_CANTON_STRIPES 7
+static void flag_us(AppRect r)
+{
+    float stripe = r.h / US_STRIPES;
+    for (int i = 0; i < US_STRIPES; ++i)
+    {
+        if (i % 2)
+            glColor3f(1, 1, 1);
+        else
+            glColor3f(.70f, .13f, .20f);
+        rect(r.x, r.y + i * stripe, r.w, stripe + .5f);
+    }
+    float canton_w = r.w * .4f, canton_h = stripe * US_CANTON_STRIPES;
+    glColor3f(.24f, .23f, .43f);
+    rect(r.x, r.y, canton_w, canton_h);
+    glColor3f(1, 1, 1);
+    for (int row = 0; row < 4; ++row)
+        for (int column = 0; column < 5; ++column)
+            circle(r.x + canton_w * (column + .5f) / 5, r.y + canton_h * (row + .5f) / 4, .9f);
+}
+
+static void flag_br(AppRect r)
+{
+    float cx = app_rect_center_x(r), cy = app_rect_center_y(r), margin = r.h * .12f;
+    glColor3f(0, .61f, .23f);
+    rect(r.x, r.y, r.w, r.h);
+    glColor3f(1, .87f, 0);
+    glBegin(GL_QUADS);
+    glVertex2f(r.x + margin * 1.4f, cy);
+    glVertex2f(cx, r.y + margin);
+    glVertex2f(r.x + r.w - margin * 1.4f, cy);
+    glVertex2f(cx, r.y + r.h - margin);
+    glEnd();
+    float radius = r.h * .27f;
+    glColor3f(0, .15f, .46f);
+    circle(cx, cy, radius);
+    glColor3f(1, 1, 1);
+    glLineWidth(1.5f);
+    line(cx - radius * .95f, cy + radius * .05f, cx + radius * .95f, cy - radius * .35f);
+    glLineWidth(1);
+}
+
+static void draw_language_flags(const AppState *app, GLuint font)
+{
+    static const AppSetting flags[UI_LANG_COUNT] = {APP_SETTING_LANGUAGE_PT_BR, APP_SETTING_LANGUAGE_EN_US};
+    for (int language = 0; language < UI_LANG_COUNT; ++language)
+    {
+        AppRect r = app_layout_setting(flags[language]);
+        if (language == (int)ui_text_language() || ui_hovered(app, r))
+        {
+            if (language == (int)ui_text_language())
+                glColor3f(UI_ACCENT);
+            else
+                color(UI_BORDER);
+            rounded_rect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 5);
+        }
+        if (language == UI_LANG_PT_BR)
+            flag_br(r);
+        else
+            flag_us(r);
+    }
+    AppRect first = app_layout_setting(flags[0]);
+    const char *label = tr(TXT_LANGUAGE);
+    color(UI_MUTED);
+    text(font, first.x - 14 - (float)app_text_utf8_width(label, 2048), ui_baseline(first), label);
 }
 
 static void draw_settings(const AppState *app, GLuint font)
@@ -3234,30 +3349,31 @@ static void draw_settings(const AppState *app, GLuint font)
     AppRect panel = app_layout_settings_panel();
     ui_panel(panel);
     color(UI_INK);
-    text(font, panel.x + 30, panel.y + 42, "Configurações");
+    text(font, panel.x + 30, panel.y + 42, tr(TXT_SETTINGS_TITLE));
     ui_close_button(app, app_layout_setting(APP_SETTING_CLOSE));
+    draw_language_flags(app, font);
     draw_settings_appearance(app, font);
     draw_settings_snapping(app, font);
     draw_settings_wires(app, font);
     draw_settings_trace(app, font);
     AppRect reset = app_layout_setting(APP_SETTING_RESET);
-    ui_note(font, panel.x + 30, ui_baseline(reset), "Alterações são salvas automaticamente.", 500);
-    ui_button(app, font, reset, "Restaurar padrões", UI_BUTTON_NEUTRAL);
+    ui_note(font, panel.x + 30, ui_baseline(reset), tr(TXT_SETTINGS_AUTOSAVE), 500);
+    ui_button(app, font, reset, tr(TXT_SETTINGS_RESTORE_DEFAULTS), UI_BUTTON_NEUTRAL);
 }
 
-static const char *value_editor_title(int editing)
+static TextId value_editor_title(int editing)
 {
     if (editing == APP_EDIT_GROUP_NAME)
-        return "Nome do chip";
+        return TXT_UI_EDIT_CHIP_NAME;
     if (editing == APP_EDIT_SCALE)
-        return "Tamanho em porcentagem (1 a 10000)";
+        return TXT_UI_EDIT_SIZE;
     if (editing == APP_EDIT_GRID)
-        return "Espaçamento da grade (1 a 10000)";
+        return TXT_UI_EDIT_GRID;
     if (editing == APP_EDIT_STEP)
-        return "Passo do gráfico, em segundos";
+        return TXT_UI_EDIT_STEP;
     if (editing == APP_EDIT_STOP)
-        return "Duração do gráfico, em segundos";
-    return "Valor (aceita 4k7, 10u, 2.2e-3...)";
+        return TXT_UI_EDIT_DURATION;
+    return TXT_UI_EDIT_VALUE;
 }
 
 static void draw_value_editor(const AppState *app, GLuint font)
@@ -3267,7 +3383,7 @@ static void draw_value_editor(const AppState *app, GLuint font)
     AppRect panel = {420, 250, 440, 160};
     ui_panel(panel);
     color(UI_INK);
-    text(font, panel.x + 24, panel.y + 38, value_editor_title(app->editing));
+    text(font, panel.x + 24, panel.y + 38, tr(value_editor_title(app->editing)));
     AppRect field = {panel.x + 24, panel.y + 56, panel.w - 48, 40};
     glColor3f(UI_ACCENT);
     ui_outline(field, 6, 2);
@@ -3280,7 +3396,7 @@ static void draw_value_editor(const AppState *app, GLuint font)
     snprintf(reading, sizeof(reading), "%s|", app->edit_text);
     color(UI_INK);
     name_text(font, field.x + 12, ui_baseline(field), reading, (int)field.w - 24);
-    ui_note(font, panel.x + 24, panel.y + 132, "Enter confirma  ·  Esc cancela", 380);
+    ui_note(font, panel.x + 24, panel.y + 132, tr(TXT_UI_EDIT_KEYS), 380);
 }
 
 static void draw_project_slot(const AppState *app, GLuint font, int slot)
@@ -3297,14 +3413,14 @@ static void draw_project_slot(const AppState *app, GLuint font, int slot)
         ui_rounded(r, UI_RADIUS);
     }
     char label[32];
-    snprintf(label, sizeof(label), "Slot %d", slot + 1);
+    snprintf(label, sizeof(label), tr(TXT_UI_SLOT_NUMBER), slot + 1);
     color(UI_INK);
     text(font, r.x + 16, r.y + 32, label);
     if (app->saved_slots[slot])
         glColor3f(UI_POSITIVE);
     else
         color(UI_MUTED);
-    text(font, r.x + 16, r.y + 58, app->saved_slots[slot] ? "Salvo" : "Vazio");
+    text(font, r.x + 16, r.y + 58, app->saved_slots[slot] ? tr(TXT_UI_SLOT_SAVED) : tr(TXT_UI_SLOT_EMPTY));
 }
 
 static void draw_projects(const AppState *app, GLuint font)
@@ -3314,15 +3430,15 @@ static void draw_projects(const AppState *app, GLuint font)
     AppRect panel = app_layout_projects_panel();
     ui_panel(panel);
     color(UI_INK);
-    text(font, panel.x + 30, panel.y + 42, "Projetos");
-    ui_note(font, panel.x + 30, panel.y + 70, "Cada slot guarda a montagem e as configurações do projeto.", 560);
+    text(font, panel.x + 30, panel.y + 42, tr(TXT_UI_PROJECTS));
+    ui_note(font, panel.x + 30, panel.y + 70, tr(TXT_UI_PROJECTS_NOTE), 560);
     ui_close_button(app, app_layout_project_close());
     for (int slot = 0; slot < APP_PROJECT_SLOTS; ++slot)
         draw_project_slot(app, font, slot);
     char label[48];
-    snprintf(label, sizeof(label), "Salvar no slot %d", app->save_slot + 1);
+    snprintf(label, sizeof(label), tr(TXT_UI_SAVE_TO_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_save(), label, UI_BUTTON_PRIMARY);
-    snprintf(label, sizeof(label), "Carregar slot %d", app->save_slot + 1);
+    snprintf(label, sizeof(label), tr(TXT_UI_LOAD_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_load(), label,
               app->saved_slots[app->save_slot] ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
 }
@@ -3348,15 +3464,15 @@ static void draw_pin_help(const AppState *app, GLuint font)
     ui_panel(panel);
     char label[128];
     if (part->group)
-        snprintf(label, sizeof(label), "Bloco %d › %s · terminal %d (%s)", part->group, part_name(part->type),
+        snprintf(label, sizeof(label), tr(TXT_UI_PIN_HELP_IN_CHIP), part->group, part_name(part->type),
                  pin.pin + 1, info->name);
     else
-        snprintf(label, sizeof(label), "%s · terminal %d (%s)", part_name(part->type), pin.pin + 1, info->name);
+        snprintf(label, sizeof(label), tr(TXT_UI_PIN_HELP), part_name(part->type), pin.pin + 1, info->name);
     color(UI_INK);
     name_text(font, panel.x + 16, panel.y + 28, label, 490);
     pin_role_color(info->role);
     text(font, panel.x + 16, panel.y + 54, component_pin_role_label(info->role));
-    ui_note(font, panel.x + 16, panel.y + 74, "Função do terminal; não é uma medição de tensão.", 490);
+    ui_note(font, panel.x + 16, panel.y + 74, tr(TXT_UI_PIN_HELP_NOTE), 490);
 }
 
 static void draw_editor_confirmation(const AppState *app, GLuint font)
@@ -3366,13 +3482,13 @@ static void draw_editor_confirmation(const AppState *app, GLuint font)
     AppRect panel = app_layout_confirm_panel();
     ui_panel(panel);
     color(UI_INK);
-    text(font, panel.x + 30, panel.y + 40, "Alterações não salvas no editor");
+    text(font, panel.x + 30, panel.y + 40, tr(TXT_UI_UNSAVED_CHANGES));
     name_text(font, panel.x + 30, panel.y + 68, app->editor_name, 580);
-    ui_note(font, panel.x + 30, panel.y + 96, "A bancada externa continua preservada.", 580);
-    static const char *labels[APP_CONFIRM_BUTTONS] = {"Salvar e voltar", "Descartar", "Cancelar"};
+    ui_note(font, panel.x + 30, panel.y + 96, tr(TXT_UI_MAIN_BENCH_KEPT), 580);
+    static const TextId labels[APP_CONFIRM_BUTTONS] = {TXT_UI_SAVE_AND_BACK, TXT_UI_DISCARD, TXT_UI_CANCEL};
     static const UiButtonStyle styles[APP_CONFIRM_BUTTONS] = {UI_BUTTON_PRIMARY, UI_BUTTON_DANGER, UI_BUTTON_NEUTRAL};
     for (int i = 0; i < APP_CONFIRM_BUTTONS; ++i)
-        ui_button(app, font, app_layout_confirm_button(i), labels[i], styles[i]);
+        ui_button(app, font, app_layout_confirm_button(i), tr(labels[i]), styles[i]);
 }
 
 /* Greedy word wrap using measured widths; the last allowed line is truncated with "...". */
@@ -3433,9 +3549,9 @@ static void draw_examples(const AppState *app, GLuint font)
     AppRect panel = app_layout_examples_panel();
     ui_panel(panel);
     color(UI_INK);
-    text(font, panel.x + 30, panel.y + 42, "Exemplos");
+    text(font, panel.x + 30, panel.y + 42, tr(TXT_UI_EXAMPLES));
     ui_note(font, panel.x + 30, panel.y + 66,
-            "Escolha um circuito pronto. Ele substitui a bancada atual; Ctrl+Z desfaz.", 800);
+            tr(TXT_UI_EXAMPLES_NOTE), 800);
     ui_close_button(app, app_layout_examples_close());
     for (int index = 0; index < WORKBENCH_EXAMPLE_COUNT; ++index)
         draw_example_card(app, font, index);
@@ -3490,25 +3606,26 @@ static void code_editor_header(const AppState *app, GLuint font, AppRect panel)
 {
     const McuInstance *instance = &app->mcu->mcu[app->code_part];
     char title[96], state[256];
-    snprintf(title, sizeof(title), "Código · %s", part_name(app->bench.parts[app->code_part].type));
+    snprintf(title, sizeof(title), tr(TXT_MCU_EDITOR_TITLE), part_name(app->bench.parts[app->code_part].type));
     color(UI_INK);
     name_text(font, panel.x + 16, panel.y + 38, title, (int)(panel.w - 230));
-    ui_button(app, font, app_layout_code_run(), "Executar", app->code_dirty ? UI_BUTTON_PRIMARY : UI_BUTTON_NEUTRAL);
+    UiButtonStyle run_style = app->code_dirty ? UI_BUTTON_PRIMARY : UI_BUTTON_NEUTRAL;
+    ui_button(app, font, app_layout_code_run(), tr(TXT_MCU_RUN), run_style);
     ui_close_button(app, app_layout_code_close());
     if (instance->error[0])
     {
-        snprintf(state, sizeof(state), "Linha %d: %s", instance->error_line, instance->error);
+        snprintf(state, sizeof(state), "%s", instance->error);
         color(UI_DANGER);
     }
     else if (app->code_dirty)
     {
-        snprintf(state, sizeof(state), "Alterações não enviadas · Ctrl+Enter ou Executar");
+        snprintf(state, sizeof(state), "%s", tr(TXT_MCU_CHANGES_NOT_SENT));
         color(UI_MUTED);
     }
     else
     {
-        snprintf(state, sizeof(state), "%s",
-                 app->sim.sim_running ? "Rodando · Ctrl+Espaço sugere funções" : "Simulação pausada · Espaço continua");
+        TextId state_text = app->sim.sim_running ? TXT_MCU_STATE_RUNNING : TXT_MCU_STATE_PAUSED;
+        snprintf(state, sizeof(state), "%s", tr(state_text));
         color(UI_POSITIVE);
     }
     name_text(font, panel.x + 16, panel.y + 74, state, (int)(panel.w - 32));
@@ -3568,7 +3685,7 @@ static void code_editor_serial(const AppState *app, GLuint font, AppRect area)
 {
     const char *serial = app->mcu->mcu[app->code_part].serial;
     color(UI_MUTED);
-    name_text(font, area.x, area.y + 14, "Monitor serial", 200);
+    name_text(font, area.x, area.y + 14, tr(TXT_MCU_SERIAL_MONITOR), 200);
     AppRect box = {area.x, area.y + 22, area.w, area.h - 22};
     glColor3f(.08f, .09f, .11f);
     ui_rounded(box, 6);
@@ -3598,7 +3715,7 @@ static void code_editor_serial(const AppState *app, GLuint font, AppRect area)
     if (!serial[0])
     {
         glColor3f(.42f, .47f, .53f);
-        code_text_mono(box.x + 8, box.y + 18, "Serial.println(...) aparece aqui", (int)box.w - 16);
+        code_text_mono(box.x + 8, box.y + 18, tr(TXT_MCU_SERIAL_EMPTY), (int)box.w - 16);
     }
 }
 
@@ -3628,9 +3745,9 @@ static void code_editor_completions(const AppState *app)
     glColor3f(.11f, .12f, .15f);
     rect(detail.x, detail.y, detail.w, detail.h * 2);
     glColor3f(.95f, .80f, .30f);
-    code_text_mono(detail.x + 8, detail.y + 16, chosen->signature, (int)detail.w - 16);
+    code_text_mono(detail.x + 8, detail.y + 16, tr(chosen->signature), (int)detail.w - 16);
     glColor3f(.70f, .74f, .79f);
-    app_text_utf8(detail.x + 8, detail.y + 37, chosen->summary, (int)detail.w - 16);
+    app_text_utf8(detail.x + 8, detail.y + 37, tr(chosen->summary), (int)detail.w - 16);
 }
 
 static void draw_code_editor(const AppState *app, GLuint font)

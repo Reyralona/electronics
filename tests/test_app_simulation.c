@@ -1,4 +1,5 @@
 #include "app_simulation.h"
+#include "ui_text.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +25,7 @@ static void test_discard_after_undo(AppState *app)
     assert(app->bench.revision != app->dc_job.snapshot.revision);
     app_simulation_update(app);
     assert(!app->dc_job.thread && !sim_state_has_result(&app->sim, SIM_RESULT_DC));
-    assert(strstr(app->status, "descartado"));
+    assert(!strcmp(app->status, tr(TXT_APP_RESULT_DISCARDED)));
 }
 
 int main(void)

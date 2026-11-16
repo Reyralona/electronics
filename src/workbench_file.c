@@ -3,6 +3,7 @@
 #include "bench_path.h"
 #include <stdlib.h>
 #include "workbench_pack_file.h"
+#include "ui_text.h"
 #include "component_registry.h"
 #include <math.h>
 #include <string.h>
@@ -10,7 +11,7 @@
 
 WorkbenchSettings workbench_settings_default(void)
 {
-    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15, 0};
+    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15, 0, UI_LANG_PT_BR};
 }
 int workbench_settings_valid(const WorkbenchSettings *s)
 {
@@ -21,7 +22,7 @@ int workbench_settings_valid(const WorkbenchSettings *s)
            isfinite(s->transient_stop) && s->transient_step >= 1e-12 && s->transient_stop <= 1e12 &&
            isfinite(s->grid_spacing) && s->grid_spacing >= 1 && s->grid_spacing <= 10000 &&
            (s->snap_grid == 0 || s->snap_grid == 1) && (s->snap_board == 0 || s->snap_board == 1) &&
-           (s->show_pin_labels == 0 || s->show_pin_labels == 1) &&
+           (s->show_pin_labels == 0 || s->show_pin_labels == 1) && s->language >= 0 && s->language < UI_LANG_COUNT &&
            s->transient_step <= s->transient_stop && s->transient_stop / s->transient_step <= 500.0 * (1.0 + 1e-12);
 }
 

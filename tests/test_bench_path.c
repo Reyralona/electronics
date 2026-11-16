@@ -1,4 +1,5 @@
 #include "bench_path.h"
+#include "ui_text.h"
 #include <assert.h>
 #include <math.h>
 #include <stdint.h>
@@ -40,7 +41,7 @@ int main(void)
     assert(!copy.points && !copy.count && !copy.capacity);
     bench_path_clear(&copy);
     bench_path_clear(&copy);
-    assert(strstr(bench_path_status_message(BENCH_PATH_NO_MEMORY), "preservado"));
+    assert(!strcmp(bench_path_status_message(BENCH_PATH_NO_MEMORY), tr(TXT_ENG_PATH_NO_MEMORY)));
     WirePoint crossing[] = {{0, 0}, {10, 10}, {0, 10}, {10, 0}};
     BenchPathHit hit = {0};
     assert(bench_polyline_pick(crossing, 4, (WirePoint){5, 5}, .1, &hit));

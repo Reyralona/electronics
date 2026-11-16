@@ -8,6 +8,8 @@
 #include "workbench_pack.h"
 #include "spice_trace.h"
 #include "app_layout.h"
+#include "app_palette.h"
+#include "ui_text.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,6 +69,18 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         int closeup = component_closeup(app, argv[1]);
         if (closeup)
             return closeup < 0;
+    }
+    /* Capture each catalog page without changing the saved workspace. */
+    if (argc > 1 && !strncmp(argv[1], "--capture-palette=", 18))
+    {
+        char *end;
+        long page = strtol(argv[1] + 18, &end, 10);
+        if (end == argv[1] + 18 || *end || page < 0 || page >= PALETTE_PAGES)
+            return 1;
+        app->palette_page = (int)page;
+        app->palette_offset = 0;
+        app->sim.sim_running = 0;
+        return 0;
     }
     if (argc > 1 && !strcmp(argv[1], "--capture-environment"))
     {
@@ -587,6 +601,13 @@ static int first_saved_block(const AppState *app)
         if (app->library_available[slot])
             return slot;
     return -1;
+}
+
+static int reports_project_saved(const AppState *app)
+{
+    char expected[sizeof(app->selection_status)];
+    snprintf(expected, sizeof(expected), tr(TXT_APP_PROJECT_SAVED), app->save_slot + 1);
+    return !strcmp(app->status, expected);
 }
 
 static int deleted_block = -1;
@@ -1291,7 +1312,7 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 54)
         valid = app->dc_job.transient == 3;
     else if (app->selftest_phase == 55)
-        valid = strstr(app->status, "salvas no slot") != NULL;
+        valid = reports_project_saved(app);
     else if (app->selftest_phase == 56)
         valid = app->settings == 1;
     else if (app->selftest_phase == 57)
@@ -1363,7 +1384,7 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 92)
         valid = app->bench.groups[0].active && !app->bench.groups[1].active;
     else if (app->selftest_phase == 94)
-        valid = strstr(app->status, "salvas no slot") != NULL;
+        valid = reports_project_saved(app);
     else if (app->selftest_phase == 96)
         valid = bench_selection_count(&app->selection, &app->bench) == 5;
     else if (app->selftest_phase == 97)

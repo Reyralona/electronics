@@ -16,6 +16,7 @@
 #include "sim_auto.h"
 #include "dev_capture.h"
 #include "app_settings.h"
+#include "ui_text.h"
 #include "app_state.h"
 #include "app_editor.h"
 #include "app_text_utf8.h"
@@ -64,6 +65,25 @@ static void set_window_icon(SDL_Window *window)
     SDL_DestroySurface(icon);
 }
 
+/* Value of a "--name=value" option anywhere after the first argument, or NULL. */
+static const char *option_value(int argc, char **argv, const char *prefix)
+{
+    size_t length = strlen(prefix);
+    for (int i = 1; i < argc; ++i)
+        if (!strncmp(argv[i], prefix, length))
+            return argv[i] + length;
+    return NULL;
+}
+
+/* "--language=en-US" overrides the saved preference for this run (captures, reviews). */
+static void apply_language_option(int argc, char **argv)
+{
+    const char *code = option_value(argc, argv, "--language=");
+    for (int language = 0; code && language < UI_LANG_COUNT; ++language)
+        if (!strcmp(code, ui_text_language_code((UiLanguage)language)))
+            ui_text_set_language((UiLanguage)language);
+}
+
 int main(int argc, char **argv)
 {
     if (argc > 1 && !strcmp(argv[1], "--list-components"))
@@ -89,6 +109,8 @@ int main(int argc, char **argv)
     find_ngspice(app.ngspice, sizeof(app.ngspice));
     if (!app.selftest && !app.capture)
         app_settings_load_preferences(&app);
+    apply_language_option(argc, argv);
+    app.status = tr(TXT_APP_START);
 
     if (dev_scenario_prepare(&app, argc, argv))
         return 1;
@@ -148,8 +170,8 @@ int main(int argc, char **argv)
         if (app.capture)
         {
             const char *destination = "build/bancada-capture.bmp";
-            if (argc > 2 && !strncmp(argv[2], "--capture-output=", 17))
-                destination = argv[2] + 17;
+            if (option_value(argc, argv, "--capture-output="))
+                destination = option_value(argc, argv, "--capture-output=");
             if (!dev_capture_save(destination, width, height))
             {
                 fprintf(stderr, "Captura: %s\n", SDL_GetError());

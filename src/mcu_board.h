@@ -19,12 +19,15 @@ typedef struct
     int sda_pin, scl_pin, led_builtin; /* Arduino numbers */
     const McuConstant *constants;
     int constant_count;
-    const char *default_code;
+    TextId default_comment;            /* first line of the default program, as a comment */
+    const char *default_body;
 } McuBoard;
 
 const McuBoard *mcu_board(PartType type);
 /* IO index for an Arduino pin number, or -1. */
 int mcu_board_io(const McuBoard *board, int arduino_pin);
+/* Program of a new board: comment in the interface language, then the code. Same text for the same language. */
+const char *mcu_board_default_code(const McuBoard *board);
 #define MCU_OUTPUT_OHMS 25.0
 #define MCU_PULLUP_OHMS 30000.0
 #endif

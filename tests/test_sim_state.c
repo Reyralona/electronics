@@ -1,4 +1,5 @@
 #include "sim_state.h"
+#include "ui_text.h"
 #include <assert.h>
 #include <string.h>
 
@@ -17,7 +18,7 @@ static void test_invalidation(void)
     assert(sim_state_has_result(&sim, SIM_RESULT_DC) && sim.burnt_count == 1);
     assert(bench_move_part(&bench, 0, 310, 200));
     const char *message = sim_state_invalidate(&sim, &bench);
-    assert(message && strstr(message, "Pausado"));
+    assert(message && !strcmp(message, tr(TXT_APP_CHANGED_WHILE_PAUSED)));
     assert(!sim_state_has_result(&sim, SIM_RESULT_DC) && !sim.burnt_count && !sim.burnt[0]);
 
     sim_state_set_result(&sim, SIM_RESULT_TRACE, 1, bench.revision);
