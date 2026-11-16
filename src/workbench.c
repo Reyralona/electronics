@@ -824,6 +824,39 @@ int bench_add(Workbench *b, PartType type, float x, float y)
     return id;
 }
 
+/* Replaces a placed part by another type in the same spot. Wires on terminals that the new type
+ * still has stay connected by index; wires on terminals it lacks are removed. */
+int bench_swap_type(Workbench *b, int component, PartType type)
+{
+    const ComponentInfo *info = component_info(type);
+    if (!b || !info || component < 0 || component >= b->part_count || type == PART_BREADBOARD)
+        return 0;
+    Part *part = &b->parts[component];
+    if (part->group || part->type == PART_BREADBOARD || part->type == type)
+        return 0;
+    int pins = bench_pin_count(type);
+    for (int i = b->wire_count - 1; i >= 0; --i)
+    {
+        const Wire *wire = &b->wires[i];
+        if ((wire->a.component == component && wire->a.pin >= pins) ||
+            (wire->b.component == component && wire->b.pin >= pins))
+            bench_remove_wire(b, i);
+    }
+    float x = part->x, y = part->y, scale = part->scale;
+    int rotation = component_has_flag(type, COMPONENT_ROTATES) ? part->rotation : 0;
+    bench_part_clear(part);
+    *part = (Part){.type = type,
+                   .x = x,
+                   .y = y,
+                   .on = component_has_flag(type, COMPONENT_STARTS_ON),
+                   .control = component_default_control(type),
+                   .value = info->primary ? info->primary->initial : 0,
+                   .rotation = rotation,
+                   .scale = scale};
+    ++b->revision;
+    return 1;
+}
+
 int bench_rotate_part(Workbench *b, int component)
 {
     if (!b || component < 0 || component >= b->part_count ||

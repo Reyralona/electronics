@@ -169,6 +169,7 @@ int bench_remove_knee(Workbench *bench, int wire, int knee);
 int bench_remove_wire(Workbench *bench, int wire);
 
 int bench_add(Workbench *bench, PartType type, float x, float y);
+int bench_swap_type(Workbench *bench, int component, PartType type);
 int bench_pin_count(PartType type);
 int bench_board_group_first(int pin);
 int bench_set_value(Workbench *bench, int component, double value);
