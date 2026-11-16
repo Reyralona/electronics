@@ -66,48 +66,48 @@ static const LcdMethod lcd_methods[] = {
 };
 
 static const McuCompletion completions[] = {
-    {"pinMode", "pinMode(pino, INPUT | OUTPUT | INPUT_PULLUP)", "Define o pino como entrada ou saída"},
-    {"digitalWrite", "digitalWrite(pino, HIGH | LOW)", "Liga ou desliga uma saída digital"},
-    {"digitalRead", "digitalRead(pino)", "Lê HIGH/LOW de uma entrada"},
-    {"analogRead", "analogRead(pino)", "Lê a tensão do pino (0–1023; ESP32 0–4095)"},
-    {"analogWrite", "analogWrite(pino, 0..255)", "PWM, simulado como tensão média"},
-    {"delay", "delay(ms)", "Pausa o programa"},
-    {"delayMicroseconds", "delayMicroseconds(us)", "Pausa curta"},
-    {"millis", "millis()", "Milissegundos desde o início"},
-    {"micros", "micros()", "Microssegundos desde o início"},
-    {"map", "map(valor, deMin, deMax, paraMin, paraMax)", "Converte faixas"},
-    {"constrain", "constrain(valor, min, max)", "Limita um valor"},
-    {"min", "min(a, b)", "Menor valor"},
-    {"max", "max(a, b)", "Maior valor"},
-    {"abs", "abs(x)", "Valor absoluto"},
-    {"random", "random(max) | random(min, max)", "Número aleatório"},
-    {"randomSeed", "randomSeed(semente)", "Semente aleatória"},
-    {"sqrt", "sqrt(x)", "Raiz quadrada"},
-    {"pow", "pow(base, expoente)", "Potência"},
-    {"tone", "tone(pino, frequência)", "Gera tom (simulado como 50% de PWM)"},
-    {"noTone", "noTone(pino)", "Para o tom"},
-    {"Serial.begin", "Serial.begin(9600)", "Abre o monitor serial"},
-    {"Serial.print", "Serial.print(valor)", "Escreve no monitor serial"},
-    {"Serial.println", "Serial.println(valor)", "Escreve e quebra a linha"},
-    {"LiquidCrystal_I2C", "LiquidCrystal_I2C lcd(0x27, 16, 2);", "Declara um LCD 16x2 I2C"},
-    {"lcd.init", "lcd.init()", "Inicializa o LCD"},
-    {"lcd.backlight", "lcd.backlight()", "Liga a luz de fundo"},
-    {"lcd.clear", "lcd.clear()", "Apaga o LCD"},
-    {"lcd.setCursor", "lcd.setCursor(coluna, linha)", "Posiciona o cursor"},
-    {"lcd.print", "lcd.print(valor)", "Escreve no LCD"},
-    {"setup", "void setup() { }", "Roda uma vez ao iniciar"},
-    {"loop", "void loop() { }", "Roda repetidamente"},
-    {"HIGH", "HIGH", "Nível alto (1)"},
-    {"LOW", "LOW", "Nível baixo (0)"},
-    {"OUTPUT", "OUTPUT", "Modo saída"},
-    {"INPUT", "INPUT", "Modo entrada"},
-    {"INPUT_PULLUP", "INPUT_PULLUP", "Entrada com pull-up interno"},
-    {"LED_BUILTIN", "LED_BUILTIN", "LED da placa"},
-    {"for", "for (int i = 0; i < n; i++) { }", "Repetição"},
-    {"while", "while (condição) { }", "Repetição"},
-    {"if", "if (condição) { } else { }", "Decisão"},
-    {"int", "int nome = valor;", "Inteiro"},
-    {"float", "float nome = valor;", "Número com vírgula"},
+    {"pinMode", TXT_MCU_SIG_PINMODE, TXT_MCU_HELP_PINMODE},
+    {"digitalWrite", TXT_MCU_SIG_DIGITALWRITE, TXT_MCU_HELP_DIGITALWRITE},
+    {"digitalRead", TXT_MCU_SIG_DIGITALREAD, TXT_MCU_HELP_DIGITALREAD},
+    {"analogRead", TXT_MCU_SIG_ANALOGREAD, TXT_MCU_HELP_ANALOGREAD},
+    {"analogWrite", TXT_MCU_SIG_ANALOGWRITE, TXT_MCU_HELP_ANALOGWRITE},
+    {"delay", TXT_MCU_SIG_DELAY, TXT_MCU_HELP_DELAY},
+    {"delayMicroseconds", TXT_MCU_SIG_DELAYMICROSECONDS, TXT_MCU_HELP_DELAYMICROSECONDS},
+    {"millis", TXT_MCU_SIG_MILLIS, TXT_MCU_HELP_MILLIS},
+    {"micros", TXT_MCU_SIG_MICROS, TXT_MCU_HELP_MICROS},
+    {"map", TXT_MCU_SIG_MAP, TXT_MCU_HELP_MAP},
+    {"constrain", TXT_MCU_SIG_CONSTRAIN, TXT_MCU_HELP_CONSTRAIN},
+    {"min", TXT_MCU_SIG_MIN, TXT_MCU_HELP_MIN},
+    {"max", TXT_MCU_SIG_MAX, TXT_MCU_HELP_MAX},
+    {"abs", TXT_MCU_SIG_ABS, TXT_MCU_HELP_ABS},
+    {"random", TXT_MCU_SIG_RANDOM, TXT_MCU_HELP_RANDOM},
+    {"randomSeed", TXT_MCU_SIG_RANDOMSEED, TXT_MCU_HELP_RANDOMSEED},
+    {"sqrt", TXT_MCU_SIG_SQRT, TXT_MCU_HELP_SQRT},
+    {"pow", TXT_MCU_SIG_POW, TXT_MCU_HELP_POW},
+    {"tone", TXT_MCU_SIG_TONE, TXT_MCU_HELP_TONE},
+    {"noTone", TXT_MCU_SIG_NOTONE, TXT_MCU_HELP_NOTONE},
+    {"Serial.begin", TXT_MCU_SIG_SERIAL_BEGIN, TXT_MCU_HELP_SERIAL_BEGIN},
+    {"Serial.print", TXT_MCU_SIG_SERIAL_PRINT, TXT_MCU_HELP_SERIAL_PRINT},
+    {"Serial.println", TXT_MCU_SIG_SERIAL_PRINTLN, TXT_MCU_HELP_SERIAL_PRINTLN},
+    {"LiquidCrystal_I2C", TXT_MCU_SIG_LCD_DECLARE, TXT_MCU_HELP_LCD_DECLARE},
+    {"lcd.init", TXT_MCU_SIG_LCD_INIT, TXT_MCU_HELP_LCD_INIT},
+    {"lcd.backlight", TXT_MCU_SIG_LCD_BACKLIGHT, TXT_MCU_HELP_LCD_BACKLIGHT},
+    {"lcd.clear", TXT_MCU_SIG_LCD_CLEAR, TXT_MCU_HELP_LCD_CLEAR},
+    {"lcd.setCursor", TXT_MCU_SIG_LCD_SETCURSOR, TXT_MCU_HELP_LCD_SETCURSOR},
+    {"lcd.print", TXT_MCU_SIG_LCD_PRINT, TXT_MCU_HELP_LCD_PRINT},
+    {"setup", TXT_MCU_SIG_SETUP, TXT_MCU_HELP_SETUP},
+    {"loop", TXT_MCU_SIG_LOOP, TXT_MCU_HELP_LOOP},
+    {"HIGH", TXT_MCU_SIG_HIGH, TXT_MCU_HELP_HIGH},
+    {"LOW", TXT_MCU_SIG_LOW, TXT_MCU_HELP_LOW},
+    {"OUTPUT", TXT_MCU_SIG_OUTPUT, TXT_MCU_HELP_OUTPUT},
+    {"INPUT", TXT_MCU_SIG_INPUT, TXT_MCU_HELP_INPUT},
+    {"INPUT_PULLUP", TXT_MCU_SIG_INPUT_PULLUP, TXT_MCU_HELP_INPUT_PULLUP},
+    {"LED_BUILTIN", TXT_MCU_SIG_LED_BUILTIN, TXT_MCU_HELP_LED_BUILTIN},
+    {"for", TXT_MCU_SIG_FOR, TXT_MCU_HELP_FOR},
+    {"while", TXT_MCU_SIG_WHILE, TXT_MCU_HELP_WHILE},
+    {"if", TXT_MCU_SIG_IF, TXT_MCU_HELP_IF},
+    {"int", TXT_MCU_SIG_INT, TXT_MCU_HELP_INT},
+    {"float", TXT_MCU_SIG_FLOAT, TXT_MCU_HELP_FLOAT},
 };
 
 int mcu_completion_count(void)
@@ -196,7 +196,7 @@ typedef struct
     int failed, error_line;
 } Compiler;
 
-static void fail(Compiler *c, const char *format, ...)
+static void fail(Compiler *c, TextId reason_format, ...)
 {
     if (c->failed)
         return;
@@ -204,10 +204,10 @@ static void fail(Compiler *c, const char *format, ...)
     c->error_line = c->token.line;
     char reason[200];
     va_list args;
-    va_start(args, format);
-    vsnprintf(reason, sizeof(reason), format, args);
+    va_start(args, reason_format);
+    vsnprintf(reason, sizeof(reason), tr(reason_format), args);
     va_end(args);
-    snprintf(c->error, c->error_capacity, "linha %d: %s", c->token.line, reason);
+    snprintf(c->error, c->error_capacity, tr(TXT_MCU_ERROR_LINE), c->token.line, reason);
 }
 
 static void skip_space(Compiler *c)
@@ -360,8 +360,12 @@ static int accept(Compiler *c, const char *text)
 
 static void expect(Compiler *c, const char *text)
 {
-    if (!accept(c, text))
-        fail(c, "esperado '%s' e encontrado '%s'", text, c->token.text);
+    if (accept(c, text))
+        return;
+    if (c->token.kind == T_EOF)
+        fail(c, TXT_MCU_ERROR_MISSING_AT_END, text);
+    else
+        fail(c, TXT_MCU_ERROR_MISSING, text, c->token.text);
 }
 
 /* ---------------------------------------------------------------- emission */
@@ -374,7 +378,7 @@ static int emit(Compiler *c, int value)
         int *grown = realloc(p->code, (size_t)capacity * sizeof(int));
         if (!grown)
         {
-            fail(c, "memória insuficiente");
+            fail(c, TXT_MCU_ERROR_NO_MEMORY);
             return p->count;
         }
         p->code = grown;
@@ -393,7 +397,7 @@ static void emit_constant(Compiler *c, double value)
         double *grown = realloc(p->constants, (size_t)capacity * sizeof(double));
         if (!grown)
         {
-            fail(c, "memória insuficiente");
+            fail(c, TXT_MCU_ERROR_NO_MEMORY);
             return;
         }
         p->constants = grown;
@@ -413,7 +417,7 @@ static void emit_string(Compiler *c, const char *text)
     {
         if (grown)
             p->strings = grown;
-        fail(c, "memória insuficiente");
+        fail(c, TXT_MCU_ERROR_NO_MEMORY);
         return;
     }
     p->strings = grown;
@@ -596,7 +600,7 @@ static void builtin_call(Compiler *c, const Builtin *builtin)
 {
     int count = call_arguments(c);
     if (count < builtin->min_args || count > builtin->max_args)
-        fail(c, "%s recebe %d a %d argumentos", builtin->name, builtin->min_args, builtin->max_args);
+        fail(c, TXT_MCU_ERROR_VALUE_COUNT, builtin->name, builtin->min_args, builtin->max_args);
     emit(c, OP_BUILTIN);
     emit(c, builtin->id);
     emit(c, count);
@@ -617,7 +621,7 @@ static int member_call(Compiler *c, const char *object)
     int lcd = find_lcd(c, object);
     if (lcd < 0)
     {
-        fail(c, "objeto desconhecido '%s'", object);
+        fail(c, TXT_MCU_ERROR_UNDECLARED, object);
         return 0;
     }
     for (size_t i = 0; i < sizeof(lcd_methods) / sizeof(lcd_methods[0]); ++i)
@@ -626,13 +630,13 @@ static int member_call(Compiler *c, const char *object)
             emit_constant(c, lcd);
             int count = call_arguments(c);
             if (count < lcd_methods[i].min_args || count > lcd_methods[i].max_args)
-                fail(c, "%s.%s: número de argumentos inválido", object, member);
+                fail(c, TXT_MCU_ERROR_MEMBER_VALUE_COUNT, object, member);
             emit(c, OP_BUILTIN);
             emit(c, B_LCD_BASE + (int)lcd_methods[i].operation);
             emit(c, count + 1);
             return 1;
         }
-    fail(c, "método desconhecido '%s'", full);
+    fail(c, TXT_MCU_ERROR_UNKNOWN_METHOD, full);
     return 0;
 }
 
@@ -658,7 +662,7 @@ static LValue name_reference(Compiler *c)
         int function = find_function(c, name, 1);
         if (function < 0)
         {
-            fail(c, "funções demais");
+            fail(c, TXT_MCU_ERROR_TOO_MANY_FUNCTIONS, MAX_FUNCTIONS);
             return lv;
         }
         int count = call_arguments(c);
@@ -675,7 +679,7 @@ static LValue name_reference(Compiler *c)
         if (constant_value(c, name, &constant))
             emit_constant(c, constant);
         else
-            fail(c, "nome desconhecido '%s'", name);
+            fail(c, TXT_MCU_ERROR_UNDECLARED, name);
         return lv;
     }
     lv.var = *var;
@@ -722,7 +726,7 @@ static LValue primary(Compiler *c)
         expect(c, ")");
     }
     else
-        fail(c, "expressão inválida perto de '%s'", c->token.text);
+        fail(c, TXT_MCU_ERROR_BAD_EXPRESSION, c->token.text);
     return lv;
 }
 
@@ -730,7 +734,7 @@ static void increment(Compiler *c, LValue lv, int delta, int postfix)
 {
     if (lv.kind == 0)
     {
-        fail(c, "++/-- precisa de uma variável");
+        fail(c, TXT_MCU_ERROR_INCREMENT);
         return;
     }
     if (lv.kind == 2)
@@ -943,7 +947,7 @@ static Var *declare(Compiler *c, const char *name, int is_int, int size)
     int limit = c->in_function ? MAX_LOCALS : MAX_GLOBALS / 4;
     if (*count >= limit)
     {
-        fail(c, "variáveis demais");
+        fail(c, TXT_MCU_ERROR_TOO_MANY_VARIABLES, limit);
         return NULL;
     }
     Var *var = &table[(*count)++];
@@ -963,7 +967,7 @@ static Var *declare(Compiler *c, const char *name, int is_int, int size)
         var->slot = c->program->globals;
         c->program->globals += var->size;
         if (c->program->globals > MAX_GLOBALS)
-            fail(c, "memória de variáveis esgotada");
+            fail(c, TXT_MCU_ERROR_VARIABLE_MEMORY);
     }
     return var;
 }
@@ -978,7 +982,7 @@ static void array_initializer(Compiler *c, const Var *var)
         {
             if (index >= var->size)
             {
-                fail(c, "inicializadores demais para '%s'", var->name);
+                fail(c, TXT_MCU_ERROR_TOO_MANY_VALUES, var->name);
                 return;
             }
             emit_constant(c, index++);
@@ -1005,7 +1009,7 @@ static void declaration_rest(Compiler *c, int is_int, char *first_name)
             }
             expect(c, "]");
             if (size <= 0 && !is(c, "="))
-                fail(c, "tamanho do vetor inválido");
+                fail(c, TXT_MCU_ERROR_ARRAY_SIZE);
             if (size <= 0)
                 size = 64;
         }
@@ -1046,7 +1050,7 @@ static void loop_begin(Compiler *c, int continue_target)
 {
     if (c->loop_depth == MAX_LOOPS)
     {
-        fail(c, "laços aninhados demais");
+        fail(c, TXT_MCU_ERROR_TOO_MANY_LOOPS, MAX_LOOPS);
         return;
     }
     Loop *loop = &c->loops[c->loop_depth++];
@@ -1180,7 +1184,7 @@ static void jump_statement(Compiler *c, int is_break)
 {
     if (!c->loop_depth)
     {
-        fail(c, "%s fora de um laço", is_break ? "break" : "continue");
+        fail(c, TXT_MCU_ERROR_OUTSIDE_LOOP, is_break ? "break" : "continue");
         return;
     }
     Loop *loop = &c->loops[c->loop_depth - 1];
@@ -1242,7 +1246,10 @@ static void function_definition(Compiler *c, const char *name, int returns_value
     int index = find_function(c, name, 1);
     if (index < 0 || c->functions[index].defined)
     {
-        fail(c, index < 0 ? "funções demais" : "função '%s' definida duas vezes", name);
+        if (index < 0)
+            fail(c, TXT_MCU_ERROR_TOO_MANY_FUNCTIONS, MAX_FUNCTIONS);
+        else
+            fail(c, TXT_MCU_ERROR_DUPLICATE_FUNCTION, name);
         return;
     }
     int skip = jump(c, OP_JMP);
@@ -1287,7 +1294,7 @@ static void top_level(Compiler *c)
     {
         if (c->lcd_count == MAX_LCDS)
         {
-            fail(c, "LCDs demais");
+            fail(c, TXT_MCU_ERROR_TOO_MANY_LCDS, MAX_LCDS);
             return;
         }
         snprintf(c->lcds[c->lcd_count++], NAME_MAX_LEN, "%s", c->token.text);
@@ -1300,7 +1307,7 @@ static void top_level(Compiler *c)
     }
     if (!is_type(c))
     {
-        fail(c, "declaração esperada, encontrado '%s'", c->token.text);
+        fail(c, TXT_MCU_ERROR_UNEXPECTED, c->token.text);
         return;
     }
     int kind = parse_type(c);
@@ -1308,7 +1315,7 @@ static void top_level(Compiler *c)
     snprintf(name, sizeof(name), "%s", c->token.text);
     if (c->token.kind != T_NAME)
     {
-        fail(c, "nome esperado");
+        fail(c, TXT_MCU_ERROR_NAME_MISSING);
         return;
     }
     next(c);
@@ -1323,7 +1330,7 @@ static void entry_stub(Compiler *c)
     int setup = find_function(c, "setup", 0), loop = find_function(c, "loop", 0);
     if (setup < 0 || !c->functions[setup].defined || loop < 0 || !c->functions[loop].defined)
     {
-        fail(c, "o programa precisa de void setup() e void loop()");
+        fail(c, TXT_MCU_ERROR_NO_SETUP_LOOP);
         return;
     }
     emit(c, OP_CALL);
@@ -1343,7 +1350,7 @@ static void check_calls(Compiler *c)
 {
     for (int i = 0; i < c->program->functions && !c->failed; ++i)
         if (!c->functions[i].defined)
-            fail(c, "função '%s' não definida", c->functions[i].name);
+            fail(c, TXT_MCU_ERROR_UNDEFINED_FUNCTION, c->functions[i].name);
 }
 
 McuProgram *mcu_compile(const char *source, const McuConstant *constants, int constant_count, char *error,
@@ -1355,7 +1362,7 @@ McuProgram *mcu_compile(const char *source, const McuConstant *constants, int co
     {
         free(c);
         free(program);
-        snprintf(error, capacity, "memória insuficiente");
+        snprintf(error, capacity, "%s", tr(TXT_MCU_ERROR_NO_MEMORY));
         return NULL;
     }
     c->source = source;
@@ -1478,10 +1485,10 @@ static void format_value(const McuVm *vm, Value value, int base, char *text, siz
         snprintf(text, capacity, "%lld", (long long)value.v);
 }
 
-static int vm_error(McuVm *vm, char *error, size_t capacity, const char *message)
+static int vm_error(McuVm *vm, char *error, size_t capacity, TextId message)
 {
     vm->stopped = 1;
-    snprintf(error, capacity, "Erro de execução: %s", message);
+    snprintf(error, capacity, tr(TXT_MCU_ERROR_STOPPED), tr(message));
     return 0;
 }
 
@@ -1625,7 +1632,7 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
     const int *code = vm->program->code;
     int op = code[vm->pc++];
     if (vm->sp > VM_STACK - 16)
-        return vm_error(vm, error, capacity, "pilha esgotada (recursão profunda?)");
+        return vm_error(vm, error, capacity, TXT_MCU_ERROR_CALL_DEPTH);
     switch (op)
     {
     case OP_PUSHK:
@@ -1653,7 +1660,7 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
     {
         int base = code[vm->pc++], size = code[vm->pc++], index = (int)POP().v;
         if (index < 0 || index >= size)
-            return vm_error(vm, error, capacity, "índice fora do vetor");
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_ARRAY_INDEX);
         PUSH(op == OP_LOADGA ? vm->globals[base + index] : vm->stack[vm->fp + base + index]);
         break;
     }
@@ -1664,7 +1671,7 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
         Value stored = POP();
         int index = (int)POP().v;
         if (index < 0 || index >= size)
-            return vm_error(vm, error, capacity, "índice fora do vetor");
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_ARRAY_INDEX);
         if (op == OP_STOREGA)
             vm->globals[base + index] = stored;
         else
@@ -1697,12 +1704,12 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
     {
         int function = code[vm->pc++], argc = code[vm->pc++];
         if (vm->fp >= 0 && (vm->sp >= VM_STACK - 64))
-            return vm_error(vm, error, capacity, "pilha esgotada");
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_CALL_DEPTH);
         int depth = 0;
         while (depth < VM_FRAMES && vm->frames[depth].return_pc)
             ++depth;
         if (depth == VM_FRAMES)
-            return vm_error(vm, error, capacity, "chamadas aninhadas demais");
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_CALL_DEPTH);
         vm->frames[depth] = (Frame){vm->pc, vm->fp};
         vm->fp = vm->sp - argc;
         vm->pc = vm->program->function_address[function];
@@ -1722,7 +1729,7 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
         while (depth < VM_FRAMES && vm->frames[depth].return_pc)
             ++depth;
         if (depth == 0)
-            return vm_error(vm, error, capacity, "retorno sem chamada");
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_RETURN);
         Frame frame = vm->frames[depth - 1];
         vm->frames[depth - 1].return_pc = 0;
         vm->sp = vm->fp;
@@ -1772,7 +1779,7 @@ int mcu_vm_run(McuVm *vm, const McuHost *host, double now_ms, char *error, size_
         if (vm->wake_ms > now_ms)
             return 1;
         if (vm->pc < 0 || vm->pc >= vm->program->count)
-            return vm_error(vm, error, capacity, "programa terminou de forma inesperada");
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_PROGRAM_END);
         if (!step(vm, host, now_ms, error, capacity))
             return 0;
     }

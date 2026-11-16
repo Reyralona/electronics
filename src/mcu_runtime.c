@@ -48,7 +48,7 @@ void mcu_runtime_reset(McuRuntime *runtime)
 const char *mcu_program_text(const Part *part)
 {
     const McuBoard *board = mcu_board(part->type);
-    return part->code ? part->code : board ? board->default_code : "";
+    return part->code ? part->code : mcu_board_default_code(board);
 }
 
 static Part *host_part(HostContext *host)
@@ -177,14 +177,25 @@ static void host_lcd(void *context, int object, McuLcdOperation operation, int a
             lcd_apply(&host->runtime->lcd[i], operation, a, b, text);
 }
 
+/* The default program counts as unchanged when only the interface language changed its comment. */
+static int instance_current(const McuInstance *instance, const Part *part, const char *source)
+{
+    if (!instance->source || instance->type != part->type)
+        return 0;
+    if (instance->runs_default && !part->code)
+        return 1;
+    return !strcmp(instance->source, source);
+}
+
 static int instance_prepare(McuRuntime *runtime, int index, const Part *part, const McuBoard *board)
 {
     McuInstance *instance = &runtime->mcu[index];
     const char *source = mcu_program_text(part);
-    if (instance->source && instance->type == part->type && !strcmp(instance->source, source))
+    if (instance_current(instance, part, source))
         return instance->vm != NULL;
     instance_clear(instance);
     instance->type = part->type;
+    instance->runs_default = part->code == NULL;
     instance->source = _strdup(source);
     instance->started_ms = runtime->clock_ms;
     if (!instance->source)

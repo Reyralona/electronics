@@ -203,9 +203,10 @@ int code_completions(const char *text, int cursor, int *matches, int capacity)
 static const char *call_suffix(const McuCompletion *completion)
 {
     size_t length = strlen(completion->name);
-    if (strncmp(completion->signature, completion->name, length) || completion->signature[length] != '(')
+    const char *signature = tr(completion->signature);
+    if (strncmp(signature, completion->name, length) || signature[length] != '(')
         return NULL;
-    return completion->signature[length + 1] == ')' ? "()" : "(";
+    return signature[length + 1] == ')' ? "()" : "(";
 }
 
 int code_accept(char *text, size_t capacity, int *cursor, int completion)
