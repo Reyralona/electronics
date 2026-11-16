@@ -5,6 +5,7 @@
 #include "workbench_history.h"
 #include "workbench_view.h"
 #include "workbench_selection.h"
+#include "workbench_file.h"
 
 #define PROJECT_SLOT_COUNT 9
 #define BLOCK_LIBRARY_SLOTS 8
@@ -47,6 +48,9 @@ typedef struct AppState
     int selftest, selftest_phase, exit_code;
     const char *status;
     int capture, auto_capture;
+    /* Root-context preferences are persisted only for interactive sessions (not tests/captures). */
+    int preferences_enabled;
+    WorkbenchSettings preferences_saved;
     char ngspice[1024];
     SimState sim;
     BenchSelection selection;

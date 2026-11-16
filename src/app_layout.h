@@ -32,6 +32,7 @@ AppRect app_layout_palette_tab(int tab);
 int app_layout_palette_tab_at(float x, float y);
 AppRect app_layout_palette_item(int slot);
 int app_layout_palette_item_at(float x, float y);
+AppRect app_layout_palette_scrollbar(void);
 
 typedef enum
 {
@@ -58,6 +59,8 @@ AppRect app_layout_settings_panel(void);
 AppRect app_layout_setting(AppSetting setting);
 /* Returns APP_SETTING_COUNT when no setting is hit. */
 AppSetting app_layout_setting_at(float x, float y);
+/* Section heading above a row: column 0 = left, 1 = right. */
+AppRect app_layout_settings_section(int column, int row);
 AppRect app_layout_wire_swatch(int index);
 int app_layout_wire_swatch_at(float x, float y);
 

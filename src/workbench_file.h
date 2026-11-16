@@ -11,6 +11,7 @@ typedef struct {
     int dark_theme, gui_font_size;
 } WorkbenchSettings;
 WorkbenchSettings workbench_settings_default(void);
+int workbench_settings_valid(const WorkbenchSettings *settings);
 int workbench_read_project(FILE *file, Workbench *destination, WorkbenchSettings *settings);
 int workbench_write_project(FILE *file, const Workbench *bench, const WorkbenchSettings *settings);
 int workbench_save_project(const char *path, const Workbench *bench, const WorkbenchSettings *settings);

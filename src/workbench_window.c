@@ -15,6 +15,7 @@
 #include "workbench_view.h"
 #include "sim_auto.h"
 #include "dev_capture.h"
+#include "app_settings.h"
 #include "app_state.h"
 #include "app_editor.h"
 #include "app_text_utf8.h"
@@ -86,6 +87,8 @@ int main(int argc, char **argv)
         app.capture && (strcmp(argv[1], "--capture-burn") == 0 || strncmp(argv[1], "--capture-auto", 14) == 0);
     app.sim.auto_enabled = (!app.selftest && !app.capture) || app.auto_capture;
     find_ngspice(app.ngspice, sizeof(app.ngspice));
+    if (!app.selftest && !app.capture)
+        app_settings_load_preferences(&app);
 
     if (dev_scenario_prepare(&app, argc, argv))
         return 1;
@@ -138,6 +141,7 @@ int main(int argc, char **argv)
         if (app.selftest)
             dev_scenario_validate(&app);
         app_simulation_update(active);
+        app_settings_autosave(&app);
         SDL_GetWindowSizeInPixels(window, &width, &height);
         app_render_draw(active, font, width, height);
         SDL_GL_SwapWindow(window);

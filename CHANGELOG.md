@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.29.0
+
+- Interface revisada: cabeçalho com botões reais, biblioteca com abas e barra de rolagem, inspector
+  com Valor/Tamanho clicáveis, rodapé com dicas por contexto e textos acentuados.
+- Configurações em um único diálogo organizado, com toggles, campos e "Restaurar padrões".
+- Preferências salvas automaticamente em saves/preferences.txt; tema/texto não mudam ao carregar slot.
+- Removidas teclas S/L legadas (bancada.elec oculto) e dicas obsoletas.
+- Arte: capacitor cerâmico, fonte de bancada com visor, interruptor e fototransistor redesenhados.
+- Geometria compartilhada (app_layout) entre desenho, entrada e autoteste; suíte e 187 fases GUI passaram.
+
 ## 0.28.0
 
 - Catalogo analogico: diodo, NPN/PNP, LDR, flex, FSR, inclinacao, fotodiodo, luz ambiente, TMP36,

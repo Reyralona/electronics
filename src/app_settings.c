@@ -1,4 +1,7 @@
 #include "app_settings.h"
+#include "app_preferences.h"
+#include <direct.h>
+#include <errno.h>
 
 WorkbenchSettings app_settings_capture(const AppState *app)
 {
@@ -47,4 +50,30 @@ void app_settings_reset(AppState *app)
 {
     WorkbenchSettings defaults = workbench_settings_default();
     app_settings_apply_all(app, &defaults);
+}
+
+#define PREFERENCES_DIRECTORY "saves"
+#define PREFERENCES_PATH PREFERENCES_DIRECTORY "/preferences.txt"
+
+void app_settings_load_preferences(AppState *app)
+{
+    WorkbenchSettings settings = app_settings_capture(app);
+    if (app_preferences_load(PREFERENCES_PATH, &settings))
+        app_settings_apply_all(app, &settings);
+    app->preferences_saved = app_settings_capture(app);
+    app->preferences_enabled = 1;
+}
+
+void app_settings_autosave(AppState *app)
+{
+    if (!app->preferences_enabled || app->editing >= 0)
+        return;
+    WorkbenchSettings current = app_settings_capture(app);
+    if (app_preferences_equal(&current, &app->preferences_saved))
+        return;
+    /* Remember the attempt either way: a failing disk must not be retried every frame. */
+    app->preferences_saved = current;
+    if ((_mkdir(PREFERENCES_DIRECTORY) != 0 && errno != EEXIST) ||
+        !app_preferences_save(PREFERENCES_PATH, &current))
+        app->status = "Não foi possível salvar as preferências; a sessão continua com os valores atuais.";
 }

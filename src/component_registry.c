@@ -5,7 +5,7 @@
 
 /* Preserve the existing model ranges; these are data per parameter, not physical ratings. */
 static const ComponentParameter voltage = {"voltage", "V", 5.0, 1e-12, 1e12};
-static const ComponentParameter resistance = {"resistance", "ohm", 1000.0, 1e-12, 1e12};
+static const ComponentParameter resistance = {"resistance", "Ω", 1000.0, 1e-12, 1e12};
 static const ComponentParameter capacitance = {"capacitance", "F", 1e-6, 1e-12, 1e12};
 static const ComponentParameter inductance = {"inductance", "H", .01, 1e-12, 1e12};
 static const ComponentParameter frequency = {"frequency", "Hz", 1000.0, 1e-12, 1e12};
@@ -26,8 +26,8 @@ static const ComponentPinInfo pins_74hc00[] = {
 static const ComponentParameter battery_9v = {"voltage", "V", 9, 1e-12, 1e12};
 static const ComponentParameter battery_aa = {"voltage", "V", 1.5, 1e-12, 1e12};
 static const ComponentParameter battery_coin = {"voltage", "V", 3, 1e-12, 1e12};
-static const ComponentParameter flex_resistance = {"resistance", "ohm", 25000, 1, 1e9};
-static const ComponentParameter force_resistance = {"resistance", "ohm", 15000, 1, 1e9};
+static const ComponentParameter flex_resistance = {"resistance", "Ω", 25000, 1, 1e9};
+static const ComponentParameter force_resistance = {"resistance", "Ω", 15000, 1, 1e9};
 static const ComponentPinInfo pins_bjt[] = {{"E", PIN_EMITTER}, {"B", PIN_BASE}, {"C", PIN_COLLECTOR}};
 static const ComponentPinInfo pins_photo_transistor[] = {{"C", PIN_COLLECTOR}, {"E", PIN_EMITTER}};
 static const ComponentPinInfo pins_sensor[] = {{"V+", PIN_SUPPLY_POSITIVE}, {"OUT", PIN_OUTPUT}, {"GND", PIN_GROUND}};
@@ -55,22 +55,22 @@ static const ComponentInfo components[] = {
     [PART_DFF] = {PART_DFF, "dff", "Bloco DFF", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 14, NULL, pins_dff},
     [PART_NOR] = {PART_NOR, "nor", "Porta NOR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
     [PART_XNOR] = {PART_XNOR, "xnor", "Porta XNOR", 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
-    [PART_POTENTIOMETER] = {PART_POTENTIOMETER, "potentiometer", "Potenciometro", 3, COMPONENT_ROTATES, 21, &resistance, pins_pot},
-    [PART_BUTTON] = {PART_BUTTON, "button", "Botao", 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 21, NULL, pins_passive},
+    [PART_POTENTIOMETER] = {PART_POTENTIOMETER, "potentiometer", "Potenciômetro", 3, COMPONENT_ROTATES, 21, &resistance, pins_pot},
+    [PART_BUTTON] = {PART_BUTTON, "button", "Botão", 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 21, NULL, pins_passive},
     [PART_74HC08] = {PART_74HC08, "74hc08", "CI 74HC08", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
     [PART_74HC32] = {PART_74HC32, "74hc32", "CI 74HC32", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
     [PART_74HC86] = {PART_74HC86, "74hc86", "CI 74HC86", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
     [PART_74HC00] = {PART_74HC00, "74hc00", "CI 74HC00", 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 15, NULL, pins_74hc00},
-    [PART_DIODE] = {PART_DIODE, "diode", "Diodo de silicio", 2, COMPONENT_ROTATES, 24, NULL, pins_led},
+    [PART_DIODE] = {PART_DIODE, "diode", "Diodo de silício", 2, COMPONENT_ROTATES, 24, NULL, pins_led},
     [PART_LDR] = {PART_LDR, "ldr", "Fotoresistor", 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
-    [PART_FLEX] = {PART_FLEX, "flex", "Sensor flexivel", 2, COMPONENT_ROTATES, 24, &flex_resistance, pins_passive},
-    [PART_FORCE] = {PART_FORCE, "force", "Sensor de forca", 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
-    [PART_TILT] = {PART_TILT, "tilt", "Sensor de inclinacao", 2, COMPONENT_ROTATES, 24, NULL, pins_passive},
+    [PART_FLEX] = {PART_FLEX, "flex", "Sensor flexível", 2, COMPONENT_ROTATES, 24, &flex_resistance, pins_passive},
+    [PART_FORCE] = {PART_FORCE, "force", "Sensor de força", 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
+    [PART_TILT] = {PART_TILT, "tilt", "Sensor de inclinação", 2, COMPONENT_ROTATES, 24, NULL, pins_passive},
     [PART_NPN] = {PART_NPN, "npn", "Transistor NPN", 3, COMPONENT_ROTATES, 24, NULL, pins_bjt},
     [PART_PNP] = {PART_PNP, "pnp", "Transistor PNP", 3, COMPONENT_ROTATES, 24, NULL, pins_bjt},
     [PART_BATTERY_9V] = {PART_BATTERY_9V, "battery-9v", "Bateria 9 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_9v, pins_source},
-    [PART_BATTERY_AA] = {PART_BATTERY_AA, "battery-aa", "Pilha AA 1.5 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_aa, pins_source},
-    [PART_BATTERY_COIN] = {PART_BATTERY_COIN, "battery-coin", "Moeda 3 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_coin, pins_source},
+    [PART_BATTERY_AA] = {PART_BATTERY_AA, "battery-aa", "Pilha AA 1,5 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_aa, pins_source},
+    [PART_BATTERY_COIN] = {PART_BATTERY_COIN, "battery-coin", "Bateria moeda 3 V", 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 24, &battery_coin, pins_source},
     [PART_PHOTODIODE] = {PART_PHOTODIODE, "photodiode", "Fotodiodo", 2, COMPONENT_ROTATES, 24, NULL, pins_led},
     [PART_AMBIENT_LIGHT] = {PART_AMBIENT_LIGHT, "ambient-light", "Fototransistor", 2, COMPONENT_ROTATES, 24, NULL, pins_photo_transistor},
     [PART_TEMPERATURE] = {PART_TEMPERATURE, "temperature", "Sensor TMP36", 3, COMPONENT_ROTATES, 24, NULL, pins_sensor},
@@ -144,18 +144,18 @@ const char *component_pin_role_label(ComponentPinRole role)
     static const char *labels[] = {"Sem polaridade / bidirecional",
                                    "Entrada",
                                    "Entrada de clock",
-                                   "Saida",
-                                   "Alimentacao positiva",
-                                   "Retorno / referencia",
+                                   "Saída",
+                                   "Alimentação positiva",
+                                   "Retorno / referência",
                                    "Terra (GND)",
-                                   "Anodo",
-                                   "Catodo",
-                                   "Contato sem polaridade propria",
+                                   "Ânodo",
+                                   "Cátodo",
+                                   "Contato sem polaridade própria",
                                    "Coletor (modelo NPN/PNP)",
                                    "Base (controle do transistor)",
                                    "Emissor (modelo NPN/PNP)"};
     if ((unsigned)role >= sizeof(labels) / sizeof(labels[0]))
-        return "Funcao nao definida";
+        return "Função não definida";
     return labels[role];
 }
 
@@ -231,13 +231,13 @@ int component_current_vector(PartType type, int index, char *vector, size_t capa
 
 const ComponentEnvironment *component_environment(PartType type)
 {
-    static const ComponentEnvironment light = {"Luz", "lux", 0, 1000, 100, "LDR generico: R10lux; gamma 0.7"};
-    static const ComponentEnvironment bend = {"Dobra", "graus", 0, 90, 0, "Aproximacao: R = Rplano * (1 + 3*angulo/90)"};
-    static const ComponentEnvironment force = {"Forca", "N", 0, 20, 0, "FSR generico: R1N/F; aberto abaixo de 0.2 N"};
-    static const ComponentEnvironment tilt = {"Inclinacao", "graus", 0, 180, 0, "Contato generico: fechado abaixo de 45 graus"};
-    static const ComponentEnvironment photo = {"Luz relativa", "%", 0, 100, 0, "Fotocorrente generica; sem calibracao espectral"};
-    static const ComponentEnvironment temperature = {"Temperatura", "C", -40, 125, 25, "TMP36: 2.7..5.5 V; sem aquecimento proprio"};
-    static const ComponentEnvironment soil = {"Umidade relativa", "%", 0, 100, 25, "Sonda resistiva generica; nao calibrada em VWC"};
+    static const ComponentEnvironment light = {"Luz", "lux", 0, 1000, 100, "LDR genérico: R(10 lux) e gama 0,7"};
+    static const ComponentEnvironment bend = {"Dobra", "°", 0, 90, 0, "Aproximação: R = Rplano × (1 + 3·ângulo/90)"};
+    static const ComponentEnvironment force = {"Força", "N", 0, 20, 0, "FSR genérico: R(1 N)/F; aberto abaixo de 0,2 N"};
+    static const ComponentEnvironment tilt = {"Inclinação", "°", 0, 180, 0, "Contato genérico: fechado abaixo de 45°"};
+    static const ComponentEnvironment photo = {"Luz relativa", "%", 0, 100, 0, "Fotocorrente genérica; sem calibração espectral"};
+    static const ComponentEnvironment temperature = {"Temperatura", "°C", -40, 125, 25, "TMP36: alimentação 2,7–5,5 V; sem aquecimento próprio"};
+    static const ComponentEnvironment soil = {"Umidade relativa", "%", 0, 100, 25, "Sonda resistiva genérica; não calibrada em VWC"};
     switch (type)
     {
     case PART_TEMPERATURE:

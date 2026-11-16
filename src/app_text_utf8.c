@@ -182,10 +182,10 @@ static int create_image(TextImage *image, const char *text, int maximum_width)
     return ok;
 }
 
-int app_text_utf8(float x, float baseline, const char *text, int maximum_width)
+static TextImage *cached_image(const char *text, int maximum_width)
 {
     if (!text || !text[0] || maximum_width < 1)
-        return 0;
+        return NULL;
     TextImage *image = NULL, *oldest = &cache[0];
     for (int i = 0; i < TEXT_CACHE_ENTRIES; ++i)
     {
@@ -199,10 +199,24 @@ int app_text_utf8(float x, float baseline, const char *text, int maximum_width)
         image = oldest;
         release_image(image);
         if (!create_image(image, text, maximum_width))
-            return 0;
+            return NULL;
         image->maximum_width = maximum_width;
     }
     image->used = ++sequence;
+    return image;
+}
+
+int app_text_utf8_width(const char *text, int maximum_width)
+{
+    TextImage *image = cached_image(text, maximum_width);
+    return image ? image->width : 0;
+}
+
+int app_text_utf8(float x, float baseline, const char *text, int maximum_width)
+{
+    TextImage *image = cached_image(text, maximum_width);
+    if (!image)
+        return 0;
     float top = baseline - image->ascent;
     float u = (float)image->width / image->texture_width, v = (float)image->height / image->texture_height;
     glPushAttrib(GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_TEXTURE_BIT);

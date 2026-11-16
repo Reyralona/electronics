@@ -433,3 +433,19 @@ Escala de tempo: cada quadro avanca transient_stop/300 (~1 ms simulado por segun
 tau ~1 ms do slot aparece como apagamento de ~1-3 s na tela. Nao e tempo real fisico.
 Build: build.ps1 compila o host em arquivo temporario e mantem o existente se estiver travado por
 uma Bancada aberta e nao for mais antigo que src/spice_live_host.c.
+
+
+## Revisao de menus e preferencias (15/11/2026, Claude)
+Fato: render e entrada repetiam coordenadas literais; o autoteste clicava em numeros fixos.
+Decisao: app_layout.c (puro) define retangulos nomeados; render, entrada e autoteste usam os mesmos.
+Refatoracao comitada separada (187 fases passaram) antes do redesenho.
+Configuracoes: um unico dialogo em duas colunas (Aparencia, Grade e encaixe, Fios, Grafico
+transitorio), com toggles, stepper, campos, fechar e Restaurar padroes; sem "[x]" nem "(clique)".
+Preferencias persistem em saves/preferences.txt (chave valor, versao 1; chaves desconhecidas
+ignoradas; gravacao temp + MoveFileEx). Autoteste e capturas NAO leem esse arquivo: precisam ser
+reprodutiveis. Tema e tamanho do texto sao do app: carregar slot nao os altera mais (slots
+continuam gravando-os por compatibilidade de formato). Removidas teclas S/L sem Ctrl, que
+gravavam um bancada.elec oculto (substituidas por slots Ctrl+S/Ctrl+L; S acidental gravava arquivo).
+Botoes mostram acao sem atalho (preferencia do usuario); atalhos ficam no rodape contextual.
+Arte: capacitor como disco ceramico (nao polarizado), fonte de bancada com visor de 7 segmentos,
+bornes e knob; fototransistor com cupula transparente distinta do fotodiodo.

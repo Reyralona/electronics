@@ -152,8 +152,8 @@ void app_projects_save(AppState *app)
     slot_path(app, app->save_slot, path, sizeof(path));
     int saved = workbench_save_project(path, &app->bench, &settings);
     snprintf(app->selection_status, sizeof(app->selection_status),
-             saved ? "Montagem e configuracoes salvas no slot %d."
-                   : "Falha ao gravar slot %d; arquivo anterior preservado.",
+             saved ? "Montagem e configurações salvas no slot %d."
+                   : "Falha ao gravar o slot %d; arquivo anterior preservado.",
              app->save_slot + 1);
     app->status = app->selection_status;
     app_projects_refresh(app);
@@ -172,16 +172,16 @@ void app_projects_load(AppState *app)
     slot_path(app, app->save_slot, path, sizeof(path));
     if (!workbench_load_project(path, &app->bench, &settings))
     {
-        app->status = "Slot vazio ou invalido; montagem atual preservada.";
+        app->status = "Slot vazio ou inválido; montagem atual preservada.";
         return;
     }
     bench_history_record(app->history, &before);
     spice_job_request_reset(&app->dc_job);
     reset_interaction(app);
     bench_selection_clear(&app->selection);
-    app_settings_apply_all(app, &settings);
+    app_settings_apply_project(app, &settings);
     sim_state_clear_result(&app->sim);
     memset(app->leds, 0, sizeof(app->leds));
     app->projects_open = 0;
-    app->status = "Slot carregado; Ctrl+Z restaura a montagem anterior.";
+    app->status = "Slot carregado. Ctrl+Z restaura a montagem anterior.";
 }

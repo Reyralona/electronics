@@ -340,3 +340,10 @@ Desligar a fonte ou abrir o interruptor com um capacitor carregado agora apaga o
 gradual em vez de travar o calculo. Contatos ao vivo usam 1 mOhm fechado e 10 GOhm aberto.
 O tempo simulado anda cerca de 1 ms por segundo real (duracao da curva / 300 por quadro):
 um RC de 1 kOhm x 1 uF (tau ~1 ms) apaga em 1-3 s na tela; capacitores maiores apagam mais devagar.
+
+## Menus e preferencias (0.29.0)
+Cabecalho com Projetos, Exemplos e Configuracoes; biblioteca com abas e barra de rolagem.
+Configuracoes em um unico dialogo; alteracoes sao salvas automaticamente em saves/preferences.txt
+e restauradas ao abrir o app. Restaurar padroes volta aos valores iniciais. Carregar um slot
+traz montagem e configuracoes do projeto, mas mantem tema e tamanho do texto.
+Clique no Valor ou Tamanho do inspector para edita-los. Salvar/carregar: Ctrl+S/Ctrl+L (slots).

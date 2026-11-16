@@ -2,6 +2,21 @@
 
 #define PALETTE_ITEM_TOP 140.0f
 #define PALETTE_ITEM_PITCH 72.0f
+#define HEADER_BUTTON_Y 14.0f
+#define HEADER_BUTTON_H 40.0f
+#define SETTINGS_LEFT 280.0f
+#define SETTINGS_RIGHT 720.0f
+#define SETTINGS_COLUMN 400.0f
+#define SETTINGS_FIRST_ROW 176.0f
+#define SETTINGS_ROW_PITCH 40.0f
+#define SETTINGS_ROW_H 34.0f
+#define STEPPER_W 34.0f
+#define STEPPER_VALUE_W 56.0f
+#define INSPECTOR_X 840.0f
+#define INSPECTOR_W 420.0f
+#define INSPECTOR_ROW_X 852.0f
+#define INSPECTOR_ROW_W 396.0f
+#define CLOSE_BUTTON 36.0f
 #define NO_RECT ((AppRect){0, 0, 0, 0})
 
 int app_rect_contains(AppRect rect, float x, float y)
@@ -22,10 +37,10 @@ float app_rect_center_y(AppRect rect)
 AppRect app_layout_header(AppHeaderButton button)
 {
     static const AppRect buttons[APP_HEADER_COUNT] = {
-        {500, 0, 180, APP_HEADER_HEIGHT},
-        {700, 0, 150, APP_HEADER_HEIGHT},
-        {880, 0, 150, APP_HEADER_HEIGHT},
-        {1040, 0, 240, APP_HEADER_HEIGHT},
+        {500, HEADER_BUTTON_Y, 132, HEADER_BUTTON_H},
+        {642, HEADER_BUTTON_Y, 132, HEADER_BUTTON_H},
+        {784, HEADER_BUTTON_Y, 176, HEADER_BUTTON_H},
+        {1040, 12, 222, 44},
     };
     if (button < 0 || button >= APP_HEADER_COUNT)
         return NO_RECT;
@@ -44,23 +59,22 @@ AppRect app_layout_palette_tab(int tab)
 {
     if (tab < 0 || tab >= APP_PALETTE_TABS)
         return NO_RECT;
-    return (AppRect){12 + tab * 70.0f, 80, 62, 44};
+    return (AppRect){14 + tab * 64.0f, 82, 64, 40};
 }
 
 int app_layout_palette_tab_at(float x, float y)
 {
-    if (x < 0 || x >= APP_PALETTE_WIDTH || y < 80 || y >= 125)
-        return -1;
-    if (x < 78)
-        return 0;
-    return x < 148 ? 1 : 2;
+    for (int tab = 0; tab < APP_PALETTE_TABS; ++tab)
+        if (app_rect_contains(app_layout_palette_tab(tab), x, y))
+            return tab;
+    return -1;
 }
 
 AppRect app_layout_palette_item(int slot)
 {
     if (slot < 0 || slot >= APP_PALETTE_VISIBLE)
         return NO_RECT;
-    return (AppRect){14, PALETTE_ITEM_TOP + slot * PALETTE_ITEM_PITCH, 192, 62};
+    return (AppRect){14, PALETTE_ITEM_TOP + slot * PALETTE_ITEM_PITCH, 186, 64};
 }
 
 int app_layout_palette_item_at(float x, float y)
@@ -71,32 +85,79 @@ int app_layout_palette_item_at(float x, float y)
     return slot < APP_PALETTE_VISIBLE ? slot : -1;
 }
 
+AppRect app_layout_palette_scrollbar(void)
+{
+    return (AppRect){205, PALETTE_ITEM_TOP, 5, APP_PALETTE_VISIBLE * PALETTE_ITEM_PITCH - 8};
+}
+
 AppRect app_layout_settings_panel(void)
 {
-    return (AppRect){260, 84, 980, 558};
+    return (AppRect){250, 84, 900, 560};
+}
+
+static AppRect settings_row(float column, int row)
+{
+    return (AppRect){column, SETTINGS_FIRST_ROW + row * SETTINGS_ROW_PITCH, SETTINGS_COLUMN, SETTINGS_ROW_H};
+}
+
+/* Stepper buttons sit at the right edge of a row: 0 = rightmost (+), 1 = left of the value (-). */
+static AppRect row_button(AppRect row, int from_right)
+{
+    float x = row.x + row.w - STEPPER_W - from_right * (STEPPER_W + STEPPER_VALUE_W);
+    return (AppRect){x, row.y, STEPPER_W, row.h};
+}
+
+static AppRect close_button(AppRect panel)
+{
+    return (AppRect){panel.x + panel.w - CLOSE_BUTTON - 16, panel.y + 14, CLOSE_BUTTON, CLOSE_BUTTON};
 }
 
 AppRect app_layout_setting(AppSetting setting)
 {
-    static const AppRect rows[APP_SETTING_COUNT] = {
-        [APP_SETTING_DARK_THEME] = {260, 340, 540, 45},
-        [APP_SETTING_FONT_SMALLER] = {500, 410, 40, 40},
-        [APP_SETTING_FONT_LARGER] = {550, 410, 40, 40},
-        [APP_SETTING_SHOW_GRID] = {851, 120, 389, 40},
-        [APP_SETTING_ROUND_WIRES] = {851, 200, 389, 40},
-        [APP_SETTING_HANDLES] = {851, 160, 389, 40},
-        [APP_SETTING_SNAP_GRID] = {260, 130, 540, 40},
-        [APP_SETTING_GRID_SPACING] = {260, 170, 540, 40},
-        [APP_SETTING_SNAP_BOARD] = {260, 210, 540, 40},
-        [APP_SETTING_SHOW_CURRENT] = {851, 240, 389, 40},
-        [APP_SETTING_PROBE_MEASURE] = {851, 354, 389, 36},
-        [APP_SETTING_PROBE_PIN] = {851, 390, 389, 35},
-        [APP_SETTING_STEP] = {851, 430, 389, 35},
-        [APP_SETTING_STOP] = {851, 470, 389, 35},
-    };
-    if (setting < 0 || setting >= APP_SETTING_COUNT)
+    AppRect panel = app_layout_settings_panel();
+    switch (setting)
+    {
+    case APP_SETTING_DARK_THEME:
+        return settings_row(SETTINGS_LEFT, 0);
+    case APP_SETTING_FONT_SMALLER:
+        return row_button(settings_row(SETTINGS_LEFT, 1), 1);
+    case APP_SETTING_FONT_LARGER:
+        return row_button(settings_row(SETTINGS_LEFT, 1), 0);
+    case APP_SETTING_SHOW_GRID:
+        return settings_row(SETTINGS_LEFT, 2);
+    case APP_SETTING_ROUND_WIRES:
+        return settings_row(SETTINGS_LEFT, 3);
+    case APP_SETTING_HANDLES:
+        return settings_row(SETTINGS_LEFT, 4);
+    case APP_SETTING_SNAP_GRID:
+        return settings_row(SETTINGS_LEFT, 6);
+    case APP_SETTING_GRID_SPACING:
+        return settings_row(SETTINGS_LEFT, 7);
+    case APP_SETTING_SNAP_BOARD:
+        return settings_row(SETTINGS_LEFT, 8);
+    case APP_SETTING_SHOW_CURRENT:
+        return settings_row(SETTINGS_RIGHT, 2);
+    case APP_SETTING_PROBE_MEASURE:
+        return settings_row(SETTINGS_RIGHT, 5);
+    case APP_SETTING_PROBE_PIN:
+        return settings_row(SETTINGS_RIGHT, 6);
+    case APP_SETTING_STEP:
+        return settings_row(SETTINGS_RIGHT, 7);
+    case APP_SETTING_STOP:
+        return settings_row(SETTINGS_RIGHT, 8);
+    case APP_SETTING_RESET:
+        return (AppRect){panel.x + panel.w - 236, panel.y + panel.h - 54, 220, 36};
+    case APP_SETTING_CLOSE:
+        return close_button(panel);
+    default:
         return NO_RECT;
-    return rows[setting];
+    }
+}
+
+AppRect app_layout_settings_section(int column, int row)
+{
+    AppRect anchor = settings_row(column ? SETTINGS_RIGHT : SETTINGS_LEFT, row);
+    return (AppRect){anchor.x, anchor.y - 30, SETTINGS_COLUMN, 26};
 }
 
 AppSetting app_layout_setting_at(float x, float y)
@@ -111,7 +172,8 @@ AppRect app_layout_wire_swatch(int index)
 {
     if (index < 0 || index >= APP_WIRE_SWATCHES)
         return NO_RECT;
-    return (AppRect){860 + index * 50.0f, 320, 50, 32};
+    AppRect row = settings_row(SETTINGS_RIGHT, 0);
+    return (AppRect){row.x + index * 52.0f, row.y + 26, 44, 30};
 }
 
 int app_layout_wire_swatch_at(float x, float y)
@@ -124,14 +186,14 @@ int app_layout_wire_swatch_at(float x, float y)
 
 AppRect app_layout_projects_panel(void)
 {
-    return (AppRect){300, 130, 680, 438};
+    return (AppRect){300, 110, 680, 450};
 }
 
 AppRect app_layout_project_slot(int slot)
 {
     if (slot < 0 || slot >= APP_PROJECT_SLOTS)
         return NO_RECT;
-    return (AppRect){330 + (slot % 3) * 200.0f, 200 + (slot / 3) * 90.0f, 200, 90};
+    return (AppRect){330 + (slot % 3) * 210.0f, 196 + (slot / 3) * 92.0f, 198, 80};
 }
 
 int app_layout_project_slot_at(float x, float y)
@@ -144,47 +206,47 @@ int app_layout_project_slot_at(float x, float y)
 
 AppRect app_layout_project_save(void)
 {
-    return (AppRect){340, 500, 250, 45};
+    return (AppRect){330, 486, 300, 44};
 }
 
 AppRect app_layout_project_load(void)
 {
-    return (AppRect){640, 500, 250, 45};
+    return (AppRect){650, 486, 300, 44};
 }
 
 AppRect app_layout_project_close(void)
 {
-    return NO_RECT;
+    return close_button(app_layout_projects_panel());
 }
 
 AppRect app_layout_inspector(float height)
 {
-    return (AppRect){840, 80, 420, height};
+    return (AppRect){INSPECTOR_X, 80, INSPECTOR_W, height};
 }
 
 AppRect app_layout_inspector_rotate(void)
 {
-    return (AppRect){1180, 86, 72, 26};
+    return (AppRect){1172, 90, 76, 30};
 }
 
 AppRect app_layout_inspector_value(void)
 {
-    return NO_RECT;
+    return (AppRect){INSPECTOR_ROW_X, 132, INSPECTOR_ROW_W, 30};
 }
 
 AppRect app_layout_inspector_scale(void)
 {
-    return (AppRect){850, 154, 330, 28};
+    return (AppRect){INSPECTOR_ROW_X, 168, INSPECTOR_ROW_W, 30};
 }
 
 AppRect app_layout_environment_slider(void)
 {
-    return (AppRect){840, 245, 350, 33};
+    return (AppRect){INSPECTOR_ROW_X - 10, 268, INSPECTOR_ROW_W + 20, 32};
 }
 
 AppRect app_layout_environment_track(void)
 {
-    return (AppRect){850, 254, 330, 6};
+    return (AppRect){INSPECTOR_ROW_X + 4, 281, INSPECTOR_ROW_W - 8, 6};
 }
 
 double app_layout_environment_position(float x)
@@ -197,10 +259,10 @@ double app_layout_environment_position(float x)
 AppRect app_layout_editor_header(AppEditorButton button)
 {
     static const AppRect buttons[APP_EDITOR_COUNT] = {
-        {350, 0, 140, APP_HEADER_HEIGHT},
-        {500, 0, 180, APP_HEADER_HEIGHT},
-        {700, 0, 150, APP_HEADER_HEIGHT},
-        {880, 0, 150, APP_HEADER_HEIGHT},
+        {360, HEADER_BUTTON_Y, 150, HEADER_BUTTON_H},
+        {520, HEADER_BUTTON_Y, 130, HEADER_BUTTON_H},
+        {660, HEADER_BUTTON_Y, 150, HEADER_BUTTON_H},
+        {820, HEADER_BUTTON_Y, 140, HEADER_BUTTON_H},
     };
     if (button < 0 || button >= APP_EDITOR_COUNT)
         return NO_RECT;
@@ -219,7 +281,7 @@ AppRect app_layout_group_button(int index)
 {
     if (index < 0 || index > 1)
         return NO_RECT;
-    return (AppRect){850 + index * 200.0f, 116, 194, 29};
+    return (AppRect){INSPECTOR_ROW_X + index * 202.0f, 132, 194, 32};
 }
 
 int app_layout_group_button_at(float x, float y)
@@ -239,7 +301,7 @@ AppRect app_layout_confirm_button(int index)
 {
     if (index < 0 || index >= APP_CONFIRM_BUTTONS)
         return NO_RECT;
-    return (AppRect){360 + index * 190.0f, 370, 180, 45};
+    return (AppRect){350 + index * 196.0f, 370, 184, 44};
 }
 
 int app_layout_confirm_button_at(float x, float y)

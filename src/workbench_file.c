@@ -11,7 +11,7 @@ WorkbenchSettings workbench_settings_default(void)
 {
     return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15};
 }
-static int settings_valid(const WorkbenchSettings *s)
+int workbench_settings_valid(const WorkbenchSettings *s)
 {
     return s && s->gui_font_size >= 12 && s->gui_font_size <= 20 && (s->dark_theme == 0 || s->dark_theme == 1) && (s->show_grid == 0 || s->show_grid == 1) && (s->show_handles == 0 || s->show_handles == 1) &&
            (s->round_wires == 0 || s->round_wires == 1) && (s->show_current == 0 || s->show_current == 1) &&
@@ -98,7 +98,7 @@ static int read_leads(FILE *file, Workbench *bench)
 int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings *s)
 {
     int i, k;
-    if (!f || !b || !settings_valid(s))
+    if (!f || !b || !workbench_settings_valid(s))
         return 0;
     if (fprintf(f, "workbench 24\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
@@ -236,23 +236,23 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         if (fscanf(f, "%31s %d %d %d %d %d %d %d %lf %lf", tag, &saved.show_grid, &saved.show_handles,
                    &saved.round_wires, &saved.show_current, &saved.wire_color, &saved.probe_pin, &saved.probe_current,
                    &saved.transient_step, &saved.transient_stop) != 10 ||
-            strcmp(tag, "settings") || !settings_valid(&saved))
+            strcmp(tag, "settings") || !workbench_settings_valid(&saved))
             goto cleanup;
     }
     if (version >= 18)
     {
         char tag[32];
         if (fscanf(f, "%31s %lf %d %d", tag, &saved.grid_spacing, &saved.snap_grid, &saved.snap_board) != 4 ||
-            strcmp(tag, "grid") || !settings_valid(&saved))
+            strcmp(tag, "grid") || !workbench_settings_valid(&saved))
             goto cleanup;
     }
     if (version >= 20)
     {
         char tag[32];
-        if (fscanf(f, "%31s %d", tag, &saved.dark_theme) != 2 || strcmp(tag, "theme") || !settings_valid(&saved))
+        if (fscanf(f, "%31s %d", tag, &saved.dark_theme) != 2 || strcmp(tag, "theme") || !workbench_settings_valid(&saved))
             goto cleanup;
     }
-    if (version >= 21 && (fscanf(f, "%d", &saved.gui_font_size) != 1 || !settings_valid(&saved)))
+    if (version >= 21 && (fscanf(f, "%d", &saved.gui_font_size) != 1 || !workbench_settings_valid(&saved)))
         goto cleanup;
     if (fscanf(f, " %c", &extra) != EOF || ferror(f))
         goto cleanup;

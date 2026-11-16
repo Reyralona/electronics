@@ -8,4 +8,7 @@ WorkbenchSettings app_settings_capture(const AppState *app);
 void app_settings_apply_project(AppState *app, const WorkbenchSettings *settings);
 void app_settings_apply_all(AppState *app, const WorkbenchSettings *settings);
 void app_settings_reset(AppState *app);
+/* Interactive sessions: load saves/preferences.txt once, then persist whenever settings change. */
+void app_settings_load_preferences(AppState *app);
+void app_settings_autosave(AppState *app);
 #endif

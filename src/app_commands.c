@@ -1,6 +1,5 @@
 #include "bench_scope.h"
 #include "app_commands.h"
-#include "app_settings.h"
 #include "app_editor.h"
 #include "app_editing.h"
 #include "app_packing.h"
@@ -301,47 +300,6 @@ static void command_scale_value(AppState *app, SDL_Keycode key)
         app->status = "Valor nao editavel ou fora do limite.";
 }
 
-static void command_save(AppState *app)
-{
-    WorkbenchSettings saved = app_settings_capture(app);
-    app->status =
-        workbench_save_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved)
-            ? "Salvo em bancada.elec."
-            : "Falha ao salvar.";
-}
-
-static void command_load(AppState *app)
-{
-    Workbench before BENCH_AUTO_CLEAR = {0};
-    if (!bench_snapshot_clone(&before, &app->bench))
-    {
-        app->status = "Memoria insuficiente para copiar a montagem; operacao cancelada.";
-        return;
-    }
-    WorkbenchSettings saved;
-    if (workbench_load_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved))
-    {
-        spice_job_request_reset(&app->dc_job);
-        bench_history_record(app->history, &before);
-        app->packed_placing = 0;
-        bench_selection_clear(&app->selection);
-        app->selected = -1;
-        app->selected_wire = -1;
-        app->dragging = -1;
-        app->drag_wire = -1;
-        app->drag_lead.component = -1;
-        app->pending.component = -1;
-        app->route_count = 0;
-        app_settings_apply_all(app, &saved);
-        sim_state_clear_result(&app->sim);
-        memset(app->leds, 0, sizeof(app->leds));
-        bench_simulate(&app->bench, app->leds);
-        app->status = "Bancada e configuracoes carregadas.";
-    }
-    else
-        app->status = "Falha ao carregar; bancada preservada.";
-}
-
 static void command_delete_part(AppState *app)
 {
     bench_history_record(app->history, &app->bench);
@@ -452,12 +410,6 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
             command_trace_step(app, key);
         else if (key == SDLK_N && !app->sim.sim_running)
             command_logic_step(app);
-        return;
-    case SDLK_S:
-        command_save(app);
-        return;
-    case SDLK_L:
-        command_load(app);
         return;
     }
     if (key == SDLK_T && app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count)

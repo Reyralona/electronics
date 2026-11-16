@@ -516,3 +516,13 @@ LED RGB, lampada, motores (vibracao, CC, CC com encoder, servo), piezo, sete seg
 I2C aparecendo no exterior do chip, rele, instrumentos (osciloscopio, multimetro, gerador) e
 inventario integral de CIs. Proximo incremento sugerido: LED RGB, lampada e piezo (saidas simples
 sobre modelos ja validados), depois sete segmentos com exposicao externa em chips.
+
+
+## Menus e preferencias - feature/ui-polish (15/11/2026)
+app_layout.c e a fonte unica da geometria da interface; ao mover algo, mude so ali (testes seguem).
+app_settings.c mapeia AppState<->WorkbenchSettings; app_preferences.c persiste saves/preferences.txt.
+Widgets em app_render.c (ui_button/toggle/field/stepper/panel); app_render.c passou de 2000 linhas:
+divida conhecida, extrair primitivas para modulo proprio quando tocar de novo.
+Fila pedida pelo usuario apos este incremento: (1) resto do catalogo do primeiro pedido;
+(2) exemplo com erro de calculo; (3) muitos exemplos com menu de titulo; (4) revisao geral do
+codigo; (5) documento do que falta para 1.0.0 e historico desde 14/11.
