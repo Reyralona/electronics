@@ -10,6 +10,10 @@ typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERRO
 #define NETLIST_LIVE_CLOSED_OHMS 1e-3
 #define NETLIST_POT_MIN_SEGMENT_OHMS .001
 #define NETLIST_LIVE_OPEN_OHMS 1e10
+/* Input resistance of logic gate and 74HC inputs to their reference (50 nA at 5 V).
+ * Must stay far below NETLIST_LIVE_OPEN_OHMS: with only the 1 TOhm rshunt, an input behind an open
+ * switch divided to ~4.95 V and read HIGH, lighting a 4-input AND with every switch off. */
+#define NETLIST_GATE_INPUT_OHMS 1e8
 NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires);
 /* Terminals joined by wires, breadboard strips or direct contact (switch states ignored). */
 int netlist_same_net(const Workbench *bench, Pin a, Pin b);

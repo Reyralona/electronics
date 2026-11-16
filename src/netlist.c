@@ -214,6 +214,15 @@ static int write_semiconductor(FILE *out, const Part *part, int index, int a, in
     return 1;
 }
 
+/* Logic input resistance to its reference; see NETLIST_GATE_INPUT_OHMS. Node numbers are SPICE nodes. */
+static int write_gate_input(FILE *out, const char *owner, int index, int input, int node, int reference)
+{
+    if (node == reference)
+        return 1;
+    return fprintf(out, "R%sin%d_%d %d %d %.17g\n", owner, index, input, node, reference,
+                   NETLIST_GATE_INPUT_OHMS) >= 0;
+}
+
 /* 74HC quad gates (5 V): input low <= 1.5 V, high >= 3.5 V, supply window 4.5..5.5 V.
  * Drives are continuous (linear between thresholds, logic by products) instead of ideal steps:
  * a step made the transient timestep collapse when a clock edge crossed a threshold. */
@@ -526,6 +535,11 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             }
             if (fprintf(out, "Adac%d [dout%d] [%d] gate_dac\n", i, i, output_node == ground ? 0 : output_node + 1) < 0)
                 return NETLIST_IO_ERROR;
+            const int inputs[2] = {a == ground ? 0 : a + 1, c == ground ? 0 : c + 1};
+            const int input_count = type == PART_NOT ? 1 : 2;
+            for (int input = 0; input < input_count; ++input)
+                if (!write_gate_input(out, "g", i, input, inputs[input], 0))
+                    return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
         if (component_has_flag(b->parts[i].type, COMPONENT_QUAD_GATE))
@@ -551,6 +565,9 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 y = y == ground ? 0 : y + 1;
                 if (fprintf(out, "Bchip%d_a%d chip%d_a%d 0 V=V(%d,%d)\nBchip%d_b%d chip%d_b%d 0 V=V(%d,%d)\n", i, g, i,
                             g, a, ref, i, g, i, g, c, ref) < 0)
+                    return NETLIST_IO_ERROR;
+                if (!write_gate_input(out, "chip", i, g * 2, a, ref) ||
+                    !write_gate_input(out, "chip", i, g * 2 + 1, c, ref))
                     return NETLIST_IO_ERROR;
                 char high[320], low[320];
                 quad_gate_drive(b->parts[i].type, i, g, high, low, sizeof(high));

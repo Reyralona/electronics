@@ -75,11 +75,74 @@ static void check_led_hold(int open_part)
     spice_live_destroy(live);
     bench_snapshot_clear(&bench);
 }
+/* User's 4-input AND (slot reported 16/11): (A AND B) AND (C AND D) driving resistor + LED.
+ * Each switch only connects +5 V to a gate input; nothing pulls an open input down, as a student
+ * would build it. Parts: 0 source, 1-4 switches, 5-7 AND, 8 resistor, 9 LED. */
+enum { AND4_SWITCHES = 4, AND4_LED = 9 };
+static void build_four_input_and(Workbench *bench)
+{
+    bench_add(bench, PART_SOURCE, 100, 300);
+    for (int i = 0; i < AND4_SWITCHES; ++i)
+        bench_add(bench, PART_SWITCH, 300, 150 + 100 * i);
+    bench_add(bench, PART_AND, 500, 200);
+    bench_add(bench, PART_AND, 500, 400);
+    bench_add(bench, PART_AND, 700, 300);
+    bench_add(bench, PART_RESISTOR, 900, 300);
+    bench_add(bench, PART_LED, 1100, 300);
+    for (int i = 0; i < AND4_SWITCHES; ++i)
+        wire(bench, 0, 0, 1 + i, 0);
+    wire(bench, 1, 1, 5, 0);
+    wire(bench, 2, 1, 5, 1);
+    wire(bench, 3, 1, 6, 0);
+    wire(bench, 4, 1, 6, 1);
+    wire(bench, 5, 2, 7, 0);
+    wire(bench, 6, 2, 7, 1);
+    wire(bench, 7, 2, 8, 0);
+    wire(bench, 8, 1, 9, 0);
+    wire(bench, 9, 1, 0, 1);
+}
+static int led_lit(void)
+{
+    const double visible_amps = 1e-3;
+    return result.currents[AND4_LED] > visible_amps;
+}
+/* What a person checks after building it: all off -> dark; turning switches on one at a time keeps
+ * it dark until the fourth; any switch turned back off darkens it again. */
+static void check_four_input_and(void)
+{
+    const double settle = .001;
+    Workbench bench = {0};
+    build_four_input_and(&bench);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench, settle);
+    if (led_lit())
+        fprintf(stderr, "4AND: LED lit with every switch off (%g A)\n", result.currents[AND4_LED]);
+    assert(!led_lit());
+    for (int on = 1; on <= AND4_SWITCHES; ++on)
+    {
+        bench_set_on(&bench, on, 1);
+        step(live, &bench, settle);
+        assert(led_lit() == (on == AND4_SWITCHES));
+    }
+    for (int off = 1; off <= AND4_SWITCHES; ++off)
+    {
+        bench_set_on(&bench, off, 0);
+        step(live, &bench, settle);
+        assert(!led_lit());
+        bench_set_on(&bench, off, 1);
+        step(live, &bench, settle);
+        assert(led_lit());
+    }
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     executable = argv[1];
     options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default()};
+    check_four_input_and();
     check_led_hold(0);
     check_led_hold(1);
     Workbench rc = {0};
