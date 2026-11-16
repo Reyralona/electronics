@@ -1,6 +1,6 @@
-# Caminho para a 1.0.0 — estado em 15/11/2026 (v0.32.0)
+# Caminho para a 1.0.0 — estado em 16/11/2026 (v0.36.0)
 
-> **Visão consolidada:** histórico desde 14/11/2026, revisão de código e pendências da 1.0 em ordem de prioridade. Mudanças posteriores à v0.32.0 estão no [CHANGELOG](../CHANGELOG.md).
+> **Visão consolidada:** recursos atuais, histórico e pendências da 1.0. Conferida com o código da v0.36.0 e o [CHANGELOG](../CHANGELOG.md).
 
 Documento de continuidade para quem retomar o trabalho (pessoa, Codex ou Claude). Fatos verificados
 no repositório, decisões e pendências. Detalhes de cada item: `CONTINUIDADE.md`, `DECISOES.md`,
@@ -25,6 +25,9 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 | 15/11 (Claude) | 0.30.0 | Diálogo com 15 exemplos verificados; correção do 74HC00 que abortava na sessão contínua. |
 | 15/11 (Claude) | 0.31.0 | Lâmpada; remoção do protótipo legado; este documento. |
 | 15/11 (Claude) | 0.32.0 | Várias medições e estado por peça; 17 dispositivos, sensores e instrumentos; displays no corpo de blocos; 18 exemplos. |
+| 15–16/11 | 0.33–0.34.1 | Ajustes de contato e corrente; placas programáveis e LCD I2C; transparência; correções de entradas lógicas e da biblioteca de chips. |
+| 16/11 | 0.35.0 | Interface em português e inglês; catálogo de textos e revisão de nomes. |
+| 16/11 | 0.36.0 | CMake, ZIP portátil e instalador NSIS por usuário; dependências fixadas, fontes e hashes. Pré-release publicada no GitHub. |
 
 ## 2. O que existe hoje
 
@@ -32,16 +35,18 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
   rotação, seleção por área, copiar/colar, desfazer/refazer, blocos com editor isolado, slots.
 - **Simulação**: ngspice em processo isolado por contexto; sessão contínua com `alter`/`resume`
   (C, L e DFF mantêm estado); corrente nos fios com direção; proteção didática contra queima.
-- **Catálogo (54 tipos)**: LED RGB, 7 segmentos, DIP, DPST, relé, motores CC/vibração/encoder, servo, piezo, gerador de função, multímetro, osciloscópio, sensores PIR/gás/IR/distância, e ainda fonte, baterias (9 V, AA, moeda), interruptor, botão, resistor, potenciômetro,
+- **Catálogo (58 tipos)**: LED RGB, 7 segmentos, DIP, DPST, relé, motores CC/vibração/encoder, servo, piezo, gerador de função, multímetro, osciloscópio, sensores PIR/gás/IR/distância, e ainda fonte, baterias (9 V, AA, moeda), interruptor, botão, resistor, potenciômetro,
   capacitor, indutor, LED, lâmpada, diodo, NPN/PNP, LDR, flex, FSR, inclinação, fotodiodo,
   fototransistor, TMP36, umidade do solo, breadboard, AND/NAND/OR/XOR/NOT/NOR/XNOR, clock, DFF,
-  74HC00/08/32/86.
+  74HC00/08/32/86, Arduino Uno, ESP32, ATtiny85 e LCD 16x2 I2C.
 - **Interface**: cabeçalho, biblioteca com abas, inspector técnico, configurações persistentes,
-  18 exemplos, tema escuro, rodapé com dicas por contexto.
-- **Qualidade**: build estrito (`-Wall -Wextra -Werror`), ~40 testes nativos, autoteste GUI com
-  189 fases, capturas reprodutíveis (`--capture-*`, `tools/capture-components.ps1`).
+  18 exemplos, tema escuro, dois idiomas e rodapé com dicas por contexto.
+- **Qualidade**: build estrito (`-Wall -Wextra -Werror`), testes nativos, autoteste GUI e
+  capturas reprodutíveis (`--capture-*`, `tools/capture-components.ps1`).
+- **Distribuição**: ZIP e instalador Windows experimentais, com dependências, licenças,
+  fontes e hashes. Ainda sem assinatura digital ou validação numa VM limpa.
 
-## 3. Revisão geral do código (15/11/2026)
+## 3. Revisão geral do código (origem em 15/11; estado revisto em 16/11/2026)
 
 Feito nesta revisão: geometria da interface centralizada (`app_layout`), mapeamento de
 configurações único (`app_settings`), preferências em módulo puro testado (`app_preferences`),
@@ -49,19 +54,19 @@ remoção das teclas S/L legadas e do protótipo inteiro não usado.
 
 Dívidas encontradas, em ordem de impacto:
 
-1. **`app_render.c` com ~2,9 mil linhas** (cresceu com a arte dos dispositivos): primitivas, widgets, componentes e painéis no mesmo
+1. **`app_render.c`**: primitivas, widgets, componentes e painéis no mesmo
    arquivo. Extrair `render_primitives`, `render_parts` e `render_ui` (refatoração pura, validar
    com capturas idênticas byte a byte).
-2. **`write_netlist` (~400 linhas)** em `netlist.c`: dividir por família (fontes, passivos,
-   semicondutores, portas, CIs) antes de crescer o catálogo.
-3. **Autoteste GUI em duas funções gigantes** (`dev_scenario_queue`/`validate`, 550 e 350 linhas):
+2. **`write_netlist`** em `netlist.c`: dispositivos já têm `netlist_devices.c`; ainda separar
+   as famílias restantes (fontes, passivos, semicondutores, portas e CIs).
+3. **Autoteste GUI em duas funções grandes** (`dev_scenario_queue`/`validate`):
    migrar para uma tabela de fases `{ação, verificação}`; hoje inserir uma fase no meio exige renumerar.
 4. ~~Uma corrente por peça~~: resolvido na 0.32.0 (`component_devices`, até 8 medições e `states`).
    Falta proteção de queima por elemento (hoje RGB/7 segmentos não "queimam").
 5. **Limites fixos**: 64 peças, 128 fios, 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
    capacidades dinâmicas.
-6. **Tipos persistidos como códigos numéricos** (formato 25); a migração para IDs textuais já foi
-   decidida e deve usar um número de formato novo, mantendo leitura 1–25.
+6. **Tipos persistidos como códigos numéricos** (formato 28); a migração para IDs textuais já foi
+   decidida e deve usar um número de formato novo, mantendo leitura 1–28.
 7. Funções ainda acima de 100 linhas: `workbench_read_project`, `input_edit_key`, `part_draw`,
    `input_zoom`, `analyze` em `spice_process.c`.
 
@@ -88,7 +93,9 @@ sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
 - [ ] Escala completa da interface (hoje só o tamanho do texto muda).
 - [ ] Inspector que não cubra peças (recolher/mover quando sobrepõe a seleção).
 - [ ] Tempo simulado visível como razão (hoje ~1 ms simulado por segundo real; ajustar duração).
-- [ ] Empacotamento distribuível (runtime ngspice, `spice-live-host.exe`, licenças).
+- [x] Pacotes experimentais com runtime, host, licenças e fontes (0.36.0).
+- [ ] Validar numa VM Windows limpa, assinar os artefatos e testar atualização entre versões.
+- [ ] Automatizar a publicação ao enviar tags; hoje há um comando explícito por versão.
 
 ## 5. Próximo passo recomendado
 

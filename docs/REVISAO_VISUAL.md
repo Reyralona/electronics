@@ -2,6 +2,9 @@
 
 > **Revisão da arte** dos componentes a partir de capturas reais do programa (15/11/2026).
 
+Registro histórico das rodadas abaixo. Não é uma certificação visual de todas as peças da 0.36.0.
+As imagens em `build/` são artefatos locais; podem precisar ser geradas novamente.
+
 Rodada inicial: 15/11/2026, base v0.27.0. Capturas reais do aplicativo, nao mockups.
 Comando: ./tools/capture-components.ps1 -Destination build/component-review/before
 Foram geradas 36 imagens: 18 tipos nao-DIP em dois temas, zoom 7x (breadboard 1.8x).

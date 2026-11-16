@@ -609,3 +609,13 @@ Drafts precisam ser localizados pela CLI e consultados por ID: endpoint releases
 rascunhos. README aponta para releases; VERSIONAMENTO passa a incluir a publicação explícita.
 Não há workflow automático por tag. Não fabricar binários históricos sem teste; próxima versão
 segue build/testes, integração/tag e publish-release. Sem assinatura digital ou validação em VM.
+
+## Revisão dos documentos - 16/11/2026
+README reduzido de 166 para 40 linhas, com frases curtas e links para os detalhes.
+Compilação foi para COMPILAR.md; docs/README.md indexa todos os documentos e distingue guias,
+requisitos e registros históricos. Roadmap e catálogo revistos para 0.36.0: 58 tipos de peça,
+formato 28, placas, idiomas e distribuição experimental. Não marcar critérios parciais como completos.
+Guia corrigido: aba Chips, desagrupar, diretórios dos saves, instrumentos, teclas N/B e duplo clique
+de gerador/relé conforme app_input. Revisões antigas preservadas com escopo/data explícitos.
+Verificação documental: 19 arquivos Markdown, 47 links locais válidos e índice completo;
+contagens e controles conferidos no código. Somente documentação alterada; sem repetir build.
