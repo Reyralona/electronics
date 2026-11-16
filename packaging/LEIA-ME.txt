@@ -1,19 +1,20 @@
 Bancada - Windows x64 (experimental)
 
-ZIP: extraia a pasta inteira e abra bancada.exe. Nao mova apenas o executavel.
-Projetos e chips ficam em saves/ e blocks/ ao lado do executavel no modo ZIP.
-Instalador: instala somente para voce, sem administrador. Dados ficam em
-%APPDATA%\Bancada\Bancada e sao preservados pela desinstalacao.
+ZIP: extraia a pasta inteira e abra bancada.exe. Não mova apenas o executável.
+Projetos e chips ficam em saves/ e blocks/ ao lado do executável no modo ZIP.
+Instalador: instala somente para você, sem administrador. Dados ficam em
+%APPDATA%\Bancada\Bancada e são preservados pela desinstalação.
 
 O programa funciona sem instalar MSYS2, GCC ou ngspice separadamente.
-Modelos eletricos didaticos; nao usar para dimensionar circuitos reais.
-Esta versao nao tem assinatura digital. SHA256SUMS permite conferir integridade,
-mas nao substitui a autenticacao do editor. Baixe apenas do repositorio oficial:
+Modelos elétricos didáticos; não usar para dimensionar circuitos reais.
+Esta versão não tem assinatura digital. SHA256SUMS permite conferir integridade,
+mas não substitui a autenticação do editor. Baixe apenas do repositório oficial:
 https://github.com/Reyralona/electronics
 
-LICENSE: GPLv3 da Bancada. licenses/: licencas das dependencias.
-O arquivo Bancada-VERSAO-sources.zip deve acompanhar os downloads binarios na
-mesma pagina: codigo da Bancada e fontes/receitas correspondentes das dependencias.
-dependencies.lock.json: versoes, origens e hashes fixados. GCC runtime usa a
-excecao de runtime documentada em licenses/gcc-libs; origem em sourceUrl.
-Guia: docs/GUIA.md. Nao ha atualizacao automatica.
+LICENSE: GPLv3 da Bancada. licenses/: licenças das dependências.
+O arquivo Bancada-VERSAO-sources.zip deve acompanhar os downloads binários na
+mesma página: código da Bancada e fontes/receitas correspondentes das dependências.
+dependencies.lock.json: versões, origens e hashes fixados. GCC runtime usa a
+exceção de runtime documentada em licenses/gcc-libs; origem em sourceUrl.
+build-info.json: versão, commit e ferramentas usados na compilação.
+Guia: docs/GUIA.md. Não há atualização automática.

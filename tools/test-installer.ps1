@@ -10,7 +10,7 @@ $productKey = 'Bancada-PackageTest-' + [guid]::NewGuid().ToString('N')
 $registry = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$productKey"
 $destination = Join-Path $Work 'Installed app with spaces'
 $installer = Join-Path $Work 'test-setup.exe'
-& makensis "-DPAYLOAD=$Stage" "-DOUTPUT=$installer" "-DVERSION=$Version" "-DDELETE_MANIFEST=$Manifest" "-DPRODUCT_KEY=$productKey" packaging/Bancada.nsi | Select-Object -Last 4
+& makensis -WX "-DPAYLOAD=$Stage" "-DOUTPUT=$installer" "-DVERSION=$Version" "-DDELETE_MANIFEST=$Manifest" "-DPRODUCT_KEY=$productKey" packaging/Bancada.nsi | Select-Object -Last 4
 if ($LASTEXITCODE -ne 0) { throw 'Cannot build isolated installer test' }
 function Run-Installer($file, $arguments) {
     $process = Start-Process -FilePath $file -ArgumentList $arguments -WindowStyle Hidden -PassThru
@@ -24,6 +24,9 @@ try {
     Run-Installer $installer @('/S', "/D=$destination")
     if (!(Test-Path $registry) -or !(Test-Path "$destination/installed.mode") -or (Test-Path "$destination/portable.mode")) {
         throw 'Installed mode or per-user registration missing'
+    }
+    if ((Get-ItemProperty $registry).UninstallString -ne ('"' + $destination.Replace('/', '\') + '\Uninstall.exe"')) {
+        throw 'Uninstaller command must quote the complete path'
     }
     & "$PSScriptRoot/test-package.ps1" -Package $destination -TestBuild $TestBuild
     # Simulate a file added by a person. The uninstaller must remove only shipped files.

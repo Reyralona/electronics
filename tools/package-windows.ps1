@@ -11,6 +11,9 @@ try {
     }
     if (!(Test-Path $tar)) { throw "Missing tool: $tar" }
     $version = (Get-Content VERSION -Raw).Trim()
+    if ((git status --porcelain --untracked-files=normal)) {
+        throw 'Commit the reviewed source before producing distributable artifacts.'
+    }
     $lock = Get-Content packaging/dependencies.lock.json -Raw | ConvertFrom-Json
     $run = Join-Path $repo ('build/package-' + [guid]::NewGuid().ToString('N'))
     $runtime = Join-Path $run 'runtime'
@@ -46,6 +49,14 @@ try {
     Copy-Item packaging/dependencies.lock.json (Join-Path $payload 'dependencies.lock.json')
     Copy-Item LICENSE (Join-Path $payload 'LICENSE')
     Copy-Item README.md (Join-Path $payload 'README.md')
+    [ordered]@{
+        version = $version
+        commit = (git rev-parse HEAD)
+        compiler = (& gcc -dumpfullversion)
+        cmake = (& cmake --version | Select-Object -First 1)
+        installer = (& makensis -VERSION)
+        signed = $false
+    } | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $payload 'build-info.json')
     Copy-Item docs (Join-Path $payload 'docs') -Recurse
     Copy-Item (Join-Path $runtime 'ucrt64/share/licenses') (Join-Path $payload 'licenses') -Recurse
     # FFTW's GPL text is in its matching source archive rather than share/licenses.
@@ -123,7 +134,7 @@ try {
     # Ship the exact application source alongside dependency sources.
     & git archive --format=zip "--output=$sourceDir/Bancada-source.zip" HEAD
     if ($LASTEXITCODE -ne 0) { throw 'Cannot create corresponding application source' }
-    if ((git status --porcelain --untracked-files=no)) {
+    if ((git status --porcelain --untracked-files=normal)) {
         throw 'Commit the reviewed source before producing distributable artifacts.'
     }
     Compress-Archive -Path "$sourceDir/*" -DestinationPath (Join-Path $output "Bancada-$version-sources.zip") -Force
@@ -145,7 +156,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'ZIP packaging failed' }
     } finally { Pop-Location }
     $installer = Join-Path $output "Bancada-$version-windows-x64-setup.exe"
-    & makensis "-DPAYLOAD=$stage" "-DOUTPUT=$installer" "-DVERSION=$version" "-DDELETE_MANIFEST=$manifest" packaging/Bancada.nsi
+    & makensis -WX "-DPAYLOAD=$stage" "-DOUTPUT=$installer" "-DVERSION=$version" "-DDELETE_MANIFEST=$manifest" packaging/Bancada.nsi
     if ($LASTEXITCODE -ne 0) { throw 'NSIS packaging failed' }
     if (!$SkipTests) {
         & "$PSScriptRoot/test-installer.ps1" -Stage $stage -Manifest $manifest -TestBuild $cmakeBuild -Work $run -Version $version
