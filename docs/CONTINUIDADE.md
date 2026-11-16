@@ -619,3 +619,20 @@ Guia corrigido: aba Chips, desagrupar, diretórios dos saves, instrumentos, tecl
 de gerador/relé conforme app_input. Revisões antigas preservadas com escopo/data explícitos.
 Verificação documental: 19 arquivos Markdown, 47 links locais válidos e índice completo;
 contagens e controles conferidos no código. Somente documentação alterada; sem repetir build.
+
+## Rotação de chips e contato universal - 0.37.0 (16/11/2026)
+R agora gira o pacote em quartos de volta, sem girar a montagem interna. BenchGroup.rotation é
+persistido no formato 29; arquivos antigos usam zero. Corpo, portas, hit testing e fios usam a
+mesma transformação. Nome fica legível na tela. Clipboard, snapshots e editor preservam o pacote.
+Geometria básica dos grupos saiu de workbench_pack para o modelo em commit de refatoração separado.
+Contatos no mesmo grupo usam a geometria interna. Entre grupos ou com peças externas, somente
+portas expostas usam a posição visível; membros ocultos não criam ligações externas acidentais.
+Breadboards participam em ambas as direções, inclusive no mapa de nós e na detecção de topologia.
+Encaixe ao arrastar/colocar aceita portas de chips; separar desfaz o contato sem criar fios ocultos.
+Regressões novas falharam antes: R bloqueado em app_commands e origem breadboard ignorada no modelo.
+test_terminal_contacts cobre cada terminal dos 58 tipos, chip/chip, quatro orientações, salvar/reabrir
+e um LED com interruptores externo/interno em série no ngspice. Opostos: abrir qualquer interruptor,
+separar contatos e sobrepor apenas geometria oculta não alimentam o LED/não criam nó externo.
+Autoteste GUI tem 198 fases; as últimas selecionam/giram, encaixam, afastam, reconectam e desfazem/refazem.
+Captura revisada: build/chip-rotated-final.bmp. Pacote 0.37.0 passou nos testes de realocação, solver,
+interface, instalação/desinstalação e preservação de arquivo extra. Não marcar a meta 1.0 como atendida.

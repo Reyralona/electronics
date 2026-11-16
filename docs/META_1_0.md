@@ -2,9 +2,10 @@
 
 > **Critérios para a versão 1.0.** As notas de incremento abaixo registram o estado de cada data; a lista consolidada do que falta está em [ROADMAP_1_0.md](ROADMAP_1_0.md).
 
-Estado em 16/11/2026 (0.36.0): 58 tipos de peça, simulação contínua por contexto,
+Estado em 16/11/2026 (0.37.0): 58 tipos de peça, simulação contínua por contexto,
 editor isolado de chips, placas programáveis e pacotes Windows experimentais publicados.
 Isso não encerra os critérios abaixo. Ainda há limites fixos, modelos parciais e lacunas de instrumentação.
+Chips giram por `R`; portas expostas e terminais comuns conectam por contato direto.
 
 Pedido de 14/11/2026: continuar até uma versão 1.0 com catálogo abrangente de componentes interoperáveis, inspirado no Tinkercad, sem declarar concluído um simulador que apenas verifica conectividade.
 
