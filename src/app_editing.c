@@ -1,5 +1,6 @@
 #include "bench_scope.h"
 #include "app_editing.h"
+#include "app_settings.h"
 #include "workbench_file.h"
 #include <direct.h>
 #include <errno.h>
@@ -147,10 +148,7 @@ void app_projects_save(AppState *app)
         app->status = app->selection_status;
         return;
     }
-    WorkbenchSettings settings = {app->show_grid,     app->show_handles,   app->round_wires,
-                                  app->show_current,  app->wire_color,     app->probe_pin,
-                                  app->probe_current, app->transient_step, app->transient_stop,
-                                  app->grid_spacing, app->snap_grid, app->snap_board, app->dark_theme, app->gui_font_size};
+    WorkbenchSettings settings = app_settings_capture(app);
     slot_path(app, app->save_slot, path, sizeof(path));
     int saved = workbench_save_project(path, &app->bench, &settings);
     snprintf(app->selection_status, sizeof(app->selection_status),
@@ -181,20 +179,7 @@ void app_projects_load(AppState *app)
     spice_job_request_reset(&app->dc_job);
     reset_interaction(app);
     bench_selection_clear(&app->selection);
-    app->show_grid = settings.show_grid;
-    app->show_handles = settings.show_handles;
-    app->round_wires = settings.round_wires;
-    app->show_current = settings.show_current;
-    app->wire_color = settings.wire_color;
-    app->probe_pin = settings.probe_pin;
-    app->probe_current = settings.probe_current;
-    app->transient_step = settings.transient_step;
-    app->transient_stop = settings.transient_stop;
-        app->grid_spacing = settings.grid_spacing;
-        app->snap_grid = settings.snap_grid;
-        app->snap_board = settings.snap_board;
-        app->dark_theme = settings.dark_theme;
-        app->gui_font_size = settings.gui_font_size;
+    app_settings_apply_all(app, &settings);
     sim_state_clear_result(&app->sim);
     memset(app->leds, 0, sizeof(app->leds));
     app->projects_open = 0;

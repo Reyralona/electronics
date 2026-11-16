@@ -1,6 +1,7 @@
 #include "bench_scope.h"
 #include "app_editor.h"
 #include "app_packing.h"
+#include "app_layout.h"
 #include "workbench_group_edit.h"
 #include "workbench_group_name.h"
 #include "workbench_pack.h"
@@ -296,40 +297,39 @@ int app_editor_click(AppState *app, SDL_Window *window, float x, float y)
 {
     if (app->editor_confirm_close)
     {
-        if (y >= 370 && y < 415)
+        int choice = app_layout_confirm_button_at(x, y);
+        if (choice >= 0)
+            app_editor_confirm(app, choice);
+        return 1;
+    }
+    if (app->editor_parent)
+    {
+        switch (app_layout_editor_header_at(x, y))
         {
-            if (x >= 360 && x < 540)
-                app_editor_confirm(app, 0);
-            else if (x >= 550 && x < 730)
-                app_editor_confirm(app, 1);
-            else if (x >= 740 && x < 920)
-                app_editor_confirm(app, 2);
-        }
-        return 1;
-    }
-    if (app->editor_parent && y < 68)
-    {
-        if (x >= 350 && x < 490)
+        case APP_EDITOR_APPLY:
             app_editor_apply(app);
-        else if (x >= 500 && x < 680)
+            return 1;
+        case APP_EDITOR_RENAME:
             app_editor_begin_name(app, window);
-        else if (x >= 700 && x < 850)
+            return 1;
+        case APP_EDITOR_SAVE:
             app_editor_save(app);
-        else if (x >= 880 && x < 1030)
+            return 1;
+        case APP_EDITOR_BACK:
             app_editor_request_close(app, 0);
-        else
-            return 0;
-        return 1;
+            return 1;
+        default:
+            break;
+        }
+        /* The editor header replaces the bench header; its free space must not reach bench actions. */
+        return y < APP_HEADER_HEIGHT && x < app_layout_header(APP_HEADER_PLAY).x;
     }
-    if (!app->editor_parent && app->selected >= 0 && app->bench.parts[app->selected].group && y >= 116 && y < 145)
-    {
-        if (x >= 850 && x < 1044)
-            app->editor_open_requested = 1;
-        else if (x >= 1050 && x < 1244)
-            app_editor_begin_name(app, window);
-        else
-            return 0;
-        return 1;
-    }
-    return 0;
+    if (app->selected < 0 || !app->bench.parts[app->selected].group)
+        return 0;
+    int button = app_layout_group_button_at(x, y);
+    if (button == 0)
+        app->editor_open_requested = 1;
+    else if (button == 1)
+        app_editor_begin_name(app, window);
+    return button >= 0;
 }

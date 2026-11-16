@@ -1,5 +1,6 @@
 #include "bench_scope.h"
 #include "app_commands.h"
+#include "app_settings.h"
 #include "app_editor.h"
 #include "app_editing.h"
 #include "app_packing.h"
@@ -302,10 +303,7 @@ static void command_scale_value(AppState *app, SDL_Keycode key)
 
 static void command_save(AppState *app)
 {
-    WorkbenchSettings saved = {app->show_grid,     app->show_handles,   app->round_wires,
-                               app->show_current,  app->wire_color,     app->probe_pin,
-                               app->probe_current, app->transient_step, app->transient_stop,
-                                  app->grid_spacing, app->snap_grid, app->snap_board, app->dark_theme, app->gui_font_size};
+    WorkbenchSettings saved = app_settings_capture(app);
     app->status =
         workbench_save_project(app->selftest ? "build/gui-settings-test.elec" : "bancada.elec", &app->bench, &saved)
             ? "Salvo em bancada.elec."
@@ -334,20 +332,7 @@ static void command_load(AppState *app)
         app->drag_lead.component = -1;
         app->pending.component = -1;
         app->route_count = 0;
-        app->show_grid = saved.show_grid;
-        app->show_handles = saved.show_handles;
-        app->round_wires = saved.round_wires;
-        app->show_current = saved.show_current;
-        app->wire_color = saved.wire_color;
-        app->probe_pin = saved.probe_pin;
-        app->probe_current = saved.probe_current;
-        app->transient_step = saved.transient_step;
-        app->transient_stop = saved.transient_stop;
-        app->grid_spacing = saved.grid_spacing;
-        app->snap_grid = saved.snap_grid;
-        app->snap_board = saved.snap_board;
-        app->dark_theme = saved.dark_theme;
-        app->gui_font_size = saved.gui_font_size;
+        app_settings_apply_all(app, &saved);
         sim_state_clear_result(&app->sim);
         memset(app->leds, 0, sizeof(app->leds));
         bench_simulate(&app->bench, app->leds);

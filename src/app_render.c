@@ -945,7 +945,7 @@ static void burnt_draw(GLuint font, const Part *part, Uint64 ticks)
 static void play_button_draw(GLuint font, int running, int busy, int failed, int burnt_count)
 {
     const char *label;
-    float x = PLAY_BUTTON_X, cx = x + 22, cy = 34;
+    float x = app_layout_header(APP_HEADER_PLAY).x, cx = x + 22, cy = 34;
     if (!running)
     {
         label = "PAUSADO";
@@ -1733,9 +1733,9 @@ static void draw_inspector(const AppState *app, GLuint font)
         if (part->type != PART_BREADBOARD)
         {
             color(.86f, .91f, .95f);
-            rect(ROTATE_BUTTON_X, 86, 72, 26);
+            rect(app_layout_inspector_rotate().x, 86, 72, 26);
             color(.12f, .34f, .52f);
-            text(font, ROTATE_BUTTON_X + 8, 105, "Girar");
+            text(font, app_layout_inspector_rotate().x + 8, 105, "Girar");
         }
         if (app->sim.burnt[app->selected])
         {

@@ -10,6 +10,7 @@
 #include "app_packing.h"
 #include "workbench_pack.h"
 #include "app_layout.h"
+#include "app_settings.h"
 #include "app_palette.h"
 #include "workbench_file.h"
 #include "workbench_examples.h"
@@ -209,7 +210,7 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         {
             double step = app->transient_step, stop = app->transient_stop;
             int parsed = bench_parse_value(app->edit_text, &value);
-            if (parsed && app->editing == WORKBENCH_MAX_COMPONENTS)
+            if (parsed && app->editing == APP_EDIT_STEP)
                 step = value;
             else if (parsed)
                 stop = value;
@@ -389,113 +390,121 @@ static void input_pan(AppState *app, SDL_Window *window, const SDL_Event *event)
     }
 }
 
-static void input_settings(AppState *app, SDL_Window *window, float x, float y)
+static void start_settings_edit(AppState *app, SDL_Window *window, int target, double value)
 {
-    if (x >= 260 && x < 800)
+    if (!SDL_StartTextInput(window))
+        return;
+    app->editing = target;
+    snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", value);
+}
+
+static void choose_wire_color(AppState *app, int chosen)
+{
+    app->wire_color = chosen;
+    int selected = app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count;
+    if (!selected || app->bench.wires[app->selected_wire].color == chosen)
     {
-        if (y >= 410 && y < 450)
-        {
-            if (x >= 500 && x < 540 && app->gui_font_size > 12)
-                --app->gui_font_size;
-            else if (x >= 550 && x < 590 && app->gui_font_size < 20)
-                ++app->gui_font_size;
-            return;
-        }
-        if (y >= 340 && y < 385)
-        {
-            app->dark_theme = !app->dark_theme;
-            return;
-        }
-        if (y >= 130 && y < 170)
-            app->snap_grid = !app->snap_grid;
-        else if (y >= 170 && y < 210 && SDL_StartTextInput(window))
-        {
-            app->editing = APP_EDIT_GRID;
-            snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", app->grid_spacing);
-        }
-        else if (y >= 210 && y < 250)
-            app->snap_board = !app->snap_board;
+        app->status = "Cor dos próximos fios selecionada.";
         return;
     }
-    if (x > 850 && x < 1240)
+    bench_history_record(app->history, &app->bench);
+    bench_set_wire_color(&app->bench, app->selected_wire, chosen);
+    app->status = "Cor do fio selecionado alterada.";
+}
+
+static void toggle_wire_current(AppState *app)
+{
+    app->show_current = !app->show_current;
+    if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace.measures_wires)
+        app->status = "Selecione um fio e pressione T para medir sua corrente transitória.";
+}
+
+static void cycle_probe_pin(AppState *app)
+{
+    const int quad_gate_pins = 14, default_pins = 3;
+    int quad = app->selected >= 0 && component_has_flag(app->bench.parts[app->selected].type, COMPONENT_QUAD_GATE);
+    app->probe_pin = (app->probe_pin + 1) % (quad ? quad_gate_pins : default_pins);
+}
+
+static void input_settings(AppState *app, SDL_Window *window, float x, float y)
+{
+    int swatch = app_layout_wire_swatch_at(x, y);
+    if (swatch >= 0 && swatch < WIRE_COLOR_COUNT)
     {
-        if (y >= 120 && y < 160)
-            app->show_grid = !app->show_grid;
-        else if (y >= 160 && y < 200)
-            app->show_handles = !app->show_handles;
-        else if (y >= 200 && y < 240)
-            app->round_wires = !app->round_wires;
-        else if (y >= 240 && y < 280)
-        {
-            app->show_current = !app->show_current;
-            if (app->show_current && sim_state_has_result(&app->sim, SIM_RESULT_TRACE) &&
-                !app->sim.trace.measures_wires)
-                app->status = "Pressione T para medir correntes transitorias dos fios.";
-            else if (app->show_current && !app->sim.dc_wire_valid && !sim_state_has_result(&app->sim, SIM_RESULT_TRACE))
-                app->status = "Pressione P ou T para medir correntes dos fios.";
-        }
-        else if (y >= 354 && y < 390)
-            app->probe_current = !app->probe_current;
-        else if (y >= 390 && y < 425)
-            app->probe_pin = (app->probe_pin + 1) %
-                             ((app->selected >= 0 && component_has_flag(app->bench.parts[app->selected].type, COMPONENT_QUAD_GATE)) ? 14 : 3);
-        else if (y >= 430 && y < 465)
-        {
-            if (SDL_StartTextInput(window))
-            {
-                app->editing = WORKBENCH_MAX_COMPONENTS;
-                snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", app->transient_step);
-            }
-        }
-        else if (y >= 470 && y < 505)
-        {
-            if (SDL_StartTextInput(window))
-            {
-                app->editing = WORKBENCH_MAX_COMPONENTS + 1;
-                snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", app->transient_stop);
-            }
-        }
-        else if (y >= 320 && y < 352 && x >= 860 && x < 1160)
-        {
-            int chosen = (int)((x - 860) / 50);
-            if (chosen >= 0 && chosen < WIRE_COLOR_COUNT)
-            {
-                app->wire_color = chosen;
-                if (app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count &&
-                    app->bench.wires[app->selected_wire].color != chosen)
-                {
-                    bench_history_record(app->history, &app->bench);
-                    bench_set_wire_color(&app->bench, app->selected_wire, chosen);
-                    app->status = "Cor do fio selecionado alterada.";
-                }
-                else
-                    app->status = "Cor dos proximos fios selecionada.";
-            }
-        }
+        choose_wire_color(app, swatch);
+        return;
+    }
+    switch (app_layout_setting_at(x, y))
+    {
+    case APP_SETTING_DARK_THEME:
+        app->dark_theme = !app->dark_theme;
+        break;
+    case APP_SETTING_FONT_SMALLER:
+        if (app->gui_font_size > APP_FONT_MIN)
+            --app->gui_font_size;
+        break;
+    case APP_SETTING_FONT_LARGER:
+        if (app->gui_font_size < APP_FONT_MAX)
+            ++app->gui_font_size;
+        break;
+    case APP_SETTING_SHOW_GRID:
+        app->show_grid = !app->show_grid;
+        break;
+    case APP_SETTING_ROUND_WIRES:
+        app->round_wires = !app->round_wires;
+        break;
+    case APP_SETTING_HANDLES:
+        app->show_handles = !app->show_handles;
+        break;
+    case APP_SETTING_SNAP_GRID:
+        app->snap_grid = !app->snap_grid;
+        break;
+    case APP_SETTING_GRID_SPACING:
+        start_settings_edit(app, window, APP_EDIT_GRID, app->grid_spacing);
+        break;
+    case APP_SETTING_SNAP_BOARD:
+        app->snap_board = !app->snap_board;
+        break;
+    case APP_SETTING_SHOW_CURRENT:
+        toggle_wire_current(app);
+        break;
+    case APP_SETTING_PROBE_MEASURE:
+        app->probe_current = !app->probe_current;
+        break;
+    case APP_SETTING_PROBE_PIN:
+        cycle_probe_pin(app);
+        break;
+    case APP_SETTING_STEP:
+        start_settings_edit(app, window, APP_EDIT_STEP, app->transient_step);
+        break;
+    case APP_SETTING_STOP:
+        start_settings_edit(app, window, APP_EDIT_STOP, app->transient_stop);
+        break;
+    case APP_SETTING_RESET:
+        app_settings_reset(app);
+        app->status = "Configurações restauradas para o padrão.";
+        break;
+    case APP_SETTING_CLOSE:
+        app->settings = 0;
+        break;
+    default:
+        break;
     }
 }
 
 static int input_projects(AppState *app, float x, float y)
 {
-    if (x >= 500 && x < 680 && y < 68)
-    {
-        app_editing_key(app, SDLK_F3, 0);
-        return 1;
-    }
     if (!app->projects_open)
         return 0;
-    if (x >= 330 && x < 930 && y >= 200 && y < 470)
-    {
-        int column = (int)((x - 330) / 200), row = (int)((y - 200) / 90);
-        app->save_slot = row * 3 + column;
-    }
-    if (y >= 500 && y < 545)
-    {
-        if (x >= 340 && x < 590)
-            app_projects_save(app);
-        else if (x >= 640 && x < 890)
-            app_projects_load(app);
-    }
+    int slot = app_layout_project_slot_at(x, y);
+    if (slot >= 0)
+        app->save_slot = slot;
+    else if (app_rect_contains(app_layout_project_save(), x, y))
+        app_projects_save(app);
+    else if (app_rect_contains(app_layout_project_load(), x, y))
+        app_projects_load(app);
+    else if (app_rect_contains(app_layout_project_close(), x, y))
+        app->projects_open = 0;
     return 1;
 }
 
@@ -503,128 +512,155 @@ static void input_environment_position(AppState *app, float x)
 {
     if (app->dragging_environment < 0 || app->dragging_environment >= app->bench.part_count)
         return;
-    double position = fmin(1, fmax(0, (x - 850) / 330.0));
-    bench_set_control(&app->bench, app->dragging_environment, position);
+    bench_set_control(&app->bench, app->dragging_environment, app_layout_environment_position(x));
 }
 
-static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
+static void push_shortcut(SDL_Keycode key)
 {
-    if (!app->settings && !app->projects_open && app->selected >= 0 &&
-        !app->bench.parts[app->selected].group && component_environment(app->bench.parts[app->selected].type) &&
-        x >= 840 && x <= 1190 && y >= 245 && y <= 278)
+    SDL_Event shortcut = {0};
+    shortcut.type = SDL_EVENT_KEY_DOWN;
+    shortcut.key.key = key;
+    SDL_PushEvent(&shortcut);
+}
+
+static int selected_plain_part(const AppState *app)
+{
+    return !app->settings && !app->projects_open && app->selected >= 0 && !app->bench.parts[app->selected].group;
+}
+
+static int input_click_environment(AppState *app, float x, float y)
+{
+    if (!selected_plain_part(app) || !component_environment(app->bench.parts[app->selected].type) ||
+        !app_rect_contains(app_layout_environment_slider(), x, y))
+        return 0;
+    if (!bench_history_record(app->history, &app->bench))
     {
-        if (!bench_history_record(app->history, &app->bench))
-        {
-            app->status = "Historico indisponivel; ambiente preservado.";
-            return 1;
-        }
-        app->dragging_environment = app->selected;
-        input_environment_position(app, x);
-        app->status = "Arraste para simular o ambiente. Ctrl+Z desfaz; o projeto salva o controle.";
+        app->status = "Histórico indisponível; ambiente preservado.";
         return 1;
     }
-    if (app_editor_click(app, window, x, y))
-        return 1;
-    if (!app->settings && !app->projects_open && app->selected >= 0 &&
-        !app->bench.parts[app->selected].group && x >= 850 && x < 1180 && y >= 154 && y < 182)
+    app->dragging_environment = app->selected;
+    input_environment_position(app, x);
+    app->status = "Arraste para simular o ambiente. Ctrl+Z desfaz; o projeto salva o controle.";
+    return 1;
+}
+
+static int input_click_inspector(AppState *app, SDL_Window *window, float x, float y)
+{
+    if (!selected_plain_part(app))
+        return 0;
+    const Part *part = &app->bench.parts[app->selected];
+    if (app_rect_contains(app_layout_inspector_scale(), x, y))
     {
-        if (SDL_StartTextInput(window))
-        {
-            app->editing = APP_EDIT_SCALE;
-            snprintf(app->edit_text, sizeof(app->edit_text), "%.6g", bench_part_scale(&app->bench.parts[app->selected]) * 100);
-        }
+        start_settings_edit(app, window, APP_EDIT_SCALE, bench_part_scale(part) * 100);
         return 1;
     }
-    if (input_projects(app, x, y))
-        return 1;
-    if (x >= 700 && x < 850 && y < 68)
+    if (app_rect_contains(app_layout_inspector_value(), x, y))
     {
-        SDL_Event shortcut = {0};
-        shortcut.type = SDL_EVENT_KEY_DOWN;
-        shortcut.key.key = SDLK_F2;
-        SDL_PushEvent(&shortcut);
+        push_shortcut(SDLK_E);
         return 1;
     }
-    if (x >= 880 && x < 1030 && y < 68)
+    if (part->type != PART_BREADBOARD && app_rect_contains(app_layout_inspector_rotate(), x, y))
     {
+        push_shortcut(SDLK_R);
+        return 1;
+    }
+    return 0;
+}
+
+static int input_click_header(AppState *app, float x, float y)
+{
+    switch (app_layout_header_at(x, y))
+    {
+    case APP_HEADER_PROJECTS:
+        app_editing_key(app, SDLK_F3, 0);
+        return 1;
+    case APP_HEADER_EXAMPLES:
+        push_shortcut(SDLK_F2);
+        return 1;
+    case APP_HEADER_SETTINGS:
         app->settings = !app->settings;
+        app->projects_open = 0;
         app->dragging = -1;
         app->drag_wire = -1;
         return 1;
-    }
-    if (x >= PLAY_BUTTON_X && y < 68)
-    {
-        SDL_Event shortcut = {0};
-        shortcut.type = SDL_EVENT_KEY_DOWN;
-        shortcut.key.key = SDLK_SPACE;
-        SDL_PushEvent(&shortcut);
+    case APP_HEADER_PLAY:
+        push_shortcut(SDLK_SPACE);
         return 1;
+    default:
+        return 0;
     }
-    if (!app->settings && app->selected >= 0 && app->bench.parts[app->selected].type != PART_BREADBOARD &&
-        x >= ROTATE_BUTTON_X && x < ROTATE_BUTTON_X + 72 && y >= 86 && y < 112)
+}
+
+static int input_click_trace(AppState *app, float x, float y)
+{
+    if (!sim_state_has_result(&app->sim, SIM_RESULT_TRACE) || !app->show_trace || x < 840 || x > 1240 || y < 384 ||
+        y > 628)
+        return 0;
+    if (x >= 918 && x <= 1220 && y >= 431 && y <= 565)
     {
-        SDL_Event shortcut = {0};
-        shortcut.type = SDL_EVENT_KEY_DOWN;
-        shortcut.key.key = SDLK_R;
-        SDL_PushEvent(&shortcut);
-        return 1;
+        app->sim.trace_index = spice_trace_nearest(&app->sim.trace, (x - 918) / 302.0);
+        app->sim.sim_running = 0;
+        const char *format = "Tensão: t=%.6g s; V=%.6g V (%d/%d).";
+        if (app->sim.trace_current == 2)
+            format = "Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).";
+        else if (app->sim.trace_current)
+            format = "Corrente terminal 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).";
+        snprintf(app->sim.trace_status, sizeof(app->sim.trace_status), format,
+                 app->sim.trace.samples[app->sim.trace_index].time,
+                 app->sim.trace.samples[app->sim.trace_index].value, app->sim.trace_index + 1, app->sim.trace.count);
+        app->status = app->sim.trace_status;
     }
-    if (app->settings)
+    return 1;
+}
+
+static int input_click_palette(AppState *app, float x, float y)
+{
+    int tab = app_layout_palette_tab_at(x, y);
+    if (tab >= 0)
     {
-        input_settings(app, window, x, y);
-        return 1;
-    }
-    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace && x >= 840 && x <= 1240 && y >= 384 &&
-        y <= 628)
-    {
-        if (x >= 918 && x <= 1220 && y >= 431 && y <= 565)
-        {
-            app->sim.trace_index = spice_trace_nearest(&app->sim.trace, (x - 918) / 302.0);
-            app->sim.sim_running = 0;
-            const char *format = "Tensao: t=%.6g s; V=%.6g V (%d/%d).";
-            if (app->sim.trace_current == 2)
-                format = "Corrente fio A -> B: t=%.6g s; I=%.6g A (%d/%d).";
-            else if (app->sim.trace_current)
-                format = "Corrente pino 1 -> 2: t=%.6g s; I=%.6g A (%d/%d).";
-            snprintf(app->sim.trace_status, sizeof(app->sim.trace_status), format,
-                     app->sim.trace.samples[app->sim.trace_index].time,
-                     app->sim.trace.samples[app->sim.trace_index].value, app->sim.trace_index + 1,
-                     app->sim.trace.count);
-            app->status = app->sim.trace_status;
-        }
-        return 1;
-    }
-    if (x < 220 && y >= 80 && y < 125)
-    {
-        app->palette_page = 2;
-        if (x < 78)
-            app->palette_page = 0;
-        else if (x < 148)
-            app->palette_page = 1;
+        app->palette_page = tab;
         app->placing = -1;
         app->palette_offset = 0;
         app->packed_placing = 0;
         app_packing_refresh(app);
         return 1;
     }
-    if (x < 220 && y >= 140 && y < 716)
+    if (x >= APP_PALETTE_WIDTH || y < APP_HEADER_HEIGHT)
+        return 0;
+    int slot = app_layout_palette_item_at(x, y);
+    if (slot < 0)
+        return 1;
+    if (app->palette_page == 2)
     {
-        int item = (int)((y - 140) / 72);
-        if (item < (app->palette_page ? 8 : 8))
-        {
-            if (app->palette_page == 2)
-            {
-                app_packing_choose(app, item);
-                return 1;
-            }
-            app->packed_placing = 0;
-            app->placing = palette_part(app->palette_page, item + app->palette_offset);
-            app->pending.component = -1;
-            app->status = "Clique na bancada para posicionar.";
-        }
+        app_packing_choose(app, slot);
         return 1;
     }
-    return 0;
+    int item = slot + app->palette_offset;
+    if (item >= palette_count(app->palette_page))
+        return 1;
+    app->packed_placing = 0;
+    app->placing = palette_part(app->palette_page, item);
+    app->pending.component = -1;
+    app->status = "Clique na bancada para posicionar.";
+    return 1;
+}
+
+static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
+{
+    if (input_click_environment(app, x, y))
+        return 1;
+    if (app_editor_click(app, window, x, y))
+        return 1;
+    if (input_click_inspector(app, window, x, y))
+        return 1;
+    if (input_click_header(app, x, y) || input_projects(app, x, y))
+        return 1;
+    if (app->settings)
+    {
+        input_settings(app, window, x, y);
+        return 1;
+    }
+    return input_click_trace(app, x, y) || input_click_palette(app, x, y);
 }
 
 static int input_click_knee(AppState *app, float x, float y, int clicks)

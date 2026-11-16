@@ -6,6 +6,7 @@
 #include "workbench_examples.h"
 #include "workbench_pack.h"
 #include "spice_trace.h"
+#include "app_layout.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -551,15 +552,36 @@ int dev_scenario_analyze(AppState *app, char **argv)
     return 0;
 }
 
+static int click_rect(SDL_Window *window, AppRect rect)
+{
+    return dev_test_click(window, app_rect_center_x(rect), app_rect_center_y(rect));
+}
+
+static int click_palette(SDL_Window *window, int slot)
+{
+    return click_rect(window, app_layout_palette_item(slot));
+}
+
+static int click_setting(SDL_Window *window, AppSetting setting)
+{
+    return click_rect(window, app_layout_setting(setting));
+}
+
+static float slider_x(double position)
+{
+    AppRect track = app_layout_environment_track();
+    return track.x + (float)(track.w * position);
+}
+
 void dev_scenario_queue(AppState *app, SDL_Window *window)
 {
 
     SDL_SetModState(SDL_KMOD_NONE);
     int queued = 1;
     if (app->selftest_phase == 0)
-        queued = dev_test_click(window, 50, 150) && dev_test_click(window, 400, 250);
+        queued = click_palette(window, 0) && dev_test_click(window, 400, 250);
     else if (app->selftest_phase == 1)
-        queued = dev_test_click(window, 50, 438) && dev_test_click(window, 600, 250);
+        queued = click_palette(window, 4) && dev_test_click(window, 600, 250);
     else if (app->selftest_phase == 2)
         queued =
             dev_test_click(window, 351, 250) && dev_test_click(window, 450, 180) && dev_test_click(window, 551, 250);
@@ -596,9 +618,9 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 18)
         queued = dev_test_key(window, SDLK_HOME);
     else if (app->selftest_phase == 19)
-        queued = dev_test_click(window, 50, 366) && dev_test_click(window, 850, 430);
+        queued = click_palette(window, 3) && dev_test_click(window, 850, 430);
     else if (app->selftest_phase == 20)
-        queued = dev_test_click(window, 50, 438) && dev_test_click(window, 838, 377);
+        queued = click_palette(window, 4) && dev_test_click(window, 838, 377);
     else if (app->selftest_phase == 21)
         queued = dev_test_key(window, SDLK_Z);
     else if (app->selftest_phase == 22)
@@ -616,7 +638,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 28)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 29)
-        queued = dev_test_click(window, 915, 330);
+        queued = click_rect(window, app_layout_wire_swatch(1));
     else if (app->selftest_phase == 30)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 31)
@@ -626,21 +648,21 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 33)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 34)
-        queued = dev_test_click(window, 900, 405);
+        queued = click_setting(window, APP_SETTING_PROBE_PIN);
     else if (app->selftest_phase == 35)
-        queued = dev_test_click(window, 900, 445);
+        queued = click_setting(window, APP_SETTING_STEP);
     else if (app->selftest_phase == 36)
         queued = dev_test_key(window, SDLK_RETURN);
     else if (app->selftest_phase == 37)
-        queued = dev_test_click(window, 900, 485);
+        queued = click_setting(window, APP_SETTING_STOP);
     else if (app->selftest_phase == 38)
         queued = dev_test_key(window, SDLK_ESCAPE);
     else if (app->selftest_phase == 39)
-        queued = dev_test_click(window, 900, 445);
+        queued = click_setting(window, APP_SETTING_STEP);
     else if (app->selftest_phase == 40)
         queued = dev_test_replace_text(window, "2e-5");
     else if (app->selftest_phase == 41)
-        queued = dev_test_click(window, 900, 445);
+        queued = click_setting(window, APP_SETTING_STEP);
     else if (app->selftest_phase == 42)
         queued = dev_test_replace_text(window, "1e-9");
     else if (app->selftest_phase == 43)
@@ -670,7 +692,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 50)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 51)
-        queued = dev_test_click(window, 900, 370);
+        queued = click_setting(window, APP_SETTING_PROBE_MEASURE);
     else if (app->selftest_phase == 52)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 53)
@@ -682,19 +704,19 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 56)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 57)
-        queued = dev_test_click(window, 900, 370);
+        queued = click_setting(window, APP_SETTING_PROBE_MEASURE);
     else if (app->selftest_phase == 58)
         queued = dev_test_key(window, SDLK_L);
     else if (app->selftest_phase == 59)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 60)
-        queued = dev_test_click(window, 50, 670) && dev_test_click(window, 1000, 300);
+        queued = click_palette(window, 7) && dev_test_click(window, 1000, 300);
     else if (app->selftest_phase == 61)
         queued = dev_test_key(window, SDLK_TAB);
     else if (app->selftest_phase == 62)
-        queued = dev_test_click(window, 50, 390) && dev_test_click(window, 1100, 400);
+        queued = click_palette(window, 3) && dev_test_click(window, 1100, 400);
     else if (app->selftest_phase == 63)
-        queued = dev_test_click(window, 50, 510) && dev_test_click(window, 1000, 500);
+        queued = click_palette(window, 5) && dev_test_click(window, 1000, 500);
     else if (app->selftest_phase == 64)
         queued = dev_test_click_count(window, 1000, 500, 2);
     else if (app->selftest_phase == 65)
@@ -739,9 +761,9 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 72)
         queued = dev_test_key(window, SDLK_UNKNOWN);
     else if (app->selftest_phase == 73)
-        queued = dev_test_click(window, 50, 600) && dev_test_click(window, 750, 550);
+        queued = click_palette(window, 6) && dev_test_click(window, 750, 550);
     else if (app->selftest_phase == 74)
-        queued = dev_test_click(window, 50, 670) && dev_test_click(window, 750, 450);
+        queued = click_palette(window, 7) && dev_test_click(window, 750, 450);
     else if (app->selftest_phase == 75)
         queued = dev_test_key(window, SDLK_F2);
     else if (app->selftest_phase == 76)
@@ -763,7 +785,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 85)
         queued = dev_test_key(window, SDLK_F3);
     else if (app->selftest_phase == 86)
-        queued = dev_test_click(window, 800, 410);
+        queued = click_rect(window, app_layout_project_slot(8));
     else if (app->selftest_phase == 87)
         queued = dev_test_key(window, SDLK_ESCAPE);
     else if (app->selftest_phase == 88)
@@ -771,7 +793,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 89)
         queued = dev_test_shortcut(window, SDLK_G, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 90)
-        queued = dev_test_click(window, 40, 170);
+        queued = click_palette(window, 0);
     else if (app->selftest_phase == 91)
         queued = dev_test_click(window, 1200, 500);
     else if (app->selftest_phase == 92)
@@ -819,43 +841,43 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->selection.parts[0] = app->selection.parts[1] = 1;
         bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status));
         app->selected = 0;
-        queued = dev_test_click(window, 1130, 128);
+        queued = click_rect(window, app_layout_group_button(1));
     }
     else if (app->selftest_phase == 108)
         queued = dev_test_replace_text(window, "Indicador \xc3\xa1rvore");
     else if (app->selftest_phase == 109 || app->selftest_phase == 116)
-        queued = dev_test_click(window, 930, 128);
+        queued = click_rect(window, app_layout_group_button(0));
     else if (app->selftest_phase == 110 || app->selftest_phase == 117)
-        queued = dev_test_click(window, 560, 42);
+        queued = click_rect(window, app_layout_editor_header(APP_EDITOR_RENAME));
     else if (app->selftest_phase == 111 || app->selftest_phase == 118)
         queued = dev_test_replace_text(window, "Driver \xc3\xa1rvore");
     else if (app->selftest_phase == 112 || app->selftest_phase == 114)
-        queued = dev_test_click(window, 930, 42);
+        queued = click_rect(window, app_layout_editor_header(APP_EDITOR_BACK));
     else if (app->selftest_phase == 113)
-        queued = dev_test_click(window, 820, 390);
+        queued = click_rect(window, app_layout_confirm_button(2));
     else if (app->selftest_phase == 115)
-        queued = dev_test_click(window, 640, 390);
+        queued = click_rect(window, app_layout_confirm_button(1));
     else if (app->selftest_phase == 119)
-        queued = dev_test_click(window, 410, 42);
+        queued = click_rect(window, app_layout_editor_header(APP_EDITOR_APPLY));
     else if (app->selftest_phase == 120)
         queued = dev_test_key(window, SDLK_Z);
     else if (app->selftest_phase == 121)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 122)
-        queued = dev_test_click(window, 300, 150);
+        queued = click_setting(window, APP_SETTING_SNAP_GRID);
     else if (app->selftest_phase == 123)
-        queued = dev_test_click(window, 300, 190);
+        queued = click_setting(window, APP_SETTING_GRID_SPACING);
     else if (app->selftest_phase == 124)
         queued = dev_test_replace_text(window, "16");
     else if (app->selftest_phase == 125)
-        queued = dev_test_click(window, 300, 230);
+        queued = click_setting(window, APP_SETTING_SNAP_BOARD);
     else if (app->selftest_phase == 126)
     {
         app->palette_page = 0;
         queued = dev_test_key(window, SDLK_F1);
     }
     else if (app->selftest_phase == 127)
-        queued = dev_test_click(window, 50, 460) && dev_test_click(window, 530, 257);
+        queued = click_palette(window, 4) && dev_test_click(window, 530, 257);
     else if (app->selftest_phase == 128)
         queued = dev_test_click(window, 528, 260) && dev_test_drag_finish(window, 559, 283);
     else if (app->selftest_phase == 129)
@@ -907,7 +929,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->selected = 1;
         app->snap_board = 0;
         app->snap_grid = 0;
-        queued = dev_test_click(window, 950, 167);
+        queued = click_rect(window, app_layout_inspector_scale());
     }
     else if (app->selftest_phase == 139)
         queued = dev_test_replace_text(window, "25");
@@ -935,7 +957,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 148)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 149)
-        queued = dev_test_click(window, 300, 360);
+        queued = click_setting(window, APP_SETTING_DARK_THEME);
     else if (app->selftest_phase == 150)
         queued = dev_test_key(window, SDLK_S);
     else if (app->selftest_phase == 151)
@@ -968,7 +990,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 156)
         queued = dev_test_wheel(window, 50, 400, -1);
     else if (app->selftest_phase == 157)
-        queued = dev_test_click(window, 50, 670);
+        queued = click_palette(window, 7);
     else if (app->selftest_phase == 158)
     {
         app->placing = -1;
@@ -987,13 +1009,13 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 163)
         queued = dev_test_wheel(window, 50, 400, -2);
     else if (app->selftest_phase == 164)
-        queued = dev_test_wheel(window, 50, 400, -1) && dev_test_click(window, 50, 602);
+        queued = dev_test_wheel(window, 50, 400, -1) && click_palette(window, 6);
     else if (app->selftest_phase == 165)
         queued = dev_test_click(window, 700, 500);
     else if (app->selftest_phase == 166)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 167)
-        queued = dev_test_click(window, 510, 430);
+        queued = click_setting(window, APP_SETTING_FONT_SMALLER);
     else if (app->selftest_phase == 168)
     {
         app->settings = 0;
@@ -1074,15 +1096,15 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->selected = chip;
         app->settings = 1;
         app->probe_pin = 12;
-        queued = dev_test_click(window, 900, 410);
+        queued = click_setting(window, APP_SETTING_PROBE_PIN);
     }
     else if (app->selftest_phase == 182)
-        queued = dev_test_click(window, 900, 410);
+        queued = click_setting(window, APP_SETTING_PROBE_PIN);
     else if (app->selftest_phase == 183)
     {
         app->settings = 0;
         app->selected = bench_add(&app->bench, PART_LDR, 600, 400);
-        queued = dev_test_click(window, 850, 257) && dev_test_drag_finish(window, 1097.5f, 257);
+        queued = dev_test_click(window, slider_x(0), app_rect_center_y(app_layout_environment_track())) && dev_test_drag_finish(window, slider_x(.75), app_rect_center_y(app_layout_environment_track()));
     }
     else if (app->selftest_phase == 184 || app->selftest_phase == 185)
     {
