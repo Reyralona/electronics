@@ -334,3 +334,9 @@ leituras numericas pendentes indicam "atualizando". Resultados intermediarios co
 podem aparecer durante um arraste continuo, evitando esperar que o usuario pare de ajustar.
 Mudar conexoes invalida a imagem anterior; isso nao altera o limite conhecido de reinicio
 por topologia. Pausa/manual e falhas continuam distintos de atualizacao em andamento.
+
+### Capacitor armazenando energia ao desligar
+Desligar a fonte ou abrir o interruptor com um capacitor carregado agora apaga o LED de forma
+gradual em vez de travar o calculo. Contatos ao vivo usam 1 mOhm fechado e 10 GOhm aberto.
+O tempo simulado anda cerca de 1 ms por segundo real (duracao da curva / 300 por quadro):
+um RC de 1 kOhm x 1 uF (tau ~1 ms) apaga em 1-3 s na tela; capacitores maiores apagam mais devagar.

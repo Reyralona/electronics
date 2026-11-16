@@ -4,10 +4,12 @@
 #include "workbench.h"
 /* Experimental DC: one 5 V source, 1 kOhm resistors, generic diode LEDs, switches and breadboards. */
 typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERROR, NETLIST_AMBIGUOUS_WIRES } NetlistResult;
-/* Finite contact impedances keep topology stable across live on/off changes. */
-#define NETLIST_LIVE_CLOSED_OHMS 1e-6
+/* Finite contact impedances keep topology stable across live on/off changes.
+ * open/closed must stay well below 1/DBL_EPSILON (~4.5e15): a 1e18 ratio (1 uOhm/1 TOhm) made the
+ * transient timestep collapse after opening a supply that fed a charged capacitor and LED. */
+#define NETLIST_LIVE_CLOSED_OHMS 1e-3
 #define NETLIST_POT_MIN_SEGMENT_OHMS .001
-#define NETLIST_LIVE_OPEN_OHMS 1e12
+#define NETLIST_LIVE_OPEN_OHMS 1e10
 NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires);
 int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin);
 NetlistResult netlist_write_dc(FILE *out, const Workbench *bench);

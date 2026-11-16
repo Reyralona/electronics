@@ -274,7 +274,8 @@ double component_source_resistance(PartType type)
         return .2;
     if (type == PART_BATTERY_COIN)
         return 15;
-    return 1e-6;
+    /* Bench supply: same as a closed live contact (NETLIST_LIVE_CLOSED_OHMS), keeping the matrix conditioned. */
+    return 1e-3;
 }
 
 int component_radial_pins(PartType type)

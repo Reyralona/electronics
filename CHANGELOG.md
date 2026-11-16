@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.28.0
+
+- Catalogo analogico: diodo, NPN/PNP, LDR, flex, FSR, inclinacao, fotodiodo, luz ambiente, TMP36,
+  umidade do solo e baterias 9 V, AA e moeda 3 V (36 tipos). Sliders de ambiente salvos e desfaziveis.
+- Revisao de arte reproduzivel por close-ups em dois temas (tools/capture-components.ps1).
+- Inspector tecnico e dicas no rodape; terminologia "terminais".
+- Brilho em tempo real: circuitos com fonte/bateria usam a sessao continua; potenciometro sem piscar.
+- Correcao: desligar fonte/chave com capacitor carregado travava o solver (razao de contato 1e18);
+  agora 1 mOhm/10 GOhm e o LED apaga gradualmente. Regressao com a fiacao exata do slot relatado.
+- build.ps1 nao falha quando spice-live-host.exe esta em uso e atualizado.
+- Formato 24 (le 1-23). Suite completa e fases GUI passaram. Pendentes em CATALOGO_COMPONENTES.md.
+
+
 ## 0.27.0
 
 - Backend continuo ngspice em host nativo isolado por documento/contexto.

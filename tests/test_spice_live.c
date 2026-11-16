@@ -1,4 +1,5 @@
 #include "spice_live.h"
+#include <windows.h>
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -27,11 +28,60 @@ static void wire(Workbench *bench, int a, int ap, int b, int bp)
 {
     assert(bench_toggle_wire(bench, (Pin){a, ap}, (Pin){b, bp}) == 1);
 }
+/* Slot reported by the user: source, switch, 470 ohm, 1 uF across 1 kOhm + LED. */
+static void build_led_hold(Workbench *bench)
+{
+    bench_add(bench, PART_SOURCE, 300, 100);
+    bench_add(bench, PART_SWITCH, 500, 100);
+    bench_add(bench, PART_RESISTOR, 700, 100);
+    bench_add(bench, PART_CAPACITOR, 900, 100);
+    bench_add(bench, PART_RESISTOR, 1100, 100);
+    bench_add(bench, PART_LED, 1300, 100);
+    bench_set_value(bench, 2, 470);
+    bench_set_value(bench, 3, 1e-6);
+    bench_set_on(bench, 1, 1);
+    /* Same wire order and capacitor orientation as the saved slot: node numbering affects pivoting. */
+    wire(bench, 0, 0, 1, 0);
+    wire(bench, 1, 1, 2, 0);
+    wire(bench, 2, 1, 3, 1);
+    wire(bench, 0, 1, 3, 0);
+    wire(bench, 2, 1, 4, 0);
+    wire(bench, 3, 0, 5, 1);
+    wire(bench, 5, 0, 4, 1);
+}
+/* Opening the supply or the switch must fade the LED gradually without stalling the solver. */
+static void check_led_hold(int open_part)
+{
+    const double frame_span = .005 / 300;
+    const int fade_frames = 60;
+    Workbench bench = {0};
+    build_led_hold(&bench);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench, .005);
+    double lit = result.currents[5];
+    assert(lit > .001);
+    bench_set_on(&bench, open_part, 0);
+    double previous = lit;
+    for (int frame = 0; frame < fade_frames; ++frame)
+    {
+        DWORD started = GetTickCount();
+        step(live, &bench, frame_span);
+        assert(GetTickCount() - started < 2000);
+        assert(result.currents[5] <= previous * 1.0001);
+        previous = result.currents[5];
+    }
+    assert(previous > lit * .1 && previous < lit * .9);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     executable = argv[1];
     options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default()};
+    check_led_hold(0);
+    check_led_hold(1);
     Workbench rc = {0};
     bench_add(&rc, PART_SOURCE, 300, 100);
     bench_add(&rc, PART_SWITCH, 500, 100);

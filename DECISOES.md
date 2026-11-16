@@ -413,3 +413,23 @@ antes de ser substituido. Nao manter amostra antiga para nova topologia, erro ou
 Nao usar interpolacao visual para esconder falta de calculo: corrente/brilho continuam
 vindos do ngspice. Suite de UI verifica80alteracoes consecutivas com LED sempre aceso e
 amostras novas durante ajuste, potenciometro/resistor e presenca de breadboard.
+
+
+## Capacitor do slot 1 travando ao desligar (15/11/2026, Claude)
+Relato: slot 1 (fonte, chave, 470 ohm, 1 uF em paralelo com 1 kOhm + LED) "calcula sem parar"
+ao desligar fonte ou chave. Fato reproduzido: no netlist instrumentado (Vwire por fio),
+`alter Rpower0 = 1e12` seguido de `resume` colapsava o passo do transitorio; o host excedia 10 s
+avancando ~70 us. Sem Vwire, ou com outra ordem de fios, nao travava: sensivel a numeracao/pivotacao.
+Experimentos (sessao real via spice_session): fechado 1e-6 com aberto 1e10/1e12 trava; 1e-6/1e9 leva
+3 s; 1e-6/1e8 ok; fechado 1e-3 com aberto 1e12 ok. Interpretacao: razao 1e18 excede 1/DBL_EPSILON
+(~4.5e15); o nó aberto fica numericamente indefinido.
+Decisao: NETLIST_LIVE_CLOSED_OHMS = 1 mOhm (ordem de contato real de chave) e
+NETLIST_LIVE_OPEN_OHMS = 10 GOhm (fuga 0.5 nA a 5 V), razao 1e13, tres decadas de margem.
+Fonte de bancada usa o mesmo 1 mOhm. Regra: nao reintroduzir razao aberto/fechado > ~1e13.
+Regressao: tests/test_spice_live.c check_led_hold replica a fiacao exata do slot (ordem importa),
+abre fonte e chave, exige 60 quadros de 16.7 us cada um em < 2 s e brilho decrescente gradual.
+O teste falhou antes (passo > 2 s) e passou depois; sonda build/probe-slot1.c no save real tambem.
+Escala de tempo: cada quadro avanca transient_stop/300 (~1 ms simulado por segundo real), entao
+tau ~1 ms do slot aparece como apagamento de ~1-3 s na tela. Nao e tempo real fisico.
+Build: build.ps1 compila o host em arquivo temporario e mantem o existente se estiver travado por
+uma Bancada aberta e nao for mais antigo que src/spice_live_host.c.

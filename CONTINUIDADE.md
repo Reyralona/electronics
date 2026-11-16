@@ -501,3 +501,18 @@ breadboard (contatos descobertos pelos terminais externos); verifica tipos/grupo
 Regressao em test_app_live:80ajustes em sequencia, >=3amostras durante ajuste, sem frame
 apagado; pot com/sem breadboard e resistor com breadboard, depois desconexao real apaga.
 O teste novo falhou antes da correcao (pot ficava batch) e passou no backend real.
+
+
+## Retomada por Claude - 0.28.0 (15/11/2026)
+Codex deixou sem commit o catalogo analogico (14 tipos, 36 no total), revisao de arte por close-ups
+e brilho ao vivo do potenciometro. Suite completa passou antes de qualquer alteracao; integrado
+como commits nesta branch. Pedido seguinte do usuario: slot 1 com capacitor "calculando sem parar".
+Causa e decisao em DECISOES.md (razao de contato 1e18 -> 1e13). Regressao check_led_hold.
+Git: repositorio pertence ao usuario CodexSandboxOffline; usar `git -c safe.directory=*` sem
+alterar configuracao global. Host travado pela Bancada aberta nao impede mais o build.
+
+Pendente do pedido de catalogo (ver CATALOGO_COMPONENTES.md): IR, distancia, PIR, gas, DIP/DPST,
+LED RGB, lampada, motores (vibracao, CC, CC com encoder, servo), piezo, sete segmentos e LCD 16x2
+I2C aparecendo no exterior do chip, rele, instrumentos (osciloscopio, multimetro, gerador) e
+inventario integral de CIs. Proximo incremento sugerido: LED RGB, lampada e piezo (saidas simples
+sobre modelos ja validados), depois sete segmentos com exposicao externa em chips.
