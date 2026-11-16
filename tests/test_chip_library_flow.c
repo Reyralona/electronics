@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <windows.h>
 
 static const char *const library_dir = "build/test-blocks";
 
@@ -84,7 +85,7 @@ static AppState *enter_chip(AppState *app, int group)
     return inside;
 }
 
-/* Rename (F4 / Renomear, type, Enter) and press "Salvar modelo". */
+/* Click Rename inside the chip, confirm the text, then save its model. */
 static void rename_and_save(AppState *inside, const char *name)
 {
     assert(app_editor_set_name(inside, name));
@@ -142,9 +143,37 @@ int main(void)
     char default_name[BENCH_GROUP_NAME_CAPACITY];
     snprintf(default_name, sizeof(default_name), "%s", app.bench.groups[chip - 1].name);
     assert(library_lists(&app, default_name));
+    assert(!app_editor_key(&app, NULL, SDLK_F4, 0));
+    assert(!app_editor_set_name(&app, "outside"));
+    assert(!strcmp(app.bench.groups[chip - 1].name, default_name));
 
     /* "Entro nele, renomeio e salvo": the same entry is renamed; nothing new appears. */
     AppState *inside = enter_chip(&app, chip);
+    /* Confirm a name, leave without Apply/Save, then reopen: the name itself is permanent metadata. */
+    assert(app_editor_set_name(inside, "4and"));
+    assert(!strcmp(app.bench.groups[chip - 1].name, "4and"));
+    assert(library_count(inside) == 1 && library_lists(inside, "4and"));
+    assert(!app_editor_dirty(inside));
+    HANDLE locked_model = CreateFileA("build/test-blocks/block-1.elec", GENERIC_READ, FILE_SHARE_READ,
+                                      NULL, OPEN_EXISTING, 0, NULL);
+    assert(locked_model != INVALID_HANDLE_VALUE);
+    int renamed_locked = app_editor_set_name(inside, "must not replace");
+    CloseHandle(locked_model);
+    assert(!renamed_locked);
+    assert(!strcmp(app.bench.groups[chip - 1].name, "4and"));
+    assert(!strcmp(inside->editor_name, "4and"));
+    assert(library_lists(inside, "4and"));
+    assert(!app_editor_set_name(inside, ""));
+    assert(bench_set_value(&inside->bench, 0, 4700));
+    assert(app_editor_set_name(inside, "4and draft"));
+    assert(app_editor_set_name(inside, "4and"));
+    app_packing_choose(inside, 0);
+    assert(inside->library_template.bench.parts[0].value == 1000);
+    leave_chip(inside);
+    reopen_project(&app);
+    inside = enter_chip(&app, chip);
+    assert(!strcmp(inside->editor_name, "4and"));
+    assert(inside->bench.parts[0].value == 1000);
     rename_and_save(inside, "4AND");
     assert(library_count(inside) == 1);
     assert(library_lists(inside, "4AND") && !library_lists(inside, default_name));
@@ -157,13 +186,11 @@ int main(void)
     /* "Renomeio e saio respondendo Salvar no aviso": still one entry, with the newest name. */
     assert(app_editor_set_name(inside, "4AND final"));
     app_editor_request_close(inside, 0);
-    assert(inside->editor_confirm_close);
-    app_editor_confirm(inside, 0);
+    assert(!inside->editor_confirm_close);
     assert(app_editor_route(inside) == &app);
     assert(library_count(&app) == 1 && library_lists(&app, "4AND final"));
 
-    /* "Entro de novo sem ter aplicado, salvo": the bench chip still has its old name, but it is the
-     * same chip, so the same entry is updated. */
+    /* Reopen without Apply: the confirmed name remains on the same instance and library entry. */
     inside = enter_chip(&app, chip);
     rename_and_save(inside, "4AND v2");
     assert(app_editor_apply(inside));
@@ -194,14 +221,14 @@ int main(void)
     assert(library_count(&app) == 2 && library_lists(&app, "4AND v3"));
 
     /* "Fecho e reabro o projeto, entro na copia e salvo": the copy on the bench is still called
-     * "4AND v2" while the list says "4AND v3"; it is still the same chip, so no new entry. */
+     * "4AND v3" while the list says "4AND v3"; it is still the same chip, so no new entry. */
     reopen_project(&app);
     inside = enter_chip(&app, copy);
-    assert(!strcmp(inside->editor_name, "4AND v2"));
+    assert(!strcmp(inside->editor_name, "4AND v3"));
     assert(bench_set_value(&inside->bench, 0, 3300));
     assert(app_editor_save(inside));
     leave_chip(inside);
-    assert(library_count(&app) == 2 && library_lists(&app, "4AND v2") && !library_lists(&app, "4AND v3"));
+    assert(library_count(&app) == 2 && library_lists(&app, "4AND v3") && !library_lists(&app, "4AND v2"));
 
     /* "Abro um projeto salvo por uma versao anterior" (chips without identity): the chip whose name
      * is listed exactly once is that entry. */
@@ -217,7 +244,7 @@ int main(void)
      * antiga do 4AND": the new chip must not be overwritten; the 4AND comes back as its own entry. */
     slot_4and = -1;
     for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
-        if (app.library_available[i] && !strcmp(app.library_names[i], "4AND v2"))
+        if (app.library_available[i] && !strcmp(app.library_names[i], "4AND v3"))
             slot_4and = i;
     assert(slot_4and >= 0);
     assert(!app_packing_delete(&app, slot_4and));
@@ -233,7 +260,7 @@ int main(void)
     assert(app_editor_save(inside));
     leave_chip(inside);
     assert(library_count(&app) == 3);
-    assert(library_lists(&app, fresh_name) && library_lists(&app, "4AND v2"));
+    assert(library_lists(&app, fresh_name) && library_lists(&app, "4AND v3"));
 
     empty_library();
     app_state_dispose(&app);

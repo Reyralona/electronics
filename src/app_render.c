@@ -2931,7 +2931,6 @@ static void draw_group_inspector(const AppState *app, GLuint font)
     color(UI_INK);
     name_text(font, 852, 112, app->bench.groups[group - 1].name, 396);
     ui_button(app, font, app_layout_group_button(0), tr(TXT_UI_VIEW_INSIDE), UI_BUTTON_PRIMARY);
-    ui_button(app, font, app_layout_group_button(1), tr(TXT_UI_RENAME), UI_BUTTON_NEUTRAL);
     char dimensions[100];
     snprintf(dimensions, sizeof(dimensions), tr(TXT_UI_CHIP_DIMENSIONS), bench_group_width(&app->bench, group),
              bench_group_height(&app->bench, group));

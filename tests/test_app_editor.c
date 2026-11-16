@@ -67,6 +67,9 @@ int main(void)
 
     child = app_editor_open(&root);
     assert(child && app_editor_set_name(child, "Indicador \xc3\xa1rvore"));
+    assert(!strcmp(root.bench.groups[0].name, child->editor_name));
+    before = root.bench;
+    history = root.history->undo_count;
     assert(bench_set_value(&child->bench, 0, 2200));
     for (int i = 1; i <= BLOCK_LIBRARY_SLOTS; ++i)
     {

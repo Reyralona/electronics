@@ -886,16 +886,24 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         app->selection.parts[0] = app->selection.parts[1] = 1;
         bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status));
         app->selected = 0;
-        queued = click_rect(window, app_layout_group_button(1));
+        queued = dev_test_key(window, SDLK_F4); /* No rename entry point on the outer bench. */
     }
-    else if (app->selftest_phase == 108)
-        queued = dev_test_replace_text(window, "Indicador \xc3\xa1rvore");
-    else if (app->selftest_phase == 109 || app->selftest_phase == 116)
+    else if (app->selftest_phase == 108 || app->selftest_phase == 116)
         queued = click_rect(window, app_layout_group_button(0));
-    else if (app->selftest_phase == 110 || app->selftest_phase == 117)
+    else if (app->selftest_phase == 109 || app->selftest_phase == 117)
         queued = click_rect(window, app_layout_editor_header(APP_EDITOR_RENAME));
-    else if (app->selftest_phase == 111 || app->selftest_phase == 118)
+    else if (app->selftest_phase == 110)
+        queued = dev_test_replace_text(window, "Indicador \xc3\xa1rvore");
+    else if (app->selftest_phase == 111)
+    {
+        bench_set_value(&app->editor_child->bench, 0, 2200);
+        queued = dev_test_key(window, SDLK_HOME);
+    }
+    else if (app->selftest_phase == 118)
+    {
+        bench_set_value(&app->editor_child->bench, 0, 3300);
         queued = dev_test_replace_text(window, "Driver \xc3\xa1rvore");
+    }
     else if (app->selftest_phase == 112 || app->selftest_phase == 114)
         queued = click_rect(window, app_layout_editor_header(APP_EDITOR_BACK));
     else if (app->selftest_phase == 113)
@@ -1447,16 +1455,25 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 106)
         valid = !app->settings;
     else if (app->selftest_phase == 107)
-        valid = app->editing == APP_EDIT_GROUP_NAME;
-    else if (app->selftest_phase == 108 || app->selftest_phase == 115 || app->selftest_phase == 120)
+        valid = app->editing != APP_EDIT_GROUP_NAME && !app->editor_child;
+    else if (app->selftest_phase == 115)
         valid = !app->editor_child && !strcmp(app->bench.groups[0].name, "Indicador \xc3\xa1rvore");
-    else if (app->selftest_phase == 109 || app->selftest_phase == 116)
+    else if (app->selftest_phase == 120)
+        valid = !app->editor_child && !strcmp(app->bench.groups[0].name, "Driver \xc3\xa1rvore") &&
+                app->bench.parts[0].value == 1000;
+    else if (app->selftest_phase == 108 || app->selftest_phase == 116)
         valid = app->editor_child && !app_editor_dirty(app->editor_child);
-    else if (app->selftest_phase == 110 || app->selftest_phase == 117)
+    else if (app->selftest_phase == 109 || app->selftest_phase == 117)
         valid = app->editor_child && app->editor_child->editing == APP_EDIT_GROUP_NAME;
-    else if (app->selftest_phase == 111 || app->selftest_phase == 118)
+    else if (app->selftest_phase == 110)
+        valid = app->editor_child && !app_editor_dirty(app->editor_child) &&
+                !strcmp(app->bench.groups[0].name, "Indicador \xc3\xa1rvore");
+    else if (app->selftest_phase == 111)
         valid = app->editor_child && app_editor_dirty(app->editor_child) &&
                 !strcmp(app->bench.groups[0].name, "Indicador \xc3\xa1rvore");
+    else if (app->selftest_phase == 118)
+        valid = app->editor_child && app_editor_dirty(app->editor_child) &&
+                !strcmp(app->bench.groups[0].name, "Driver \xc3\xa1rvore");
     else if (app->selftest_phase == 112 || app->selftest_phase == 114)
         valid = app->editor_child && app->editor_child->editor_confirm_close;
     else if (app->selftest_phase == 113)
