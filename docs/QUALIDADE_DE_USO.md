@@ -4,7 +4,17 @@
 
 Pedido explicito do responsavel em 15/11/2026. Requisitos de produto e aceite para a meta 1.0.
 Este documento complementa META_1_0.md, VISAO.md e QUALIDADE_CODIGO.md. Nao descreve recursos
-como concluidos: a secao de estado identifica o que ainda precisa ser implementado.
+como concluidos. Os estados antigos abaixo descrevem cada incremento.
+
+## Estado consolidado em 16/11/2026 (0.36.0)
+
+Entregues: renomear chips, editor isolado, salvar modelo, aplicar à instância com undo,
+nomes/funções de pinos, escala das peças, grade, terminais flexíveis e transparência.
+Multímetro e osciloscópio existem como peças com terminais; seus modelos têm limites no [guia](GUIA.md).
+
+Ainda faltam pontas independentes posicionáveis, medidor dedicado de clock/pulso, configuração
+completa da semântica das portas e escala integral da interface. Os instrumentos presentes não
+encerram esses critérios. O [roadmap](ROADMAP_1_0.md) reúne as pendências atuais.
 
 ## Principio de interacao
 
@@ -75,7 +85,7 @@ validacao antes de inclui-los como entregues.
 - Circuitos de referencia verificam tensao diferencial, corrente em serie e medidas de pulso;
   casos invalidos produzem causa visivel. Testes devem cobrir separacao entre contextos.
 
-## Estado atual (0.20.0)
+## Registro histórico: 0.20.0
 
 Entregues: slots de montagem/configuracoes, miniaturas, selecao por area/clipboard e packing
 basico com instancias independentes. A 0.20.0 acrescenta funcao/nome dos pinos ao registro,

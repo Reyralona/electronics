@@ -50,7 +50,10 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 - `+` e `-` dobram ou reduzem o valor à metade.
 - **Potenciômetro:** `Shift+roda` move o cursor.
 - **Sensores:** o controle de ambiente no painel (luz, temperatura, força, distância…) muda o comportamento elétrico. `Shift+roda` também ajusta.
-- **Ligar/desligar:** dois cliques em fontes, interruptores, clocks, DPST e gerador. O **botão** fica fechado enquanto você o segura com o mouse. Na chave DIP e no relé, dois cliques sobre a alavanca. No multímetro e no gerador, dois cliques trocam o modo.
+- **Ligar/desligar:** dois cliques em fontes, interruptores, clocks e DPST.
+  O **botão** fica fechado enquanto você o segura com o mouse.
+  Na chave DIP, dê dois cliques na alavanca escolhida. O relé comuta pela corrente na bobina.
+  No multímetro e no gerador, dois cliques trocam o modo.
 
 ### Seleção, cópia e histórico
 
@@ -66,7 +69,9 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 
 ## Simular
 
-A simulação é **automática e contínua**: enquanto ela está executando, cada mudança no circuito é recalculada pelo ngspice num processo separado, e a tela continua respondendo.
+A simulação é **automática e contínua**. O ngspice roda num processo separado, sem bloquear a interface.
+Alterar controles e valores atualiza o circuito. Mudar conexões pode reiniciar o estado elétrico;
+os limites estão no fim deste guia.
 
 - `Espaço` (ou o botão no topo) pausa e continua.
 - `Ctrl+Espaço` **reinicia o estado elétrico**: descarrega capacitores, zera flip-flops e reinicia as placas.
@@ -87,17 +92,17 @@ O que aparece na tela:
 - `Espaço` reproduz a curva. `N` e `B` avançam e voltam amostra a amostra, `G` esconde o gráfico, e clicar no gráfico escolhe uma amostra.
 - O gráfico é uma análise separada, feita a partir do estado inicial. Ele não altera a simulação contínua.
 
-## Chips (blocos)
+## Chips
 
-1. Selecione as peças e pressione `Ctrl+G`. Elas viram um **chip** compacto, com terminais P1, P2…, e o chip vai para a aba **Blocos**.
-2. Na aba **Blocos**, clique no chip e depois na bancada para colocar uma cópia independente.
+1. Selecione as peças e pressione `Ctrl+G`. Elas viram um **chip** compacto e vão para a aba **Chips**.
+2. Na aba **Chips**, clique no chip e depois na bancada para colocar uma cópia independente.
 3. Selecione um chip e pressione `Enter` (ou **Ver interior**) para abrir o **editor isolado**. Ele tem bancada, simulação e histórico próprios, e nada do que você fizer lá altera a bancada externa até você aplicar.
    - `F4` ou **Renomear**: muda o nome (aceita acentos).
    - `S` ou **Salvar modelo**: atualiza o chip na biblioteca. As cópias de um mesmo chip atualizam a mesma entrada; não aparece uma entrada nova.
    - `Ctrl+Enter` ou **Aplicar ao chip**: troca só esta cópia na bancada (`Ctrl+Z` desfaz).
    - `Esc` ou **Voltar**: sai, e pergunta se quer salvar quando houver mudanças.
-4. `Ctrl+Shift+G` desfaz o chip na bancada e devolve as peças soltas.
-5. O **×** no cartão da aba Blocos remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
+4. `Ctrl+Shift+G` desagrupa o chip na bancada e devolve as peças soltas.
+5. O **×** no cartão da aba Chips remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
 
 Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga ao exterior. Por exemplo, três AND formando uma AND de 4 entradas viram um chip de 5 terminais. Displays de 7 segmentos e LEDs RGB dentro de um chip aparecem no corpo do chip.
 
@@ -116,6 +121,30 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 - **Exemplos** (ou `F2` para o próximo): 18 circuitos prontos, com título e explicação. `Ctrl+Z` volta à montagem anterior.
 - **Configurações:** tema claro/escuro, tamanho do texto, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, cor dos fios, curvas e alças dos fios, nomes dos terminais, corrente nos fios e parâmetros do gráfico. As preferências são salvas automaticamente em `saves/preferences.txt`.
 
+### Onde ficam os arquivos
+
+| Forma de uso | Pasta dos dados |
+|---|---|
+| Instalador | `%APPDATA%/Bancada/Bancada` |
+| ZIP portátil | Ao lado de `bancada.exe` |
+| Build de desenvolvimento, sem marcador de distribuição | Diretório de onde o programa foi aberto |
+
+Dentro dessa pasta, `saves/` guarda os nove slots e `preferences.txt`.
+`blocks/` guarda os oito chips da biblioteca; os removidos vão para `blocks/lixeira`.
+Desinstalar preserva os dados. Não há migração automática entre essas pastas.
+Para mover projetos antigos, feche o programa e copie `saves/` e `blocks/` para o destino escolhido.
+
+### Instrumentos
+
+- **Multímetro:** conecte os terminais da peça ao circuito. No modo corrente, use uma ligação em série.
+  A medição de tensão tem entrada de 10 MΩ; a de resistência usa uma corrente de teste de 1 mA.
+  Fontes ativas ou outros caminhos no circuito podem tornar a leitura de resistência inadequada.
+- **Osciloscópio:** mede tensão entre seus terminais, com entrada de 1 MΩ. O gráfico usa a sondagem por `T`.
+- **Gerador de função:** oferece seno, onda quadrada e triangular. A frequência é ajustável;
+  a saída usa níveis de 0 a 5 V e resistência de 50 Ω.
+
+Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canais e medidor dedicado de clock/pulso.
+
 ## Todos os atalhos
 
 | Tecla | Ação |
@@ -123,7 +152,8 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 | `Espaço` | Pausar / continuar (no gráfico: reproduzir) |
 | `Ctrl+Espaço` | Reiniciar o estado elétrico (fora do editor de código) |
 | `P` | Recalcular agora |
-| `N` / `B` | Passo à frente / atrás (pausado ou no gráfico) |
+| `N` | Avançar com a simulação pausada; no gráfico, próxima amostra |
+| `B` | Amostra anterior do gráfico, com reprodução pausada |
 | `T` | Gráfico da peça ou do fio selecionado |
 | `G` | Mostrar/esconder o gráfico |
 | `R` | Girar a peça |
@@ -133,7 +163,7 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 | `Ctrl+Z` / `Ctrl+Y` | Desfazer / refazer |
 | `Ctrl+A`, `Ctrl+C`, `Ctrl+X`, `Ctrl+V` | Selecionar tudo, copiar, recortar, colar |
 | `Ctrl+S` / `Ctrl+L` | Salvar / carregar o slot escolhido |
-| `Ctrl+G` / `Ctrl+Shift+G` | Criar chip / desfazer chip |
+| `Ctrl+G` / `Ctrl+Shift+G` | Criar chip / desagrupar chip |
 | `Enter` | Abrir o chip selecionado |
 | `F4` | Renomear o chip |
 | `X` | Transparência das peças |

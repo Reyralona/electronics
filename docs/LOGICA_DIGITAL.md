@@ -2,6 +2,10 @@
 
 > **Estudo técnico** (14/11/2026): como portas lógicas, flip-flops e CIs são simulados no ngspice/XSPICE.
 
+Este estudo registra a escolha inicial. Em 0.36.0, XSPICE e sessões contínuas já estão integrados,
+e o pacote inclui `digital.cm`. O [guia](GUIA.md) descreve os limites atuais; recomendações abaixo
+devem ser lidas com a data da pesquisa.
+
 Consulta: 14/11/2026. Esta nota separa o que foi verificado das decisões ainda abertas.
 
 ## Fatos e fontes
@@ -37,4 +41,4 @@ Usar XSPICE como candidato inicial para portas mistas, com pontes explícitas e 
 
 **Recomendação e pendências:** avaliar um modelo próprio didático de quatro saídas push-pull para alimentação próxima de 5 V, estados indeterminados em alta impedância e corrente passando pelos trilhos; verificar tabela, desligamento, carga e curtos. Limites de temporização, alimentação variável, consumo interno e efeitos elétricos reais continuam pendentes.
 
-**Implementação atual:** o CI didático de 14 pinos usa quatro pares de chaves de saída de 50 Ω alimentadas pelos próprios trilhos do componente; os testes verificam as quatro portas, corrente de alimentação, saída desabilitada sem alimentação, entrada intermediária e encaixe em 14 contatos. É uma aproximação original, com funcionamento limitado a 4,5?5,5 V, não o modelo PSpice do fabricante nem uma caracterização completa.
+**Modelo didático integrado:** o CI de 14 pinos usa quatro pares de chaves de saída de 50 Ω alimentadas pelos próprios trilhos. Os testes verificam as quatro portas, corrente de alimentação, saída desabilitada sem alimentação, entrada intermediária e encaixe em 14 contatos. A faixa de alimentação é de 4,5 a 5,5 V. Não é o modelo PSpice do fabricante nem uma caracterização completa. As entradas têm resistores de 100 MΩ para a referência; essa atualização está em [DECISOES.md](DECISOES.md).

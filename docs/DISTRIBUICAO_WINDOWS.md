@@ -20,12 +20,12 @@ Decisão: CMake para build incremental e install(), CPack ZIP e um script NSIS p
 instalador por usuário. Manter build.ps1 como suíte de regressão existente neste incremento.
 Não migrar o modelo elétrico nem introduzir gerenciador de dependências adicional.
 
-Hipótese a verificar: os binários UCRT64 preparados funcionam fora do MSYS2 quando todas as DLLs
-não pertencentes ao Windows acompanham o pacote. Testar com PATH mínimo, diretório movido e espaços.
-Os testes locais não substituem uma VM Windows limpa; documentar essa limitação.
+Hipótese da pesquisa: os binários UCRT64 funcionam fora do MSYS2 quando todas as DLLs necessárias
+acompanham o pacote. Validada localmente na 0.36.0, com PATH mínimo, diretório movido e espaços.
+Esses testes não substituem uma VM Windows limpa.
 
-Critérios: simulação DC e ao vivo relocáveis; instalação sem administrador; arquivos do usuário
-fora da instalação; desinstalação preserva dados; hashes SHA256; licenças e origem das dependências.
+Critérios: simulação DC e ao vivo relocáveis; instalação sem administrador; dados da versão instalada
+fora da pasta do programa; desinstalação preserva dados; hashes SHA256; licenças e origem das dependências.
 Não distribuir saves pessoais nem ferramentas do compilador. Não publicar automaticamente artefatos
 como release estável. Assinatura Authenticode depende de identidade/certificado do mantenedor e fica
 pendente; checksums detectam mudanças, mas não autenticam o editor por si só.

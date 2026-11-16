@@ -6,6 +6,24 @@ Data: 14/11/2026. Base revisada: commit `697ec4b` (`feature/simulation-evolution
 Autor: Claude (revisão externa), a pedido do responsável pelo projeto. Público: Codex.
 Leia junto com `VISAO.md`, `META_1_0.md`, `DECISOES.md` e `VERSIONAMENTO.md`. Este documento **não muda a visão**: ele trata de como o código precisa evoluir para sustentá-la.
 
+## Estado da revisão em 16/11/2026 (0.36.0)
+
+As seções P0–P9 descrevem o código de 14/11. Não são uma lista de falhas atuais.
+As convenções da seção 6 continuam válidas. Para as próximas tarefas, use o [roadmap](ROADMAP_1_0.md).
+
+| Item original | Estado atual |
+|---|---|
+| P0: DLLs ausentes | Preparação corrigida; pacotes incluem runtime e licenças. Distribuição estável ainda exige validação adicional. |
+| P1: janela monolítica | Estado, eventos, comandos, renderização e cenários extraídos. Persistem funções grandes em outros módulos. |
+| P2: registro de peças | Registro inicial com IDs, pinos, nomes e faixas. Geometria, emissores e parâmetros ainda não estão todos no registro. |
+| P3–P5: capacidades, parâmetros e API | Limites fixos e parâmetros embutidos continuam. Ainda falta uma API unificada de análise. |
+| P6: cálculo padrão | ngspice automático é o caminho padrão. A API booleana antiga ainda existe no modelo. |
+| P7: transiente em lote | Sessão persistente implementada. Topologia/frequência ainda reiniciam o estado; vetores do solver crescem. |
+| P8–P9: estilo e manutenção | Código extraído, revisões monótonas e caminhos relativos implementados. Legado removido na 0.31.0. |
+
+As perguntas da seção 7 também são históricas: cálculo automático, extração dos módulos e remoção
+do protótipo já ocorreram. O modelo SPICE livre continua uma proposta, sem implementação.
+
 ## 0. Pedido do responsável (a meta deste documento)
 
 > "Está indo num caminho que estou gostando, mas tem que ser algo muito bem feito e que me permita experimentar com qualquer coisa que está no código, sem limitações (a não ser de hardware)."
