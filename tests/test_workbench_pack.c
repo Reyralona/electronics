@@ -126,9 +126,62 @@ static void test_boundary_capacity(void)
     assert(memcmp(&before, &bench, sizeof(bench)) == 0 && strstr(message, "128"));
 }
 
+static int strip_partner(int hole)
+{
+    for (int other = 0; other < BREADBOARD_PINS; ++other)
+        if (other != hole && bench_board_group_first(other) == bench_board_group_first(hole))
+            return other;
+    return -1;
+}
+
+/* Three AND gates make a 4-input AND: only the four free inputs and the final output become ports,
+ * whether the inner links are direct wires or go through a breadboard strip outside the block. */
+static void test_four_input_and(void)
+{
+    Workbench bench = {0};
+    BenchSelection selection = {0};
+    char message[256];
+    int board = bench_add(&bench, PART_BREADBOARD, 600, 600);
+    int first = bench_add(&bench, PART_AND, 300, 200), second = bench_add(&bench, PART_AND, 300, 320);
+    int last = bench_add(&bench, PART_AND, 460, 260), load = bench_add(&bench, PART_RESISTOR, 700, 200);
+    int hole = 40, partner = strip_partner(hole);
+    assert(partner >= 0);
+    assert(bench_toggle_wire(&bench, (Pin){first, 2}, (Pin){board, hole}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){board, partner}, (Pin){last, 0}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){second, 2}, (Pin){last, 1}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){second, 2}, (Pin){load, 0}) == 1);
+    selection.parts[first] = selection.parts[second] = selection.parts[last] = 1;
+    assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
+    assert(bench_group_ports(&bench, 1) == 6);
+    assert(!bench_pin_exposed(&bench.parts[first], 2) && !bench_pin_exposed(&bench.parts[last], 0));
+    assert(bench_pin_exposed(&bench.parts[second], 2) && !bench_pin_exposed(&bench.parts[last], 1));
+    assert(bench_pin_exposed(&bench.parts[last], 2));
+    for (int i = 0; i < bench.wire_count; ++i)
+    {
+        const Wire *wire = &bench.wires[i];
+        assert(wire->a.component != board && wire->b.component != board);
+        assert(!bench.parts[wire->a.component].group || bench_pin_exposed(&bench.parts[wire->a.component], wire->a.pin) ||
+               bench_group_wire_internal(&bench, wire));
+    }
+    selection = (BenchSelection){0};
+    bench_toggle_wire(&bench, (Pin){second, 2}, (Pin){load, 0});
+    Workbench plain = {0};
+    first = bench_add(&plain, PART_AND, 300, 200);
+    second = bench_add(&plain, PART_AND, 300, 320);
+    last = bench_add(&plain, PART_AND, 460, 260);
+    assert(bench_toggle_wire(&plain, (Pin){first, 2}, (Pin){last, 0}) == 1);
+    assert(bench_toggle_wire(&plain, (Pin){second, 2}, (Pin){last, 1}) == 1);
+    selection.parts[first] = selection.parts[second] = selection.parts[last] = 1;
+    assert(bench_pack_selection(&plain, &selection, message, sizeof(message)));
+    assert(bench_group_ports(&plain, 1) == 5 && strstr(message, "5 terminais"));
+    bench_snapshot_clear(&plain);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
     const char *solver = argc > 1 ? argv[1] : NULL;
+    test_four_input_and();
     test_breadboard_boundary(solver);
     test_overlapping_instances(solver);
     test_invalid_project();
