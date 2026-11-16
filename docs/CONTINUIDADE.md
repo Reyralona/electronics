@@ -575,3 +575,26 @@ Artefatos locais em build/i18n-*.bmp. Capturas não são evidência de troca por
 persistência de preferências tem teste próprio. Números exibidos ainda usam ponto decimal.
 Meta 1.0 continua não atendida. Após autorização do usuário, incremento preparado para integração
 à main como 0.35.0, com VERSION, CHANGELOG e documentação pública atualizados. Sem pacote binário.
+
+## Distribuição experimental 0.36.0 - 16/11/2026
+Pesquisa e decisão em DISTRIBUICAO_WINDOWS.md: CMake/Ninja, CPack ZIP e NSIS por usuário,
+sem migração ampla do build.ps1. Empacotar.cmd chama tools/package-windows.ps1.
+Dependências e fontes MSYS2 fixadas com SHA256 em packaging/dependencies.lock.json; ngspice 45.2
+preservado. Fontes completas e patches vão num ZIP separado que deve acompanhar os binários.
+O host usa o caminho relativo canônico do codemodel: ngspice resolve contra o executável do
+processo, não contra CWD; aspas no argumento não são removidas por esse comando. Não depender
+de nomes curtos 8.3 no bundle. Caminhos alternativos mantêm o fallback anterior.
+Release otimizado revelou buffer de expressão pequeno; correção em 8349692. Testes antigos com
+solver real tinham sobreposição involuntária fonte/porta e expectativa anterior à fuga 100 MOhm;
+fixtures e diagnóstico corrigidos em a6c06be, sem mudar os modelos elétricos.
+Marcadores: portable.mode usa pasta do executável; installed.mode usa AppData/Bancada/Bancada;
+sem marcador preserva CWD de desenvolvimento. Não migrar saves automaticamente nem apagar dados.
+NSIS remove somente arquivos distribuídos, registra desinstalação HKCU e não altera PATH.
+Verificações reais: ./build.ps1 -GuiTests passou; ./tools/package-windows.ps1 passou com CTest,
+DC/transiente digital, RC/DFF/live e captura, PATH mínimo e diretório com espaços. Instalador
+testado com chave/atalhos isolados, inclusive diretório de dados e preservação de arquivo extra.
+NSIS trata avisos como erros; comando de desinstalação com caminho entre aspas verificado.
+Artefatos em build/dist, com build-info.json identificando commit/ferramentas e SHA256SUMS externo.
+Não assinados; sem publicação de release. Faltam VM limpa Windows 10/11, assinatura e teste de
+atualização entre versões publicadas. MAX_PATH e caminhos fora da página de código permanecem
+limites conhecidos. Meta 1.0 continua não atendida.

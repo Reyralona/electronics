@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
+#include <direct.h>
+#include <wchar.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include "workbench.h"
@@ -37,6 +39,35 @@ static void find_ngspice(char *path, size_t capacity)
         if (GetFileAttributesA(candidate) != INVALID_FILE_ATTRIBUTES)
             snprintf(path, capacity, "%s", candidate);
     }
+}
+
+/* Distribution markers leave the developer/test working directory unchanged. */
+static int distribution_directory(void)
+{
+    wchar_t executable[MAX_PATH], marker[MAX_PATH], directory[MAX_PATH];
+    DWORD length = GetModuleFileNameW(NULL, executable, MAX_PATH);
+    if (!length || length >= MAX_PATH)
+        return 0;
+    wchar_t *separator = wcsrchr(executable, L'\\');
+    if (!separator)
+        return 0;
+    *separator = 0;
+    if (swprintf(marker, MAX_PATH, L"%ls\\installed.mode", executable) < 0)
+        return 0;
+    if (GetFileAttributesW(marker) != INVALID_FILE_ATTRIBUTES)
+    {
+        char *preferences = SDL_GetPrefPath("Bancada", "Bancada");
+        if (!preferences)
+            return 0;
+        int converted = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, preferences, -1, directory, MAX_PATH);
+        SDL_free(preferences);
+        return converted && _wchdir(directory) == 0;
+    }
+    if (swprintf(marker, MAX_PATH, L"%ls\\portable.mode", executable) < 0)
+        return 0;
+    if (GetFileAttributesW(marker) != INVALID_FILE_ATTRIBUTES)
+        return _wchdir(executable) == 0;
+    return 1;
 }
 
 static void set_window_icon(SDL_Window *window)
@@ -86,6 +117,19 @@ static void apply_language_option(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    if (argc > 1 && !strcmp(argv[1], "--print-data-directory"))
+    {
+        if (!distribution_directory())
+            return 1;
+        wchar_t directory[MAX_PATH];
+        if (!_wgetcwd(directory, MAX_PATH))
+            return 1;
+        char utf8[3 * MAX_PATH];
+        if (!WideCharToMultiByte(CP_UTF8, 0, directory, -1, utf8, sizeof(utf8), NULL, NULL))
+            return 1;
+        printf("%s\n", utf8);
+        return 0;
+    }
     if (argc > 1 && !strcmp(argv[1], "--list-components"))
     {
         for (size_t i = 0; i < component_registry_count(); ++i)
@@ -103,6 +147,14 @@ int main(int argc, char **argv)
     app_state_init(&app);
     app.selftest = argc > 1 && strcmp(argv[1], "--self-test-history") == 0;
     app.capture = argc > 1 && dev_capture_requested(argv[1]);
+    if (!app.selftest && !app.capture && !distribution_directory())
+    {
+        wchar_t detail[256];
+        if (MultiByteToWideChar(CP_UTF8, 0, tr(TXT_UI_DATA_DIRECTORY_FAILED), -1, detail, 256))
+            MessageBoxW(NULL, detail, L"Bancada", MB_OK | MB_ICONERROR);
+        app_state_dispose(&app);
+        return 1;
+    }
     app.auto_capture =
         app.capture && (strcmp(argv[1], "--capture-burn") == 0 || strncmp(argv[1], "--capture-auto", 14) == 0);
     app.sim.auto_enabled = (!app.selftest && !app.capture) || app.auto_capture;
