@@ -12,10 +12,23 @@
 #define SETTINGS_ROW_H 34.0f
 #define STEPPER_W 34.0f
 #define STEPPER_VALUE_W 56.0f
-#define INSPECTOR_X 840.0f
-#define INSPECTOR_W 420.0f
-#define INSPECTOR_ROW_X 852.0f
-#define INSPECTOR_ROW_W 396.0f
+/* Compact inspector, right-aligned at the same edge as before (x 1260). */
+#define INSPECTOR_RIGHT 1260.0f
+#define INSPECTOR_W 320.0f
+#define INSPECTOR_X (INSPECTOR_RIGHT - INSPECTOR_W)
+#define INSPECTOR_TOP 80.0f
+#define INSPECTOR_PAD 10.0f
+#define INSPECTOR_ROW_X (INSPECTOR_X + INSPECTOR_PAD)
+#define INSPECTOR_ROW_W (INSPECTOR_W - 2 * INSPECTOR_PAD)
+#define INSPECTOR_ROW_H 26.0f
+#define INSPECTOR_HEADER_BUTTON 26.0f
+#define INSPECTOR_HEADER_Y (INSPECTOR_TOP + 7)
+#define INSPECTOR_ROTATE_W 64.0f
+#define INSPECTOR_TAB_W 180.0f
+#define INSPECTOR_TAB_H 32.0f
+#define INSPECTOR_SWATCH_W 28.0f
+#define INSPECTOR_SWATCH_H 20.0f
+#define INSPECTOR_SWATCH_PITCH 34.0f
 #define CLOSE_BUTTON 36.0f
 #define FLAG_W 42.0f
 #define FLAG_H 28.0f
@@ -238,32 +251,44 @@ AppRect app_layout_project_close(void)
 
 AppRect app_layout_inspector(float height)
 {
-    return (AppRect){INSPECTOR_X, 80, INSPECTOR_W, height};
+    return (AppRect){INSPECTOR_X, INSPECTOR_TOP, INSPECTOR_W, height};
+}
+
+AppRect app_layout_inspector_minimize(void)
+{
+    float x = INSPECTOR_RIGHT - INSPECTOR_PAD - INSPECTOR_HEADER_BUTTON;
+    return (AppRect){x, INSPECTOR_HEADER_Y, INSPECTOR_HEADER_BUTTON, INSPECTOR_HEADER_BUTTON};
+}
+
+AppRect app_layout_inspector_tab(void)
+{
+    return (AppRect){INSPECTOR_RIGHT - INSPECTOR_TAB_W, INSPECTOR_TOP, INSPECTOR_TAB_W, INSPECTOR_TAB_H};
 }
 
 AppRect app_layout_inspector_rotate(void)
 {
-    return (AppRect){1172, 90, 76, 30};
+    float x = app_layout_inspector_minimize().x - 6 - INSPECTOR_ROTATE_W;
+    return (AppRect){x, INSPECTOR_HEADER_Y, INSPECTOR_ROTATE_W, INSPECTOR_HEADER_BUTTON};
 }
 
 AppRect app_layout_inspector_value(void)
 {
-    return (AppRect){INSPECTOR_ROW_X, 132, INSPECTOR_ROW_W, 30};
+    return (AppRect){INSPECTOR_ROW_X, INSPECTOR_TOP + 38, INSPECTOR_ROW_W, INSPECTOR_ROW_H};
 }
 
 AppRect app_layout_inspector_scale(void)
 {
-    return (AppRect){INSPECTOR_ROW_X, 168, INSPECTOR_ROW_W, 30};
+    return (AppRect){INSPECTOR_ROW_X, INSPECTOR_TOP + 68, INSPECTOR_ROW_W, INSPECTOR_ROW_H};
 }
 
 AppRect app_layout_environment_slider(void)
 {
-    return (AppRect){INSPECTOR_ROW_X - 10, 268, INSPECTOR_ROW_W + 20, 32};
+    return (AppRect){INSPECTOR_ROW_X - 6, INSPECTOR_TOP + 150, INSPECTOR_ROW_W + 12, 28};
 }
 
 AppRect app_layout_environment_track(void)
 {
-    return (AppRect){INSPECTOR_ROW_X + 4, 281, INSPECTOR_ROW_W - 8, 6};
+    return (AppRect){INSPECTOR_ROW_X + 4, INSPECTOR_TOP + 161, INSPECTOR_ROW_W - 8, 6};
 }
 
 double app_layout_environment_position(float x)
@@ -298,7 +323,7 @@ AppRect app_layout_group_button(int index)
 {
     if (index != 0)
         return NO_RECT;
-    return (AppRect){INSPECTOR_ROW_X, 132, 396, 32};
+    return (AppRect){INSPECTOR_ROW_X, INSPECTOR_TOP + 38, INSPECTOR_ROW_W, 28};
 }
 
 int app_layout_group_button_at(float x, float y)
@@ -371,7 +396,8 @@ AppRect app_layout_led_swatch(int color)
 {
     if (color < 0 || color >= APP_LED_SWATCHES)
         return NO_RECT;
-    return (AppRect){INSPECTOR_ROW_X + color * 38.0f, 258, 32, 24};
+    return (AppRect){INSPECTOR_ROW_X + color * INSPECTOR_SWATCH_PITCH, INSPECTOR_TOP + 146, INSPECTOR_SWATCH_W,
+                     INSPECTOR_SWATCH_H};
 }
 
 int app_layout_led_swatch_at(float x, float y)

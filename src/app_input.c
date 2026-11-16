@@ -584,9 +584,28 @@ static int selected_plain_part(const AppState *app)
     return !app->settings && !app->projects_open && !app->examples_open && app->selected >= 0 && !app->bench.parts[app->selected].group;
 }
 
+static int inspector_visible(const AppState *app)
+{
+    return !app->settings && !app->projects_open && !app->examples_open && app->code_part < 0 &&
+           app->selected >= 0 && !app->editor_confirm_close;
+}
+
+/* Minimize collapses the inspector to a tab; clicking the tab expands it. */
+static int input_click_inspector_toggle(AppState *app, float x, float y)
+{
+    if (!inspector_visible(app))
+        return 0;
+    AppRect target = app->inspector_minimized ? app_layout_inspector_tab() : app_layout_inspector_minimize();
+    if (!app_rect_contains(target, x, y))
+        return 0;
+    app->inspector_minimized = !app->inspector_minimized;
+    app->status = tr(app->inspector_minimized ? TXT_APP_INSPECTOR_MINIMIZED : TXT_APP_INSPECTOR_EXPANDED);
+    return 1;
+}
+
 static int input_click_environment(AppState *app, float x, float y)
 {
-    if (!selected_plain_part(app) || !component_environment(app->bench.parts[app->selected].type) ||
+    if (app->inspector_minimized || !selected_plain_part(app) || !component_environment(app->bench.parts[app->selected].type) ||
         !app_rect_contains(app_layout_environment_slider(), x, y))
         return 0;
     if (!bench_history_record(app->history, &app->bench))
@@ -602,7 +621,7 @@ static int input_click_environment(AppState *app, float x, float y)
 
 static int input_click_inspector(AppState *app, SDL_Window *window, float x, float y)
 {
-    if (!selected_plain_part(app))
+    if (app->inspector_minimized || !selected_plain_part(app))
         return 0;
     const Part *part = &app->bench.parts[app->selected];
     int swatch = part->type == PART_LED ? app_layout_led_swatch_at(x, y) : -1;
@@ -644,14 +663,10 @@ static int input_click_header(AppState *app, float x, float y)
         app_editing_key(app, SDLK_F3, 0);
         return 1;
     case APP_HEADER_EXAMPLES:
-        app->examples_open = !app->examples_open;
-        app->settings = 0;
-        app->projects_open = 0;
+        app_state_toggle_panel(app, APP_PANEL_EXAMPLES);
         return 1;
     case APP_HEADER_SETTINGS:
-        app->settings = !app->settings;
-        app->projects_open = 0;
-        app->examples_open = 0;
+        app_state_toggle_panel(app, APP_PANEL_SETTINGS);
         app->dragging = -1;
         app->drag_wire = -1;
         return 1;
@@ -738,6 +753,8 @@ static int input_click_palette(AppState *app, float x, float y)
 
 static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
 {
+    if (input_click_inspector_toggle(app, x, y))
+        return 1;
     if (input_click_environment(app, x, y))
         return 1;
     if (app_editor_click(app, window, x, y))

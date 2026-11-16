@@ -41,6 +41,7 @@ typedef struct AppState
     int snap_grid, snap_board;
     int dark_theme, gui_font_size, show_pin_labels;
     int xray; /* X: transparent part bodies; covered terminals become reachable. */
+    int inspector_minimized; /* Inspector shown as a small name tab; kept across selections. */
     BenchHistory *history;
     int move_recorded;
     uint64_t live_last_scheduled;
@@ -86,4 +87,13 @@ typedef struct AppState
 void app_state_init(AppState *app);
 /* End any editor child first; this releases this context only. */
 void app_state_dispose(AppState *app);
+/* Overlay panels (projects, examples, settings): at most one is open. */
+typedef enum
+{
+    APP_PANEL_PROJECTS,
+    APP_PANEL_EXAMPLES,
+    APP_PANEL_SETTINGS
+} AppPanel;
+/* Opens panel and closes the others, or closes it if it was already open. Returns 1 if now open. */
+int app_state_toggle_panel(AppState *app, AppPanel panel);
 #endif

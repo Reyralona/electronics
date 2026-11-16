@@ -88,6 +88,13 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         app->sim.sim_running = 0;
         return 0;
     }
+    if (argc > 1 && (!strcmp(argv[1], "--capture-inspector") || !strcmp(argv[1], "--capture-inspector-minimized")))
+    {
+        app->selected = bench_add(&app->bench, PART_LED, 600, 400);
+        app->inspector_minimized = !strcmp(argv[1], "--capture-inspector-minimized");
+        app->sim.sim_running = 0;
+        return 0;
+    }
     if (argc > 1 && !strcmp(argv[1], "--capture-dark"))
     {
         app->dark_theme = 1;
@@ -1231,6 +1238,34 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_shortcut(window, SDLK_Z, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 197)
         queued = dev_test_shortcut(window, SDLK_Y, SDL_KMOD_CTRL);
+    /* Inspector: minimize, try a hidden control, expand from the tab, then use a control. */
+    else if (app->selftest_phase == 198)
+    {
+        app->bench = (Workbench){0};
+        app->view = (BenchView){1, 0, 0};
+        bench_add(&app->bench, PART_LED, 400, 300);
+        app->selected = 0;
+        app->inspector_minimized = 0;
+        queued = click_rect(window, app_layout_inspector_minimize());
+    }
+    else if (app->selftest_phase == 199)
+        queued = click_rect(window, app_layout_led_swatch(2));
+    else if (app->selftest_phase == 200)
+    {
+        app->selected = 0;
+        queued = click_rect(window, app_layout_inspector_tab());
+    }
+    else if (app->selftest_phase == 201)
+        queued = click_rect(window, app_layout_led_swatch(2));
+    /* Header panels: opening one closes the other; clicking the open one closes it. */
+    else if (app->selftest_phase == 202 || app->selftest_phase == 204)
+        queued = click_rect(window, app_layout_header(APP_HEADER_EXAMPLES));
+    else if (app->selftest_phase == 203 || app->selftest_phase == 207)
+        queued = click_rect(window, app_layout_header(APP_HEADER_PROJECTS));
+    else if (app->selftest_phase == 205)
+        queued = dev_test_key(window, SDLK_F1);
+    else if (app->selftest_phase == 206)
+        queued = dev_test_key(window, SDLK_F3);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1607,6 +1642,22 @@ void dev_scenario_validate(AppState *app)
         int connected = bench_find_contact(&app->bench, 1, 0, &contact) && contact.component == 0;
         valid = connected == (app->selftest_phase == 193 || app->selftest_phase == 195 || app->selftest_phase == 197);
     }
+    else if (app->selftest_phase == 198)
+        valid = app->inspector_minimized && app->selected == 0;
+    else if (app->selftest_phase == 199)
+        valid = app->inspector_minimized && app->bench.parts[0].states == 0;
+    else if (app->selftest_phase == 200)
+        valid = !app->inspector_minimized && app->selected == 0;
+    else if (app->selftest_phase == 201)
+        valid = !app->inspector_minimized && app->bench.parts[0].states == 2;
+    else if (app->selftest_phase == 202 || app->selftest_phase == 204)
+        valid = app->examples_open && !app->projects_open && !app->settings;
+    else if (app->selftest_phase == 203 || app->selftest_phase == 206)
+        valid = app->projects_open && !app->examples_open && !app->settings;
+    else if (app->selftest_phase == 205)
+        valid = app->settings && !app->projects_open && !app->examples_open;
+    else if (app->selftest_phase == 207)
+        valid = !app->projects_open && !app->examples_open && !app->settings;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1617,7 +1668,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 198)
+    if (++app->selftest_phase == 208)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");

@@ -55,3 +55,22 @@ void app_state_dispose(AppState *app)
     bench_snapshot_clear(&app->clipboard.bench);
     bench_snapshot_clear(&app->library_template.bench);
 }
+
+static int *panel_flag(AppState *app, AppPanel panel)
+{
+    if (panel == APP_PANEL_PROJECTS)
+        return &app->projects_open;
+    if (panel == APP_PANEL_EXAMPLES)
+        return &app->examples_open;
+    return &app->settings;
+}
+
+int app_state_toggle_panel(AppState *app, AppPanel panel)
+{
+    int open = !*panel_flag(app, panel);
+    app->projects_open = 0;
+    app->examples_open = 0;
+    app->settings = 0;
+    *panel_flag(app, panel) = open;
+    return open;
+}

@@ -88,6 +88,10 @@ AppRect app_layout_project_load(void);
 AppRect app_layout_project_close(void);
 
 AppRect app_layout_inspector(float height);
+/* Header button that collapses the inspector into the small tab below. */
+AppRect app_layout_inspector_minimize(void);
+/* Collapsed inspector: a small tab with the part name; clicking it expands the panel again. */
+AppRect app_layout_inspector_tab(void);
 AppRect app_layout_inspector_rotate(void);
 AppRect app_layout_inspector_value(void);
 AppRect app_layout_inspector_scale(void);
@@ -105,7 +109,7 @@ typedef enum
 } AppEditorButton;
 AppRect app_layout_editor_header(AppEditorButton button);
 AppEditorButton app_layout_editor_header_at(float x, float y);
-/* Group inspector: 0 = view interior, 1 = rename. */
+/* Group inspector: 0 = view interior. */
 AppRect app_layout_group_button(int index);
 int app_layout_group_button_at(float x, float y);
 /* Unsaved-editor dialog: 0 = save and return, 1 = discard, 2 = cancel. */

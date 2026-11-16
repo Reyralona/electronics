@@ -177,6 +177,9 @@ UI_TEXT(APP_SELECT_WIRE_FOR_CURRENT, "Selecione um fio e aperte T para medir a c
         "Select a wire and press T to measure its current over time.")
 UI_TEXT(APP_ENVIRONMENT_DRAG, "Arraste para mudar o ambiente.", "Drag to change the environment.")
 UI_TEXT(APP_LED_COLOR_CHANGED, "Cor do LED alterada.", "LED color changed.")
+UI_TEXT(APP_INSPECTOR_MINIMIZED, "Painel recolhido. Clique na etiqueta para abrir.",
+        "Panel collapsed. Click the tab to open it.")
+UI_TEXT(APP_INSPECTOR_EXPANDED, "Painel aberto.", "Panel opened.")
 UI_TEXT(APP_SWAP_FAILED, "Não foi possível trocar a peça. A montagem não mudou.",
         "Cannot replace the part. The circuit did not change.")
 UI_TEXT(APP_PART_SWAPPED, "Peça trocada. Os fios continuam nos mesmos terminais.",
