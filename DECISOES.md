@@ -449,3 +449,15 @@ gravavam um bancada.elec oculto (substituidas por slots Ctrl+S/Ctrl+L; S acident
 Botoes mostram acao sem atalho (preferencia do usuario); atalhos ficam no rodape contextual.
 Arte: capacitor como disco ceramico (nao polarizado), fonte de bancada com visor de 7 segmentos,
 bornes e knob; fototransistor com cupula transparente distinta do fotodiodo.
+
+
+## Exemplo 74HC00 abortando (15/11/2026, Claude)
+Fato: exemplo 3 falhava na sessao continua: "Timestep too small; t = 0,3 us, no da saida 1Y".
+Causa: CIs quad (16cc02f) usavam fontes B com degrau ideal (?1:0) e chaves SW sem histerese;
+a borda do clock cruzando o limiar criava descontinuidade pura. Nao era regressao do contato 1 mOhm.
+Decisao: acionamento continuo (rampa linear entre 1,5 V e 3,5 V; logica por produtos; janela de
+alimentacao 4,5..5,5 V com bordas de 0,1 V) e SW com Vh = 0,1 V. Alto e baixo sao complementares,
+entao a histerese impede conducao simultanea. Em 0/5 V as tabelas-verdade sao identicas (test_catalog).
+Entradas entre 1,5 e 3,5 V passam a dar saida intermediaria aproximada, nao garantida pelo fabricante.
+Regressao: tests/test_examples_live.c roda TODOS os exemplos na sessao continua e verifica a NAND
+seguindo o clock; falhou antes da correcao e passou depois.

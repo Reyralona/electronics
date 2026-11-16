@@ -141,6 +141,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_workbench_examples.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_examples_live.c src/workbench_examples.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/workbench.c src/bench_path.c src/component_registry.c -o build/test_examples_live.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_examples_live.exe "$ngspiceBin/ngspice_con.exe" }
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_spice_trace.c src/spice_trace.c -o build/test_spice_trace.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_spice_trace.exe

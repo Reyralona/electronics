@@ -210,6 +210,39 @@ static int write_semiconductor(FILE *out, const Part *part, int index, int a, in
     return 1;
 }
 
+/* 74HC quad gates (5 V): input low <= 1.5 V, high >= 3.5 V, supply window 4.5..5.5 V.
+ * Drives are continuous (linear between thresholds, logic by products) instead of ideal steps:
+ * a step made the transient timestep collapse when a clock edge crossed a threshold. */
+#define QUAD_INPUT_LOW 1.5
+#define QUAD_INPUT_HIGH 3.5
+#define QUAD_SUPPLY_MIN 4.5
+#define QUAD_SUPPLY_MAX 5.5
+#define QUAD_EDGE_VOLTS .1
+
+static void quad_gate_drive(PartType type, int chip, int gate, char *high, char *low, size_t capacity)
+{
+    char a[96], b[96];
+    const double span = QUAD_INPUT_HIGH - QUAD_INPUT_LOW;
+    snprintf(a, sizeof(a), "min(max((V(chip%d_a%d)-%g)/%g,0),1)", chip, gate, QUAD_INPUT_LOW, span);
+    snprintf(b, sizeof(b), "min(max((V(chip%d_b%d)-%g)/%g,0),1)", chip, gate, QUAD_INPUT_LOW, span);
+    if (type == PART_74HC86)
+    {
+        snprintf(high, capacity, "(%s*(1-%s)+(1-%s)*%s)", a, b, a, b);
+        snprintf(low, capacity, "(%s*%s+(1-%s)*(1-%s))", a, b, a, b);
+    }
+    else if (type == PART_74HC32)
+    {
+        snprintf(low, capacity, "((1-%s)*(1-%s))", a, b);
+        snprintf(high, capacity, "(1-(1-%s)*(1-%s))", a, b);
+    }
+    else
+    {
+        int inverted = type == PART_74HC00;
+        snprintf(inverted ? low : high, capacity, "(%s*%s)", a, b);
+        snprintf(inverted ? high : low, capacity, "(1-%s*%s)", a, b);
+    }
+}
+
 static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient, int measure_wires, Pin probe,
                                    double step, double stop, int session)
 {
@@ -469,7 +502,11 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 ref = find_root(parents, i * WORKBENCH_MAX_PINS + 6), g;
             rail = rail == ground ? 0 : rail + 1;
             ref = ref == ground ? 0 : ref + 1;
-            if (fprintf(out, "Bchip%d_sup chip%d_sup 0 V=V(%d,%d)\n", i, i, rail, ref) < 0)
+            if (fprintf(out, "Bchip%d_sup chip%d_sup 0 V=V(%d,%d)\n", i, i, rail, ref) < 0 ||
+                fprintf(out,
+                        "Bchip%d_ok chip%d_ok 0 V=min(max((V(chip%d_sup)-%g)/%g,0),1)*min(max((%g-V(chip%d_sup))/%g,0),1)\n",
+                        i, i, i, QUAD_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, QUAD_SUPPLY_MAX + QUAD_EDGE_VOLTS, i,
+                        QUAD_EDGE_VOLTS) < 0)
                 return NETLIST_IO_ERROR;
             for (g = 0; g < 4; ++g)
             {
@@ -482,30 +519,10 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 if (fprintf(out, "Bchip%d_a%d chip%d_a%d 0 V=V(%d,%d)\nBchip%d_b%d chip%d_b%d 0 V=V(%d,%d)\n", i, g, i,
                             g, a, ref, i, g, i, g, c, ref) < 0)
                     return NETLIST_IO_ERROR;
-                char al[48], ah[48], bl[48], bh[48], high[256], low[256];
-                snprintf(al, sizeof(al), "(V(chip%d_a%d)<=1.5)", i, g);
-                snprintf(ah, sizeof(ah), "(V(chip%d_a%d)>=3.5)", i, g);
-                snprintf(bl, sizeof(bl), "(V(chip%d_b%d)<=1.5)", i, g);
-                snprintf(bh, sizeof(bh), "(V(chip%d_b%d)>=3.5)", i, g);
-                PartType type = b->parts[i].type;
-                if (type == PART_74HC86)
-                {
-                    snprintf(high, sizeof(high), "((%s&&%s)||(%s&&%s))", ah, bl, al, bh);
-                    snprintf(low, sizeof(low), "((%s&&%s)||(%s&&%s))", ah, bh, al, bl);
-                }
-                else
-                {
-                    int either_high = type == PART_74HC32;
-                    int inverted = type == PART_74HC00;
-                    snprintf(high, sizeof(high), "(%s%s%s)", inverted ? al : ah,
-                             inverted || either_high ? "||" : "&&", inverted ? bl : bh);
-                    snprintf(low, sizeof(low), "(%s%s%s)", inverted ? ah : al,
-                             inverted || either_high ? "&&" : "||", inverted ? bh : bl);
-                }
-                if (fprintf(out, "Bchip%d_hi%d chip%d_hi%d 0 V=((V(chip%d_sup)>=4.5)&&"
-                            "(V(chip%d_sup)<=5.5)&&%s)?1:0\n", i, g, i, g, i, i, high) < 0 ||
-                    fprintf(out, "Bchip%d_lo%d chip%d_lo%d 0 V=((V(chip%d_sup)>=4.5)&&"
-                            "(V(chip%d_sup)<=5.5)&&%s)?1:0\n", i, g, i, g, i, i, low) < 0)
+                char high[320], low[320];
+                quad_gate_drive(b->parts[i].type, i, g, high, low, sizeof(high));
+                if (fprintf(out, "Bchip%d_hi%d chip%d_hi%d 0 V=V(chip%d_ok)*%s\n", i, g, i, g, i, high) < 0 ||
+                    fprintf(out, "Bchip%d_lo%d chip%d_lo%d 0 V=V(chip%d_ok)*%s\n", i, g, i, g, i, low) < 0)
                     return NETLIST_IO_ERROR;
                 if (fprintf(
                         out,
@@ -514,7 +531,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                     return NETLIST_IO_ERROR;
             }
         }
-    if (chip_count && fprintf(out, ".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=0)\n") < 0)
+    if (chip_count && fprintf(out, ".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=.1)\n") < 0)
         return NETLIST_IO_ERROR;
     if (gate_count &&
         fprintf(
