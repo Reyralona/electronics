@@ -573,4 +573,5 @@ e --capture-output=build/arquivo.bmp. Geradas oito capturas de sensores, saídas
 configurações; revisadas saídas nos dois idiomas, medição pt-BR e configurações en-US.
 Artefatos locais em build/i18n-*.bmp. Capturas não são evidência de troca por clique/persistência;
 persistência de preferências tem teste próprio. Números exibidos ainda usam ponto decimal.
-Meta 1.0 continua não atendida. Este incremento permanece na branch de tradução, sem release.
+Meta 1.0 continua não atendida. Após autorização do usuário, incremento preparado para integração
+à main como 0.35.0, com VERSION, CHANGELOG e documentação pública atualizados. Sem pacote binário.

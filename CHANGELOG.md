@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 0.35.0
+
+- Interface em português (Brasil) e inglês (EUA), com seleção por bandeiras em Configurações
+  e preferência salva. Na primeira execução, o idioma acompanha o sistema (inglês como alternativa).
+- Catálogo de 622 textos nos dois idiomas: interface, peças, exemplos, simulação e editor de código.
+  Testes verificam estilo, codificação e compatibilidade dos formatos de mensagem.
+- Nomes longos de peças usam duas linhas no catálogo. Símbolos elétricos permanecem independentes
+  do idioma; nomes de chips digitados e código das placas preservam o conteúdo original.
+- Guia de textos em `docs/TEXTOS.md` e documentação de uso atualizada.
+- Verificação: `./build.ps1 -GuiTests` passou; capturas em pt-BR/en-US revisadas.
+  Limite conhecido: números em português ainda são exibidos com ponto decimal.
+
 ## 0.34.1
 
 - Correção: entrada de porta lógica ou de CI 74HC atrás de interruptor aberto lia nível ALTO na
