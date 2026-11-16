@@ -232,10 +232,12 @@ static int write_gate_input(FILE *out, const char *owner, int index, int input, 
 #define QUAD_SUPPLY_MIN 4.5
 #define QUAD_SUPPLY_MAX 5.5
 #define QUAD_EDGE_VOLTS .1
+#define QUAD_INPUT_TEXT_CAPACITY 96
+#define QUAD_DRIVE_TEXT_CAPACITY (4 * QUAD_INPUT_TEXT_CAPACITY + 16)
 
 static void quad_gate_drive(PartType type, int chip, int gate, char *high, char *low, size_t capacity)
 {
-    char a[96], b[96];
+    char a[QUAD_INPUT_TEXT_CAPACITY], b[QUAD_INPUT_TEXT_CAPACITY];
     const double span = QUAD_INPUT_HIGH - QUAD_INPUT_LOW;
     snprintf(a, sizeof(a), "min(max((V(chip%d_a%d)-%g)/%g,0),1)", chip, gate, QUAD_INPUT_LOW, span);
     snprintf(b, sizeof(b), "min(max((V(chip%d_b%d)-%g)/%g,0),1)", chip, gate, QUAD_INPUT_LOW, span);
@@ -570,7 +572,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 if (!write_gate_input(out, "chip", i, g * 2, a, ref) ||
                     !write_gate_input(out, "chip", i, g * 2 + 1, c, ref))
                     return NETLIST_IO_ERROR;
-                char high[320], low[320];
+                char high[QUAD_DRIVE_TEXT_CAPACITY], low[QUAD_DRIVE_TEXT_CAPACITY];
                 quad_gate_drive(b->parts[i].type, i, g, high, low, sizeof(high));
                 if (fprintf(out, "Bchip%d_hi%d chip%d_hi%d 0 V=V(chip%d_ok)*%s\n", i, g, i, g, i, high) < 0 ||
                     fprintf(out, "Bchip%d_lo%d chip%d_lo%d 0 V=V(chip%d_ok)*%s\n", i, g, i, g, i, low) < 0)
