@@ -80,8 +80,8 @@ UI_TEXT(UI_GRAPH_PIN_CURRENT, "Corrente, pino 1 → 2 (A)", "Current, pin 1 → 
 UI_TEXT(UI_GRAPH_VOLTAGE, "Tensão, terminal %d (V)", "Voltage, terminal %d (V)")
 /* Status bar key hints: "Key: action", joined by " · ". */
 UI_TEXT(UI_HINT_CHIP,
-        "R: girar · Enter: ver interior · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
-        "R: rotate · Enter: view inside · Alt+drag terminal: rearrange · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
+        "R: girar · Enter: ver interior · 2 cliques no terminal: nomear · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
+        "R: rotate · Enter: view inside · Double-click terminal: name · Alt+drag terminal: rearrange · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
 UI_TEXT(UI_HINT_ROTATE, "R: girar", "R: rotate")
 UI_TEXT(UI_HINT_VALUE, "E: valor", "E: value")
 UI_TEXT(UI_HINT_SIZE, "Ctrl+roda: tamanho", "Ctrl+wheel: size")
@@ -103,6 +103,7 @@ UI_TEXT(UI_HINT_BENCH,
         "Ctrl+G: create chip · X: transparency · Ctrl+Z/Y: undo/redo")
 UI_TEXT(UI_TRANSPARENCY_BADGE, "Transparência (X)", "Transparency (X)")
 /* Value editor. */
+UI_TEXT(UI_EDIT_TERMINAL_NAME, "Nome do terminal do chip", "Chip terminal name")
 UI_TEXT(UI_EDIT_CHIP_NAME, "Nome do chip", "Chip name")
 UI_TEXT(UI_EDIT_SIZE, "Tamanho em porcentagem (1 a 10000)", "Size in percent (1 to 10000)")
 UI_TEXT(UI_EDIT_GRID, "Espaçamento da grade (1 a 10000)", "Grid spacing (1 to 10000)")

@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define WORKBENCH_MAX_COMPONENTS 64
-#define WORKBENCH_MAX_WIRES 128
+#define WORKBENCH_MAX_COMPONENTS 256
+#define WORKBENCH_MAX_WIRES 512
 #define WORKBENCH_MAX_PINS 420
 #define WORKBENCH_MAX_IO 24
 #define BREADBOARD_PINS 420
@@ -71,13 +71,17 @@ typedef enum
     PART_ARDUINO_UNO,
     PART_ESP32,
     PART_ATTINY85,
-    PART_LCD_I2C
+    PART_LCD_I2C,
+    PART_JUNCTION /* wire-to-wire connection point: one pin, no body; saved from format 31 */
 } PartType;
 typedef struct
 {
     PartType type;
     struct BenchTerminals *terminals; /* Owned; use part clone/clear, never owning assignment. */
     char *code; /* Owned microcontroller program text (NULL = default); same ownership rules as terminals. */
+    /* Owned names of this part's chip terminals, one "<pin>\t<name>\n" line each (NULL = none); same
+     * ownership rules as terminals. Shown only while the pin is an exposed terminal of a chip. */
+    char *port_names;
     float x, y;
     int on;
     double value;
@@ -173,6 +177,13 @@ int bench_set_on(Workbench *bench, int component, int on);
 int bench_set_states(Workbench *bench, int component, unsigned states);
 /* Replaces the owned program text of a microcontroller part. */
 int bench_set_code(Workbench *bench, int component, const char *code);
+/* Chip terminal names: up to BENCH_PORT_NAME_CAPACITY - 1 bytes of UTF-8 without control characters. */
+#define BENCH_PORT_NAME_CAPACITY 16
+int bench_port_name_valid(const char *name);
+/* Copies the name of `pin` into `name` (empty when unnamed); returns 1 when the pin has a name. */
+int bench_port_name(const Part *part, int pin, char *name, size_t capacity);
+/* Sets or, with an empty name, removes the name of one terminal. Returns 0 for invalid arguments. */
+int bench_set_port_name(Workbench *bench, Pin pin, const char *name);
 int bench_set_wire_color(Workbench *bench, int wire, int color);
 int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count);
 int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point);
@@ -181,6 +192,11 @@ int wire_pick_segment(const Wire *wire, WirePoint start, WirePoint end, float ra
 int bench_move_knee(Workbench *bench, int wire, int knee, WirePoint point);
 int bench_remove_knee(Workbench *bench, int wire, int knee);
 int bench_remove_wire(Workbench *bench, int wire);
+/* Splits `wire` at `point` (knees before `slot` stay on the first half) with a new junction part there.
+ * Both halves keep the color. Returns the junction index, or -1 when the arguments or capacity fail. */
+int bench_split_wire(Workbench *bench, int wire, int slot, WirePoint point);
+/* Removes junctions that no wire reaches any more. Returns how many were removed. */
+int bench_prune_junctions(Workbench *bench);
 
 int bench_add(Workbench *bench, PartType type, float x, float y);
 int bench_swap_type(Workbench *bench, int component, PartType type);

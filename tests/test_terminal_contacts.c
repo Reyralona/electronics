@@ -147,8 +147,47 @@ static void switched_chip_circuit(const char *solver)
     bench_snapshot_clear(&bench);
 }
 
+/* "Ligo um fio direto em outro fio": splitting a bent wire keeps both halves, its color and the electrical node;
+ * the junction survives save/reopen and disappears once no wire reaches it. */
+static void wire_junctions(void)
+{
+    Workbench bench = {0}, reopened = {0};
+    WorkbenchSettings settings = workbench_settings_default();
+    assert(bench_add(&bench, PART_SOURCE, 300, 300) == 0);
+    assert(bench_add(&bench, PART_RESISTOR, 700, 300) == 1);
+    assert(bench_add(&bench, PART_RESISTOR, 500, 500) == 2);
+    assert(bench_toggle_wire(&bench, (Pin){0, 0}, (Pin){1, 0}) == 1);
+    const WirePoint knees[2] = {{400, 200}, {600, 200}};
+    assert(bench_set_wire_route(&bench, 0, knees, 2));
+    assert(bench_set_wire_color(&bench, 0, 2));
+    int junction = bench_split_wire(&bench, 0, 1, (WirePoint){500, 200});
+    assert(junction == 3 && bench.parts[junction].type == PART_JUNCTION && bench.wire_count == 2);
+    assert(bench.wires[0].knee_count == 1 && bench.wires[1].knee_count == 1);
+    assert(bench.wires[0].color == 2 && bench.wires[1].color == 2);
+    assert(netlist_same_net(&bench, (Pin){0, 0}, (Pin){1, 0}));
+    assert(bench_toggle_wire(&bench, (Pin){2, 0}, (Pin){junction, 0}) == 1);
+    assert(netlist_same_net(&bench, (Pin){2, 0}, (Pin){1, 0}));
+    assert(!netlist_same_net(&bench, (Pin){2, 1}, (Pin){1, 0}));
+    /* Opposite cases: invalid slot or wire refused; a junction still wired is kept. */
+    assert(bench_split_wire(&bench, 0, 5, (WirePoint){0, 0}) < 0 && bench_split_wire(&bench, 99, 0, (WirePoint){0, 0}) < 0);
+    assert(bench_prune_junctions(&bench) == 0);
+
+    assert(workbench_save_project("build/test-junctions.elec", &bench, &settings));
+    assert(workbench_load_project("build/test-junctions.elec", &reopened, &settings));
+    remove("build/test-junctions.elec");
+    assert(reopened.parts[junction].type == PART_JUNCTION && reopened.wire_count == 3);
+    assert(netlist_same_net(&reopened, (Pin){2, 0}, (Pin){0, 0}));
+
+    for (int i = bench.wire_count - 1; i >= 0; --i)
+        bench_remove_wire(&bench, i);
+    assert(bench_prune_junctions(&bench) == 1 && bench.part_count == 3);
+    bench_snapshot_clear(&reopened);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
+    wire_junctions();
     every_catalog_terminal();
     chip_ports_and_persistence();
     chip_to_chip();

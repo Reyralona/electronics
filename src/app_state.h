@@ -16,6 +16,7 @@
 #define APP_FONT_MIN 12
 #define APP_FONT_MAX 20
 #define APP_EDIT_SCALE (WORKBENCH_MAX_COMPONENTS + 4)
+#define APP_EDIT_PORT_NAME (WORKBENCH_MAX_COMPONENTS + 5) /* name of chip terminal name_target_pin */
 #define APP_EDIT_GRID (WORKBENCH_MAX_COMPONENTS + 3)
 #define APP_EDIT_GROUP_NAME (WORKBENCH_MAX_COMPONENTS + 2)
 
@@ -25,6 +26,7 @@ typedef struct AppState
     Workbench bench;
     Pin pending, hovered_pin, drag_lead;
     Pin drag_port; /* Chip terminal being rearranged with Alt+drag; component -1 = none. */
+    Pin name_target_pin; /* Chip terminal being named (APP_EDIT_PORT_NAME). */
     size_t drag_lead_point;
     uint64_t hover_revision;
     int selected, placing, dragging, running;

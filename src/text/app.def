@@ -60,6 +60,12 @@ UI_TEXT(APP_VALUE_INVALID, "Valor inválido. Use um número positivo de 1e-12 a 
         "Invalid value. Use a positive number from 1e-12 to 1e12.")
 UI_TEXT(APP_PART_DELETED, "Peça e seus fios apagados.", "Part and its wires deleted.")
 UI_TEXT(APP_WIRE_DELETED, "Fio apagado.", "Wire deleted.")
+UI_TEXT(APP_WIRE_JOINED, "Fio ligado ao outro fio por uma junção. Ctrl+Z desfaz.",
+        "Wire joined to the other wire through a junction. Ctrl+Z undoes it.")
+UI_TEXT(APP_WIRE_BRANCH_STARTED, "Derivação iniciada no fio. Clique no destino.",
+        "Branch started on the wire. Click the destination.")
+UI_TEXT(APP_JUNCTION_LIMIT, "Sem espaço para a junção (limite de %d peças e %d fios).",
+        "No room for the junction (limit of %d parts and %d wires).")
 UI_TEXT(APP_CHIP_ACTION_UNAVAILABLE, "Esta ação não vale para chips. Ctrl+Shift+G: desagrupar o chip.",
         "This action does not apply to chips. Ctrl+Shift+G: ungroup the chip.")
 UI_TEXT(APP_TRANSPARENCY_ON, "Transparência ligada. Terminais cobertos ficam acessíveis.",
@@ -176,6 +182,12 @@ UI_TEXT(APP_WIRE_COLOR_CHANGED, "Cor do fio alterada.", "Wire color changed.")
 UI_TEXT(APP_SELECT_WIRE_FOR_CURRENT, "Selecione um fio e aperte T para medir a corrente no tempo.",
         "Select a wire and press T to measure its current over time.")
 UI_TEXT(APP_ENVIRONMENT_DRAG, "Arraste para mudar o ambiente.", "Drag to change the environment.")
+UI_TEXT(APP_TYPE_TERMINAL_NAME, "Digite o nome do terminal. Enter: confirmar · vazio: remover · Esc: cancelar.",
+        "Type the terminal name. Enter: confirm · empty: remove · Esc: cancel.")
+UI_TEXT(APP_TERMINAL_NAMED, "Terminal nomeado. Ctrl+Z desfaz.", "Terminal named. Ctrl+Z undoes it.")
+UI_TEXT(APP_TERMINAL_NAME_REMOVED, "Nome do terminal removido.", "Terminal name removed.")
+UI_TEXT(APP_TERMINAL_NAME_INVALID, "Nome de terminal inválido. Use até %d bytes, sem caracteres de controle.",
+        "Invalid terminal name. Use up to %d bytes, without control characters.")
 UI_TEXT(APP_DRAG_CHIP_TERMINAL, "Arraste o terminal para outro lado ou posição do chip.",
         "Drag the terminal to another side or position of the chip.")
 UI_TEXT(APP_CHIP_TERMINAL_MOVED, "Terminal do chip reposicionado. Ctrl+Z desfaz.",

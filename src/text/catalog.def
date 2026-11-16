@@ -58,6 +58,7 @@ UI_TEXT(CAT_ARDUINO_UNO, "Arduino Uno", "Arduino Uno")
 UI_TEXT(CAT_ESP32, "ESP32 DevKit", "ESP32 DevKit")
 UI_TEXT(CAT_ATTINY85, "ATtiny85", "ATtiny85")
 UI_TEXT(CAT_LCD_I2C, "LCD 16x2 I2C", "LCD 16x2 I2C")
+UI_TEXT(CAT_JUNCTION, "Junção de fios", "Wire junction")
 /* Pin names that are words; symbols such as GND or 1A are not translated. */
 UI_TEXT(CAT_PIN_SIGNAL, "SINAL", "SIG")
 UI_TEXT(CAT_PIN_OUTPUT, "SAÍDA", "OUT")

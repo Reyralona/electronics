@@ -2425,12 +2425,28 @@ static int labels_visible(const AppState *app)
     return app->view.zoom >= LABEL_MIN_ZOOM;
 }
 
+/* Wire junction: a filled dot (schematic style), ringed when selected. */
+static void draw_junction(const AppState *app, int index)
+{
+    const Part *part = &app->bench.parts[index];
+    float radius = terminal_world_radius(app->view.zoom, 4.5f);
+    if (app->selected == index || app->selection.parts[index])
+    {
+        glColor3f(.12f, .49f, .84f);
+        circle(part->x, part->y, radius * 1.8f);
+    }
+    color(.10f, .38f, .22f);
+    circle(part->x, part->y, radius);
+}
+
 static void draw_workspace_parts(const AppState *app)
 {
     int i;
     glLineWidth(1);
     for (i = 0; i < app->bench.part_count; ++i)
-        if (!app->bench.parts[i].group && app->bench.parts[i].type != PART_BREADBOARD)
+        if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_JUNCTION)
+            draw_junction(app, i);
+        else if (!app->bench.parts[i].group && app->bench.parts[i].type != PART_BREADBOARD)
         {
             int p;
             set_device_frame(app, i);
@@ -2800,6 +2816,25 @@ static void draw_group_displays(const AppState *app, int group, float width, flo
     device_frame = (DeviceFrame){0};
 }
 
+/* Terminal name inside the package, next to its terminal and aligned to that edge (like an IC symbol).
+ * Returns 1 when the terminal has a name, even if it is hidden by the zoom. */
+static int draw_group_port_name(const AppState *app, GLuint font, const Part *part, int pin, int left_side,
+                                float left, float width, float y)
+{
+    const float inset = 5, baseline = 4;
+    char name[BENCH_PORT_NAME_CAPACITY];
+    if (!bench_port_name(part, pin, name, sizeof(name)))
+        return 0;
+    if (!labels_visible(app))
+        return 1;
+    /* name_text draws in world units (it scales with the zoom), so widths need no zoom correction. */
+    float text_width = fminf((float)app_text_utf8_width(name, 2048), width * .5f);
+    float x = left_side ? left + inset : left + width - inset - text_width;
+    glColor3f(.80f, .86f, .90f);
+    name_text(font, x, y + baseline, name, (int)(width * .5f));
+    return 1;
+}
+
 static void draw_groups(const AppState *app, GLuint font)
 {
     for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
@@ -2829,8 +2864,6 @@ static void draw_groups(const AppState *app, GLuint font)
         rect(left, top, width, height);
         glColor3f(.18f, .20f, .22f);
         rect(left, top + height - 4, width, 4);
-        glColor3f(.70f, .74f, .76f);
-        circle(left + 9, top + 9, 2.5f);
         if (selected)
         {
             glColor3f(.12f, .49f, .84f);
@@ -2852,6 +2885,7 @@ static void draw_groups(const AppState *app, GLuint font)
             circle(group->x + width * .5f - 13, group->y - height * .5f + 8, 3);
         }
         draw_group_displays(app, g + 1, width, height);
+        int named = 0;
         Pin pin;
         for (int index = 0; bench_group_port(&app->bench, g + 1, index, &pin); ++index)
         {
@@ -2867,6 +2901,7 @@ static void draw_groups(const AppState *app, GLuint font)
             if (bench_find_contact(&app->bench, pin.component, pin.pin, &contact))
                 color(.15f, .66f, .79f);
             circle(x, y, 3.5f);
+            named |= draw_group_port_name(app, font, &app->bench.parts[pin.component], pin.pin, x < group->x, left, width, y);
             if ((!selected && !app->show_pin_labels) || !labels_visible(app))
                 continue;
             const ComponentPinInfo *info = component_pin_info(app->bench.parts[pin.component].type, pin.pin);
@@ -2874,12 +2909,26 @@ static void draw_groups(const AppState *app, GLuint font)
             snprintf(label, sizeof(label), "%d", index + 1);
             world_text(font, x + (x < group->x ? -14 : 6) / app->view.zoom, y - 6 / app->view.zoom, label, app->view.zoom);
         }
+        if (!named)
+        {
+            /* Pin-1 dot; named terminals already identify the pins. */
+            glColor3f(.70f, .74f, .76f);
+            circle(left + 9, top + 9, 2.5f);
+        }
         glPopMatrix();
         snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), g + 1);
         float label_width = group->rotation % 2 ? height : width;
+        const char *chip_name = group->name[0] ? group->name : label;
+        /* With named terminals along the side edges, the chip name is centred between them. */
+        float label_x = group->x - label_width * .5f + 14;
+        int label_room = (int)label_width - 24;
+        if (named)
+        {
+            float text_width = fminf((float)app_text_utf8_width(chip_name, 2048), label_width - 24);
+            label_x = group->x - text_width * .5f;
+        }
         glColor3f(.86f, .89f, .91f);
-        name_text(font, group->x - label_width * .5f + 14, group->y + 5,
-                  group->name[0] ? group->name : label, (int)label_width - 24);
+        name_text(font, label_x, group->y + 5, chip_name, label_room);
     }
 }
 
@@ -3491,6 +3540,8 @@ static TextId value_editor_title(int editing)
 {
     if (editing == APP_EDIT_GROUP_NAME)
         return TXT_UI_EDIT_CHIP_NAME;
+    if (editing == APP_EDIT_PORT_NAME)
+        return TXT_UI_EDIT_TERMINAL_NAME;
     if (editing == APP_EDIT_SCALE)
         return TXT_UI_EDIT_SIZE;
     if (editing == APP_EDIT_GRID)

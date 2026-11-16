@@ -15,6 +15,7 @@ static const ComponentParameter frequency = {"frequency", "Hz", 1000.0, 1e-12, 1
 static const ComponentPinInfo pins_source[] = {{"V+", PIN_SUPPLY_POSITIVE}, {"V-", PIN_SUPPLY_RETURN}};
 static const ComponentPinInfo pins_passive[] = {{"1", PIN_PASSIVE}, {"2", PIN_PASSIVE}};
 static const ComponentPinInfo pins_pot[] = {{"A", PIN_PASSIVE}, {"W", PIN_PASSIVE}, {"B", PIN_PASSIVE}};
+static const ComponentPinInfo pins_junction[] = {{"J", PIN_CONTACT}};
 static const ComponentPinInfo pins_led[] = {{"A", PIN_ANODE}, {"K", PIN_CATHODE}};
 static const ComponentPinInfo pins_gate[] = {{"A", PIN_INPUT}, {"B", PIN_INPUT}, {"Y", PIN_OUTPUT}};
 static const ComponentPinInfo pins_not[] = {{"A", PIN_INPUT}, {"Y", PIN_OUTPUT}};
@@ -134,6 +135,7 @@ static const ComponentInfo components[] = {
     [PART_ESP32] = {PART_ESP32, "esp32", NULL, 22, COMPONENT_ROTATES, 27, NULL, pins_esp32},
     [PART_ATTINY85] = {PART_ATTINY85, "attiny85", NULL, 8, COMPONENT_ROTATES, 27, NULL, pins_tiny},
     [PART_LCD_I2C] = {PART_LCD_I2C, "lcd-16x2-i2c", NULL, 4, COMPONENT_ROTATES, 27, NULL, pins_lcd},
+    [PART_JUNCTION] = {PART_JUNCTION, "junction", NULL, 1, 0, 31, NULL, pins_junction},
 };
 
 /* Display names; component_info() returns them in the current language. */
@@ -196,6 +198,7 @@ static const TextId display_texts[] = {
     [PART_ESP32] = TXT_CAT_ESP32,
     [PART_ATTINY85] = TXT_CAT_ATTINY85,
     [PART_LCD_I2C] = TXT_CAT_LCD_I2C,
+    [PART_JUNCTION] = TXT_CAT_JUNCTION,
 };
 
 /* Pins whose names are words; symbols such as GND or 1A are the same in every language. */
@@ -317,7 +320,7 @@ static const LocalizedCatalog *localized_catalog(void)
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION};
 
 size_t component_registry_count(void)
 {
@@ -525,7 +528,12 @@ void component_body_extent(PartType type, float *half_width, float *half_height)
     }
     *half_width = 44;
     *half_height = 30;
-    if (type == PART_BREADBOARD)
+    if (type == PART_JUNCTION)
+    {
+        *half_width = 4;
+        *half_height = 4;
+    }
+    else if (type == PART_BREADBOARD)
     {
         *half_width = 227;
         *half_height = 112;

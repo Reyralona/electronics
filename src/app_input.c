@@ -118,11 +118,65 @@ static int part_at(const Workbench *bench, float x, float y, float zoom)
     return -1;
 }
 
+static int editing_name(const AppState *app)
+{
+    return app->editing == APP_EDIT_GROUP_NAME || app->editing == APP_EDIT_PORT_NAME;
+}
+
+/* Double-click on a chip terminal: type its name (Enter confirms, empty removes, Esc cancels). */
+static void start_port_name_edit(AppState *app, SDL_Window *window, Pin pin)
+{
+    if (!SDL_StartTextInput(window))
+    {
+        app->status = tr(TXT_APP_TEXT_INPUT_FAILED);
+        return;
+    }
+    app->pending.component = -1;
+    app->route_count = 0;
+    app->name_target_pin = pin;
+    app->editing = APP_EDIT_PORT_NAME;
+    app->edit_select_all = 1;
+    bench_port_name(&app->bench.parts[pin.component], pin.pin, app->edit_text, sizeof(app->edit_text));
+    app->status = tr(TXT_APP_TYPE_TERMINAL_NAME);
+}
+
+static int commit_port_name(AppState *app)
+{
+    const char *name = app->edit_text + strspn(app->edit_text, " ");
+    if (name[0] && !bench_port_name_valid(name))
+    {
+        report(app, TXT_APP_TERMINAL_NAME_INVALID, BENCH_PORT_NAME_CAPACITY - 1);
+        return 0;
+    }
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
+        return 0;
+    }
+    if (!bench_set_port_name(&app->bench, app->name_target_pin, name))
+    {
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
+        return 0;
+    }
+    if (app->bench.revision != before.revision)
+        bench_history_record(app->history, &before);
+    app->status = tr(name[0] ? TXT_APP_TERMINAL_NAMED : TXT_APP_TERMINAL_NAME_REMOVED);
+    return 1;
+}
+
+static int commit_name(AppState *app)
+{
+    if (app->editing == APP_EDIT_PORT_NAME)
+        return commit_port_name(app);
+    return app_editor_set_name(app, app->edit_text);
+}
+
 static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
     (void)window;
 
-    if (app->editing == APP_EDIT_GROUP_NAME)
+    if (editing_name(app))
     {
         const char *input = event->text.text;
         size_t before = app->edit_select_all ? 0 : strlen(app->edit_text);
@@ -150,7 +204,7 @@ static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event
 static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
 
-    if (app->editing == APP_EDIT_GROUP_NAME)
+    if (editing_name(app))
     {
         if (event->key.key == SDLK_ESCAPE)
         {
@@ -177,7 +231,7 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         }
         else if (event->key.key == SDLK_RETURN || event->key.key == SDLK_KP_ENTER)
         {
-            if (app_editor_set_name(app, app->edit_text))
+            if (commit_name(app))
             {
                 app->editing = -1;
                 app->name_target_group = -1;
@@ -1075,6 +1129,98 @@ static void input_select(AppState *app, float x, float y, int clicks)
     }
 }
 
+/* Splits the wire under (x, y) with a junction. Returns its index, -1 when no wire is there, or -2 when the
+ * bench is full (the status says why). History is recorded by the caller. */
+#define NO_WIRE_HERE -1
+#define JUNCTION_REFUSED -2
+static int split_wire_at(AppState *app, float x, float y)
+{
+    int index = hit_wire(&app->bench, x, y, 7.0f / app->view.zoom, app->round_wires);
+    if (index < 0)
+        return NO_WIRE_HERE;
+    const Wire *wire = &app->bench.wires[index];
+    WirePoint start, end, projected;
+    int slot;
+    bench_terminal_position(&app->bench, wire->a, &start.x, &start.y);
+    bench_terminal_position(&app->bench, wire->b, &end.x, &end.y);
+    if (!wire_pick_segment(wire, start, end, app->round_wires ? 18.0f : 0, (WirePoint){x, y},
+                           7.0f / app->view.zoom, &slot, &projected))
+        return NO_WIRE_HERE;
+    int junction = bench_split_wire(&app->bench, index, slot, projected);
+    if (junction >= 0)
+        return junction;
+    report(app, TXT_APP_JUNCTION_LIMIT, WORKBENCH_MAX_COMPONENTS, WORKBENCH_MAX_WIRES);
+    return JUNCTION_REFUSED;
+}
+
+/* With a wire in progress, a click on another wire ends it there through a new junction. */
+static int input_end_wire_on_wire(AppState *app, float x, float y)
+{
+    if (app->pending.component < 0)
+        return 0;
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
+        return 1;
+    }
+    int junction = split_wire_at(app, x, y);
+    if (junction < 0)
+        return junction == JUNCTION_REFUSED;
+    Pin target = {junction, 0};
+    int result = bench_toggle_wire(&app->bench, app->pending, target);
+    if (result != 1)
+    {
+        bench_replace(&app->bench, &before);
+        app->status = tr(TXT_APP_CONNECT_FAILED);
+        return 1;
+    }
+    int wire = app->bench.wire_count - 1;
+    bench_set_wire_route(&app->bench, wire, app->route, app->route_count);
+    bench_set_wire_color(&app->bench, wire, app->wire_color);
+    bench_history_record(app->history, &before);
+    app->pending.component = -1;
+    app->route_count = 0;
+    app->status = tr(TXT_APP_WIRE_JOINED);
+    return 1;
+}
+
+/* Alt+click on a wire: new junction there, and a wire starts from it. */
+static int input_branch_from_wire(AppState *app, float x, float y)
+{
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
+        return 1;
+    }
+    int junction = split_wire_at(app, x, y);
+    if (junction < 0)
+        return junction == JUNCTION_REFUSED;
+    bench_history_record(app->history, &before);
+    app->selected_wire = -1;
+    app->pending = (Pin){junction, 0};
+    app->route_count = 0;
+    app->status = tr(TXT_APP_WIRE_BRANCH_STARTED);
+    return 1;
+}
+
+/* Alt+drag on a junction moves it; the wires follow. */
+static int input_click_junction(AppState *app, float x, float y)
+{
+    Pin pin = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
+    if (pin.component < 0 || app->bench.parts[pin.component].type != PART_JUNCTION)
+        return 0;
+    app->selected = pin.component;
+    app->dragging = pin.component;
+    app->move_recorded = 0;
+    app->offset_x = x - app->bench.parts[pin.component].x;
+    app->offset_y = y - app->bench.parts[pin.component].y;
+    app->pending.component = -1;
+    app->status = tr(TXT_APP_DRAG_PART);
+    return 1;
+}
+
 /* Alt+drag on a chip terminal rearranges it along the package edges (left/right, any order). */
 static int input_click_chip_terminal(AppState *app, float x, float y)
 {
@@ -1235,9 +1381,11 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     if (SDL_GetModState() & SDL_KMOD_ALT)
     {
-        if (input_click_chip_terminal(app, x, y))
+        if (input_click_chip_terminal(app, x, y) || input_click_junction(app, x, y))
             return;
         if (input_click_lead(app, x, y, event->button.clicks))
+            return;
+        if (input_branch_from_wire(app, x, y))
             return;
         input_select(app, x, y, 1);
         return;
@@ -1264,11 +1412,18 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     Pin clicked = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
     hitpin = clicked.pin;
+    if (hitpin >= 0 && event->button.clicks >= 2 && bench_group_port_index(&app->bench, clicked) >= 0)
+    {
+        start_port_name_edit(app, window, clicked);
+        return;
+    }
     if (hitpin >= 0)
     {
         input_connect_pin(app, clicked);
         return;
     }
+    if (input_end_wire_on_wire(app, x, y))
+        return;
     if (app->pending.component >= 0)
     {
         if (app->route_count < WIRE_MAX_KNEES)

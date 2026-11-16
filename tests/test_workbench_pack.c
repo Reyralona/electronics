@@ -119,12 +119,21 @@ static void test_boundary_capacity(void)
     int selected;
     char message[256];
     assert(workbench_example_create(0, &bench, &selected));
+    /* Fill the wire table from both source terminals to free breadboard holes. */
     for (int pin = 100; bench.wire_count < WORKBENCH_MAX_WIRES; ++pin)
+    {
+        assert(pin < BREADBOARD_PINS);
         assert(bench_toggle_wire(&bench, (Pin){0, 0}, (Pin){1, pin}) == 1);
+        if (bench.wire_count < WORKBENCH_MAX_WIRES)
+            assert(bench_toggle_wire(&bench, (Pin){0, 1}, (Pin){1, pin}) == 1);
+    }
     selection.parts[2] = 1;
-    Workbench before = bench;
+    static Workbench before;
+    before = bench;
+    char limit[16];
+    snprintf(limit, sizeof(limit), "%d", WORKBENCH_MAX_WIRES);
     assert(!bench_pack_selection(&bench, &selection, message, sizeof(message)));
-    assert(memcmp(&before, &bench, sizeof(bench)) == 0 && strstr(message, "128"));
+    assert(memcmp(&before, &bench, sizeof(bench)) == 0 && strstr(message, limit));
 }
 
 static int strip_partner(int hole)
@@ -237,9 +246,52 @@ static void test_three_input_and_layout(void)
     bench_snapshot_clear(&bench);
 }
 
+/* "Nomeio as saidas do meu chip": name terminal Y, refuse invalid names, keep names through save/reopen
+ * and copies, and remove a name with an empty text. */
+static void test_terminal_names(void)
+{
+    Workbench bench = {0}, reopened = {0}, copy = {0};
+    BenchSelection selection = {0};
+    WorkbenchSettings settings = workbench_settings_default();
+    char message[256], name[BENCH_PORT_NAME_CAPACITY];
+    int first = bench_add(&bench, PART_AND, 300, 200), last = bench_add(&bench, PART_AND, 460, 240);
+    assert(bench_toggle_wire(&bench, (Pin){first, 2}, (Pin){last, 0}) == 1);
+    selection.parts[first] = selection.parts[last] = 1;
+    assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
+    Pin output = {last, 2};
+    assert(!bench_port_name(&bench.parts[last], 2, name, sizeof(name)) && !name[0]);
+    assert(bench_set_port_name(&bench, output, "Y"));
+    assert(bench_set_port_name(&bench, (Pin){last, 1}, "C"));
+    assert(bench_port_name(&bench.parts[last], 2, name, sizeof(name)) && !strcmp(name, "Y"));
+    assert(bench_port_name(&bench.parts[last], 1, name, sizeof(name)) && !strcmp(name, "C"));
+
+    uint64_t revision = bench.revision;
+    assert(!bench_set_port_name(&bench, output, "nome-longo-demais-17"));
+    assert(!bench_set_port_name(&bench, output, "a	b"));
+    assert(!bench_set_port_name(&bench, output, "   "));
+    assert(bench.revision == revision);
+    assert(bench_port_name(&bench.parts[last], 2, name, sizeof(name)) && !strcmp(name, "Y"));
+
+    assert(workbench_save_project("build/test-terminal-names.elec", &bench, &settings));
+    assert(workbench_load_project("build/test-terminal-names.elec", &reopened, &settings));
+    remove("build/test-terminal-names.elec");
+    assert(bench_port_name(&reopened.parts[last], 2, name, sizeof(name)) && !strcmp(name, "Y"));
+    assert(bench_port_name(&reopened.parts[last], 1, name, sizeof(name)) && !strcmp(name, "C"));
+
+    assert(bench_snapshot_clone(&copy, &bench));
+    assert(bench_set_port_name(&bench, output, ""));
+    assert(!bench_port_name(&bench.parts[last], 2, name, sizeof(name)));
+    assert(bench_port_name(&bench.parts[last], 1, name, sizeof(name)) && !strcmp(name, "C"));
+    assert(bench_port_name(&copy.parts[last], 2, name, sizeof(name)) && !strcmp(name, "Y"));
+    bench_snapshot_clear(&copy);
+    bench_snapshot_clear(&reopened);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
     test_three_input_and_layout();
+    test_terminal_names();
     const char *solver = argc > 1 ? argv[1] : NULL;
     test_four_input_and();
     test_breadboard_boundary(solver);

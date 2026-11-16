@@ -222,23 +222,70 @@ static int write_gate_input(FILE *out, const char *owner, int index, int input, 
                    NETLIST_GATE_INPUT_OHMS) >= 0;
 }
 
-/* 74HC quad gates (5 V): input low <= 1.5 V, high >= 3.5 V, supply window 4.5..5.5 V.
- * Drives are continuous (linear between thresholds, logic by products) instead of ideal steps:
+/* 74HC family (TI SN74HC08 / Nexperia 74HC08 datasheets, consulted 16/11/2026): specified for VCC 2..6 V;
+ * input low <= ~30% VCC, high >= ~70% VCC; output high close to VCC. Both the quad chips and the loose gate
+ * symbols use these supply-relative thresholds and this window; outside it the gates are off.
+ * Quad drives are continuous (linear between thresholds, logic by products) instead of ideal steps:
  * a step made the transient timestep collapse when a clock edge crossed a threshold. */
-#define QUAD_INPUT_LOW 1.5
-#define QUAD_INPUT_HIGH 3.5
-#define QUAD_SUPPLY_MIN 4.5
-#define QUAD_SUPPLY_MAX 5.5
+#define LOGIC_INPUT_LOW_RATIO .3
+#define LOGIC_INPUT_HIGH_RATIO .7
+#define LOGIC_SUPPLY_MIN 2.0
+#define LOGIC_SUPPLY_MAX 6.0
+#define LOGIC_SUPPLY_FLOOR .1 /* avoids dividing by an unpowered supply */
+/* XSPICE digital gates keep fixed bridge thresholds; inputs are rescaled to a 5 V domain where 1.5/3.5 V
+ * are exactly 30%/70% of the real supply. */
+#define LOGIC_BRIDGE_VOLTS 5.0
+#define QUAD_SUPPLY_MIN LOGIC_SUPPLY_MIN
+#define QUAD_SUPPLY_MAX LOGIC_SUPPLY_MAX
 #define QUAD_EDGE_VOLTS .1
 #define QUAD_INPUT_TEXT_CAPACITY 96
 #define QUAD_DRIVE_TEXT_CAPACITY (4 * QUAD_INPUT_TEXT_CAPACITY + 16)
 
+/* Logic supply of the loose gate symbols ("hidden power pins"): logic_rail is the positive terminal of the
+ * reference source; logic_vcc/logic_ok mirror the quad chip supply window. */
+static int write_logic_supply(FILE *out, int rail_node, int clock_reference)
+{
+    if (clock_reference)
+    {
+        /* A pulse generator alone is a 5 V logic module: it powers the gates with its own 5 V. */
+        if (fprintf(out, "Vlogic logic_rail 0 %g\n", LOGIC_BRIDGE_VOLTS) < 0)
+            return 0;
+    }
+    else if (fprintf(out, "Rlogic_rail logic_rail %d %.17g\n", rail_node, NETLIST_LIVE_CLOSED_OHMS) < 0)
+        return 0;
+    return fprintf(out,
+                   "Blogic_vcc logic_vcc 0 V=V(logic_rail)\n"
+                   "Blogic_ok logic_ok 0 V=min(max((V(logic_vcc)-%g)/%g,0),1)*min(max((%g-V(logic_vcc))/%g,0),1)\n",
+                   LOGIC_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, LOGIC_SUPPLY_MAX + QUAD_EDGE_VOLTS,
+                   QUAD_EDGE_VOLTS) >= 0;
+}
+
+/* Input seen by the digital core: the real input voltage rescaled from VCC to the 5 V bridge domain. */
+static int write_gate_scaled_input(FILE *out, int gate, int input, int node)
+{
+    return fprintf(out, "Bgin%d_%d gin%d_%d 0 V=V(%d)*%g/max(V(logic_vcc),%g)\n", gate, input, gate, input, node,
+                   LOGIC_BRIDGE_VOLTS, LOGIC_SUPPLY_FLOOR) >= 0;
+}
+
+/* CMOS output stage: one switch to the supply rail, one to ground, each ~50 ohm when on (chip_switch).
+ * The current really comes from the reference source, and an unpowered gate leaves its output open. */
+static int write_gate_output(FILE *out, int gate, int node)
+{
+    return fprintf(out,
+                   "Adac%d [dout%d] [gdo%d] gate_dac\n"
+                   "Bghi%d ghi%d 0 V=V(logic_ok)*V(gdo%d)\nBglo%d glo%d 0 V=V(logic_ok)*(1-V(gdo%d))\n"
+                   "Sghi%d logic_rail %d ghi%d 0 chip_switch\nSglo%d %d 0 glo%d 0 chip_switch\n",
+                   gate, gate, gate, gate, gate, gate, gate, gate, gate, gate, node, gate, gate, node, gate) >= 0;
+}
+
 static void quad_gate_drive(PartType type, int chip, int gate, char *high, char *low, size_t capacity)
 {
     char a[QUAD_INPUT_TEXT_CAPACITY], b[QUAD_INPUT_TEXT_CAPACITY];
-    const double span = QUAD_INPUT_HIGH - QUAD_INPUT_LOW;
-    snprintf(a, sizeof(a), "min(max((V(chip%d_a%d)-%g)/%g,0),1)", chip, gate, QUAD_INPUT_LOW, span);
-    snprintf(b, sizeof(b), "min(max((V(chip%d_b%d)-%g)/%g,0),1)", chip, gate, QUAD_INPUT_LOW, span);
+    const double span = LOGIC_INPUT_HIGH_RATIO - LOGIC_INPUT_LOW_RATIO;
+    snprintf(a, sizeof(a), "min(max((V(chip%d_a%d)/max(V(chip%d_sup),%g)-%g)/%g,0),1)", chip, gate, chip,
+             LOGIC_SUPPLY_FLOOR, LOGIC_INPUT_LOW_RATIO, span);
+    snprintf(b, sizeof(b), "min(max((V(chip%d_b%d)/max(V(chip%d_sup),%g)-%g)/%g,0),1)", chip, gate, chip,
+             LOGIC_SUPPLY_FLOOR, LOGIC_INPUT_LOW_RATIO, span);
     if (type == PART_74HC86)
     {
         snprintf(high, capacity, "(%s*(1-%s)+(1-%s)*%s)", a, b, a, b);
@@ -321,6 +368,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_CAPACITOR:
         case PART_INDUCTOR:
         case PART_CLOCK:
+        case PART_JUNCTION:
             break;
         default:
             if (!netlist_device_supported(component_electrical_type(b->parts[i].type)))
@@ -501,6 +549,9 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                         b->parts[i].value) < 0)
                 return NETLIST_IO_ERROR;
         }
+    if (gate_count &&
+        !write_logic_supply(out, positive == ground ? 0 : positive + 1, b->parts[source].type == PART_CLOCK))
+        return NETLIST_IO_ERROR;
     for (i = 0; i < b->part_count; ++i)
         if (component_has_flag(b->parts[i].type, COMPONENT_GATE_SYMBOL))
         {
@@ -514,30 +565,33 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                                 : type == PART_OR   ? "gate_or"
                                 : type == PART_XOR  ? "gate_xor"
                                                     : "gate_not";
+            const int inputs[2] = {a == ground ? 0 : a + 1, c == ground ? 0 : c + 1};
+            const int input_count = type == PART_NOT ? 1 : 2;
+            for (int input = 0; input < input_count; ++input)
+                if (!write_gate_scaled_input(out, i, input, inputs[input]))
+                    return NETLIST_IO_ERROR;
             if (type == PART_NOT)
             {
-                if (fprintf(out, "Aadc%d [%d] [din%d_0] gate_adc\nAgate%d din%d_0 dout%d %s\n", i,
-                            a == ground ? 0 : a + 1, i, i, i, i, model) < 0)
+                if (fprintf(out, "Aadc%d [gin%d_0] [din%d_0] gate_adc\nAgate%d din%d_0 dout%d %s\n", i, i, i, i, i,
+                            i, model) < 0)
                     return NETLIST_IO_ERROR;
             }
             else if (type == PART_DFF)
             {
                 if (fprintf(out,
-                            "Aadc%d [%d %d] [din%d_0 din%d_1] gate_adc\nAgate%d din%d_0 din%d_1 null null dout%d null "
-                            "gate_dff\n",
-                            i, a == ground ? 0 : a + 1, c == ground ? 0 : c + 1, i, i, i, i, i, i) < 0)
+                            "Aadc%d [gin%d_0 gin%d_1] [din%d_0 din%d_1] gate_adc\nAgate%d din%d_0 din%d_1 null null dout%d "
+                            "null gate_dff\n",
+                            i, i, i, i, i, i, i, i, i) < 0)
                     return NETLIST_IO_ERROR;
             }
             else
             {
-                if (fprintf(out, "Aadc%d [%d %d] [din%d_0 din%d_1] gate_adc\nAgate%d [din%d_0 din%d_1] dout%d %s\n", i,
-                            a == ground ? 0 : a + 1, c == ground ? 0 : c + 1, i, i, i, i, i, i, model) < 0)
+                if (fprintf(out, "Aadc%d [gin%d_0 gin%d_1] [din%d_0 din%d_1] gate_adc\nAgate%d [din%d_0 din%d_1] dout%d %s\n",
+                            i, i, i, i, i, i, i, i, i, model) < 0)
                     return NETLIST_IO_ERROR;
             }
-            if (fprintf(out, "Adac%d [dout%d] [%d] gate_dac\n", i, i, output_node == ground ? 0 : output_node + 1) < 0)
+            if (!write_gate_output(out, i, output_node == ground ? 0 : output_node + 1))
                 return NETLIST_IO_ERROR;
-            const int inputs[2] = {a == ground ? 0 : a + 1, c == ground ? 0 : c + 1};
-            const int input_count = type == PART_NOT ? 1 : 2;
             for (int input = 0; input < input_count; ++input)
                 if (!write_gate_input(out, "g", i, input, inputs[input], 0))
                     return NETLIST_IO_ERROR;
@@ -582,7 +636,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                     return NETLIST_IO_ERROR;
             }
         }
-    if (chip_count && fprintf(out, ".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=.1)\n") < 0)
+    if ((chip_count || gate_count) && fprintf(out, ".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=.1)\n") < 0)
         return NETLIST_IO_ERROR;
     if (gate_count &&
         fprintf(
@@ -592,7 +646,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             "fall_delay=1n)\n.model gate_nor d_nor(rise_delay=1n fall_delay=1n)\n"
             ".model gate_xnor d_xnor(rise_delay=1n fall_delay=1n)\n.model gate_xor d_xor(rise_delay=1n fall_delay=1n)\n.model gate_not "
             "d_inverter(rise_delay=1n fall_delay=1n)\n.model gate_dff d_dff(ic=0 clk_delay=1n rise_delay=1n "
-            "fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=1n t_fall=1n)\n") < 0)
+            "fall_delay=1n)\n.model gate_dac dac_bridge(out_low=0 out_high=1 out_undef=.5 t_rise=1n t_fall=1n)\n") < 0)
         return NETLIST_IO_ERROR;
     static const char semiconductor_models[] =
         ".model SILICON_GENERIC D(IS=1e-14 N=1.5 RS=1 BV=100 IBV=1e-6)\n"

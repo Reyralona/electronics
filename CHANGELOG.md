@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.40.0
+
+- Portas lógicas realistas (família 74HC): alimentadas pela primeira fonte da bancada, de 2 a 6 V, com
+  entrada baixa até 30% e alta a partir de 70% do VCC. A saída alta segue a fonte, atrás de ~50 Ω, e puxa
+  corrente da fonte. Com 2 V, a porta funciona em 2 V; fora de 2–6 V, fica desligada.
+  Antes, as portas inventavam 5 V e, com entradas em 2 V, davam 2,5 V ideais que queimavam um LED direto.
+- CIs 74HC quádruplos com a mesma faixa de 2 a 6 V e limiares proporcionais ao VCC.
+- Limites de 64 para 256 peças e de 128 para 512 fios.
+- Junções de fio: terminar um fio em outro fio (ou `Alt`+clique num fio para puxar uma derivação) cria um ponto
+  de junção; `Alt`+arrastar move o ponto e apagar o último fio o remove.
+- Dois cliques num terminal de chip nomeiam o terminal; o nome aparece dentro do corpo, junto ao terminal.
+  Formato de arquivo 31; arquivos antigos continuam abrindo.
+
 ## 0.39.0
 
 - Zoom mínimo de 35% para 12%: circuitos grandes, como o do slot 3, cabem inteiros na tela.
