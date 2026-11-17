@@ -31,7 +31,7 @@ static int SDLCALL run_job(void *argument)
             job->success = sim_auto_run(&job->snapshot, job->executable, &job->auto_options,
                                         &job->auto_result, &job->trace);
         }
-        snprintf(job->message,sizeof(job->message),"%s",job->auto_result.message);
+        memmove(job->message, job->auto_result.message, sizeof(job->message));
     }
     else if(job->transient && job->measures_wires) job->success=spice_transient_instrumented(&job->snapshot,job->executable,job->transient,job->probe,job->step,job->stop,&job->trace,job->message,sizeof(job->message));
     else if(job->transient==3) job->success=spice_transient_wire(&job->snapshot,job->executable,job->probe.component,job->step,job->stop,&job->trace,job->message,sizeof(job->message));
