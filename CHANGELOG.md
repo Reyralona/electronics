@@ -1,6 +1,8 @@
 # Histórico de versões
 
-## Em desenvolvimento
+## 0.41.0
+
+- O contador JK local do slot 5 foi corrigido e validado de 0 a 15. Arquivos pessoais não entram nos pacotes.
 
 - Simulação contínua só mede corrente individual dos fios quando a visualização de corrente está ligada.
   No slot 5 (139 peças e 189 fios), 20 avanços medidos caíram de 8,47 s para 1,23 s.

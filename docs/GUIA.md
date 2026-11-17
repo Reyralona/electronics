@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.40.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.41.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
