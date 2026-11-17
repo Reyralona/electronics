@@ -7,6 +7,15 @@
 static void wire(Workbench *b, int a, int ap, int c, int cp)
 {
     assert(bench_toggle_wire(b, (Pin){a, ap}, (Pin){c, cp}) == 1);
+    float ax, ay, cx, cy;
+    bench_pin_position(&b->parts[a], ap, &ax, &ay);
+    bench_pin_position(&b->parts[c], cp, &cx, &cy);
+    if (ay != cy)
+    {
+        float middle = (ax + cx) * .5f;
+        WirePoint corners[] = {{middle, ay}, {middle, cy}};
+        assert(bench_set_wire_route(b, b->wire_count - 1, corners, 2));
+    }
 }
 
 static int terminal(Workbench *b, const char *name, int target, int pin, float x, float y)
@@ -43,13 +52,13 @@ int main(void)
     bench_add(&b, PART_AND, 450, 200);
     bench_add(&b, PART_AND, 700, 280);
     wire(&b, 0, 2, 1, 0);
-    terminal(&b, "A", 0, 0, 200, 150);
-    terminal(&b, "B", 0, 1, 200, 220);
-    terminal(&b, "C", 1, 1, 200, 350);
+    terminal(&b, "A", 0, 0, 200, 185);
+    terminal(&b, "B", 0, 1, 200, 215);
+    terminal(&b, "C", 1, 1, 200, 295);
     terminal(&b, "Y", 1, 2, 950, 280);
     save(&b, "3AND", "blocks/block-1.elec", 3);
     /* Rising-edge JK: D = J.!Q + !K.Q, built with the existing edge-triggered DFF. */
-    bench_add(&b, PART_NOT, 400, 400); /* !K */
+    bench_add(&b, PART_NOT, 400, 385); /* !K */
     bench_add(&b, PART_AND, 650, 200); /* J.!Q */
     bench_add(&b, PART_AND, 650, 400); /* !K.Q */
     bench_add(&b, PART_OR, 900, 280);
@@ -62,11 +71,19 @@ int main(void)
     wire(&b, 1, 2, 3, 0);
     wire(&b, 2, 2, 3, 1);
     wire(&b, 3, 2, 4, 0);
-    terminal(&b, "J", 1, 0, 200, 150);
-    terminal(&b, "K", 0, 0, 200, 400);
+    terminal(&b, "J", 1, 0, 200, 185);
+    terminal(&b, "K", 0, 0, 200, 385);
     terminal(&b, "CLOCK", 4, 1, 200, 550);
-    terminal(&b, "Q", 4, 2, 1600, 250);
-    terminal(&b, "Q_bar", 5, 1, 1600, 450);
+    terminal(&b, "Q", 4, 2, 1600, 280);
+    terminal(&b, "Q_bar", 5, 1, 1600, 400);
+    WirePoint q_feedback[] = {{1250, 280}, {1250, 490}, {550, 490}, {550, 415}};
+    assert(bench_set_wire_route(&b, 1, q_feedback, 4));
+    WirePoint inverted_feedback[] = {{1510, 400}, {1510, 100}, {550, 100}, {550, 215}};
+    assert(bench_set_wire_route(&b, 3, inverted_feedback, 4));
+    WirePoint inverter_input[] = {{1250, 280}, {1250, 400}};
+    assert(bench_set_wire_route(&b, 2, inverter_input, 2));
+    WirePoint clock_route[] = {{1050, 550}, {1050, 295}};
+    assert(bench_set_wire_route(&b, 9, clock_route, 2));
     save(&b, "JK Flip Flop", "blocks/block-4.elec", 3);
     puts("3AND and rising-edge JK saved with explicit terminals");
 }
