@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
 $executable = Join-Path $resolvedRoot 'bin/ngspice_con.exe'
 if (!(Test-Path -LiteralPath $executable)) { throw "ngspice não encontrado em $executable" }
-$env:Path = "$(Join-Path $resolvedRoot 'bin');C:\msys64\ucrt64\bin;$env:Path"
+$env:Path = "$(Join-Path $resolvedRoot 'bin');$env:Path"
 $output = & $executable -b tests/spice/dc_reference.cir 2>&1
 if ($LASTEXITCODE -ne 0) { throw "ngspice falhou: $output" }
 $text = $output -join "`n"

@@ -18,7 +18,7 @@ As convenções da seção 6 continuam válidas. Para as próximas tarefas, use 
 | P2: registro de peças | Registro inicial com IDs, pinos, nomes e faixas. Geometria, emissores e parâmetros ainda não estão todos no registro. |
 | P3–P5: capacidades, parâmetros e API | Limites fixos e parâmetros embutidos continuam. Ainda falta uma API unificada de análise. |
 | P6: cálculo padrão | ngspice automático é o caminho padrão. A API booleana antiga ainda existe no modelo. |
-| P7: transiente em lote | Sessão persistente implementada. Topologia/frequência ainda reiniciam o estado; vetores do solver crescem. |
+| P7: transiente em lote | Sessão persistente implementada. Topologia/frequência ainda reiniciam o estado; a sessão contínua agora retém só a última amostra. |
 | P8–P9: estilo e manutenção | Código extraído, revisões monótonas e caminhos relativos implementados. Legado removido na 0.31.0. |
 
 As perguntas da seção 7 também são históricas: cálculo automático, extração dos módulos e remoção
@@ -60,7 +60,7 @@ Nada abaixo pede para reescrever o projeto. São refatorações incrementais sob
 ## 3. Problemas, por prioridade
 
 ### P0. O runtime ngspice só funciona com o MSYS2 no PATH (causa do "cálculo indisponível" relatado)
-Verificado em 14/11/2026: `ngspice_con.exe` depende de `libgcc_s_seh-1.dll`, `libgomp-1.dll`, `libstdc++-6.dll` e `libwinpthread-1.dll`. Nenhuma delas é extraída por `tools/setup-ngspice.ps1`; todas existem só em `C:\msys64\ucrt64\bin`. O `build.ps1` coloca esse diretório no PATH, então os testes passam. Ao abrir o `bancada.exe` fora dessa sessão, `P` e `T` resultam em "ngspice falhou", e a montagem fica em "CÁLCULO INDISPONÍVEL". O `bancada.exe` também depende de `SDL3.dll`, que não está no PATH do sistema.
+Verificado em 14/11/2026: `ngspice_con.exe` depende de `libgcc_s_seh-1.dll`, `libgomp-1.dll`, `libstdc++-6.dll` e `libwinpthread-1.dll`. Na revisão original, essas bibliotecas eram encontradas apenas pela instalação local do compilador. O `build.ps1` colocava o diretório do compilador no PATH, então os testes passavam. Ao abrir o `bancada.exe` fora dessa sessão, `P` e `T` resultavam em "ngspice falhou", e a montagem ficava em "CÁLCULO INDISPONÍVEL". O `bancada.exe` também dependia de `SDL3.dll`, ausente do PATH do sistema.
 Correção local já aplicada (fora do git): as quatro DLLs foram copiadas para `build/spice-local/ucrt64/bin` e `SDL3.dll` para `build/`. Com o PATH limpo, DC e transitório funcionam.
 *Correção durável a fazer:* `setup-ngspice.ps1` deve extrair também o pacote de runtime do GCC (`mingw-w64-ucrt-x86_64-gcc-libs` e `-libwinpthread`), e `build.ps1` deve copiar `SDL3.dll` para `build/`. Adicionar um teste que rode o ngspice com PATH mínimo. A mensagem "ngspice falhou" deve incluir o código de saída (por exemplo, `0xC0000135` significa DLL ausente).
 

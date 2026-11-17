@@ -1,7 +1,7 @@
 param([string]$Root = 'build/spice-local/ucrt64')
 $ErrorActionPreference = 'Stop'
 $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
-$env:Path = "$(Join-Path $resolvedRoot 'bin');C:\msys64\ucrt64\bin;$env:Path"
+$env:Path = "$(Join-Path $resolvedRoot 'bin');$env:Path"
 $template = Get-Content -Raw 'tests/spice/xspice_and.cir'
 $cases = @(
     @{ Name='and'; Values=@(0,0,0,5,2.5); Led=$true },

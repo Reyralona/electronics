@@ -5,7 +5,7 @@ Para usar o programa sem compilar, baixe um pacote na
 
 ## Preparar o ambiente
 
-1. Instale o [MSYS2](https://www.msys2.org/) em `C:\msys64`.
+1. Instale o [MSYS2](https://www.msys2.org/). Adicione os executáveis UCRT64 e `bsdtar` ao `PATH` da sessão de compilação.
 2. Abra o terminal **MSYS2 UCRT64** e atualize os pacotes:
 
 ```sh
@@ -21,7 +21,7 @@ pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-sdl3
 
 ## Compilar e testar
 
-No PowerShell, clone o projeto numa pasta sem espaços no caminho.
+No PowerShell com `gcc.exe` e `bsdtar.exe` disponíveis no `PATH`, clone o projeto numa pasta sem espaços no caminho.
 Essa restrição é do script de preparação abaixo; os pacotes distribuídos aceitam espaços.
 
 ```powershell

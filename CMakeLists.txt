@@ -108,6 +108,25 @@ if(BUILD_TESTING)
         src/ui_text.c
     )
     target_include_directories(test_spice_live PRIVATE src)
+    add_executable(test_cockcroft_slot
+        tests/test_cockcroft_slot.c
+        src/spice_live.c
+        src/spice_session.c
+        src/sim_auto.c
+        src/spice_process.c
+        src/netlist.c
+        src/netlist_devices.c
+        src/mcu_board.c
+        src/workbench.c
+        src/bench_path.c
+        src/component_registry.c
+        src/component_devices.c
+        src/workbench_file.c
+        src/workbench_pack_file.c
+        src/workbench_group_name.c
+        src/ui_text.c
+    )
+    target_include_directories(test_cockcroft_slot PRIVATE src)
     add_executable(test_spice_process
         tests/test_spice_process.c
         src/spice_process.c

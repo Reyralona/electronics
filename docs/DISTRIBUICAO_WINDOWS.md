@@ -32,17 +32,21 @@ pendente; checksums detectam mudanças, mas não autenticam o editor por si só.
 
 ## Gerar os pacotes
 
-Pré-requisito do desenvolvedor: MSYS2 em `C:/msys64`. No terminal UCRT64:
+Pré-requisito do desenvolvedor: MSYS2 UCRT64. No terminal UCRT64:
 
 ```sh
 pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-nsis
 ```
 
-Com o código commitado, dê dois cliques em `Empacotar.cmd` ou execute no PowerShell:
+Com o código commitado e as ferramentas UCRT64 no `PATH`, execute no PowerShell:
 
 ```powershell
 ./tools/package-windows.ps1
 ```
+
+Se o compilador não estiver no `PATH`, informe a pasta UCRT64 instalada usando
+`-Toolchain`. O script encontra `bsdtar` na mesma instalação. `Empacotar.cmd` usa o
+mesmo ambiente e exige que as ferramentas já estejam no `PATH`.
 
 O script baixa os pacotes e fontes fixados em `packaging/dependencies.lock.json`, confere SHA256,
 prepara um runtime privado e compila contra a SDL3 desse runtime. O MSYS2 instalado fornece apenas

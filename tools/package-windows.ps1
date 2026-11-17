@@ -1,15 +1,18 @@
-param([string]$Toolchain = 'C:/msys64/ucrt64', [switch]$SkipTests)
+param([string]$Toolchain = '', [switch]$SkipTests)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
 $previousPath = $env:Path
 try {
-    $env:Path = "$Toolchain/bin;$env:Path"
-    $tar = 'C:/msys64/usr/bin/bsdtar.exe'
+    if ($Toolchain) {
+        $resolvedToolchain = (Resolve-Path -LiteralPath $Toolchain).Path
+        $msysRoot = Split-Path $resolvedToolchain -Parent
+        $env:Path = "$(Join-Path $resolvedToolchain 'bin');$(Join-Path $msysRoot 'usr/bin');$env:Path"
+    }
+    $tar = (Get-Command bsdtar.exe -ErrorAction Stop).Source
     foreach ($command in 'cmake', 'ninja', 'gcc', 'objdump', 'makensis') {
         if (!(Get-Command $command -ErrorAction SilentlyContinue)) { throw "Missing tool: $command" }
     }
-    if (!(Test-Path $tar)) { throw "Missing tool: $tar" }
     $version = (Get-Content VERSION -Raw).Trim()
     if ((git status --porcelain --untracked-files=normal)) {
         throw 'Commit the reviewed source before producing distributable artifacts.'

@@ -1,5 +1,9 @@
 ﻿param([string]$Tag, [string]$Artifacts = 'build/dist', [switch]$ResumeDraft)
 $ErrorActionPreference = 'Stop'
+function Assert-PublicNotes([string]$Text) {
+    $privatePath = '(?i)(?:[A-Z]:[\\/]|/(?:home|Users)/[^/\s]+/|file://|\\\\[^\\\s]+\\[^\\\s]+\\)'
+    if ($Text -match $privatePath) { throw 'Release notes contain a local or personal file path.' }
+}
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
 try {
@@ -52,7 +56,7 @@ Versão experimental para Windows 10/11 x64, com interface em português e ingl�
 - **Integridade:** confira os downloads com ``SHA256SUMS.txt``.
 
 Não é preciso instalar MSYS2, GCC ou ngspice para usar estes pacotes.
-Na instalação, projetos ficam em ``%APPDATA%/Bancada/Bancada`` e sobrevivem à desinstalação.
+Na instalação, projetos ficam no diretório de dados do aplicativo e sobrevivem à desinstalação.
 No ZIP, ficam ao lado do executável. Não há migração automática de projetos antigos.
 
 ## Alterações
@@ -67,6 +71,7 @@ Ainda falta validação numa VM Windows limpa. Os modelos elétricos são aproxi
 
 Commit dos binários: ``$($build.commit)``. O arquivo ``build-info.json`` identifica as ferramentas usadas.
 "@
+    Assert-PublicNotes $text
     [IO.File]::WriteAllText($notes, $text, [Text.UTF8Encoding]::new($false))
     $assets = @($names + $checksumsName | ForEach-Object { Join-Path $directory $_ })
     # Keep incomplete uploads private. Existing releases fail instead of replacing published files.

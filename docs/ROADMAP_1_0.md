@@ -64,10 +64,10 @@ Dívidas encontradas, em ordem de impacto:
    migrar para uma tabela de fases `{ação, verificação}`; hoje inserir uma fase no meio exige renumerar.
 4. ~~Uma corrente por peça~~: resolvido na 0.32.0 (`component_devices`, até 8 medições e `states`).
    Falta proteção de queima por elemento (hoje RGB/7 segmentos não "queimam").
-5. **Limites fixos**: 64 peças, 128 fios, 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
+5. **Limites fixos**: 256 peças, 512 fios, 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
    capacidades dinâmicas.
-6. **Tipos persistidos como códigos numéricos** (formato 29); a migração para IDs textuais já foi
-   decidida e deve usar um número de formato novo, mantendo leitura 1–29.
+6. **Tipos persistidos como códigos numéricos** (formato 32); a migração para IDs textuais já foi
+   decidida e deve usar um número de formato novo, mantendo leitura das versões anteriores.
 7. Funções ainda acima de 100 linhas: `workbench_read_project`, `input_edit_key`, `part_draw`,
    `input_zoom`, `analyze` em `spice_process.c`.
 
@@ -77,8 +77,8 @@ Dívidas encontradas, em ordem de impacto:
 - [x] Elementos internos por peça e estado por peça (0.32.0). Falta proteção de queima por elemento (RGB/7 segmentos).
 - [ ] Capacidades dinâmicas (peças, fios, joelhos, blocos) sem copiar `Workbench` inteiro por valor.
 - [ ] IDs textuais no formato de arquivo.
-- [ ] Sessão contínua que preserve estado ao mudar topologia/frequência (hoje reinicia) e vetores do
-      solver limitados (hoje crescem até reiniciar).
+- [ ] Sessão contínua que preserve estado ao mudar topologia/frequência (hoje reinicia).
+- [x] Histórico da sessão contínua limitado à última amostra no ngspice (0.42.0).
 - [ ] Divisão de `app_render.c` e `write_netlist` (seção 3).
 
 ### 4.2 Catálogo pendente (`CATALOGO_COMPONENTES.md`)
@@ -93,7 +93,7 @@ sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
 ### 4.3 Uso e acabamento (`QUALIDADE_DE_USO.md`)
 - [ ] Escala completa da interface (hoje só o tamanho do texto muda).
 - [ ] Inspector que não cubra peças (recolher/mover quando sobrepõe a seleção).
-- [ ] Tempo simulado visível como razão (hoje ~1 ms simulado por segundo real; ajustar duração).
+- [x] Ritmo observado e escolhido visíveis na interface (0.42.0); o ritmo real depende do circuito.
 - [x] Pacotes experimentais com runtime, host, licenças e fontes (0.36.0).
 - [ ] Validar numa VM Windows limpa, assinar os artefatos e testar atualização entre versões.
 - [ ] Automatizar a publicação ao enviar tags; hoje há um comando explícito por versão.

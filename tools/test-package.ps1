@@ -10,12 +10,17 @@ try {
     $env:Path = "$env:SystemRoot/System32;$env:SystemRoot"
     Push-Location $work
     try {
-        foreach ($test in 'test_spice_process.exe', 'test_workbench_examples.exe', 'test_spice_session.exe', 'test_spice_live.exe', 'test_terminal_contacts.exe') {
+        foreach ($test in 'test_spice_process.exe', 'test_workbench_examples.exe', 'test_spice_session.exe', 'test_spice_live.exe', 'test_terminal_contacts.exe', 'test_cockcroft_slot.exe') {
             $temporaryTest = Join-Path $packagePath $test
             if (Test-Path -LiteralPath $temporaryTest) { throw "Test file already exists: $temporaryTest" }
             Copy-Item -LiteralPath (Join-Path $testPath $test) -Destination $temporaryTest
             try {
-                & $temporaryTest $solver
+                if ($test -eq 'test_cockcroft_slot.exe') {
+                    $fixture = Join-Path (Split-Path $PSScriptRoot -Parent) 'tests/fixtures/cockcroft-walton.elec'
+                    & $temporaryTest $fixture $solver
+                } else {
+                    & $temporaryTest $solver
+                }
                 if ($LASTEXITCODE -ne 0) { throw "Relocated package failed: $test ($LASTEXITCODE)" }
             } finally { Remove-Item -LiteralPath $temporaryTest }
         }
