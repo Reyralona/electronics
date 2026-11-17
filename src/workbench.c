@@ -9,6 +9,72 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static void layers_clear(BenchPartLayer *layer)
+{
+    while (layer)
+    {
+        BenchPartLayer *next = layer->next;
+        free(layer->port_names);
+        free(layer);
+        layer = next;
+    }
+}
+
+int bench_part_push_layer(Part *part)
+{
+    BenchPartLayer *layer = calloc(1, sizeof(*layer));
+    if (!layer)
+        return 0;
+    layer->group = part->group;
+    memcpy(layer->exposed, part->exposed, sizeof(layer->exposed));
+    layer->port_names = part->port_names;
+    layer->next = part->layers;
+    part->layers = layer;
+    part->port_names = layer->port_names ? _strdup(layer->port_names) : NULL;
+    if (layer->port_names && !part->port_names)
+    {
+        part->port_names = layer->port_names;
+        part->layers = layer->next;
+        free(layer);
+        return 0;
+    }
+    memset(part->exposed, 0, sizeof(part->exposed));
+    return 1;
+}
+
+void bench_part_pop_layer(Part *part)
+{
+    BenchPartLayer *layer = part->layers;
+    if (!layer)
+    {
+        part->group = 0;
+        memset(part->exposed, 0, sizeof(part->exposed));
+        return;
+    }
+    free(part->port_names);
+    part->port_names = layer->port_names;
+    part->group = layer->group;
+    memcpy(part->exposed, layer->exposed, sizeof(part->exposed));
+    part->layers = layer->next;
+    free(layer);
+}
+
+void bench_groups_prune(Workbench *bench)
+{
+    unsigned char used[WORKBENCH_MAX_COMPONENTS] = {0};
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        if (bench->parts[i].group)
+            used[bench->parts[i].group - 1] = 1;
+        for (const BenchPartLayer *layer = bench->parts[i].layers; layer; layer = layer->next)
+            if (layer->group)
+                used[layer->group - 1] = 1;
+    }
+    for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
+        if (!used[g])
+            memset(&bench->groups[g], 0, sizeof(bench->groups[g]));
+}
+
 void bench_part_clear(Part *part)
 {
     if (!part)
@@ -22,6 +88,7 @@ void bench_part_clear(Part *part)
     }
     free(part->code);
     free(part->port_names);
+    layers_clear(part->layers);
     memset(part, 0, sizeof(*part));
 }
 
@@ -35,6 +102,7 @@ int bench_part_clone(Part *destination, const Part *source)
     copy.terminals = NULL;
     copy.code = NULL;
     copy.port_names = NULL;
+    copy.layers = NULL;
     if (source->code && !(copy.code = _strdup(source->code)))
         return 0;
     if (source->port_names && !(copy.port_names = _strdup(source->port_names)))
@@ -66,6 +134,25 @@ int bench_part_clone(Part *destination, const Part *source)
                 bench_part_clear(&copy);
                 return 0;
             }
+    }
+    BenchPartLayer **tail = &copy.layers;
+    for (const BenchPartLayer *layer = source->layers; layer; layer = layer->next)
+    {
+        *tail = calloc(1, sizeof(**tail));
+        if (!*tail)
+        {
+            bench_part_clear(&copy);
+            return 0;
+        }
+        **tail = *layer;
+        (*tail)->next = NULL;
+        (*tail)->port_names = layer->port_names ? _strdup(layer->port_names) : NULL;
+        if (layer->port_names && !(*tail)->port_names)
+        {
+            bench_part_clear(&copy);
+            return 0;
+        }
+        tail = &(*tail)->next;
     }
     bench_part_clear(destination);
     *destination = copy;
@@ -412,7 +499,7 @@ int bench_prune_junctions(Workbench *bench)
 {
     int removed = 0;
     for (int i = bench->part_count - 1; i >= 0; --i)
-        if (bench->parts[i].type == PART_JUNCTION && !junction_wired(bench, i))
+        if (bench->parts[i].type == PART_JUNCTION && !bench->parts[i].port_names && !junction_wired(bench, i))
         {
             bench_remove(bench, i);
             ++removed;
@@ -781,6 +868,21 @@ static int contact_positions(const Workbench *bench, Pin a, Pin b, WirePoint *pa
     const Part *second = &bench->parts[b.component];
     if (first->group == second->group)
     {
+        const BenchPartLayer *left = first->layers;
+        const BenchPartLayer *right = second->layers;
+        while (left || right)
+        {
+            int left_group = left ? left->group : 0;
+            int right_group = right ? right->group : 0;
+            /* Cross-package contacts were frozen as wires when the parent was created.
+             * Hidden leaf positions must never connect independent child instances. */
+            if (left_group != right_group)
+                return 0;
+            if (!left_group)
+                break;
+            left = left->next;
+            right = right->next;
+        }
         bench_pin_position(first, a.pin, &pa->x, &pa->y);
         bench_pin_position(second, b.pin, &pb->x, &pb->y);
         return 1;
@@ -1010,6 +1112,7 @@ void bench_remove(Workbench *b, int index)
     for (int part = index + 1; part < b->part_count; ++part)
         bench_part_move(&b->parts[part - 1], &b->parts[part]);
     --b->part_count;
+    bench_groups_prune(b);
     if (removed_group)
     {
         int members = 0;

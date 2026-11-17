@@ -63,6 +63,26 @@ add_executable(spice-live-host src/spice_live_host.c src/ui_text.c)
 target_include_directories(spice-live-host PRIVATE src)
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(test_recursive_chips
+        tests/test_recursive_chips.c
+        src/spice_process.c
+        src/netlist.c
+        src/netlist_devices.c
+        src/mcu_board.c
+        src/workbench_group_edit.c
+        src/workbench_group_name.c
+        src/workbench_pack.c
+        src/workbench_selection.c
+        src/workbench_file.c
+        src/workbench_pack_file.c
+        src/workbench.c
+        src/bench_path.c
+        src/component_registry.c
+        src/component_devices.c
+        src/ui_text.c
+    )
+    target_include_directories(test_recursive_chips PRIVATE src)
+    add_test(NAME recursive_chips COMMAND test_recursive_chips)
     add_executable(test_ui_text tests/test_ui_text.c src/ui_text.c)
     target_include_directories(test_ui_text PRIVATE src)
     add_test(NAME ui_text COMMAND test_ui_text)

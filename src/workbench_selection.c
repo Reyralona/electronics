@@ -65,6 +65,9 @@ int bench_selection_copy(const Workbench *bench, const BenchSelection *selection
             ++copy.part_count;
             if (bench->parts[i].group)
                 copy.groups[bench->parts[i].group - 1] = bench->groups[bench->parts[i].group - 1];
+            for (const BenchPartLayer *layer = bench->parts[i].layers; layer; layer = layer->next)
+                if (layer->group)
+                    copy.groups[layer->group - 1] = bench->groups[layer->group - 1];
         }
     }
     if (!copy.part_count)
@@ -124,6 +127,8 @@ static int paste_into(Workbench *bench, BenchSelection *selection, const BenchCl
             BenchGroup group = copy->groups[g];
             group.x += dx;
             group.y += dy;
+            if (group.parent)
+                group.parent = group_map[group.parent - 1];
             bench->groups[group_map[g] - 1] = group;
         }
     int offset = bench->part_count;
@@ -139,6 +144,9 @@ static int paste_into(Workbench *bench, BenchSelection *selection, const BenchCl
         selection->parts[bench->part_count] = 1;
         if (!bench_part_clone(&bench->parts[bench->part_count], &part))
             return 0;
+        for (BenchPartLayer *layer = bench->parts[bench->part_count].layers; layer; layer = layer->next)
+            if (layer->group)
+                layer->group = group_map[layer->group - 1];
         ++bench->part_count;
     }
     for (int i = 0; i < copy->wire_count; ++i)
@@ -222,7 +230,11 @@ void bench_selection_move(Workbench *bench, const BenchSelection *selection, flo
     {
         int selected_group = 0;
         for (int i = 0; i < bench->part_count; ++i)
+        {
             selected_group |= selection->parts[i] && bench->parts[i].group == g + 1;
+            for (const BenchPartLayer *layer = bench->parts[i].layers; selection->parts[i] && layer; layer = layer->next)
+                selected_group |= layer->group == g + 1;
+        }
         if (selected_group)
         {
             bench->groups[g].x += dx;

@@ -408,6 +408,12 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             return 1;
         app->selected = 1;
         bench_group_set_name(&app->bench, 1, "Indicador \xc3\xa1rvore");
+        if (!strcmp(argv[1], "--capture-editor-nested") || !strcmp(argv[1], "--capture-editor-deep"))
+        {
+            int outer = bench_pack_selection(&app->bench, &app->selection, app->selection_status, sizeof(app->selection_status));
+            if (!outer || !bench_group_set_name(&app->bench, outer, "Indicador composto"))
+                return 1;
+        }
         if (!strcmp(argv[1], "--capture-packed-rotated"))
         {
             bench_group_resize(&app->bench, 1, 72, 180);

@@ -636,3 +636,45 @@ separar contatos e sobrepor apenas geometria oculta não alimentam o LED/não cr
 Autoteste GUI tem 198 fases; as últimas selecionam/giram, encaixam, afastam, reconectam e desfazem/refazem.
 Captura revisada: build/chip-rotated-final.bmp. Pacote 0.37.0 passou nos testes de realocação, solver,
 interface, instalação/desinstalação e preservação de arquivo extra. Não marcar a meta 1.0 como atendida.
+
+## Chips recursivos — 16/11/2026, feature/recursive-chips
+
+Implementada composição preservando os chips internos, com camadas de portas/nomes por peça,
+grupos com pai e formato 32 (leitura dos antigos preservada). Solver continua plano. Contatos
+entre chips viram fios ao encapsular; geometria oculta de filhos diferentes não conecta.
+Editor permite entrar por Enter/Ver interior em vários níveis; Voltar sobe um nível e Aplicar
+altera somente o pai imediato, com undo e origem dos componentes preservada até a bancada.
+`./build.ps1 -GuiTests` passou. `test_recursive_chips` falhou antes no segundo encapsulamento;
+agora cobre persistência, cópia, exclusão, vinte níveis, ancestralidade inválida, contatos e solver.
+`test_app_editor` cobre descarte/aplicação em profundidade e fios externos. Após ajuste visual
+do cabeçalho, recompilado o comando da aplicação de build.ps1 com os mesmos avisos estritos.
+Capturas revistas: `build/recursive-editor.bmp` e `build/recursive-editor-deep.bmp`, geradas com
+`--capture-editor-nested`/`--capture-editor-deep` e `--capture-output=...`.
+Registro em CHANGELOG como incremento em desenvolvimento; sem nova versão/pacote publicado.
+Meta 1.0 continua não atendida.
+
+## Terminais explícitos e modelos corrigidos — 16/11/2026
+
+Junções nomeadas e sem grupo no contexto atual escolhem os nós do próximo chip. Se houver uma,
+suprime a exposição automática de outros nós livres; conexões externas continuam protegidas.
+Digital agora oferece Junção de fios; dois cliques nomeiam o ponto. Nomes aparecem no interior,
+persistem no formato existente e pontos nomeados não são eliminados por prune de junções.
+`test_manual_ports` confirma CLOCK comum em duas portas, salvar e reabrir. Teste local
+`test_corrected_jk` verifica oito combinações do 3AND e quatro modos do JK no ngspice.
+Modelos locais block-1 e block-4 corrigidos com backup em build/chip-backup-20261116-212721.
+JK usa DFF por borda com D=J.!Q+!K.Q; o modelo conserva cinco terminais nomeados.
+Ferramenta `tools/create-corrected-chips.c` sobrescreve esses dois slots: executar somente após backup.
+Os testes dos modelos dependem dos slots locais corrigidos, não integram a suíte portátil.
+
+## Slot 5: contador JK e desempenho — 16/11/2026
+
+O usuário autorizou modificar o circuito. Backup anterior em `build/slot-5-before-optimization.elec`.
+Quatro JK em cascata formam um contador, confirmado pelo usuário; saídas Q chegam ao decodificador
+e display. Três clocks de estágios posteriores usavam Q anterior, invertendo a direção da contagem.
+`tools/repair-slot5-counter.c` mudou apenas os destinos desses três fios para Q_bar: conservou
+índices, cores e dobras. Teste do solver em `tests/test_slot5_counter.c`: 16 bordas = 1..15, 0.
+Save/reopen do slot 5 confirmou 189 fios com mesmos endpoints, cores e coordenadas das dobras.
+Captura revisada: `build/slot5-corrected.bmp`.
+`spice_live.c` agora respeita `options->instrument_wires` ao montar a sessão; com visualização de
+corrente desligada, evita 189 fontes/leituras desnecessárias. Benchmark local: 20 avanços de
+100 µs, 8.469 ms instrumentados versus 1.234 ms sem instrumentação. `test_spice_live` passou.

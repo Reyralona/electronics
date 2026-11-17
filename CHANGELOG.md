@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.41.0
+
+- O contador JK local do slot 5 foi corrigido e validado de 0 a 15. Arquivos pessoais não entram nos pacotes.
+
+- Simulação contínua só mede corrente individual dos fios quando a visualização de corrente está ligada.
+  No slot 5 (139 peças e 189 fios), 20 avanços medidos caíram de 8,47 s para 1,23 s.
+
+- Junções nomeadas na aba Digital permitem escolher os terminais do chip, inclusive CLOCK compartilhado.
+
+- Chips podem conter outros chips em vários níveis, preservando nomes, terminais e encapsulamentos.
+- O editor permite entrar e voltar por nível. Aplicar afeta o contexto imediatamente acima, com desfazer.
+- Copiar, salvar/reabrir e desagrupar preservam a composição. Formato 32, com leitura dos anteriores.
+
 ## 0.40.0
 
 - Portas lógicas realistas (família 74HC): alimentadas pela primeira fonte da bancada, de 2 a 6 V, com

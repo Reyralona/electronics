@@ -21,10 +21,19 @@ static void fit_draft(AppState *app)
         float height = part->type == PART_BREADBOARD ? 115 : 40;
         width *= bench_part_scale(part);
         height *= bench_part_scale(part);
-        left = fminf(left, part->x - width);
-        right = fmaxf(right, part->x + width);
-        top = fminf(top, part->y - height);
-        bottom = fmaxf(bottom, part->y + height);
+        float x = part->x;
+        float y = part->y;
+        if (part->group)
+        {
+            x = app->bench.groups[part->group - 1].x;
+            y = app->bench.groups[part->group - 1].y;
+            width = bench_group_width(&app->bench, part->group) * .5f + 11;
+            height = bench_group_height(&app->bench, part->group) * .5f;
+        }
+        left = fminf(left, x - width);
+        right = fmaxf(right, x + width);
+        top = fminf(top, y - height);
+        bottom = fmaxf(bottom, y + height);
     }
     float zoom = fminf(1.2f, fminf(980 / (right - left), 510 / (bottom - top)));
     app->view = (BenchView){zoom, 750 - 220 - ((left + right) * .5f - 220) * zoom,
@@ -33,7 +42,7 @@ static void fit_draft(AppState *app)
 
 AppState *app_editor_open(AppState *parent)
 {
-    if (parent->editor_parent || parent->selected < 0 || parent->selected >= parent->bench.part_count ||
+    if (parent->selected < 0 || parent->selected >= parent->bench.part_count ||
         !parent->bench.parts[parent->selected].group)
     {
         parent->status = tr(TXT_APP_SELECT_CHIP_TO_EDIT);
@@ -322,7 +331,7 @@ int app_editor_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymo
             app_editor_confirm(app, 2);
         return 1;
     }
-    if (!app->editor_parent && key == SDLK_RETURN && app->selected >= 0 && app->bench.parts[app->selected].group)
+    if (!(mod & SDL_KMOD_CTRL) && key == SDLK_RETURN && app->selected >= 0 && app->bench.parts[app->selected].group)
     {
         app->editor_open_requested = 1;
         return 1;
@@ -371,7 +380,8 @@ int app_editor_click(AppState *app, SDL_Window *window, float x, float y)
             break;
         }
         /* The editor header replaces the bench header; its free space must not reach bench actions. */
-        return y < APP_HEADER_HEIGHT && x < app_layout_header(APP_HEADER_PLAY).x;
+        if (y < APP_HEADER_HEIGHT && x < app_layout_header(APP_HEADER_PLAY).x)
+            return 1;
     }
     if (app->inspector_minimized || app->selected < 0 || !app->bench.parts[app->selected].group)
         return 0;

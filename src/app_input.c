@@ -88,7 +88,7 @@ static void input_insert_knee(AppState *app, float x, float y)
 static int part_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
-        if (bench->groups[g].active)
+        if (bench->groups[g].active && !bench->groups[g].parent)
         {
             WirePoint local = bench_group_to_local(&bench->groups[g], (WirePoint){x, y});
             if (fabsf(local.x) < bench_group_width(bench, g + 1) * .5f + 11 &&
@@ -1412,7 +1412,8 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     Pin clicked = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
     hitpin = clicked.pin;
-    if (hitpin >= 0 && event->button.clicks >= 2 && bench_group_port_index(&app->bench, clicked) >= 0)
+    if (hitpin >= 0 && event->button.clicks >= 2 &&
+        (bench_group_port_index(&app->bench, clicked) >= 0 || app->bench.parts[clicked.component].type == PART_JUNCTION))
     {
         start_port_name_edit(app, window, clicked);
         return;

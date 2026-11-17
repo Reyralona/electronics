@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.40.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.41.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
@@ -104,12 +104,22 @@ O que aparece na tela:
 
 ## Chips
 
+**Terminais escolhidos:** na aba Digital, coloque uma **Junção de fios**, conecte-a ao nó desejado
+e dê dois cliques no ponto para nomeá-lo. Junções nomeadas soltas no interior definem os terminais
+do próximo chip: por exemplo J, K, CLOCK, Q e Q_bar. Um CLOCK pode ligar várias entradas internas.
+Quando existem esses pontos nomeados, os demais nós livres não viram terminais automaticamente.
+Ligações que já chegam de fora continuam expostas para preservar o circuito. Chips internos mantêm
+seus próprios terminais. Para remover um terminal escolhido, apague o nome do ponto.
+
 1. Selecione as peças e pressione `Ctrl+G`. Elas viram um **chip** compacto e vão para a aba **Chips**.
+   A seleção também pode conter chips: eles ficam preservados dentro do novo chip, em vários níveis.
 2. Na aba **Chips**, clique no chip e depois na bancada para colocar uma cópia independente.
    Selecione o chip e pressione `R` para girar 90°. As portas e os fios acompanham o corpo.
    A orientação fica salva no projeto e pode ser desfeita. Girar não muda a montagem interna.
 3. Selecione um chip e pressione `Enter` (ou **Ver interior**) para abrir o **editor isolado**.
    Ele tem bancada, simulação e histórico próprios. Alterações no circuito só chegam à bancada ao aplicar.
+   Selecione um chip interno e use novamente `Enter` ou **Ver interior** para entrar no próximo nível.
+   O cabeçalho mostra o caminho. **Voltar** retorna um nível; **Aplicar ao chip** altera apenas o nível acima.
    - **Renomear:** este botão, dentro do chip, é o único lugar para mudar o nome. Digite e confirme com `Enter`.
      O nome muda na bancada e na entrada existente da biblioteca. Aceita acentos.
      Sair ou descartar o rascunho não apaga um nome confirmado. `Esc` cancela a digitação antes de confirmar.
@@ -123,7 +133,7 @@ O que aparece na tela:
    posição do mesmo lado. Os fios acompanham, e `Ctrl+Z` desfaz. Por exemplo, num 3AND feito com duas AND,
    leve a terceira entrada para a esquerda: ficam as 3 entradas à esquerda e a saída à direita.
    O arranjo fica salvo no projeto e no modelo da biblioteca. Até 64 terminais por chip.
-6. `Ctrl+Shift+G` desagrupa o chip na bancada e devolve as peças soltas.
+6. `Ctrl+Shift+G` desagrupa somente o nível selecionado. Os chips internos continuam encapsulados.
 7. O **×** no cartão da aba Chips remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
 
 Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga ao exterior. Por exemplo, três AND formando uma AND de 4 entradas viram um chip de 5 terminais. Displays de 7 segmentos e LEDs RGB dentro de um chip aparecem no corpo do chip.
@@ -213,4 +223,4 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
   limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
 - O **tempo simulado** corre bem mais devagar que o real: cerca de 1 ms simulado por segundo na tela. Um RC de 1 kΩ × 1 µF leva de 1 a 3 s para descarregar visivelmente.
 - Adicionar ou remover peças ou ligações, ou mudar a frequência de um clock, reinicia a simulação contínua. O rodapé avisa quando isso acontece.
-- Capacidade: 256 peças (junções contam como peças), 512 fios, 9 slots e 8 chips. Chips não podem conter outros chips.
+- Capacidade: 256 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 512 fios, 256 grupos, 9 slots e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.
