@@ -48,7 +48,7 @@ double spice_live_time(const SpiceLive *live)
     return live ? live->time : 0;
 }
 
-static char *topology_key(const Workbench *bench, int *instrumented)
+static char *topology_key(const Workbench *bench, int measure_wires, int *instrumented)
 {
     Workbench normalized = {0};
     if (!bench_snapshot_clone(&normalized, bench))
@@ -77,8 +77,8 @@ static char *topology_key(const Workbench *bench, int *instrumented)
         bench_snapshot_clear(&normalized);
         return NULL;
     }
-    *instrumented = 1;
-    NetlistResult result = netlist_write_live(file, &normalized, 1);
+    *instrumented = measure_wires;
+    NetlistResult result = netlist_write_live(file, &normalized, measure_wires);
     if (result == NETLIST_AMBIGUOUS_WIRES)
     {
         fclose(file);
@@ -384,7 +384,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
     if (!live->session || bench->revision != live->previous.revision || controls_changed(&live->previous, bench))
     {
         int instrumented;
-        char *key = topology_key(bench, &instrumented);
+        char *key = topology_key(bench, options->instrument_wires, &instrumented);
         if (!key)
         {
             snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_CALCULATION_PREPARE_FAILED));

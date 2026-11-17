@@ -665,3 +665,16 @@ Modelos locais block-1 e block-4 corrigidos com backup em build/chip-backup-2026
 JK usa DFF por borda com D=J.!Q+!K.Q; o modelo conserva cinco terminais nomeados.
 Ferramenta `tools/create-corrected-chips.c` sobrescreve esses dois slots: executar somente após backup.
 Os testes dos modelos dependem dos slots locais corrigidos, não integram a suíte portátil.
+
+## Slot 5: contador JK e desempenho — 16/11/2026
+
+O usuário autorizou modificar o circuito. Backup anterior em `build/slot-5-before-optimization.elec`.
+Quatro JK em cascata formam um contador, confirmado pelo usuário; saídas Q chegam ao decodificador
+e display. Três clocks de estágios posteriores usavam Q anterior, invertendo a direção da contagem.
+`tools/repair-slot5-counter.c` mudou apenas os destinos desses três fios para Q_bar: conservou
+índices, cores e dobras. Teste do solver em `tests/test_slot5_counter.c`: 16 bordas = 1..15, 0.
+Save/reopen do slot 5 confirmou 189 fios com mesmos endpoints, cores e coordenadas das dobras.
+Captura revisada: `build/slot5-corrected.bmp`.
+`spice_live.c` agora respeita `options->instrument_wires` ao montar a sessão; com visualização de
+corrente desligada, evita 189 fontes/leituras desnecessárias. Benchmark local: 20 avanços de
+100 µs, 8.469 ms instrumentados versus 1.234 ms sem instrumentação. `test_spice_live` passou.

@@ -2,6 +2,9 @@
 
 ## Em desenvolvimento
 
+- Simulação contínua só mede corrente individual dos fios quando a visualização de corrente está ligada.
+  No slot 5 (139 peças e 189 fios), 20 avanços medidos caíram de 8,47 s para 1,23 s.
+
 - Junções nomeadas na aba Digital permitem escolher os terminais do chip, inclusive CLOCK compartilhado.
 
 - Chips podem conter outros chips em vários níveis, preservando nomes, terminais e encapsulamentos.
