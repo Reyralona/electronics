@@ -386,8 +386,9 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             }
     /* Instruments can be the only reference: generator COM (pin 1) or multimeter COM (pin 0). */
     int reference_pin = 1, supply_pin = -1;
-    for (i = 0; source < 0 && session && i < b->part_count; ++i)
-        if (b->parts[i].type == PART_FUNCTION_GENERATOR || b->parts[i].type == PART_MULTIMETER)
+    for (i = 0; source < 0 && i < b->part_count; ++i)
+        if (b->parts[i].type == PART_FUNCTION_GENERATOR ||
+            (session && b->parts[i].type == PART_MULTIMETER))
         {
             source = i;
             reference_pin = b->parts[i].type == PART_MULTIMETER ? 0 : 1;
@@ -441,7 +442,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                     period * .001, period * .499, period) < 0)
             return NETLIST_IO_ERROR;
     }
-    else if (!write_supply(out, &b->parts[source], source, 1, positive + 1, 0))
+    else if (b->parts[source].type != PART_FUNCTION_GENERATOR &&
+             !write_supply(out, &b->parts[source], source, 1, positive + 1, 0))
         return NETLIST_IO_ERROR;
     for (i = 0; i < b->part_count; ++i)
         if (component_electrical_type(b->parts[i].type) == PART_SOURCE && i != source)
@@ -663,20 +665,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         return NETLIST_IO_ERROR;
     if (session)
     {
-        if (fprintf(out, ".save all") < 0)
-            return NETLIST_IO_ERROR;
-        for (i = 0; i < b->part_count; ++i)
-        {
-            char vector[48];
-            if (component_current_vector(b->parts[i].type, i, vector, sizeof(vector)) &&
-                fprintf(out, " %s", vector) < 0)
-                return NETLIST_IO_ERROR;
-            for (int element = 0; element < COMPONENT_MAX_ELEMENTS; ++element)
-                if (component_element_vector(b->parts[i].type, i, element, vector, sizeof(vector)) && vector[0] == '@' &&
-                    fprintf(out, " %s", vector) < 0)
-                    return NETLIST_IO_ERROR;
-        }
-        if (fprintf(out, "\n.end\n") < 0)
+        if (fprintf(out, ".save none\n.end\n") < 0)
             return NETLIST_IO_ERROR;
         return NETLIST_OK;
     }
@@ -841,6 +830,13 @@ int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin)
     if (source < 0)
         for (int i = 0; i < bench->part_count; ++i)
             if (bench->parts[i].type == PART_CLOCK)
+            {
+                source = i;
+                break;
+            }
+    if (source < 0)
+        for (int i = 0; i < bench->part_count; ++i)
+            if (bench->parts[i].type == PART_FUNCTION_GENERATOR)
             {
                 source = i;
                 break;

@@ -1,8 +1,27 @@
 #include "spice_live.h"
+#include "netlist.h"
 #include <windows.h>
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static void check_live_history_policy(void)
+{
+    Workbench bench = {0};
+    assert(bench_add(&bench, PART_SOURCE, 0, 0) >= 0);
+    FILE *file = tmpfile();
+    assert(file);
+    assert(netlist_write_live(file, &bench, 0) == NETLIST_OK);
+    assert(fseek(file, 0, SEEK_SET) == 0);
+    char text[4096];
+    size_t count = fread(text, 1, sizeof(text) - 1, file);
+    text[count] = 0;
+    assert(strstr(text, ".save none\n"));
+    fclose(file);
+    bench_snapshot_clear(&bench);
+}
 
 static SimAutoOptions options;
 static SimAutoResult result;
@@ -28,7 +47,7 @@ static void wire(Workbench *bench, int a, int ap, int b, int bp)
 {
     assert(bench_toggle_wire(bench, (Pin){a, ap}, (Pin){b, bp}) == 1);
 }
-/* Slot reported by the user: source, switch, 470 ohm, 1 uF across 1 kOhm + LED. */
+/* RC and LED circuit assembled directly by the test. */
 static void build_led_hold(Workbench *bench)
 {
     bench_add(bench, PART_SOURCE, 300, 100);
@@ -40,7 +59,7 @@ static void build_led_hold(Workbench *bench)
     bench_set_value(bench, 2, 470);
     bench_set_value(bench, 3, 1e-6);
     bench_set_on(bench, 1, 1);
-    /* Same wire order and capacitor orientation as the saved slot: node numbering affects pivoting. */
+    /* Wire order and capacitor orientation affect node numbering and pivoting. */
     wire(bench, 0, 0, 1, 0);
     wire(bench, 1, 1, 2, 0);
     wire(bench, 2, 1, 3, 1);
@@ -134,6 +153,16 @@ static void check_four_input_and(void)
         step(live, &bench, settle);
         assert(led_lit());
     }
+    if (getenv("BANCADA_BENCH_LIVE"))
+    {
+        LARGE_INTEGER frequency, started, finished;
+        assert(QueryPerformanceFrequency(&frequency));
+        assert(QueryPerformanceCounter(&started));
+        step(live, &bench, .02);
+        assert(QueryPerformanceCounter(&finished));
+        double elapsed = (double)(finished.QuadPart - started.QuadPart) / frequency.QuadPart;
+        fprintf(stderr, "4AND live, one batch: simulated 0.020 s in %.3f s wall (%.3fx)\n", elapsed, .02 / elapsed);
+    }
     spice_live_destroy(live);
     bench_snapshot_clear(&bench);
 }
@@ -141,6 +170,7 @@ int main(int argc, char **argv)
 {
     assert(argc == 2);
     executable = argv[1];
+    check_live_history_policy();
     options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default()};
     check_four_input_and();
     check_led_hold(0);
@@ -263,6 +293,44 @@ int main(int argc, char **argv)
     assert(result.burnt[1]);
     spice_live_destroy(live_burn);
     bench_snapshot_clear(&burn);
+    if (getenv("BANCADA_BENCH_LIVE"))
+    {
+        const int samples = 20;
+        const double span = .001;
+        LARGE_INTEGER frequency, started, finished;
+        assert(QueryPerformanceFrequency(&frequency));
+        assert(QueryPerformanceCounter(&started));
+        for (int i = 0; i < samples; ++i)
+            step(live_rc, &rc, span);
+        assert(QueryPerformanceCounter(&finished));
+        double elapsed = (double)(finished.QuadPart - started.QuadPart) / frequency.QuadPart;
+        fprintf(stderr, "RC live: simulated %.3f s in %.3f s wall (%.3fx)\n", samples * span,
+                elapsed, samples * span / elapsed);
+        assert(QueryPerformanceCounter(&started));
+        step(live_rc, &rc, samples * span);
+        assert(QueryPerformanceCounter(&finished));
+        elapsed = (double)(finished.QuadPart - started.QuadPart) / frequency.QuadPart;
+        fprintf(stderr, "RC live, one batch: simulated %.3f s in %.3f s wall (%.3fx)\n", samples * span,
+                elapsed, samples * span / elapsed);
+    }
+    if (getenv("BANCADA_BENCH_LIVE_LONG"))
+    {
+        SpiceLive *benchmark = spice_live_create();
+        assert(benchmark);
+        ULONGLONG previous = GetTickCount64();
+        for (int i = 0; i < 500; ++i)
+        {
+            step(benchmark, &rc, .02);
+            if (i % 50 == 49)
+            {
+                ULONGLONG now = GetTickCount64();
+                printf("RC t=%.2f s, wall=%llu ms/50 batches\n", spice_live_time(benchmark),
+                       (unsigned long long)(now - previous));
+                previous = now;
+            }
+        }
+        spice_live_destroy(benchmark);
+    }
     spice_live_destroy(live_dff);
     spice_live_destroy(live_rc);
     bench_snapshot_clear(&dff);

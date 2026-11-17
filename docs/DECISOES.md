@@ -81,7 +81,7 @@ Integracao de 14/11/2026: adotada a revisao QUALIDADE_CODIGO.md como direcao inc
 
 A extracao inicial para dev_capture.c preservou a captura automatica byte a byte. Cenarios e fases ainda precisam sair de main. Fallback transititorio sem instrumentacao preserva a causa no status; teste com ciclo de fios ideais confirma curva valida sem correntes inventadas. Teste adicional confirma indutor diretamente na fonte sem queima baseada no equivalente DC.
 
-Correcao P0 em 14/11/2026: setup solicita ngspice, gcc-libs e libwinpthread explicitamente ao pacman, preservando verificacao de integridade e rejeitando runtime sem as quatro DLLs. Uma instalacao nova em build/spice-quality-runtime passou nos testes automaticos DC/transitorios e exemplos com PATH limitado ao Windows. Falhas do processo exibem codigo de saida, incluindo DLL ausente. Executavel canonico build/bancada.exe conforme politica incorporada de main.
+Correcao P0 em 14/11/2026: setup solicita ngspice, gcc-libs e libwinpthread explicitamente ao pacman, preservando verificacao de integridade e rejeitando runtime sem as quatro DLLs. Um runtime preparado passou nos testes automaticos DC/transitorios e exemplos com PATH limitado ao Windows. Falhas do processo exibem codigo de saida, incluindo DLL ausente. O executavel atual de desenvolvimento consta no guia de compilacao.
 
 Refatoracao em 14/11/2026: AppState e SimState organizam dados; app_simulation separa o ciclo de atualizacao do desenho.
 Cenarios de captura e autoteste foram extraidos para dev_scenarios. Nenhum modelo eletrico foi alterado.
@@ -345,7 +345,7 @@ ainda precisa de tratamento deterministico antes da1.0. Falhas de host agora rep
 
 
 ## Continuidade, imagens e catalogo ampliado (15/11/2026)
-Fato experimental: build/probe_restore.py mostrou Q=0 ao restaurar d_dff(ic=1) com D=0/CLK=1.
+Fato experimental: a restauração isolada de d_dff(ic=1) com D=0/CLK=1 resultou em Q=0.
 Portanto transportar apenas Q nao conserva a memoria; nao anunciar migracao de topologia baseada
 nessa aproximacao. Alternativas: conservar sessao atual com conectividade parametrizada ou
 reproduzir historico eletrico em grafo ampliado; migracao parcial C/L/Q exige tratar bordas e
@@ -398,8 +398,8 @@ Resultado de validacao TMP36: limitador por Bfonte de corrente saturada falhou c
 realimentacao de corrente, Rsaida100 ohm e 1Gohm diferencial alem de +/-250uA. Mantem
 inclinacao na matriz MNA e convergiu sob carga de1Mohm/100ohm no backendbatch e continuo.
 Consumo50uA + corrente fornecida, alta impedancia fora da faixa de alimentacao. Comparacoes
-experimentais preservadas localmente em build/sensor-*.cir/log; teste automatico duravel em
-tests/test_analog_catalog.c. Nao usar sucesso apenas em DC para aprovar modelo dinamico.
+experimentais motivaram o teste automatico em tests/test_analog_catalog.c.
+Nao usar sucesso apenas em DC para aprovar modelo dinamico.
 
 
 ## LED/potenciometro sem intermitencia artificial (15/11/2026)
@@ -417,8 +417,8 @@ vindos do ngspice. Suite de UI verifica80alteracoes consecutivas com LED sempre 
 amostras novas durante ajuste, potenciometro/resistor e presenca de breadboard.
 
 
-## Capacitor do slot 1 travando ao desligar (15/11/2026, Claude)
-Relato: slot 1 (fonte, chave, 470 ohm, 1 uF em paralelo com 1 kOhm + LED) "calcula sem parar"
+## Capacitor travando ao desligar (15/11/2026, Claude)
+Relato: montagem com fonte, chave, 470 ohm, 1 uF em paralelo com 1 kOhm + LED "calcula sem parar"
 ao desligar fonte ou chave. Fato reproduzido: no netlist instrumentado (Vwire por fio),
 `alter Rpower0 = 1e12` seguido de `resume` colapsava o passo do transitorio; o host excedia 10 s
 avancando ~70 us. Sem Vwire, ou com outra ordem de fios, nao travava: sensivel a numeracao/pivotacao.
@@ -428,11 +428,11 @@ Experimentos (sessao real via spice_session): fechado 1e-6 com aberto 1e10/1e12 
 Decisao: NETLIST_LIVE_CLOSED_OHMS = 1 mOhm (ordem de contato real de chave) e
 NETLIST_LIVE_OPEN_OHMS = 10 GOhm (fuga 0.5 nA a 5 V), razao 1e13, tres decadas de margem.
 Fonte de bancada usa o mesmo 1 mOhm. Regra: nao reintroduzir razao aberto/fechado > ~1e13.
-Regressao: tests/test_spice_live.c check_led_hold replica a fiacao exata do slot (ordem importa),
+Regressao: tests/test_spice_live.c check_led_hold monta uma fiacao de referência (ordem importa),
 abre fonte e chave, exige 60 quadros de 16.7 us cada um em < 2 s e brilho decrescente gradual.
-O teste falhou antes (passo > 2 s) e passou depois; sonda build/probe-slot1.c no save real tambem.
+O teste falhou antes (passo > 2 s) e passou depois.
 Escala de tempo: cada quadro avanca transient_stop/300 (~1 ms simulado por segundo real), entao
-tau ~1 ms do slot aparece como apagamento de ~1-3 s na tela. Nao e tempo real fisico.
+tau ~1 ms da montagem aparece como apagamento de ~1-3 s na tela. Nao e tempo real fisico.
 Build: build.ps1 compila o host em arquivo temporario e mantem o existente se estiver travado por
 uma Bancada aberta e nao for mais antigo que src/spice_live_host.c.
 
@@ -488,13 +488,26 @@ Modelos (aproximacoes didaticas, declaradas no inspector):
 - Servo: posicao proporcional ao nivel MEDIO do sinal relativo a V+ (0-180 graus); nao decodifica
   pulsos de 1-2 ms. Piezo passivo: 20 nF || 1 MOhm; indica vibracao com corrente alternada.
 - Gerador: 0-5 V, 50 ohm, seno/quadrada/triangular. Multimetro: V (10 MOhm), A (shunt ideal entre
-  A e COM), Ohm (injeta 1 mA; so sem alimentacao). Osciloscopio: 1 MOhm, historico de 160 amostras.
+  A e COM), Ohm (ate 0,5 mA, tensao de teste ~2 V; leitura invalida com fonte ativa).
+  Osciloscopio: 1 MOhm, historico de 160 amostras.
 - PIR, gas (MQ), IR de obstaculo e distancia IR analogica (tipo GP2Y0A21): modulos alimentados com
   saida 100 ohm proporcional a V+; estimulo pelo slider de ambiente.
 Nao implementados com justificativa: LCD 16x2 I2C (exige mestre I2C/microcontrolador, inexistente
 na Bancada); sensor ultrassonico (trigger/echo exige temporizacao por pulso; o sensor de distancia
 atual e IR analogico, declarado). Displays 7 segmentos e RGB dentro de blocos aparecem no corpo.
 Regressao: tests/test_devices.c verifica cada dispositivo no ngspice.
+
+### Limite da fonte de teste do multimetro (17/11/2026)
+
+Fato: o modelo anterior injetava 1 mA sem limite de tensao. No circuito Cockcroft-Walton a 1 Hz,
+alternar V -> A -> Ohm -> V elevou a saida de 1,24 V a 237 V em 200 ms. A corrente carregou os capacitores.
+Referencia consultada em 17/11/2026: [Fluke 17B+](https://www.fluke.com/en-ph/product/electrical-testing/digital-multimeters/fluke-17b-plus)
+informa tensao de teste em circuito aberto tipica de 2,0 V e corrente de curto inferior a 0,6 mA;
+[Fluke, How to Measure Resistance](https://www.fluke.com/en-us/learn/blog/digital-multimeters/how-to-measure-resistance)
+orienta desligar a alimentacao e descarregar capacitores antes da medicao.
+Decisao: manter uma corrente de teste modelada, agora 0,5 mA, com diodo de isolamento e limitador
+de tensao por zener. A interface omite a leitura Ohm se houver fonte ativa. Este e um modelo
+generico, nao uma replica do Fluke 17B+: nao inclui autorange, fusivel nem protecao completa.
 
 ## Microcontroladores, editor e blocos (0.34.0, 16/11/2026)
 Decisao: interpretar um subconjunto de Arduino (mcu_lang: compilador de uma passada para bytecode e
@@ -521,8 +534,8 @@ no subconjunto; falta (pendente) ponteiros, String, bibliotecas alem de LiquidCr
 
 ## Entradas logicas flutuantes e identidade de chips (16/11/2026)
 Fato: no live, chave aberta = 10 GOhm (NETLIST_LIVE_OPEN_OHMS) e a unica fuga da entrada de porta
-era rshunt 1 TOhm; divisor deixava a entrada atras de chave aberta em ~4,95 V (ALTO). Slot 1 do
-usuario (AND de 4 entradas) acendia o LED com tudo desligado; o DC (chave aberta omitida) dava 0.
+era rshunt 1 TOhm; divisor deixava a entrada atras de chave aberta em ~4,95 V (ALTO).
+Uma montagem AND de 4 entradas acendia o LED com tudo desligado; o DC (chave aberta omitida) dava 0.
 Decisao: cada entrada de porta (gate_adc) e de 74HC tem NETLIST_GATE_INPUT_OHMS = 100 MOhm ate a
 referencia (terra ou pino GND do CI): entrada aberta le BAIXO (~0,05 V), fuga 50 nA a 5 V. Nao
 amplia a razao aberto/fechado (1e13). Simplificacao didatica: CMOS real flutuante e indefinido.
@@ -609,7 +622,7 @@ Sem mudança no formato de arquivo ou no modelo elétrico.
 
 ## Circuitos grandes e terminais de chip reorganizáveis (16/11/2026, 0.39.0)
 
-Pedido: o circuito do slot 3 (34 peças, cerca de 990 × 1920 unidades) não cabia na tela; com pouco zoom,
+Pedido: uma montagem grande (34 peças, cerca de 990 × 1920 unidades) não cabia na tela; com pouco zoom,
 os nomes das portas e as bolinhas dos terminais cobriam o circuito; num chip, escolher o lado dos terminais.
 Fatos: `Ctrl+A` já existia, mas não aparecia na dica; o zoom mínimo era 0,35. Nomes usam fonte bitmap,
 que não escala, e bolinhas tinham tamanho fixo na tela. Terminais de chip: metade à esquerda, resto à direita,
@@ -680,3 +693,12 @@ Desagrupar retira somente um nível. Limites globais continuam sendo 256 peças,
 nomes, aplicar/copiar/excluir, vinte níveis, ancestralidade inválida, contato entre filhos e
 resistores em série no ngspice. `test_app_editor` cobre entrar, descartar, aplicar e desfazer em
 dois editores, incluindo a conservação de fios externos.
+## Histórico mínimo na sessão contínua (17/11/2026)
+
+Fato: `.save all` fazia os vetores do ngspice crescerem continuamente. Em 10 s do
+Cockcroft-Walton a 10 µs, `time` passou de um milhão de valores. O manual do ngspice
+documenta `save none` para leitura imediata pela biblioteca compartilhada.
+Decisão: a sessão contínua usa `.save none`, restabelecido após cada `delete all`.
+O gráfico solicitado com `T` continua usando análise separada e histórico completo.
+Tensão, correntes e instrumentos mantiveram os mesmos valores nos testes. O passo
+elétrico e os modelos não mudaram. Medidas e limites: [COMPARACAO_TEMPO_REAL.md](COMPARACAO_TEMPO_REAL.md).

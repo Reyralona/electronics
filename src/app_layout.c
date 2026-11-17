@@ -163,6 +163,10 @@ AppRect app_layout_setting(AppSetting setting)
         return settings_row(SETTINGS_LEFT, 9);
     case APP_SETTING_SHOW_CURRENT:
         return settings_row(SETTINGS_RIGHT, 2);
+    case APP_SETTING_SIM_SPEED_SLOWER:
+        return row_button(settings_row(SETTINGS_RIGHT, 3), 1);
+    case APP_SETTING_SIM_SPEED_FASTER:
+        return row_button(settings_row(SETTINGS_RIGHT, 3), 0);
     case APP_SETTING_PROBE_MEASURE:
         return settings_row(SETTINGS_RIGHT, 5);
     case APP_SETTING_PROBE_PIN:

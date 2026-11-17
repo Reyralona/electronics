@@ -210,7 +210,7 @@ static void multimeter(void)
     wire(&ohm, ohmmeter, 0, resistor, 1);
     live = spice_live_create();
     run(live, &ohm, .0005);
-    assert(fabs(result.elements[ohmmeter][0] / 1e-3 - 1000) < 5);
+    assert(fabs(result.elements[ohmmeter][0] / COMPONENT_METER_OHMS_TEST_AMPS - 1000) < 5);
     spice_live_destroy(live);
     bench_snapshot_clear(&ohm);
 }

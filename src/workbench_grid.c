@@ -25,6 +25,21 @@ int bench_grid_snap(const BenchGrid *grid, double x, double y, double *snapped_x
     return 1;
 }
 
+int bench_grid_align_axis(float anchor_x, float anchor_y, float tolerance, float *x, float *y)
+{
+    if (!x || !y || !isfinite(anchor_x) || !isfinite(anchor_y) || !isfinite(*x) || !isfinite(*y) ||
+        !isfinite(tolerance) || tolerance < 0)
+        return 0;
+    float dx = fabsf(*x - anchor_x), dy = fabsf(*y - anchor_y);
+    if (dx > tolerance && dy > tolerance)
+        return 0;
+    if (dx < dy)
+        *x = anchor_x;
+    else
+        *y = anchor_y;
+    return 1;
+}
+
 double bench_grid_display_spacing(const BenchGrid *grid, double zoom, double minimum_pixels)
 {
     if (!bench_grid_valid(grid) || !isfinite(zoom) || zoom <= 0 ||

@@ -1,4 +1,5 @@
 #include "component_devices.h"
+#include "component_registry.h"
 #include "ui_text.h"
 #include <stdio.h>
 
@@ -194,4 +195,18 @@ const char *component_led_color_name(unsigned color)
     static const TextId names[COMPONENT_LED_COLORS] = {TXT_CAT_LED_RED,    TXT_CAT_LED_GREEN, TXT_CAT_LED_BLUE,
                                                        TXT_CAT_LED_YELLOW, TXT_CAT_LED_WHITE, TXT_CAT_LED_ORANGE};
     return tr(color < COMPONENT_LED_COLORS ? names[color] : names[0]);
+}
+
+int component_ohmmeter_reading_reliable(const Workbench *bench)
+{
+    if (!bench)
+        return 0;
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        const Part *part = &bench->parts[i];
+        if (part->on && (component_electrical_type(part->type) == PART_SOURCE ||
+                         part->type == PART_CLOCK || part->type == PART_FUNCTION_GENERATOR))
+            return 0;
+    }
+    return 1;
 }

@@ -9,7 +9,8 @@
 /* Didactic parameters; the inspector and docs/DECISOES.md state that they are approximations. */
 #define GENERATOR_OUTPUT_OHMS 50.0
 #define METER_INPUT_OHMS 10e6
-#define METER_OHMS_TEST_AMPERES 1e-3
+#define METER_OHMS_TEST_AMPERES COMPONENT_METER_OHMS_TEST_AMPS
+#define METER_TEST_ZENER_VOLTS 2.7
 #define SCOPE_INPUT_OHMS 1e6
 #define RELAY_COIL_OHMS 100.0
 #define RELAY_COIL_HENRY .01
@@ -213,9 +214,12 @@ int netlist_device_write(FILE *out, const Part *part, int i, const int *n)
     case PART_FUNCTION_GENERATOR:
         return write_generator(out, part, i, n);
     case PART_MULTIMETER:
-        return fprintf(out, "Rmm%d %d %d %.17g\nBmm%d mmv%d 0 V=V(%d)-V(%d)\nVamm%d %d %d 0\nImm%d %d %d DC %.17g\n", i, n[1],
-                       n[0], METER_INPUT_OHMS, i, i, n[1], n[0], i, n[2], n[0], i, n[0], n[1],
-                       part->states == 2 ? METER_OHMS_TEST_AMPERES : 0.0) >= 0;
+        return fprintf(out, "Rmm%d %d %d %.17g\nBmm%d mmv%d 0 V=V(%d)-V(%d)\nVamm%d %d %d 0\n"
+                            "Imm%d %d ohm_test%d DC %.17g\nDohm%d ohm_test%d %d METER_TEST_DIODE\n"
+                            "Dzohm%d %d ohm_test%d METER_TEST_ZENER\n",
+                       i, n[1], n[0], METER_INPUT_OHMS, i, i, n[1], n[0], i, n[2], n[0],
+                       i, n[0], i, part->states == 2 ? METER_OHMS_TEST_AMPERES : 0.0,
+                       i, i, n[1], i, n[0], i) >= 0;
     case PART_OSCILLOSCOPE:
         return fprintf(out, "Rosc%d %d %d %.17g\nBosc%d oscv%d 0 V=V(%d)-V(%d)\n", i, n[0], n[1], SCOPE_INPUT_OHMS, i, i,
                        n[0], n[1]) >= 0;
@@ -240,7 +244,11 @@ int netlist_device_models(FILE *out)
     /* Same diode law as LED_GENERIC, with saturation currents placing 10 mA near 1.9/2.2/2.9 V. */
     return fprintf(out, ".model LED_RED D(IS=1e-18 N=2 RS=2)\n.model LED_GREEN D(IS=3.6e-21 N=2 RS=2)\n"
                         ".model LED_YELLOW D(IS=6.4e-20 N=2 RS=2)\n"
-                        ".model LED_BLUE D(IS=4.7e-27 N=2 RS=2)\n.model relay_contact SW(Ron=.05 Roff=1e10 Vt=.5 Vh=.2)\n") >= 0;
+                        ".model LED_BLUE D(IS=4.7e-27 N=2 RS=2)\n"
+                        ".model METER_TEST_DIODE D(IS=1e-14 N=1.5)\n"
+                        ".model METER_TEST_ZENER D(IS=1e-14 N=1.5 BV=%.17g IBV=%.17g)\n"
+                        ".model relay_contact SW(Ron=.05 Roff=1e10 Vt=.5 Vh=.2)\n",
+                   METER_TEST_ZENER_VOLTS, METER_OHMS_TEST_AMPERES) >= 0;
 }
 
 int netlist_device_control_count(const Part *part)

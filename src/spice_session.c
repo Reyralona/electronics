@@ -74,7 +74,8 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
                          session->log_path);
                 return 0;
             }
-            Sleep(1);
+            /* Short replies should not pay the Windows timer quantum on every command. */
+            Sleep(GetTickCount64() - started < 5 ? 0 : 1);
             continue;
         }
         char c;

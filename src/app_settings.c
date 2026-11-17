@@ -16,6 +16,7 @@ WorkbenchSettings app_settings_capture(const AppState *app)
     settings.probe_current = app->probe_current;
     settings.transient_step = app->transient_step;
     settings.transient_stop = app->transient_stop;
+    settings.simulation_speed = app->simulation_speed;
     settings.grid_spacing = app->grid_spacing;
     settings.snap_grid = app->snap_grid;
     settings.snap_board = app->snap_board;
@@ -45,6 +46,7 @@ void app_settings_apply_project(AppState *app, const WorkbenchSettings *settings
 void app_settings_apply_all(AppState *app, const WorkbenchSettings *settings)
 {
     app_settings_apply_project(app, settings);
+    app->simulation_speed = settings->simulation_speed;
     app->dark_theme = settings->dark_theme;
     app->gui_font_size = settings->gui_font_size;
     app->show_pin_labels = settings->show_pin_labels;

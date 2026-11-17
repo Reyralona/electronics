@@ -125,6 +125,8 @@ static void command_cancel(AppState *app)
 static void command_playback(AppState *app)
 {
     app->sim.sim_running = !app->sim.sim_running;
+    if (app->sim.sim_running)
+        app->live_last_scheduled = SDL_GetTicks();
     if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->sim.sim_running)
     {
         if (app->sim.trace_index >= app->sim.trace.count - 1)
@@ -185,7 +187,18 @@ static void command_graph(AppState *app)
 static void command_trace_wire(AppState *app)
 {
     if (app->dc_job.thread)
-        app->status = tr(TXT_APP_CALCULATION_BUSY);
+    {
+        if (app->dc_job.automatic && app->dc_job.continuous)
+        {
+            app->sim.sim_running = 0;
+            app->trace_pending_kind = 2;
+            app->trace_pending_index = app->selected_wire;
+            app->trace_pending_revision = app->bench.revision;
+            app->status = tr(TXT_APP_CALCULATING_WIRE_CURRENT);
+        }
+        else
+            app->status = tr(TXT_APP_CALCULATION_BUSY);
+    }
     else if (spice_job_start_transient_wire(&app->dc_job, &app->bench, app->ngspice, app->selected_wire,
                                             app->transient_step, app->transient_stop))
     {
@@ -212,7 +225,20 @@ static int start_part_trace(AppState *app)
 static void command_trace_part(AppState *app)
 {
     if (app->dc_job.thread)
-        app->status = tr(TXT_APP_CALCULATION_BUSY);
+    {
+        if (app->dc_job.automatic && app->dc_job.continuous)
+        {
+            app->sim.sim_running = 0;
+            app->trace_pending_kind = 1;
+            app->trace_pending_index = app->selected;
+            app->trace_pending_pin = app->probe_pin;
+            app->trace_pending_current = app->probe_current;
+            app->trace_pending_revision = app->bench.revision;
+            app->status = tr(TXT_APP_CALCULATING_CURVE);
+        }
+        else
+            app->status = tr(TXT_APP_CALCULATION_BUSY);
+    }
     else if (!app->probe_current && app->probe_pin >= bench_pin_count(app->bench.parts[app->selected].type))
         app->status = tr(TXT_APP_NO_SUCH_TERMINAL);
     else if (app->probe_current &&
@@ -316,6 +342,7 @@ static void command_delete_wire(AppState *app)
 {
     bench_history_record(app->history, &app->bench);
     bench_remove_wire(&app->bench, app->selected_wire);
+    bench_selection_clear(&app->selection);
     if (bench_prune_junctions(&app->bench))
         app->selected = -1;
     app->selected_wire = -1;
@@ -400,6 +427,7 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
             sim_state_clear_result(&app->sim);
             app->sim.auto_requested_valid = 0;
             app->sim.sim_running = 1;
+            app->live_last_scheduled = SDL_GetTicks();
             app->show_trace = 0;
             app->status = tr(TXT_APP_RESETTING);
         }

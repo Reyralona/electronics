@@ -6,6 +6,7 @@
  * instruments and powered sensor modules). Pure data: no SDL/OpenGL, no netlist text. */
 #define COMPONENT_MAX_ELEMENTS 24
 #define COMPONENT_MAX_DEVICE_PINS 24
+#define COMPONENT_METER_OHMS_TEST_AMPS 5e-4
 
 typedef struct
 {
@@ -33,4 +34,6 @@ int component_switch_at(PartType type, float local_x);
 #define COMPONENT_LED_COLORS 6
 const char *component_led_model(unsigned color);
 const char *component_led_color_name(unsigned color);
+/* Resistance is unreliable while a supply anywhere on the bench is active. */
+int component_ohmmeter_reading_reliable(const Workbench *bench);
 #endif

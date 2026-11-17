@@ -36,9 +36,29 @@ static void check_chip_rotation_flow(void)
     app_state_dispose(&app);
 }
 
+static void check_trace_waits_for_live_batch(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    assert(bench_add(&app.bench, PART_FUNCTION_GENERATOR, 300, 300) == 0);
+    assert(bench_add(&app.bench, PART_OSCILLOSCOPE, 600, 300) == 1);
+    app.selected = 1;
+    app.dc_job.thread = (SDL_Thread *)1;
+    app.dc_job.automatic = 1;
+    app.dc_job.continuous = 1;
+    /* Person selects the scope and presses T while live calculation is active. */
+    app_commands_key(&app, NULL, SDLK_T, 0);
+    assert(!app.sim.sim_running);
+    assert(app.trace_pending_kind == 1 && app.trace_pending_index == 1);
+    assert(!strcmp(app.status, tr(TXT_APP_CALCULATING_CURVE)));
+    app.dc_job.thread = NULL;
+    app_state_dispose(&app);
+}
+
 int main(void)
 {
     check_chip_rotation_flow();
+    check_trace_waits_for_live_batch();
     static AppState app;
     app_state_init(&app);
     assert(app.history);

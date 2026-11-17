@@ -15,7 +15,7 @@ int main(void)
     assert(fabsf(x-400)<.001f && fabsf(y-250)<.001f);
     bench_view_zoom_at(&view,100,500,300); assert(view.zoom==4);
     bench_view_zoom_at(&view,.00001f,500,300); assert(view.zoom==BENCH_VIEW_ZOOM_MIN);
-    /* A circuit taller than the screen at the old 0.35 limit (slot-3 size) must fit entirely. */
+    /* A circuit taller than the screen at the old 0.35 limit must fit entirely. */
     bench_view_fit(&view,-624,-628,362,1292);
     assert(view.zoom<.35f && view.zoom>=BENCH_VIEW_ZOOM_MIN);
     bench_view_to_screen(&view,-624,-628,&sx,&sy);

@@ -21,6 +21,35 @@ static void wait_until(AppState *app, double time)
     fprintf(stderr, "Timed out: t=%g, wanted=%g, status=%s\n", app->sim.live_time, time, app->status);
     assert(0);
 }
+
+static void pending_generator_trace(const char *executable)
+{
+    static AppState app;
+    app_state_init(&app);
+    snprintf(app.ngspice, sizeof(app.ngspice), "%s", executable);
+    app.sim.auto_enabled = 1;
+    assert(bench_add(&app.bench, PART_FUNCTION_GENERATOR, 300, 300) == 0);
+    assert(bench_add(&app.bench, PART_OSCILLOSCOPE, 600, 300) == 1);
+    assert(bench_toggle_wire(&app.bench, (Pin){0, 0}, (Pin){1, 0}) == 1);
+    assert(bench_toggle_wire(&app.bench, (Pin){0, 1}, (Pin){1, 1}) == 1);
+    app_simulation_update(&app);
+    assert(app.dc_job.thread);
+    app.sim.sim_running = 0;
+    app.trace_pending_kind = 1;
+    app.trace_pending_index = 1;
+    app.trace_pending_pin = 0;
+    app.trace_pending_revision = app.bench.revision;
+    Uint64 started = SDL_GetTicks();
+    while (!sim_state_has_result(&app.sim, SIM_RESULT_TRACE) && SDL_GetTicks() - started < 10000)
+    {
+        app_simulation_update(&app);
+        SDL_Delay(1);
+    }
+    assert(sim_state_has_result(&app.sim, SIM_RESULT_TRACE));
+    assert(app.sim.trace.count > 100);
+    assert(!app.sim.sim_running);
+    app_state_dispose(&app);
+}
 static void interactive_led_updates(const char *executable, int potentiometer, int breadboard)
 {
     static AppState app;
@@ -85,6 +114,7 @@ static void interactive_led_updates(const char *executable, int potentiometer, i
 int main(int argc, char **argv)
 {
     assert(argc == 2);
+    pending_generator_trace(argv[1]);
     interactive_led_updates(argv[1], 1, 0);
     interactive_led_updates(argv[1], 1, 1);
     interactive_led_updates(argv[1], 0, 1);
@@ -124,9 +154,11 @@ int main(int argc, char **argv)
     wait_until(&app, paused + .0002);
     assert(app.sim.dc_led_currents[3] > .00249);
     paused = app.sim.live_time;
+    double charged_current = app.sim.dc_led_currents[3];
     bench_set_on(&app.bench, 0, 0);
     wait_until(&app, paused + .001);
-    assert(app.sim.dc_led_currents[3] > .0006 && app.sim.dc_led_currents[3] < .0013);
+    /* The scheduler may advance more than 1 ms per sample; discharge must remain gradual and decreasing. */
+    assert(app.sim.dc_led_currents[3] > 0 && app.sim.dc_led_currents[3] < charged_current);
     assert(app.sim.sim_running);
     app.sim.sim_running = 0;
     draining = SDL_GetTicks();

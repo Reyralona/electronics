@@ -260,6 +260,9 @@ static int advance(SpiceLive *live, double step, double span, char *message, siz
     }
     if (!spice_session_command(live->session, "delete all", message, capacity))
         return 0;
+    /* delete all also removes the save rule; restore single-sample storage before tran/resume. */
+    if (!spice_session_command(live->session, "save none", message, capacity))
+        return 0;
     snprintf(command, sizeof(command), "stop when time >= %.17g", target);
     if (!spice_session_command(live->session, command, message, capacity))
         return 0;

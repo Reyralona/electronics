@@ -1,6 +1,6 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.41.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.42.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
@@ -35,6 +35,9 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 
 - Clique num terminal (bolinha branca) e depois em outro para ligar.
 - Cliques em pontos vazios no caminho criam **dobras** (até 16 por fio).
+- Com o encaixe na grade ligado, novas dobras seguem a grade. Ao criar ou arrastar uma dobra perto do eixo horizontal ou vertical do ponto anterior, ela se alinha exatamente para deixar o trecho reto.
+- Segure `Shift` ao arrastar uma dobra para manter o trecho anterior horizontal ou vertical, mesmo longe do eixo de encaixe.
+- A seleção por área inclui peças e dobras visíveis. Arraste uma peça ou dobra selecionada para mover o bloco junto; as dobras selecionadas ficam destacadas.
 - Dois cliques num trecho do fio inserem uma dobra. Arraste a dobra para ajustar e dê dois cliques nela para removê-la.
 - **Fio em fio (junção):** com um fio em andamento, clique em cima de outro fio para terminar nele; ali aparece
   um ponto de junção, e tudo que chega ao ponto fica no mesmo nó. `Alt`+clique num fio cria a junção e já
@@ -45,6 +48,8 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 
 - A breadboard tem duas metades de 30 colunas de 5 contatos ligados entre si, mais quatro trilhos de alimentação independentes.
 - Solte uma peça perto dos furos e os terminais encaixam. Terminais encaixados entram na conexão, sem fio.
+- Para posicionar uma peça livremente perto de outros terminais, segure `Alt` durante o arraste; isso suspende o encaixe na grade, na breadboard e entre terminais.
+- Para alinhar o centro da peça à grade mesmo perto de furos ou terminais, segure `Ctrl` durante o arraste; a grade deve estar com o encaixe ligado.
 - Um **terminal encostado em outro terminal** também conecta. Isso vale para todos os tipos,
   inclusive furos da breadboard, interruptores e portas de chips personalizados.
   Ao arrastar, um terminal a até 10 px de outro encaixa nele. Afastar as peças desfaz o contato.
@@ -92,6 +97,11 @@ O que aparece na tela:
 
 - **LEDs e lâmpadas** brilham conforme a corrente calculada. Cinza significa que não há resultado válido.
 - **Corrente nos fios** (ligue em **Configurações**): bolinhas amarelas andam no sentido convencional da corrente, e a velocidade indica a faixa de intensidade.
+- Durante a sessão contínua, a barra inferior mostra o tempo simulado e a velocidade observada (`1,00x` significa 1 segundo simulado por segundo real). O valor depende do circuito e do computador.
+- Em **Configurações → Ritmo da simulação**, use **−/+** para escolher 0,05×, 0,1×, 0,25×, 0,5× ou 1×.
+  É a razão solicitada entre tempo simulado e tempo real na sessão contínua; não muda a frequência
+  dos componentes nem o passo elétrico. A barra mostra o ritmo escolhido e o observado. Se o computador
+  não acompanhar, o observado pode ficar abaixo do escolhido. A preferência é salva automaticamente.
 - **Painel da peça:** corrente, tensão e leitura dos instrumentos.
 - **Queima:** passar de cerca de 30 mA num LED ou 0,25 W num resistor marca a peça como queimada. É um aviso didático e reversível, não um modelo térmico.
 
@@ -169,8 +179,10 @@ Para mover projetos antigos, feche o programa e copie `saves/` e `blocks/` para 
 ### Instrumentos
 
 - **Multímetro:** conecte os terminais da peça ao circuito. No modo corrente, use uma ligação em série.
-  A medição de tensão tem entrada de 10 MΩ; a de resistência usa uma corrente de teste de 1 mA.
-  Fontes ativas ou outros caminhos no circuito podem tornar a leitura de resistência inadequada.
+  A medição de tensão tem entrada de 10 MΩ. No modo Ω, a corrente de teste é de até 0,5 mA e a tensão
+  de teste é limitada a cerca de 2 V. Desligue as fontes e descarregue capacitores antes de medir resistência;
+  com uma fonte ativa, a interface indica leitura indisponível. A corrente de teste ainda pode alterar a
+  carga de capacitores, inclusive depois de voltar ao modo V.
 - **Osciloscópio:** mede tensão entre seus terminais, com entrada de 1 MΩ. O gráfico usa a sondagem por `T`.
 - **Gerador de função:** oferece seno, onda quadrada e triangular. A frequência é ajustável;
   a saída usa níveis de 0 a 5 V e resistência de 50 Ω.

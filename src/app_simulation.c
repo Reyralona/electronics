@@ -5,10 +5,21 @@
 #include "component_devices.h"
 #include "spice_trace.h"
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #define AUTO_DEBOUNCE_MS 120
 #define LIVE_FRAME_INTERVAL_MS 16
-#define LIVE_FRAMES_PER_TRACE_SPAN 300.0
+#define LIVE_MAX_BATCH_SECONDS .02
+#define LIVE_MAX_BATCH_STEPS 2000.0
+
+double app_simulation_live_span(uint64_t previous_ms, uint64_t now_ms, double step, double speed)
+{
+    if (!isfinite(step) || step <= 0 || !isfinite(speed) || speed < .05 || speed > 1.0)
+        return 0;
+    double elapsed = previous_ms && now_ms >= previous_ms ? (now_ms - previous_ms) * .001 : .016;
+    double maximum = fmin(LIVE_MAX_BATCH_SECONDS, step * LIVE_MAX_BATCH_STEPS);
+    return fmax(step, fmin(elapsed * speed, maximum));
+}
 
 /* Wire endpoints and coincident terminals define connectivity, including breadboards.
  * Parameter edits may retain a displayed sample without claiming it is up to date. */
@@ -97,7 +108,19 @@ static void accept_automatic_result(AppState *app)
     int was_live = app->sim.live_mode, was_failed = app->sim.auto_failed, had_burnt = app->sim.burnt_count;
     app->sim.live_mode = app->dc_job.continuous;
     if (app->dc_job.continuous && app->dc_job.success)
-        app->sim.live_time = spice_live_time(app->dc_job.live);
+    {
+        double time = spice_live_time(app->dc_job.live);
+        uint64_t now = SDL_GetTicks();
+        if (app->sim.live_sample_at && now > app->sim.live_sample_at && time > app->sim.live_time)
+        {
+            double rate = (time - app->sim.live_time) * 1000.0 / (now - app->sim.live_sample_at);
+            app->sim.live_rate = app->sim.live_rate > 0 ? .8 * app->sim.live_rate + .2 * rate : rate;
+        }
+        else
+            app->sim.live_rate = 0;
+        app->sim.live_time = time;
+        app->sim.live_sample_at = now;
+    }
     app->sim.burn_revision = app->dc_job.snapshot.revision;
     memcpy(app->sim.burnt, r->burnt, sizeof(app->sim.burnt));
     memcpy(app->sim.burn_reason, r->burn_reason, sizeof(app->sim.burn_reason));
@@ -281,8 +304,13 @@ static void schedule_analysis(AppState *app)
             app->sim.auto_stop = app->transient_stop;
             int started;
             if (continuous)
+            {
+                uint64_t now = SDL_GetTicks();
+                double span = app_simulation_live_span(app->live_last_scheduled, now, options.step,
+                                                       app->simulation_speed);
                 started = spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options,
-                                                app->transient_stop / LIVE_FRAMES_PER_TRACE_SPAN);
+                                               span);
+            }
             else
                 started = spice_job_start_auto(&app->dc_job, &app->bench, app->ngspice, &options);
             app->live_last_scheduled = SDL_GetTicks();
@@ -306,10 +334,54 @@ static void step_microcontrollers(AppState *app)
                      elapsed);
 }
 
+static void start_pending_trace(AppState *app)
+{
+    if (!app->trace_pending_kind || app->dc_job.thread)
+        return;
+    int kind = app->trace_pending_kind;
+    int index = app->trace_pending_index;
+    int pin = app->trace_pending_pin;
+    int current = app->trace_pending_current;
+    uint64_t revision = app->trace_pending_revision;
+    app->trace_pending_kind = 0;
+    if (revision != app->bench.revision)
+    {
+        app->status = tr(TXT_APP_RESULT_DISCARDED);
+        return;
+    }
+    int started = 0;
+    if (kind == 2 && index >= 0 && index < app->bench.wire_count)
+        started = spice_job_start_transient_wire(&app->dc_job, &app->bench, app->ngspice, index,
+                                                 app->transient_step, app->transient_stop);
+    else if (kind == 1 && index >= 0 && index < app->bench.part_count &&
+             (current || (pin >= 0 && pin < bench_pin_count(app->bench.parts[index].type))))
+    {
+        Pin probe = {index, current ? 0 : pin};
+        if (app->show_current)
+            started = spice_job_start_transient_instrumented(&app->dc_job, &app->bench, app->ngspice,
+                                                              current ? 2 : 1, probe, app->transient_step,
+                                                              app->transient_stop);
+        else if (current)
+            started = spice_job_start_transient_current(&app->dc_job, &app->bench, app->ngspice, index,
+                                                        app->transient_step, app->transient_stop);
+        else
+            started = spice_job_start_transient(&app->dc_job, &app->bench, app->ngspice, probe,
+                                                app->transient_step, app->transient_stop);
+    }
+    if (started)
+    {
+        sim_state_clear_result(&app->sim);
+        app->status = tr(kind == 2 ? TXT_APP_CALCULATING_WIRE_CURRENT : TXT_APP_CALCULATING_CURVE);
+    }
+    else
+        app->status = tr(TXT_APP_CALCULATION_START_FAILED);
+}
+
 void app_simulation_update(AppState *app)
 {
     retain_visual_edit_result(app);
     poll_result(app);
+    start_pending_trace(app);
     step_microcontrollers(app);
     app->sim.display_pending = sim_state_has_result(&app->sim, SIM_RESULT_DC) &&
                                app->sim.result_revision != app->bench.revision &&

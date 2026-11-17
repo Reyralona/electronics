@@ -26,9 +26,20 @@ int bench_selection_count(const BenchSelection *selection, const Workbench *benc
     return count;
 }
 
+int bench_selection_knee_count(const BenchSelection *selection, const Workbench *bench)
+{
+    int count = 0;
+    for (int i = 0; i < bench->wire_count; ++i)
+        for (int k = 0; k < bench->wires[i].knee_count; ++k)
+            count += (selection->knees[i] & (1u << k)) != 0;
+    return count;
+}
+
 void bench_selection_rect(BenchSelection *selection, const Workbench *bench, WirePoint a, WirePoint b)
 {
     bench_selection_clear(selection);
+    float left = fminf(a.x, b.x), right = fmaxf(a.x, b.x);
+    float top = fminf(a.y, b.y), bottom = fmaxf(a.y, b.y);
     for (int i = 0; i < bench->part_count; ++i)
     {
         const Part *part = &bench->parts[i];
@@ -41,6 +52,19 @@ void bench_selection_rect(BenchSelection *selection, const Workbench *bench, Wir
         }
         selection->parts[i] = part->x >= fminf(a.x, b.x) && part->x <= fmaxf(a.x, b.x) && part->y >= fminf(a.y, b.y) &&
                               part->y <= fmaxf(a.y, b.y);
+    }
+    for (int i = 0; i < bench->wire_count; ++i)
+    {
+        const Wire *wire = &bench->wires[i];
+        int group = bench->parts[wire->a.component].group;
+        if (group && group == bench->parts[wire->b.component].group)
+            continue;
+        for (int k = 0; k < bench->wires[i].knee_count; ++k)
+        {
+            WirePoint point = bench->wires[i].knees[k];
+            if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom)
+                selection->knees[i] |= (unsigned short)(1u << k);
+        }
     }
 }
 
@@ -211,10 +235,11 @@ static int move_valid(const Workbench *bench, const BenchSelection *selection, f
     for (int i = 0; i < bench->wire_count; ++i)
     {
         const Wire *wire = &bench->wires[i];
-        if (selection->parts[wire->a.component] && selection->parts[wire->b.component])
-            for (int k = 0; k < wire->knee_count; ++k)
-                if (!isfinite(wire->knees[k].x + dx) || !isfinite(wire->knees[k].y + dy))
-                    return 0;
+        int whole_wire = selection->parts[wire->a.component] && selection->parts[wire->b.component];
+        for (int k = 0; k < wire->knee_count; ++k)
+            if ((whole_wire || (selection->knees[i] & (1u << k))) &&
+                (!isfinite(wire->knees[k].x + dx) || !isfinite(wire->knees[k].y + dy)))
+                return 0;
     }
     return 1;
 }
@@ -247,9 +272,9 @@ void bench_selection_move(Workbench *bench, const BenchSelection *selection, flo
     for (int i = 0; i < bench->wire_count; ++i)
     {
         Wire *wire = &bench->wires[i];
-        if (!selection->parts[wire->a.component] || !selection->parts[wire->b.component])
-            continue;
+        int whole_wire = selection->parts[wire->a.component] && selection->parts[wire->b.component];
         for (int k = 0; k < wire->knee_count; ++k)
-            bench_move_knee(bench, i, k, (WirePoint){wire->knees[k].x + dx, wire->knees[k].y + dy});
+            if (whole_wire || (selection->knees[i] & (1u << k)))
+                bench_move_knee(bench, i, k, (WirePoint){wire->knees[k].x + dx, wire->knees[k].y + dy});
     }
 }

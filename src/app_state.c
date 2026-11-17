@@ -31,6 +31,7 @@ void app_state_init(AppState *app)
     app->show_trace = 1;
     app->transient_step = 1e-5;
     app->transient_stop = .005;
+    app->simulation_speed = 1.0;
     app->history = calloc(1, sizeof(*app->history));
     app->view = (BenchView){1, 0, 0};
     app->editing = -1;

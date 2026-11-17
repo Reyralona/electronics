@@ -19,6 +19,7 @@ static void roundtrip(void)
     original.gui_font_size = 18;
     original.grid_spacing = 12.5;
     original.transient_step = 2e-5;
+    original.simulation_speed = .25;
     original.wire_color = 3;
     FILE *file = tmpfile();
     assert(file && app_preferences_write(file, &original));
@@ -86,6 +87,8 @@ int main(void)
     rejects_invalid("bancada-preferences 1\ngui_font_size 99\n");
     rejects_invalid("bancada-preferences 1\ngrid_spacing banana\n");
     rejects_invalid("bancada-preferences 1\ntransient_step 1\ntransient_stop 1e-9\n");
+    rejects_invalid("bancada-preferences 1\nsimulation_speed 0\n");
+    rejects_invalid("bancada-preferences 1\nsimulation_speed 2\n");
     save_replaces_file();
     puts("Preferences roundtrip, tolerant keys, invalid files and atomic replacement passed.");
     return 0;

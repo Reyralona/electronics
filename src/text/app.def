@@ -84,6 +84,7 @@ UI_TEXT(APP_NOTHING_TO_PASTE, "Nada para colar. Ctrl+C: copiar uma seleção.", 
 UI_TEXT(APP_SELECTION_PASTED, "Seleção colada.", "Selection pasted.")
 UI_TEXT(APP_ALL_SELECTED, "Todas as peças selecionadas.", "All parts selected.")
 UI_TEXT(APP_PARTS_SELECTED, "%d peças selecionadas.", "%d parts selected.")
+UI_TEXT(APP_AREA_SELECTED, "%d peças e %d dobras selecionadas.", "%d parts and %d bends selected.")
 UI_TEXT(APP_PROJECT_FOLDER_FAILED, "Não foi possível criar a pasta dos projetos: %s",
         "Cannot create the project folder: %s")
 UI_TEXT(APP_PROJECT_SAVED, "Projeto salvo no slot %d.", "Project saved in slot %d.")

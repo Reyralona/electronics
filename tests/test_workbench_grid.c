@@ -15,6 +15,18 @@ int main(void)
     assert(bench_grid_snap(&grid, 8, -12, &x, &y));
     assert(x == 13 && y == -17);
     assert(bench_grid_snap(&grid, x, y, &x, &y));
+    {
+        float aligned_x = 101, aligned_y = 157;
+        assert(bench_grid_align_axis(100, 50, 8, &aligned_x, &aligned_y));
+        assert(aligned_x == 100 && aligned_y == 157);
+        aligned_x = 160;
+        aligned_y = 53;
+        assert(bench_grid_align_axis(100, 50, 8, &aligned_x, &aligned_y));
+        assert(aligned_x == 160 && aligned_y == 50);
+        aligned_x = 140;
+        aligned_y = 90;
+        assert(!bench_grid_align_axis(100, 50, 8, &aligned_x, &aligned_y));
+    }
     assert(x == 13 && y == -17);
     assert(bench_grid_display_spacing(&grid, .25, 10) == 40);
     assert(grid.spacing == 10);

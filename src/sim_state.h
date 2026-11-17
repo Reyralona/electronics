@@ -19,6 +19,8 @@ typedef struct
     int live_mode;
     int display_pending; /* Last compatible sample remains visible while controls update. */
     double live_time;
+    double live_rate; /* Simulated seconds per wall second, estimated from accepted samples. */
+    uint64_t live_sample_at;
     int dc_wire_valid;
     SimResultKind result_kind;
     uint64_t result_revision;

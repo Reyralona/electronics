@@ -15,6 +15,7 @@ int main(void)
     assert(bench_set_wire_route(&bench, 0, (WirePoint[]){{400, 150}}, 1));
     bench_selection_rect(&selection, &bench, (WirePoint){550, 250}, (WirePoint){250, 150});
     assert(bench_selection_count(&selection, &bench) == 2);
+    assert(bench_selection_knee_count(&selection, &bench) == 1);
     assert(bench_selection_copy(&bench, &selection, &clipboard));
     assert(clipboard.bench.part_count == 2 && clipboard.bench.wire_count == 1);
     assert(bench_selection_paste(&bench, &selection, &clipboard, 900, 400));
@@ -25,6 +26,17 @@ int main(void)
     bench_selection_move(&bench, &selection, 20, 30);
     assert(bench.parts[3].x == 920 && bench.wires[2].knees[0].x == 1020);
     assert(bench.parts[0].x == 300 && bench.wires[0].knees[0].x == 400);
+    bench_selection_rect(&selection, &bench, (WirePoint){390, 140}, (WirePoint){410, 160});
+    assert(bench_selection_count(&selection, &bench) == 0);
+    assert(bench_selection_knee_count(&selection, &bench) == 1);
+    bench_selection_move(&bench, &selection, 10, 0);
+    assert(bench.wires[0].knees[0].x == 410 && bench.parts[0].x == 300);
+    bench_selection_rect(&selection, &bench, (WirePoint){290, 140}, (WirePoint){420, 210});
+    assert(bench_selection_count(&selection, &bench) == 1);
+    assert(bench_selection_knee_count(&selection, &bench) == 1);
+    bench_selection_move(&bench, &selection, 20, 0);
+    assert(bench.parts[0].x == 320 && bench.parts[1].x == 500 && bench.wires[0].knees[0].x == 430);
+    bench_selection_rect(&selection, &bench, (WirePoint){900, 350}, (WirePoint){1120, 450});
     bench_selection_delete(&bench, &selection);
     assert(bench.part_count == 3 && bench.wire_count == 2);
     assert(bench_selection_count(&selection, &bench) == 0);

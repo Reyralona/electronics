@@ -11,7 +11,7 @@
 
 WorkbenchSettings workbench_settings_default(void)
 {
-    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15, 0, UI_LANG_PT_BR};
+    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15, 0, UI_LANG_PT_BR, 1.0};
 }
 int workbench_settings_valid(const WorkbenchSettings *s)
 {
@@ -23,7 +23,8 @@ int workbench_settings_valid(const WorkbenchSettings *s)
            isfinite(s->grid_spacing) && s->grid_spacing >= 1 && s->grid_spacing <= 10000 &&
            (s->snap_grid == 0 || s->snap_grid == 1) && (s->snap_board == 0 || s->snap_board == 1) &&
            (s->show_pin_labels == 0 || s->show_pin_labels == 1) && s->language >= 0 && s->language < UI_LANG_COUNT &&
-           s->transient_step <= s->transient_stop && s->transient_stop / s->transient_step <= 500.0 * (1.0 + 1e-12);
+           s->transient_step <= s->transient_stop && s->transient_stop / s->transient_step <= 500.0 * (1.0 + 1e-12) &&
+           isfinite(s->simulation_speed) && s->simulation_speed >= .05 && s->simulation_speed <= 1.0;
 }
 
 static int write_leads(FILE *file, const Workbench *bench)

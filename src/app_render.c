@@ -2410,10 +2410,14 @@ static void draw_workspace_route(const AppState *app)
             {
                 /* Screen-sized dots: visible as edit handles without hiding the wire at any zoom. */
                 WirePoint p = app->bench.wires[i].knees[k];
-                float radius = (app->selected_wire == i ? 3.5f : 2.2f) / app->view.zoom;
+                float radius = (app->selected_wire == i || (app->selection.knees[i] & (1u << k)) ? 3.5f : 2.2f) /
+                               app->view.zoom;
                 color(.85f, .88f, .92f);
                 circle(p.x, p.y, radius + .8f / app->view.zoom);
-                color(.1f, .3f, .45f);
+                if (app->selection.knees[i] & (1u << k))
+                    color(.95f, .48f, .12f);
+                else
+                    color(.1f, .3f, .45f);
                 circle(p.x, p.y, radius);
             }
         }
@@ -3190,7 +3194,7 @@ static void device_note(const Part *part, const double *e, char *note, size_t ca
         if (part->states == 1)
             snprintf(note, capacity, tr(TXT_UI_METER_CURRENT), e[1] * 1e3);
         else if (part->states == 2)
-            snprintf(note, capacity, tr(TXT_UI_METER_RESISTANCE), e[0] / 1e-3);
+            snprintf(note, capacity, tr(TXT_UI_METER_RESISTANCE), e[0] / COMPONENT_METER_OHMS_TEST_AMPS);
         else
             snprintf(note, capacity, tr(TXT_UI_METER_VOLTAGE), e[0]);
         break;
@@ -3270,6 +3274,9 @@ static void draw_part_inspector(const AppState *app, GLuint font)
         static const double none[COMPONENT_MAX_ELEMENTS];
         int measured = sim_state_has_result(&app->sim, SIM_RESULT_DC);
         device_note(part, measured ? app->sim.dc_elements[app->selected] : none, note, sizeof(note));
+        if (part->type == PART_MULTIMETER && part->states == 2 &&
+            !component_ohmmeter_reading_reliable(&app->bench))
+            snprintf(note, sizeof(note), "%s", tr(TXT_UI_METER_RESISTANCE_POWERED));
     }
     int environment = component_environment(part->type) != NULL;
     float height = inspector_height_to(INSPECTOR_LINE_1, 1);
@@ -3379,7 +3386,10 @@ static void draw_status(const AppState *app, GLuint font)
     color(UI_BORDER);
     rect(APP_PALETTE_WIDTH, 660, 1280 - APP_PALETTE_WIDTH, 1);
     char status[384], hint[320];
-    if (app->sim.live_mode)
+    if (app->sim.live_mode && app->sim.live_rate > 0 && app->sim.sim_running)
+        snprintf(status, sizeof(status), tr(TXT_UI_LIVE_PACE_STATUS), app->sim.live_time, app->sim.live_rate,
+                 app->simulation_speed, app->status);
+    else if (app->sim.live_mode)
         snprintf(status, sizeof(status), "t = %.6g s  ·  %s", app->sim.live_time, app->status);
     else
         snprintf(status, sizeof(status), "%s", app->status);
@@ -3449,7 +3459,12 @@ static void draw_settings_wires(const AppState *app, GLuint font)
     text(font, last.x + last.w + 12, ui_baseline(last), tr(wire_color_names[app->wire_color]));
     AppRect current = app_layout_setting(APP_SETTING_SHOW_CURRENT);
     ui_toggle(app, font, current, tr(TXT_SETTINGS_SHOW_CURRENT), app->show_current);
-    ui_note(font, current.x, current.y + current.h + 22, tr(TXT_SETTINGS_CURRENT_SPEED), 400);
+    AppRect minus = app_layout_setting(APP_SETTING_SIM_SPEED_SLOWER);
+    AppRect plus = app_layout_setting(APP_SETTING_SIM_SPEED_FASTER);
+    char pace[32];
+    snprintf(pace, sizeof(pace), "%.2gx", app->simulation_speed);
+    ui_stepper(app, font, (AppRect){current.x, minus.y, 400, minus.h}, minus, plus,
+               tr(TXT_SETTINGS_SIM_SPEED), pace);
 }
 
 static void draw_settings_trace(const AppState *app, GLuint font)

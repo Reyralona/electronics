@@ -31,7 +31,7 @@ typedef struct AppState
     uint64_t hover_revision;
     int selected, placing, dragging, running;
     WirePoint route[WIRE_MAX_KNEES];
-    int route_count, drag_wire, drag_knee;
+    int route_count, drag_wire, drag_knee, dragging_selection_knee;
     int settings, show_grid, show_handles, round_wires, show_current;
     int wire_color, selected_wire, palette_page, example_index;
     int palette_offset, held_button, dragging_environment;
@@ -39,7 +39,10 @@ typedef struct AppState
     float offset_x, offset_y;
     SpiceJob dc_job;
     int probe_pin, show_trace, probe_current;
+    int trace_pending_kind, trace_pending_index, trace_pending_pin, trace_pending_current;
+    uint64_t trace_pending_revision;
     double transient_step, transient_stop;
+    double simulation_speed;
     double grid_spacing;
     int snap_grid, snap_board;
     int dark_theme, gui_font_size, show_pin_labels;
@@ -47,6 +50,7 @@ typedef struct AppState
     int inspector_minimized; /* Inspector shown as a small name tab; kept across selections. */
     BenchHistory *history;
     int move_recorded;
+    int drag_snap_mode; /* 0 automatic, 1 grid only, 2 free. */
     uint64_t live_last_scheduled;
     BenchView view;
     int panning, editing;

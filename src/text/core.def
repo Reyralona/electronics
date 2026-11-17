@@ -25,6 +25,7 @@ UI_TEXT(WIRE_COLOR_GREEN, "Verde", "Green")
 UI_TEXT(WIRE_COLOR_YELLOW, "Amarelo", "Yellow")
 UI_TEXT(WIRE_COLOR_WHITE, "Branco", "White")
 UI_TEXT(SETTINGS_SHOW_CURRENT, "Mostrar corrente nos fios", "Show current in wires")
+UI_TEXT(SETTINGS_SIM_SPEED, "Ritmo da simulação", "Simulation pace")
 UI_TEXT(SETTINGS_CURRENT_SPEED, "Pontos: lentos < 100 µA · médios < 10 mA · rápidos ≥ 10 mA",
         "Dots: slow < 100 µA · medium < 10 mA · fast ≥ 10 mA")
 UI_TEXT(SETTINGS_GRAPH, "Gráfico (T)", "Graph (T)")
@@ -35,8 +36,8 @@ UI_TEXT(SETTINGS_TERMINAL, "Terminal", "Terminal")
 UI_TEXT(TERMINAL_NUMBER, "Terminal %d", "Terminal %d")
 UI_TEXT(SETTINGS_STEP, "Passo", "Step")
 UI_TEXT(SETTINGS_DURATION, "Duração", "Duration")
-UI_TEXT(SETTINGS_LIVE_FRAME, "Cada quadro da simulação avança a duração ÷ 300.",
-        "Each simulation frame advances the duration ÷ 300.")
+UI_TEXT(SETTINGS_LIVE_FRAME, "Passo: resolução elétrica · Duração: gráfico T.",
+        "Step: electrical resolution · Duration: T graph.")
 UI_TEXT(SETTINGS_AUTOSAVE, "Salvo automaticamente.", "Saved automatically.")
 UI_TEXT(SETTINGS_RESTORE_DEFAULTS, "Restaurar padrões", "Restore defaults")
 UI_TEXT(PREFERENCES_SAVE_FAILED, "Não foi possível salvar as preferências.", "Cannot save preferences.")

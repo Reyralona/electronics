@@ -560,6 +560,23 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     case APP_SETTING_SHOW_CURRENT:
         toggle_wire_current(app);
         break;
+    case APP_SETTING_SIM_SPEED_SLOWER:
+    case APP_SETTING_SIM_SPEED_FASTER:
+    {
+        static const double speeds[] = {.05, .1, .25, .5, 1.0};
+        int index = 0;
+        while (index + 1 < (int)(sizeof(speeds) / sizeof(speeds[0])) &&
+               speeds[index] < app->simulation_speed - 1e-9)
+            ++index;
+        if (app_layout_setting_at(x, y) == APP_SETTING_SIM_SPEED_SLOWER && index > 0)
+            --index;
+        if (app_layout_setting_at(x, y) == APP_SETTING_SIM_SPEED_FASTER &&
+            index + 1 < (int)(sizeof(speeds) / sizeof(speeds[0])))
+            ++index;
+        app->simulation_speed = speeds[index];
+        app->live_last_scheduled = SDL_GetTicks();
+        break;
+    }
     case APP_SETTING_PROBE_MEASURE:
         app->probe_current = !app->probe_current;
         break;
@@ -842,6 +859,9 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
                 {
                     app->drag_wire = i;
                     app->drag_knee = k;
+                    int selected_count = bench_selection_count(&app->selection, &app->bench) +
+                                         bench_selection_knee_count(&app->selection, &app->bench);
+                    app->dragging_selection_knee = (app->selection.knees[i] & (1u << k)) && selected_count > 1;
                     break;
                 }
             }
@@ -852,7 +872,9 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
             {
                 bench_history_record(app->history, &app->bench);
                 bench_remove_knee(&app->bench, app->drag_wire, app->drag_knee);
+                bench_selection_clear(&app->selection);
                 app->drag_wire = -1;
+                app->dragging_selection_knee = 0;
                 app->status = tr(TXT_APP_BEND_REMOVED);
             }
             else
@@ -869,6 +891,11 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
 static int snap_suspended(void)
 {
     return (SDL_GetModState() & SDL_KMOD_ALT) != 0;
+}
+
+static int grid_only(void)
+{
+    return (SDL_GetModState() & SDL_KMOD_CTRL) != 0;
 }
 
 static void input_snap_grid(const AppState *app, float *x, float *y)
@@ -898,11 +925,13 @@ static void input_place_part(AppState *app, float x, float y)
     int added = bench_add(&app->bench, (PartType)app->placing, x, y);
     if (added >= 0)
     {
-        int snapped = app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, added);
+        int snapped = app->snap_board && !snap_suspended() && !grid_only() &&
+                      bench_snap_to_breadboard(&app->bench, added);
         if (!snapped)
         {
             input_snap_grid(app, &x, &y);
-            snap_part_terminals(app, added, &x, &y);
+            if (!snap_suspended() && !grid_only())
+                snap_part_terminals(app, added, &x, &y);
             bench_move_part(&app->bench, added, x, y);
         }
         bench_history_record(app->history, &before);
@@ -1114,6 +1143,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
         {
             app->dragging = hit;
             app->move_recorded = 0;
+            app->drag_snap_mode = 0;
             app->offset_x = x - app->bench.parts[hit].x;
             app->offset_y = y - app->bench.parts[hit].y;
             app->status = tr(TXT_APP_DRAG_PART);
@@ -1370,6 +1400,8 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     bench_view_to_world(&app->view, x, y, &x, &y);
     if (SDL_GetModState() & SDL_KMOD_SHIFT)
     {
+        if (input_click_knee(app, x, y, event->button.clicks))
+            return;
         app->selecting_area = 1;
         app->area_start = (WirePoint){x, y};
         app->area_end = app->area_start;
@@ -1381,6 +1413,8 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     if (SDL_GetModState() & SDL_KMOD_ALT)
     {
+        if (input_click_knee(app, x, y, event->button.clicks))
+            return;
         if (input_click_chip_terminal(app, x, y) || input_click_junction(app, x, y))
             return;
         if (input_click_lead(app, x, y, event->button.clicks))
@@ -1429,6 +1463,13 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     {
         if (app->route_count < WIRE_MAX_KNEES)
         {
+            WirePoint anchor;
+            if (app->route_count)
+                anchor = app->route[app->route_count - 1];
+            else
+                bench_terminal_position(&app->bench, app->pending, &anchor.x, &anchor.y);
+            input_snap_grid(app, &x, &y);
+            bench_grid_align_axis(anchor.x, anchor.y, 8.0f / app->view.zoom, &x, &y);
             app->route[app->route_count++] = (WirePoint){x, y};
             app->status = tr(TXT_APP_ROUTE_BEND_ADDED);
         }
@@ -1455,10 +1496,13 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
     app->drag_port.component = -1;
     app->selecting_area = 0;
     if (bench_selection_count(&app->selection, &app->bench) <= 1 && app->dragging >= 0 && app->move_recorded &&
-        !app->bench.parts[app->dragging].group && app->snap_board && !snap_suspended() && bench_snap_to_breadboard(&app->bench, app->dragging))
+        !app->bench.parts[app->dragging].group && app->snap_board && app->drag_snap_mode == 0 &&
+        bench_snap_to_breadboard(&app->bench, app->dragging))
         app->status = tr(TXT_APP_PART_SNAPPED);
     app->dragging = -1;
+    app->drag_snap_mode = 0;
     app->drag_wire = -1;
+    app->dragging_selection_knee = 0;
 }
 
 static WirePoint snap_lead_tip(const AppState *app, int component, WirePoint point)
@@ -1521,6 +1565,16 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
         WirePoint *point = &app->bench.wires[app->drag_wire].knees[app->drag_knee];
         bench_view_to_world(&app->view, x, y, &x, &y);
         input_snap_grid(app, &x, &y);
+        if (!app->dragging_selection_knee)
+        {
+            WirePoint anchor;
+            if (app->drag_knee > 0)
+                anchor = app->bench.wires[app->drag_wire].knees[app->drag_knee - 1];
+            else
+                bench_terminal_position(&app->bench, app->bench.wires[app->drag_wire].a, &anchor.x, &anchor.y);
+            float tolerance = SDL_GetModState() & SDL_KMOD_SHIFT ? 1e9f : 8.0f / app->view.zoom;
+            bench_grid_align_axis(anchor.x, anchor.y, tolerance, &x, &y);
+        }
         if (point->x != x || point->y != y)
         {
             if (!app->move_recorded)
@@ -1528,7 +1582,10 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
                 bench_history_record(app->history, &app->bench);
                 app->move_recorded = 1;
             }
-            bench_move_knee(&app->bench, app->drag_wire, app->drag_knee, (WirePoint){x, y});
+            if (app->dragging_selection_knee)
+                bench_selection_move(&app->bench, &app->selection, x - point->x, y - point->y);
+            else
+                bench_move_knee(&app->bench, app->drag_wire, app->drag_knee, (WirePoint){x, y});
         }
     }
 }
@@ -1589,6 +1646,7 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
     SDL_GetWindowSize(window, &w, &h);
     if (w > 0 && h > 0)
     {
+        app->drag_snap_mode = snap_suspended() ? 2 : grid_only() ? 1 : 0;
         float x = event->motion.x * 1280.0f / w, y = event->motion.y * 720.0f / h;
         bench_view_to_world(&app->view, x, y, &x, &y);
         x -= app->offset_x;
@@ -1602,19 +1660,21 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
             input_snap_grid(app, &body_x, &body_y);
             x = dragged->x + body_x - group->x;
             y = dragged->y + body_y - group->y;
-            snap_part_terminals(app, app->dragging, &x, &y);
+            if (!snap_suspended() && !grid_only())
+                snap_part_terminals(app, app->dragging, &x, &y);
         }
         else
         {
             Part candidate = *dragged;
             candidate.x = x;
             candidate.y = y;
-            int board_snap = app->snap_board && !snap_suspended() &&
+            int board_snap = app->snap_board && !snap_suspended() && !grid_only() &&
                              bench_selection_count(&app->selection, &app->bench) <= 1 &&
                              bench_breadboard_snap_position(&app->bench, &candidate, &x, &y);
             if (!board_snap)
                 input_snap_grid(app, &x, &y);
-            snap_part_terminals(app, app->dragging, &x, &y);
+            if (!snap_suspended() && !grid_only())
+                snap_part_terminals(app, app->dragging, &x, &y);
         }
         if (app->bench.parts[app->dragging].x != x || app->bench.parts[app->dragging].y != y)
         {
@@ -1623,7 +1683,8 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
                 bench_history_record(app->history, &app->bench);
                 app->move_recorded = 1;
             }
-            if (bench_selection_count(&app->selection, &app->bench) > 1 || app->bench.parts[app->dragging].group)
+            if (bench_selection_count(&app->selection, &app->bench) > 1 ||
+                bench_selection_knee_count(&app->selection, &app->bench) > 0 || app->bench.parts[app->dragging].group)
                 bench_selection_move(&app->bench, &app->selection, x - app->bench.parts[app->dragging].x,
                                      y - app->bench.parts[app->dragging].y);
             else
@@ -1641,7 +1702,8 @@ static void input_area_update(AppState *app)
     for (int i = 0; i < app->bench.part_count; ++i)
         if (app->selection.parts[i])
             app->selected = i;
-    report(app, TXT_APP_PARTS_SELECTED, bench_selection_count(&app->selection, &app->bench));
+    report(app, TXT_APP_AREA_SELECTED, bench_selection_count(&app->selection, &app->bench),
+           bench_selection_knee_count(&app->selection, &app->bench));
 }
 
 static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Event *event)

@@ -1,6 +1,7 @@
 #include "app_simulation.h"
 #include "ui_text.h"
 #include <assert.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,6 +31,15 @@ static void test_discard_after_undo(AppState *app)
 
 int main(void)
 {
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, 1) - .016) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, 1e-5, 1) - .02) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, 1e-6, 1) - .002) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, .1, 1) - .1) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .25) - .004) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .05) - .0008) < 1e-12);
+    assert(app_simulation_live_span(1000, 1100, 0, 1) == 0);
+    assert(app_simulation_live_span(1000, 1100, 1e-5, 0) == 0);
+    assert(app_simulation_live_span(1000, 1100, 1e-5, 2) == 0);
     static AppState app;
     app_state_init(&app);
     assert(app.history);
