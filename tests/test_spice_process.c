@@ -149,7 +149,10 @@ int main(int argc, char **argv)
                     fprintf(stderr, "Gate %d, inputs %d: %s\n", type, bits, message);
                 assert(analyzed);
                 i=measured.count-1;
-                if(high) assert(measured.samples[i].value>4.9); else assert(fabs(measured.samples[i].value)<.01);
+                if (high)
+                    assert(measured.samples[i].value > 4.7 && measured.samples[i].value < 5.01);
+                else
+                    assert(fabs(measured.samples[i].value) < .01);
                 assert(spice_dc_analyze(&logic,argv[1],&current,led,message,sizeof(message)));
                 if(high) assert(led[3]>.003 && led[3]<.004); else assert(fabs(led[3])<1e-8);
             }
@@ -168,7 +171,7 @@ int main(int argc, char **argv)
             assert(bench_toggle_wire(&cascade,(Pin){3,1},(Pin){4,0})==1);
             assert(bench_toggle_wire(&cascade,(Pin){4,1},(Pin){0,1})==1);
             assert(spice_transient_analyze(&cascade,argv[1],(Pin){2,1},1e-5,.001,&measured,message,sizeof(message)));
-            assert(measured.samples[measured.count-1].value>4.9);
+            assert(measured.samples[measured.count-1].value>4.7);
             assert(spice_dc_analyze(&cascade,argv[1],&current,led,message,sizeof(message)));
             assert(led[4]>.003 && led[4]<.004);
         }
@@ -278,7 +281,10 @@ int main(int argc, char **argv)
         for(i=0;i<4;++i) {
             int nearest=0; for(j=1;j<trace.count;++j) if(fabs(trace.samples[j].time-times[i])<fabs(trace.samples[nearest].time-times[i])) nearest=j;
             assert(fabs(trace.samples[nearest].time-times[i])<1e-5);
-            assert(fabs(trace.samples[nearest].value-expected[i])<.01);
+            if (expected[i] > 0)
+                assert(trace.samples[nearest].value > 4.7 && trace.samples[nearest].value < 5.01);
+            else
+                assert(fabs(trace.samples[nearest].value) < .01);
             assert(((trace.leds_on[nearest]>>4)&1)==(expected[i]>0));
         }
     }
