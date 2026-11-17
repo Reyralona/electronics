@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <windows.h>
 
 /* Place every terminal of every catalog device on a switch terminal, then separate them.
  * Both discovery directions and the actual solver node map must agree. */
@@ -172,9 +173,15 @@ static void wire_junctions(void)
     assert(bench_split_wire(&bench, 0, 5, (WirePoint){0, 0}) < 0 && bench_split_wire(&bench, 99, 0, (WirePoint){0, 0}) < 0);
     assert(bench_prune_junctions(&bench) == 0);
 
-    assert(workbench_save_project("build/test-junctions.elec", &bench, &settings));
-    assert(workbench_load_project("build/test-junctions.elec", &reopened, &settings));
-    remove("build/test-junctions.elec");
+    char temporary_directory[MAX_PATH];
+    char temporary_file[MAX_PATH];
+    DWORD directory_length = GetTempPathA(sizeof(temporary_directory), temporary_directory);
+    assert(directory_length > 0 && directory_length < sizeof(temporary_directory));
+    assert(GetTempFileNameA(temporary_directory, "bjt", 0, temporary_file));
+    assert(DeleteFileA(temporary_file));
+    assert(workbench_save_project(temporary_file, &bench, &settings));
+    assert(workbench_load_project(temporary_file, &reopened, &settings));
+    assert(DeleteFileA(temporary_file));
     assert(reopened.parts[junction].type == PART_JUNCTION && reopened.wire_count == 3);
     assert(netlist_same_net(&reopened, (Pin){2, 0}, (Pin){0, 0}));
 
