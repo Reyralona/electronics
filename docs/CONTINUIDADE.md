@@ -5,11 +5,11 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão em preparação: 0.42.0, Windows x64, pré-release experimental.
+- Versão atual: 0.42.1 (correções; sem release). Última pré-release publicada: 0.42.0, Windows x64.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
-- Branch de trabalho: `codex/fix-ngspice-runtime-packages`. Integrar e apagar a branch
-  depois da verificação e da publicação, conforme [VERSIONAMENTO.md](VERSIONAMENTO.md).
+- Nenhuma branch de trabalho pendente; tudo integrado à `main`, conforme
+  [VERSIONAMENTO.md](VERSIONAMENTO.md).
 
 ## Simulação
 
@@ -29,7 +29,7 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 - Testes de circuito usam fixtures versionadas em `tests/`. Nenhum save pessoal é
   necessário. A auditoria de tags, releases e referências locais está em
   [AUDITORIA_PUBLICACAO.md](AUDITORIA_PUBLICACAO.md).
-- `build.ps1` descobre ferramentas no `PATH`, copia as DLLs do build de desenvolvimento
+- `build.ps1` descobre ferramentas no `PATH`, em `MSYS2_ROOT` ou em `C:\msys64`, copia as DLLs do build de desenvolvimento
   e testa a interface com `PATH` mínimo. O pacote de distribuição inclui o runtime.
 - O executável local de desenvolvimento é `build/build.exe`; arquivos em `build/` são
   descartáveis e não devem aparecer como dependência de fonte ou fixture.
@@ -37,7 +37,14 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 ## Verificação e próximos passos
 
 - `./build.ps1 -GuiTests` passou com os testes de simulação, instrumentos e interface.
-- Antes da release, executar o empacotamento completo, testes do ZIP e instalador,
-  verificar hashes e notas, integrar a `main`, criar a tag anotada e publicar o pré-release.
-- Depois da release: preservar estado em mudanças de topologia e frequência, medir
+- **Teste instável em aberto (17/11/2026):** `tests/test_chip_library_flow.c` falha de vez
+  em quando em `assert(app_editor_save(inside))` (vistas as linhas 106 e 183): cerca de 2 falhas
+  em 10 execuções completas de `build.ps1`, nenhuma em mais de 50 execuções do teste isolado.
+  Causa não identificada. Já descartado: colisão de nome na lixeira (corrigida na 0.42.1,
+  errno 17). Hipótese não confirmada: outro processo (antivírus/indexador) segurando
+  `build/test-blocks/block-N.elec` durante o `MoveFileExA` de `workbench_save_project`.
+  Próximo passo: registrar `GetLastError()` **antes** de qualquer outra chamada num log em
+  arquivo (stderr derruba o `build.ps1` no PowerShell 5.1) e repetir o build completo.
+  Se a falha se repetir, rodar o build de novo contorna.
+- Próximos passos: preservar estado em mudanças de topologia e frequência, medir
   desempenho em circuitos maiores e avançar nas pendências do roadmap da 1.0.

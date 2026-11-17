@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.42.1
+
+- `build.ps1`, a preparação do ngspice e o empacotamento encontram o MSYS2 mesmo fora do
+  `PATH` (em `MSYS2_ROOT` ou na pasta padrão `C:\msys64`) e explicam quando ele falta.
+  Mensagens com acento aparecem corretamente no Windows PowerShell 5.1.
+- Excluir chips do mesmo lugar da biblioteca duas vezes no mesmo segundo não falha mais.
+
 ## 0.42.0
 
 - A simulação contínua mantém apenas a amostra mais recente no ngspice. Capacitores,
