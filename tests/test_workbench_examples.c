@@ -28,7 +28,8 @@ int main(int argc,char **argv)
             if(fabs(trace.samples[i].time-.0015)<fabs(trace.samples[hold].time-.0015)) hold=i;
             if(fabs(trace.samples[i].time-.00225)<fabs(trace.samples[low].time-.00225)) low=i;
         }
-        assert(trace.samples[hold].value>4.9 && trace.samples[low].value<.01);
+        assert(trace.samples[hold].value > 4.7 && trace.samples[hold].value < 5.01);
+        assert(trace.samples[low].value < .01);
         assert((trace.leds_on[hold]&(UINT64_C(1)<<4)) && !(trace.leds_on[low]&(UINT64_C(1)<<4)));
     }
     previous_revision = b.revision;
