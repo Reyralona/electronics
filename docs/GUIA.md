@@ -104,6 +104,13 @@ O que aparece na tela:
 
 ## Chips
 
+**Terminais escolhidos:** na aba Digital, coloque uma **Junção de fios**, conecte-a ao nó desejado
+e dê dois cliques no ponto para nomeá-lo. Junções nomeadas soltas no interior definem os terminais
+do próximo chip: por exemplo J, K, CLOCK, Q e Q_bar. Um CLOCK pode ligar várias entradas internas.
+Quando existem esses pontos nomeados, os demais nós livres não viram terminais automaticamente.
+Ligações que já chegam de fora continuam expostas para preservar o circuito. Chips internos mantêm
+seus próprios terminais. Para remover um terminal escolhido, apague o nome do ponto.
+
 1. Selecione as peças e pressione `Ctrl+G`. Elas viram um **chip** compacto e vão para a aba **Chips**.
    A seleção também pode conter chips: eles ficam preservados dentro do novo chip, em vários níveis.
 2. Na aba **Chips**, clique no chip e depois na bancada para colocar uma cópia independente.

@@ -652,3 +652,16 @@ Capturas revistas: `build/recursive-editor.bmp` e `build/recursive-editor-deep.b
 `--capture-editor-nested`/`--capture-editor-deep` e `--capture-output=...`.
 Registro em CHANGELOG como incremento em desenvolvimento; sem nova versão/pacote publicado.
 Meta 1.0 continua não atendida.
+
+## Terminais explícitos e modelos corrigidos — 16/11/2026
+
+Junções nomeadas e sem grupo no contexto atual escolhem os nós do próximo chip. Se houver uma,
+suprime a exposição automática de outros nós livres; conexões externas continuam protegidas.
+Digital agora oferece Junção de fios; dois cliques nomeiam o ponto. Nomes aparecem no interior,
+persistem no formato existente e pontos nomeados não são eliminados por prune de junções.
+`test_manual_ports` confirma CLOCK comum em duas portas, salvar e reabrir. Teste local
+`test_corrected_jk` verifica oito combinações do 3AND e quatro modos do JK no ngspice.
+Modelos locais block-1 e block-4 corrigidos com backup em build/chip-backup-20261116-212721.
+JK usa DFF por borda com D=J.!Q+!K.Q; o modelo conserva cinco terminais nomeados.
+Ferramenta `tools/create-corrected-chips.c` sobrescreve esses dois slots: executar somente após backup.
+Os testes dos modelos dependem dos slots locais corrigidos, não integram a suíte portátil.

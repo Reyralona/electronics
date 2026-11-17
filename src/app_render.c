@@ -2973,6 +2973,16 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
     /* Wire tips in breadboard holes belong under the parts plugged on top of them. */
     draw_workspace_contacts(app);
     draw_workspace_parts(app);
+    for (int i = 0; i < app->bench.part_count; ++i)
+    {
+        const Part *part = &app->bench.parts[i];
+        char name[BENCH_PORT_NAME_CAPACITY];
+        if (!part->group && part->type == PART_JUNCTION && bench_port_name(part, 0, name, sizeof(name)))
+        {
+            color(UI_INK);
+            name_text(font, part->x + 10, part->y - 10, name, 150);
+        }
+    }
     draw_groups(app, font);
     draw_workspace_labels(app, font);
     draw_workspace_probe(app, font);

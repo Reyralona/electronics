@@ -142,10 +142,18 @@ static int candidate_pin(const Part *part, int pin)
            (layer->exposed[pin / 64] & (UINT64_C(1) << (pin % 64))) != 0;
 }
 
+static int explicit_port(const Part *part)
+{
+    return !part->group && part->type == PART_JUNCTION && part->port_names && part->port_names[0];
+}
+
 /* For each net: its first selected terminal, how many selected terminals it joins (saturating at 2)
  * and whether any part outside the selection (other than a bare breadboard strip) is on it. */
 static void port_plan_classify(const Workbench *bench, const BenchSelection *selection, PortPlan *plan)
 {
+    int manual = 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        manual |= selection->parts[i] && explicit_port(&bench->parts[i]);
     for (int i = 0; i < PACK_PIN_TOTAL; ++i)
         plan->representative[i] = -1;
     for (int i = 0; i < bench->part_count; ++i)
@@ -156,12 +164,19 @@ static void port_plan_classify(const Workbench *bench, const BenchSelection *sel
             {
                 if (!candidate_pin(&bench->parts[i], p))
                     continue;
-                if (plan->representative[net] < 0)
+                if (plan->representative[net] < 0 || explicit_port(&bench->parts[i]))
                     plan->representative[net] = slot;
                 plan->members[net] = plan->members[net] < 2 ? plan->members[net] + 1 : 2;
             }
             else if (!selection->parts[i] && bench->parts[i].type != PART_BREADBOARD)
                 plan->external[net] = 1;
+        }
+    if (manual)
+        for (int net = 0; net < PACK_PIN_TOTAL; ++net)
+        {
+            int representative = plan->representative[net];
+            int chosen = representative >= 0 && explicit_port(&bench->parts[representative / WORKBENCH_MAX_PINS]);
+            plan->members[net] = chosen ? 1 : 2;
         }
 }
 

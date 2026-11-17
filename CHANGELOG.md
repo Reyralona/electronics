@@ -2,6 +2,8 @@
 
 ## Em desenvolvimento
 
+- Junções nomeadas na aba Digital permitem escolher os terminais do chip, inclusive CLOCK compartilhado.
+
 - Chips podem conter outros chips em vários níveis, preservando nomes, terminais e encapsulamentos.
 - O editor permite entrar e voltar por nível. Aplicar afeta o contexto imediatamente acima, com desfazer.
 - Copiar, salvar/reabrir e desagrupar preservam a composição. Formato 32, com leitura dos anteriores.

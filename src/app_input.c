@@ -1412,7 +1412,8 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     }
     Pin clicked = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
     hitpin = clicked.pin;
-    if (hitpin >= 0 && event->button.clicks >= 2 && bench_group_port_index(&app->bench, clicked) >= 0)
+    if (hitpin >= 0 && event->button.clicks >= 2 &&
+        (bench_group_port_index(&app->bench, clicked) >= 0 || app->bench.parts[clicked.component].type == PART_JUNCTION))
     {
         start_port_name_edit(app, window, clicked);
         return;

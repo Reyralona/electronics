@@ -499,7 +499,7 @@ int bench_prune_junctions(Workbench *bench)
 {
     int removed = 0;
     for (int i = bench->part_count - 1; i >= 0; --i)
-        if (bench->parts[i].type == PART_JUNCTION && !junction_wired(bench, i))
+        if (bench->parts[i].type == PART_JUNCTION && !bench->parts[i].port_names && !junction_wired(bench, i))
         {
             bench_remove(bench, i);
             ++removed;
