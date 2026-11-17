@@ -1,5 +1,7 @@
-param([switch]$GuiTests, [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$OutputName = 'build')
+﻿param([switch]$GuiTests, [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$OutputName = 'build')
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'tools/msys2-path.ps1')
+Add-Msys2ToPath
 $compiler = Get-Command gcc.exe -ErrorAction Stop
 $toolchain = Split-Path $compiler.Source -Parent
 New-Item -ItemType Directory -Force build | Out-Null

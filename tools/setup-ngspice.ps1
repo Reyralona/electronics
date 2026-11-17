@@ -1,6 +1,8 @@
-param([string]$Destination = 'build/spice-local')
+﻿param([string]$Destination = 'build/spice-local')
 $ErrorActionPreference = 'Stop'
-$tar = (Get-Command bsdtar.exe -ErrorAction Stop).Source
+. (Join-Path $PSScriptRoot 'msys2-path.ps1')
+Add-Msys2ToPath
+$tar =(Get-Command bsdtar.exe -ErrorAction Stop).Source
 $repoPath = Split-Path $PSScriptRoot -Parent
 $lockPath = Join-Path $repoPath 'packaging/dependencies.lock.json'
 if (!(Test-Path -LiteralPath $lockPath)) { throw "Arquivo de dependências não encontrado: $lockPath" }

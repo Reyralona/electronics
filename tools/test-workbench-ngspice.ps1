@@ -1,4 +1,4 @@
-param([string]$Root = 'build/spice-local/ucrt64')
+﻿param([string]$Root = 'build/spice-local/ucrt64')
 $ErrorActionPreference = 'Stop'
 $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
 $env:Path = "$(Join-Path $resolvedRoot 'bin');$env:Path"

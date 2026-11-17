@@ -9,6 +9,8 @@ try {
         $msysRoot = Split-Path $resolvedToolchain -Parent
         $env:Path = "$(Join-Path $resolvedToolchain 'bin');$(Join-Path $msysRoot 'usr/bin');$env:Path"
     }
+    . (Join-Path $PSScriptRoot 'msys2-path.ps1')
+    Add-Msys2ToPath
     $tar = (Get-Command bsdtar.exe -ErrorAction Stop).Source
     foreach ($command in 'cmake', 'ninja', 'gcc', 'objdump', 'makensis') {
         if (!(Get-Command $command -ErrorAction SilentlyContinue)) { throw "Missing tool: $command" }

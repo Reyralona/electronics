@@ -46,7 +46,7 @@ Com o código commitado e as ferramentas UCRT64 no `PATH`, execute no PowerShell
 
 Se o compilador não estiver no `PATH`, informe a pasta UCRT64 instalada usando
 `-Toolchain`. O script encontra `bsdtar` na mesma instalação. `Empacotar.cmd` usa o
-mesmo ambiente e exige que as ferramentas já estejam no `PATH`.
+mesmo ambiente; sem `-Toolchain`, procura as ferramentas no `PATH`, em `MSYS2_ROOT` ou em `C:\msys64`.
 
 O script baixa os pacotes e fontes fixados em `packaging/dependencies.lock.json`, confere SHA256,
 prepara um runtime privado e compila contra a SDL3 desse runtime. O MSYS2 instalado fornece apenas

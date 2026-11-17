@@ -21,7 +21,9 @@ pacman -S --needed mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-sdl3
 
 ## Compilar e testar
 
-No PowerShell com `gcc.exe` e `bsdtar.exe` disponíveis no `PATH`, clone o projeto numa pasta sem espaços no caminho.
+Os scripts procuram `gcc.exe` e `bsdtar.exe` no `PATH`; se não estiverem lá, usam a instalação
+padrão do MSYS2 (`C:\msys64`) ou a pasta indicada em `MSYS2_ROOT`, só na sessão atual.
+Clone o projeto numa pasta sem espaços no caminho.
 Essa restrição é do script de preparação abaixo; os pacotes distribuídos aceitam espaços.
 
 ```powershell
