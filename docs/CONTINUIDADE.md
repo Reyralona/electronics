@@ -636,3 +636,19 @@ separar contatos e sobrepor apenas geometria oculta não alimentam o LED/não cr
 Autoteste GUI tem 198 fases; as últimas selecionam/giram, encaixam, afastam, reconectam e desfazem/refazem.
 Captura revisada: build/chip-rotated-final.bmp. Pacote 0.37.0 passou nos testes de realocação, solver,
 interface, instalação/desinstalação e preservação de arquivo extra. Não marcar a meta 1.0 como atendida.
+
+## Chips recursivos — 16/11/2026, feature/recursive-chips
+
+Implementada composição preservando os chips internos, com camadas de portas/nomes por peça,
+grupos com pai e formato 32 (leitura dos antigos preservada). Solver continua plano. Contatos
+entre chips viram fios ao encapsular; geometria oculta de filhos diferentes não conecta.
+Editor permite entrar por Enter/Ver interior em vários níveis; Voltar sobe um nível e Aplicar
+altera somente o pai imediato, com undo e origem dos componentes preservada até a bancada.
+`./build.ps1 -GuiTests` passou. `test_recursive_chips` falhou antes no segundo encapsulamento;
+agora cobre persistência, cópia, exclusão, vinte níveis, ancestralidade inválida, contatos e solver.
+`test_app_editor` cobre descarte/aplicação em profundidade e fios externos. Após ajuste visual
+do cabeçalho, recompilado o comando da aplicação de build.ps1 com os mesmos avisos estritos.
+Capturas revistas: `build/recursive-editor.bmp` e `build/recursive-editor-deep.bmp`, geradas com
+`--capture-editor-nested`/`--capture-editor-deep` e `--capture-output=...`.
+Registro em CHANGELOG como incremento em desenvolvimento; sem nova versão/pacote publicado.
+Meta 1.0 continua não atendida.

@@ -22,10 +22,17 @@ int bench_group_extract(const Workbench *parent, int group, Workbench *draft)
     for (int i = 0; i < parent->part_count; ++i)
         if (selection.parts[i])
         {
-            copy.bench.parts[next].group = 0;
             copy.bench.parts[next++].edit_origin = i + 1;
         }
-    memset(copy.bench.groups, 0, sizeof(copy.bench.groups));
+    for (int i = 0; i < copy.bench.part_count; ++i)
+        if (copy.bench.parts[i].layers)
+            bench_part_pop_layer(&copy.bench.parts[i]);
+        else
+            copy.bench.parts[i].group = 0;
+    for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
+        if (copy.bench.groups[g].parent == group)
+            copy.bench.groups[g].parent = 0;
+    memset(&copy.bench.groups[group - 1], 0, sizeof(BenchGroup));
     int published = bench_replace(draft, &copy.bench);
     bench_snapshot_clear(&copy.bench);
     return published;
@@ -41,7 +48,7 @@ static int valid_draft(const Workbench *parent, int group, const Workbench *draf
     {
         const Part *part = &draft->parts[i];
         const ComponentInfo *info = component_info(part->type);
-        if (!info || part->group || !isfinite(part->control) || part->control < 0 || part->control > 1 ||
+        if (!info || !isfinite(part->control) || part->control < 0 || part->control > 1 ||
             !isfinite(bench_part_scale(part)) ||
             bench_part_scale(part) < PART_SCALE_MIN || bench_part_scale(part) > PART_SCALE_MAX || !isfinite(part->x) || !isfinite(part->y) ||
             (info->primary && !component_value_valid(part->type, part->value)) || part->rotation < 0 ||
@@ -124,7 +131,8 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
     BenchSelection all = {0};
     for (int i = 0; i < draft->part_count; ++i)
         all.parts[i] = 1;
-    if (!bench_pack_selection(&packed, &all, message, capacity))
+    int packed_group = bench_pack_selection(&packed, &all, message, capacity);
+    if (!packed_group)
         goto cleanup;
     int map[WORKBENCH_MAX_COMPONENTS];
     memcpy(result.groups, parent->groups, sizeof(result.groups));
@@ -148,37 +156,48 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
         snprintf(message, capacity, tr(TXT_ENG_EDIT_PART_LIMIT), WORKBENCH_MAX_COMPONENTS);
         goto cleanup;
     }
+    BenchGroup outer = parent->groups[group - 1];
+    bench_groups_prune(&result);
+    result.groups[group - 1] = outer;
+    BenchClipboard clipboard = {.valid = 1};
+    /* Borrowed only for this paste; the clipboard does not own packed here. */
+    clipboard.bench = packed;
+    BenchSelection pasted = {0};
+    if (!bench_selection_paste(&result, &pasted, &clipboard, packed.parts[0].x, packed.parts[0].y))
+    {
+        snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_APPLY_FAILED));
+        goto cleanup;
+    }
+    int inserted_group = result.parts[offset].group;
     for (int i = 0; i < packed.part_count; ++i)
     {
-        Part part = packed.parts[i];
-        if (part.edit_origin)
-            map[part.edit_origin - 1] = result.part_count;
-        part.edit_origin = 0;
-        part.group = group;
-        if (!bench_part_clone(&result.parts[result.part_count], &part))
+        if (packed.parts[i].edit_origin)
         {
-            snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY_BENCH_KEPT));
-            goto cleanup;
+            map[packed.parts[i].edit_origin - 1] = offset + i;
+            result.parts[offset + i].edit_origin = parent->parts[packed.parts[i].edit_origin - 1].edit_origin;
         }
-        ++result.part_count;
+        result.parts[offset + i].group = group;
     }
+    for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
+        if (result.groups[g].parent == inserted_group)
+            result.groups[g].parent = group;
+    memset(&result.groups[inserted_group - 1], 0, sizeof(BenchGroup));
+    Wire internal[WORKBENCH_MAX_WIRES];
+    int internal_count = result.wire_count;
+    memcpy(internal, result.wires, (size_t)internal_count * sizeof(Wire));
+    result.wire_count = 0;
     if (!copy_external_wires(parent, group, map, &result))
     {
         snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_TERMINAL_REMOVED));
         goto cleanup;
     }
-    for (int i = 0; i < packed.wire_count; ++i)
+    if (result.wire_count + internal_count > WORKBENCH_MAX_WIRES)
     {
-        if (result.wire_count == WORKBENCH_MAX_WIRES)
-        {
-            snprintf(message, capacity, tr(TXT_ENG_EDIT_WIRE_LIMIT), WORKBENCH_MAX_WIRES);
-            goto cleanup;
-        }
-        Wire wire = packed.wires[i];
-        wire.a.component += offset;
-        wire.b.component += offset;
-        result.wires[result.wire_count++] = wire;
+        snprintf(message, capacity, tr(TXT_ENG_EDIT_WIRE_LIMIT), WORKBENCH_MAX_WIRES);
+        goto cleanup;
     }
+    memcpy(&result.wires[result.wire_count], internal, (size_t)internal_count * sizeof(Wire));
+    result.wire_count += internal_count;
     memcpy(result.groups[group - 1].name, name, strlen(name) + 1);
     published = bench_replace(parent, &result);
     if (!published)

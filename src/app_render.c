@@ -2067,10 +2067,20 @@ static void draw_brand(GLuint font)
 
 static void draw_editor_header(const AppState *app, GLuint font)
 {
+    char path[1024];
+    snprintf(path, sizeof(path), "%s", app->editor_name);
+    for (const AppState *parent = app->editor_parent; parent; parent = parent->editor_parent)
+    {
+        char next[1024];
+        const char *name = parent->editor_parent ? parent->editor_name : "Bancada";
+        snprintf(next, sizeof(next), "%.127s > %.800s", name, path);
+        memcpy(path, next, strlen(next) + 1);
+    }
     char context[BENCH_GROUP_NAME_CAPACITY + 40];
     snprintf(context, sizeof(context), tr(TXT_UI_EDITING_CHIP), app->editor_name, app_editor_dirty(app) ? " *" : "");
     color(UI_INK);
-    name_text(font, 24, 42, context, 320);
+    name_text(font, 24, 27, context, 320);
+    name_text(font, 24, 51, path, 320);
     static const TextId labels[APP_EDITOR_COUNT] = {TXT_UI_EDITOR_APPLY, TXT_UI_RENAME, TXT_UI_EDITOR_SAVE, TXT_UI_BACK};
     for (int button = 0; button < APP_EDITOR_COUNT; ++button)
         ui_button(app, font, app_layout_editor_header((AppEditorButton)button), tr(labels[button]),
@@ -2840,7 +2850,7 @@ static void draw_groups(const AppState *app, GLuint font)
     for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
     {
         const BenchGroup *group = &app->bench.groups[g];
-        if (!group->active)
+        if (!group->active || group->parent)
             continue;
         float height = bench_group_height(&app->bench, g + 1);
         float width = bench_group_width(&app->bench, g + 1);

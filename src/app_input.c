@@ -88,7 +88,7 @@ static void input_insert_knee(AppState *app, float x, float y)
 static int part_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
-        if (bench->groups[g].active)
+        if (bench->groups[g].active && !bench->groups[g].parent)
         {
             WirePoint local = bench_group_to_local(&bench->groups[g], (WirePoint){x, y});
             if (fabsf(local.x) < bench_group_width(bench, g + 1) * .5f + 11 &&

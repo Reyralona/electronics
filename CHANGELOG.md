@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## Em desenvolvimento
+
+- Chips podem conter outros chips em vários níveis, preservando nomes, terminais e encapsulamentos.
+- O editor permite entrar e voltar por nível. Aplicar afeta o contexto imediatamente acima, com desfazer.
+- Copiar, salvar/reabrir e desagrupar preservam a composição. Formato 32, com leitura dos anteriores.
+
 ## 0.40.0
 
 - Portas lógicas realistas (família 74HC): alimentadas pela primeira fonte da bancada, de 2 a 6 V, com

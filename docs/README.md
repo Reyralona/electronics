@@ -24,6 +24,7 @@ Os guias abaixo descrevem a versão 0.40.0, revisada em 16/11/2026.
 | [QUALIDADE_DE_USO.md](QUALIDADE_DE_USO.md) | Requisitos de interação e instrumentos. Estados antigos têm data. |
 | [QUALIDADE_CODIGO.md](QUALIDADE_CODIGO.md) | Convenções atuais e revisão original de arquitetura. |
 | [DECISOES.md](DECISOES.md) | Decisões em ordem cronológica. Uma entrada posterior pode substituir outra. |
+| [CHIPS_RECURSIVOS.md](CHIPS_RECURSIVOS.md) | Comparação técnica e decisão para a composição de chips. |
 | [LOGICA_DIGITAL.md](LOGICA_DIGITAL.md) | Estudo inicial dos modelos digitais e seus limites. |
 | [REVISAO_VISUAL.md](REVISAO_VISUAL.md) | Evidências das rodadas de revisão de arte. Capturas ficam no build local. |
 | [CONTINUIDADE.md](CONTINUIDADE.md) | Diário interno. Leia as entradas finais para retomar o trabalho. |

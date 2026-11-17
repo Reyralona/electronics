@@ -663,3 +663,20 @@ terminar um fio sobre outro divide o fio de baixo em dois no ponto (as dobras se
 Eletricamente é só um nó. Junções sem fio são removidas ao apagar fios. Limites: 256 peças e 512 fios.
 Os vetores de união por pino passam a ~430 KB; os executáveis usam pilha de 64 MB (`-Wl,--stack`).
 Hipótese a validar: desempenho da simulação contínua perto do limite de peças.
+
+## Chips compostos em vários níveis (16/11/2026, em desenvolvimento)
+
+Pedido: usar chips dentro de outros chips, conservando a possibilidade de entrar e editar cada um.
+Comparação prévia e fonte oficial: [CHIPS_RECURSIVOS.md](CHIPS_RECURSIVOS.md).
+Decisão: peças elétricas continuam planas; `BenchGroup.parent` e camadas de grupo/portas/nomes
+por peça preservam os encapsulamentos. Contatos entre chips são congelados como fios antes de
+compor; posições ocultas de filhos diferentes não criam contatos. Não foi alterado o solver.
+Formato 32 conserva as camadas e valida a ancestralidade; versões anteriores continuam legíveis.
+O editor abre contextos isolados sucessivos. Aplicar publica apenas no pai imediato e conserva
+a origem dos componentes para que os fios externos sobrevivam à aplicação dos níveis seguintes.
+Salvar modelos continua explícito; instâncias não se atualizam automaticamente.
+Desagrupar retira somente um nível. Limites globais continuam sendo 256 peças, 512 fios e 256 grupos.
+`test_recursive_chips` falhou antes na criação do segundo nível. Agora verifica salvar/reabrir,
+nomes, aplicar/copiar/excluir, vinte níveis, ancestralidade inválida, contato entre filhos e
+resistores em série no ngspice. `test_app_editor` cobre entrar, descartar, aplicar e desfazer em
+dois editores, incluindo a conservação de fios externos.

@@ -13,7 +13,7 @@ int dev_capture_requested(const char *argument)
         "--capture-dark",
         "--capture-scale",
         "--capture-knee-edit",
-        "--capture-editor", "--capture-editor-name", "--capture-packed-rotated",
+        "--capture-editor", "--capture-editor-name", "--capture-editor-nested", "--capture-editor-deep", "--capture-packed-rotated",
         "--capture-pins",       "--capture-pin-led",       "--capture-packed",     "--capture",
         "--capture-settings",   "--capture-projects", "--capture-examples",      "--capture-selection",  "--capture-analog",
         "--capture-dc",         "--capture-current",       "--capture-edit",       "--capture-zoom",

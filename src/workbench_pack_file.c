@@ -50,7 +50,7 @@ static int write_group(FILE *file, int index, const BenchGroup *group)
     size_t length = strlen(name);
     return fprintf(file, "group %d %.9g %.9g %.9g %.9g %" PRIu64 " %d", index + 1, group->x, group->y,
                    group->width, group->height, group->model, group->rotation) >= 0 &&
-           write_port_layout(file, group) && fprintf(file, " %zu\n", length) >= 0 &&
+           write_port_layout(file, group) && fprintf(file, " %d %zu\n", group->parent, length) >= 0 &&
            fwrite(name, 1, length, file) == length && fputc('\n', file) != EOF;
 }
 
@@ -154,6 +154,9 @@ static int read_groups(FILE *file, Workbench *bench, int version)
             return 0;
         if (version >= 30 && !read_port_layout(file, group))
             return 0;
+        if (version >= 32 && (fscanf(file, "%d", &group->parent) != 1 || group->parent < 0 ||
+                             group->parent > WORKBENCH_MAX_COMPONENTS || group->parent == id))
+            return 0;
         if (version >= 17)
         {
             if (!read_group_name(file, group))
@@ -165,7 +168,7 @@ static int read_groups(FILE *file, Workbench *bench, int version)
     return 1;
 }
 
-static int read_members(FILE *file, Workbench *bench)
+static int read_members(FILE *file, Workbench *bench, int version)
 {
     int count;
     if (!count_record(file, "members", bench->part_count, &count))
@@ -185,7 +188,7 @@ static int read_members(FILE *file, Workbench *bench)
         int members = 0;
         for (int p = 0; p < bench->part_count; ++p)
             members += bench->parts[p].group == g + 1;
-        if (bench->groups[g].active && !members)
+        if (bench->groups[g].active && !members && version < 32)
             return 0;
     }
     return 1;
@@ -194,7 +197,7 @@ static int read_members(FILE *file, Workbench *bench)
 int bench_groups_read(FILE *file, Workbench *bench, int version)
 {
     int count;
-    if (!read_groups(file, bench, version) || !read_members(file, bench) ||
+    if (!read_groups(file, bench, version) || !read_members(file, bench, version) ||
         !count_record(file, "ports", bench->part_count * WORKBENCH_MAX_PINS, &count))
         return 0;
     for (int i = 0; i < count; ++i)

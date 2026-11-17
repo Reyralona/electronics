@@ -23,8 +23,53 @@ static void completed_result(AppState *app, double current)
     SDL_SetAtomicInt(&app->dc_job.done, 1);
 }
 
+static void test_nested_editor(void)
+{
+    static AppState root;
+    app_state_init(&root);
+    root.selftest = 1;
+    root.sim.sim_running = 0;
+    assert(bench_add(&root.bench, PART_RESISTOR, 400, 200) == 0);
+    assert(bench_add(&root.bench, PART_SOURCE, 100, 200) == 1);
+    assert(bench_toggle_wire(&root.bench, (Pin){1, 0}, (Pin){0, 0}) == 1);
+    assert(bench_toggle_wire(&root.bench, (Pin){0, 1}, (Pin){1, 1}) == 1);
+    root.selection.parts[0] = 1;
+    int inner = bench_pack_selection(&root.bench, &root.selection, root.selection_status, sizeof(root.selection_status));
+    int outer = bench_pack_selection(&root.bench, &root.selection, root.selection_status, sizeof(root.selection_status));
+    assert(inner && outer && inner != outer);
+    root.selected = 0;
+    Workbench before = {0};
+    assert(bench_snapshot_clone(&before, &root.bench));
+    AppState *child = app_editor_open(&root);
+    assert(child && child->bench.parts[0].group == inner);
+    child->selected = 0;
+    assert(app_editor_key(child, NULL, SDLK_RETURN, 0));
+    AppState *grandchild = app_editor_route(child);
+    assert(grandchild != child && grandchild->editor_parent == child);
+    assert(bench_set_value(&grandchild->bench, 0, 2200));
+    app_editor_request_close(grandchild, 0);
+    assert(grandchild->editor_confirm_close);
+    app_editor_confirm(grandchild, 1);
+    assert(app_editor_route(grandchild) == child);
+    assert(child->bench.parts[0].value == 1000 && root.bench.parts[0].value == 1000);
+    grandchild = app_editor_open(child);
+    assert(grandchild && bench_set_value(&grandchild->bench, 0, 3300));
+    assert(app_editor_apply(grandchild));
+    assert(app_editor_route(grandchild) == child);
+    assert(child->bench.parts[0].value == 3300 && root.bench.parts[0].value == 1000);
+    assert(app_editor_apply(child));
+    assert(app_editor_route(child) == &root);
+    int resistor = bench_group_first(&root.bench, outer);
+    assert(resistor >= 0 && root.bench.parts[resistor].value == 3300 && root.bench.wire_count == 2);
+    assert(bench_history_undo(root.history, &root.bench));
+    assert(root.bench.parts[0].value == before.parts[0].value && root.bench.parts[0].group == outer);
+    bench_snapshot_clear(&before);
+    app_state_dispose(&root);
+}
+
 int main(void)
 {
+    test_nested_editor();
     static AppState root;
     app_state_init(&root);
     assert(root.history);

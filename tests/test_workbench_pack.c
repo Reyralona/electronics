@@ -53,9 +53,8 @@ static void test_overlapping_instances(const char *solver)
         assert(spice_dc_analyze(&bench, solver, &current, values, message, sizeof(message)));
         assert(values[3] > .003 && fabs(values[7] - values[3]) < values[3] * .001);
     }
-    Workbench before = bench;
-    assert(!bench_pack_selection(&bench, &selection, message, sizeof(message)));
-    assert(memcmp(&before, &bench, sizeof(bench)) == 0);
+    int outer = bench_pack_selection(&bench, &selection, message, sizeof(message));
+    assert(outer && bench.parts[4].group == outer);
 }
 
 static void test_invalid_project(void)

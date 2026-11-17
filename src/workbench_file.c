@@ -178,6 +178,104 @@ static int read_port_names(FILE *file, Workbench *bench)
     return 1;
 }
 
+/* Layers use the same validated terminal-name encoding as visible parts. */
+static int write_layers(FILE *file, const Workbench *bench)
+{
+    if (fprintf(file, "layers %d\n", bench->part_count) < 0)
+        return 0;
+    Workbench names = {0};
+    names.part_count = 1;
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        int count = 0;
+        for (const BenchPartLayer *layer = bench->parts[i].layers; layer; layer = layer->next)
+            ++count;
+        if (fprintf(file, "%d\n", count) < 0)
+            return 0;
+        for (const BenchPartLayer *layer = bench->parts[i].layers; layer; layer = layer->next)
+        {
+            if (fprintf(file, "%d", layer->group) < 0)
+                return 0;
+            for (size_t p = 0; p < sizeof(layer->exposed) / sizeof(layer->exposed[0]); ++p)
+                if (fprintf(file, " %llu", (unsigned long long)layer->exposed[p]) < 0)
+                    return 0;
+            if (fputc('\n', file) == EOF)
+                return 0;
+            names.parts[0].type = bench->parts[i].type;
+            names.parts[0].port_names = layer->port_names;
+            if (!write_port_names(file, &names))
+                return 0;
+        }
+    }
+    return 1;
+}
+
+static int read_layers(FILE *file, Workbench *bench)
+{
+    char tag[32];
+    int parts;
+    unsigned char used[WORKBENCH_MAX_COMPONENTS] = {0};
+    if (fscanf(file, "%31s %d", tag, &parts) != 2 || strcmp(tag, "layers") || parts != bench->part_count)
+        return 0;
+    for (int i = 0; i < parts; ++i)
+    {
+        int count, outer = bench->parts[i].group;
+        if (fscanf(file, "%d", &count) != 1 || count < 0 || count > WORKBENCH_MAX_COMPONENTS)
+            return 0;
+        unsigned char seen[WORKBENCH_MAX_COMPONENTS] = {0};
+        if (outer)
+        {
+            if (bench->groups[outer - 1].parent)
+                return 0;
+            seen[outer - 1] = used[outer - 1] = 1;
+        }
+        BenchPartLayer **tail = &bench->parts[i].layers;
+        for (int k = 0; k < count; ++k)
+        {
+            if (!outer)
+                return 0;
+            *tail = calloc(1, sizeof(**tail));
+            if (!*tail)
+                return 0;
+            BenchPartLayer *layer = *tail;
+            if (fscanf(file, "%d", &layer->group) != 1 || layer->group < 0 ||
+                layer->group > WORKBENCH_MAX_COMPONENTS)
+                return 0;
+            if (layer->group)
+            {
+                int g = layer->group - 1;
+                if (seen[g] || !bench->groups[g].active || bench->groups[g].parent != outer)
+                    return 0;
+                seen[g] = used[g] = 1;
+            }
+            for (size_t p = 0; p < sizeof(layer->exposed) / sizeof(layer->exposed[0]); ++p)
+            {
+                unsigned long long bits;
+                if (fscanf(file, "%llu", &bits) != 1)
+                    return 0;
+                layer->exposed[p] = (uint64_t)bits;
+            }
+            for (int p = bench_pin_count(bench->parts[i].type); p < (int)(sizeof(layer->exposed) * 8); ++p)
+                if (layer->exposed[p / 64] & (UINT64_C(1) << (p % 64)))
+                    return 0;
+            Workbench names = {0};
+            names.part_count = 1;
+            names.parts[0].type = bench->parts[i].type;
+            int valid = read_port_names(file, &names);
+            layer->port_names = names.parts[0].port_names;
+            names.parts[0].port_names = NULL;
+            if (!valid)
+                return 0;
+            outer = layer->group;
+            tail = &layer->next;
+        }
+    }
+    for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
+        if (bench->groups[g].active && !used[g])
+            return 0;
+    return 1;
+}
+
 static int read_leads(FILE *file, Workbench *bench)
 {
     char tag[32];
@@ -228,7 +326,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !workbench_settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 31\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 32\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -251,6 +349,8 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     }
     if (!bench_groups_write(f, b) || !write_leads(f, b) || !write_states(f, b) || !write_code(f, b) || !write_port_names(f, b))
         return 0;
+    if (!write_layers(f, b))
+        return 0;
     if (fprintf(f, "settings %d %d %d %d %d %d %d %.17g %.17g\n", s->show_grid, s->show_handles, s->round_wires,
                 s->show_current, s->wire_color, s->probe_pin, s->probe_current, s->transient_step,
                 s->transient_stop) < 0)
@@ -272,7 +372,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 31) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 32) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -363,6 +463,8 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (version >= 27 && !read_code(f, &b))
         goto cleanup;
     if (version >= 31 && !read_port_names(f, &b))
+        goto cleanup;
+    if (version >= 32 && !read_layers(f, &b))
         goto cleanup;
     if (version >= 10)
     {

@@ -36,7 +36,8 @@ static int freeze_boundary_contacts(Workbench *bench, const BenchSelection *sele
             while (bench_find_contact_after(bench, i, p, after, &contact))
             {
                 after = contact.component * WORKBENCH_MAX_PINS + contact.pin;
-                if ((selection->parts[i] != 0) != (selection->parts[contact.component] != 0) &&
+                if (((selection->parts[i] != 0) != (selection->parts[contact.component] != 0) ||
+                     (selection->parts[i] && bench->parts[i].group != bench->parts[contact.component].group)) &&
                     !ensure_wire(bench, (Pin){i, p}, contact))
                     return 0;
             }
@@ -134,6 +135,13 @@ static int member_pin(const Workbench *bench, const BenchSelection *selection, i
     return selection->parts[component] && bench->parts[component].type != PART_BREADBOARD;
 }
 
+static int candidate_pin(const Part *part, int pin)
+{
+    const BenchPartLayer *layer = part->layers;
+    return !layer || !layer->group ||
+           (layer->exposed[pin / 64] & (UINT64_C(1) << (pin % 64))) != 0;
+}
+
 /* For each net: its first selected terminal, how many selected terminals it joins (saturating at 2)
  * and whether any part outside the selection (other than a bare breadboard strip) is on it. */
 static void port_plan_classify(const Workbench *bench, const BenchSelection *selection, PortPlan *plan)
@@ -146,6 +154,8 @@ static void port_plan_classify(const Workbench *bench, const BenchSelection *sel
             int slot = pin_slot((Pin){i, p}), net = pack_root(plan->full, slot);
             if (member_pin(bench, selection, i))
             {
+                if (!candidate_pin(&bench->parts[i], p))
+                    continue;
                 if (plan->representative[net] < 0)
                     plan->representative[net] = slot;
                 plan->members[net] = plan->members[net] < 2 ? plan->members[net] + 1 : 2;
@@ -164,6 +174,8 @@ static int port_plan_expose(Workbench *bench, const BenchSelection *selection, P
         {
             int slot = pin_slot((Pin){i, p}), net = pack_root(plan->full, slot);
             int representative = plan->representative[net];
+            if (representative < 0)
+                continue;
             if (slot == representative)
             {
                 if (plan->external[net] || plan->members[net] == 1)
@@ -241,6 +253,9 @@ static int plan_ports(Workbench *bench, const BenchSelection *selection)
 
 int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char *message, size_t capacity)
 {
+    BenchSelection expanded = *selection;
+    bench_selection_expand_groups(&expanded, bench);
+    selection = &expanded;
     int count = bench_selection_count(selection, bench), slot = -1;
     if (!count)
     {
@@ -250,12 +265,6 @@ int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char
     for (int i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
         if (!bench->groups[i].active && slot < 0)
             slot = i;
-    for (int i = 0; i < bench->part_count; ++i)
-        if (selection->parts[i] && bench->parts[i].group)
-        {
-            snprintf(message, capacity, "%s", tr(TXT_ENG_PACK_UNGROUP_FIRST));
-            return 0;
-        }
     if (slot < 0)
     {
         snprintf(message, capacity, tr(TXT_ENG_PACK_CHIP_LIMIT), WORKBENCH_MAX_COMPONENTS);
@@ -273,6 +282,13 @@ int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char
         snprintf(message, capacity, tr(TXT_ENG_PACK_EDGE_WIRES), WORKBENCH_MAX_WIRES);
         return 0;
     }
+    for (int i = 0; i < packed.part_count; ++i)
+        if (selection->parts[i] && packed.parts[i].group && !bench_part_push_layer(&packed.parts[i]))
+        {
+            bench_snapshot_clear(&packed);
+            snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY_BENCH_KEPT));
+            return 0;
+        }
     if (!plan_ports(&packed, selection))
     {
         bench_snapshot_clear(&packed);
@@ -289,7 +305,11 @@ int bench_pack_selection(Workbench *bench, const BenchSelection *selection, char
         }
     for (int i = 0; i < packed.part_count; ++i)
         if (selection->parts[i])
+        {
+            if (packed.parts[i].group)
+                packed.groups[packed.parts[i].group - 1].parent = slot + 1;
             packed.parts[i].group = slot + 1;
+        }
     packed.groups[slot] = group;
     int published = bench_replace(bench, &packed);
     bench_snapshot_clear(&packed);
@@ -312,11 +332,16 @@ int bench_unpack_selection(Workbench *bench, const BenchSelection *selection)
     for (int i = 0; i < bench->part_count; ++i)
         if (bench->parts[i].group && groups[bench->parts[i].group - 1])
         {
-            bench->groups[bench->parts[i].group - 1].active = 0;
-            bench->parts[i].group = 0;
-            memset(bench->parts[i].exposed, 0, sizeof(bench->parts[i].exposed));
+            bench_part_pop_layer(&bench->parts[i]);
             changed = 1;
         }
+    for (int g = 0; g < WORKBENCH_MAX_COMPONENTS; ++g)
+    {
+        if (bench->groups[g].parent && groups[bench->groups[g].parent - 1])
+            bench->groups[g].parent = 0;
+        if (groups[g])
+            memset(&bench->groups[g], 0, sizeof(bench->groups[g]));
+    }
     if (changed)
         ++bench->revision;
     return changed;

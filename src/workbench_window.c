@@ -210,6 +210,13 @@ int main(int argc, char **argv)
             dev_scenario_queue(&app, window);
         app_input_poll(active, window);
         active = app_editor_route(active);
+        if (app.capture && !strcmp(argv[1], "--capture-editor-deep") && active->editor_parent)
+        {
+            active->selected = 0;
+            AppState *inner = app_editor_open(active);
+            if (inner)
+                active = inner;
+        }
         if (app.capture && !strcmp(argv[1], "--capture-editor-name") && active->editor_parent)
             app_editor_begin_name(active, window);
         if (app.selftest)
@@ -232,7 +239,8 @@ int main(int argc, char **argv)
             app.running = 0;
         }
     }
-    app_editor_dispose(active);
+    while (active->editor_parent)
+        active = app_editor_dispose(active);
     spice_job_join(&app.dc_job);
     if (app.selftest)
     {

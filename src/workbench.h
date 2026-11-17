@@ -74,9 +74,18 @@ typedef enum
     PART_LCD_I2C,
     PART_JUNCTION /* wire-to-wire connection point: one pin, no body; saved from format 31 */
 } PartType;
+typedef struct BenchPartLayer
+{
+    int group;
+    uint64_t exposed[(WORKBENCH_MAX_PINS + 63) / 64];
+    char *port_names;
+    struct BenchPartLayer *next;
+} BenchPartLayer;
+
 typedef struct
 {
     PartType type;
+    BenchPartLayer *layers; /* Owned inner package states, outermost first. */
     struct BenchTerminals *terminals; /* Owned; use part clone/clear, never owning assignment. */
     char *code; /* Owned microcontroller program text (NULL = default); same ownership rules as terminals. */
     /* Owned names of this part's chip terminals, one "<pin>\t<name>\n" line each (NULL = none); same
@@ -135,6 +144,7 @@ typedef struct
 typedef struct
 {
     int active;
+    int parent; /* Hidden inside this group; zero means visible in this context. */
     float x, y;
     char name[BENCH_GROUP_NAME_CAPACITY];
     float width, height; /* Zero selects the automatic package dimensions. */
@@ -163,6 +173,9 @@ int bench_replace(Workbench *bench, const Workbench *replacement);
 /* Snapshots preserve revision; publishing an edit uses bench_replace instead.
  * Destinations must be zero-initialized or previously initialized snapshots. */
 int bench_part_clone(Part *destination, const Part *source);
+int bench_part_push_layer(Part *part);
+void bench_part_pop_layer(Part *part);
+void bench_groups_prune(Workbench *bench);
 void bench_part_clear(Part *part);
 void bench_part_move(Part *destination, Part *source);
 int bench_snapshot_clone(Workbench *destination, const Workbench *source);
