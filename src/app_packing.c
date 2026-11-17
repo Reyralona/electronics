@@ -11,9 +11,29 @@
 #include <sys/stat.h>
 #include <time.h>
 
+enum { TRASH_NAME_ATTEMPTS = 100 };
+
 static void block_path(const AppState *app, int index, char *path, size_t capacity)
 {
     snprintf(path, capacity, "%s/block-%d.elec", app->selftest ? "build/test-blocks" : "blocks", index + 1);
+}
+
+/* Free name in the trash: deletions of the same slot within one second get a counter suffix. */
+static int trash_target(const char *trash, int index, char *target, size_t capacity)
+{
+    long long stamp = (long long)time(NULL);
+    struct _stat existing;
+    snprintf(target, capacity, "%s/block-%d-%lld.elec", trash, index + 1, stamp);
+    for (int attempt = 1; _stat(target, &existing) == 0; ++attempt)
+    {
+        if (attempt >= TRASH_NAME_ATTEMPTS)
+        {
+            errno = EEXIST;
+            return 0;
+        }
+        snprintf(target, capacity, "%s/block-%d-%lld-%d.elec", trash, index + 1, stamp, attempt);
+    }
+    return 1;
 }
 
 void app_packing_refresh(AppState *app)
@@ -279,8 +299,8 @@ int app_packing_delete(AppState *app, int index)
     char path[128], trash[160], target[224];
     block_path(app, index, path, sizeof(path));
     snprintf(trash, sizeof(trash), "%s/lixeira", library);
-    snprintf(target, sizeof(target), "%s/block-%d-%lld.elec", trash, index + 1, (long long)time(NULL));
-    if ((_mkdir(trash) != 0 && errno != EEXIST) || rename(path, target) != 0)
+    int trash_ready = _mkdir(trash) == 0 || errno == EEXIST;
+    if (!trash_ready || !trash_target(trash, index, target, sizeof(target)) || rename(path, target) != 0)
     {
         snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_CHIP_REMOVE_FAILED),
                  strerror(errno));

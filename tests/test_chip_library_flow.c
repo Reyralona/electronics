@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <windows.h>
 
 static const char *const library_dir = "build/test-blocks";
@@ -22,6 +23,19 @@ static void empty_library(void)
         snprintf(path, sizeof(path), "%s/block-%d.elec", library_dir, i);
         remove(path);
     }
+}
+
+/* Leaves in the trash the name a deletion of this slot would use right now. */
+static void occupy_trash_name(int slot)
+{
+    char trash[64];
+    char path[128];
+    snprintf(trash, sizeof(trash), "%s/lixeira", library_dir);
+    _mkdir(trash);
+    snprintf(path, sizeof(path), "%s/block-%d-%lld.elec", trash, slot + 1, (long long)time(NULL));
+    FILE *file = fopen(path, "w");
+    assert(file);
+    fclose(file);
 }
 
 /* What the Blocos tab shows: how many chips are listed. */
@@ -247,6 +261,8 @@ int main(void)
         if (app.library_available[i] && !strcmp(app.library_names[i], "4AND v3"))
             slot_4and = i;
     assert(slot_4and >= 0);
+    /* "Apaguei um chip deste lugar há pouco": a lixeira já tem um arquivo do mesmo segundo. */
+    occupy_trash_name(slot_4and);
     assert(!app_packing_delete(&app, slot_4and));
     assert(app_packing_delete(&app, slot_4and));
     assert(library_count(&app) == 1);
