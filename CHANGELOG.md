@@ -1,11 +1,26 @@
 # Histórico de versões
 
+## 0.42.0
+
+- A simulação contínua mantém apenas a amostra mais recente no ngspice. Capacitores,
+  circuitos digitais e instrumentos preservam as leituras; o gráfico solicitado com `T`
+  continua calculando a curva completa. O teste RC de 10 s deixou de perder ritmo por
+  crescimento do histórico na máquina de referência.
+- Configurações oferecem ritmo solicitado de 0,05× a 1× sem alterar frequências ou
+  valores dos componentes. O rodapé mostra o ritmo observado e o escolhido.
+- O multímetro limita a tensão produzida no modo resistência e avisa quando a medição
+  é feita com uma fonte ativa. O osciloscópio e o multímetro foram conferidos em um
+  multiplicador Cockcroft–Walton incluído nos testes do repositório.
+- Corrigidos o cálculo do gráfico para o gerador de funções, o agendamento de gráficos
+  durante a simulação contínua e a abertura do executável de desenvolvimento sem o
+  compilador no `PATH`.
+- A distribuição e os testes usam apenas fontes e fixtures versionadas. Scripts de
+  desenvolvimento descobrem as ferramentas pelo `PATH`; as notas de release rejeitam
+  caminhos locais.
+
 ## 0.41.0
 
-- O contador JK local do slot 5 foi corrigido e validado de 0 a 15. Arquivos pessoais não entram nos pacotes.
-
 - Simulação contínua só mede corrente individual dos fios quando a visualização de corrente está ligada.
-  No slot 5 (139 peças e 189 fios), 20 avanços medidos caíram de 8,47 s para 1,23 s.
 
 - Junções nomeadas na aba Digital permitem escolher os terminais do chip, inclusive CLOCK compartilhado.
 
@@ -28,7 +43,7 @@
 
 ## 0.39.0
 
-- Zoom mínimo de 35% para 12%: circuitos grandes, como o do slot 3, cabem inteiros na tela.
+- Zoom mínimo de 35% para 12%: circuitos grandes cabem inteiros na tela.
 - Arrastar a seleção até a borda da bancada rola a vista, para alcançar peças fora da tela.
 - Com pouco zoom, as bolinhas dos terminais encolhem com as peças, e os nomes das portas e os números
   dos terminais dos chips somem abaixo de 60%.

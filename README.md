@@ -13,7 +13,7 @@ Baixe o **[instalador ou ZIP portátil](https://github.com/Reyralona/electronics
 - **ZIP:** extraia a pasta inteira e abra `bancada.exe`.
 
 As dependências estão incluídas. A interface oferece português e inglês.
-A versão **0.41.0** é experimental, sem assinatura digital.
+A versão **0.42.0** é experimental, sem assinatura digital.
 
 Para começar, abra **Exemplos** e escolha **LED na breadboard**.
 Dê dois cliques na fonte para ligar ou desligar. O LED acompanha.
@@ -26,7 +26,7 @@ Dê dois cliques na fonte para ligar ou desligar. O LED acompanha.
 - Criar chips reutilizáveis e salvar projetos.
 
 Os modelos são didáticos. Não use os resultados para dimensionar circuitos reais.
-Há limites de 64 peças e 128 fios por montagem.
+Há limites de 256 peças e 512 fios por montagem.
 
 ## Documentação
 

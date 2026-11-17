@@ -1,7 +1,7 @@
 # Documentação
 
 O [README do projeto](../README.md) apresenta o programa e os downloads.
-Os guias abaixo descrevem a versão 0.41.0, revisada em 16/11/2026.
+Os guias abaixo descrevem a versão 0.42.0, revisada em 17/11/2026.
 
 ## Usar e desenvolver
 
