@@ -1535,9 +1535,12 @@ static Value builtin(McuVm *vm, const McuHost *host, int id, Value *a, int count
     case B_RANDOM:
     {
         vm->random_state = vm->random_state * 1103515245u + 12345u;
-        double low = count == 2 ? a[0].v : 0, high = count == 2 ? a[1].v : a[0].v;
+        double low = count == 2 ? trunc(a[0].v) : 0;
+        double high = trunc(count == 2 ? a[1].v : a[0].v);
         double span = high - low;
-        return make(span > 0 ? low + (vm->random_state >> 8) % (unsigned)span : low, 1);
+        if (!isfinite(low) || !isfinite(high) || !isfinite(span))
+            return make(0, 1);
+        return make(span > 0 ? low + fmod(vm->random_state >> 8, span) : low, 1);
     }
     case B_RANDOMSEED:
         vm->random_state = (unsigned)a[0].v;
@@ -1718,6 +1721,8 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
     case OP_LOCALS:
     {
         int slots = code[vm->pc++], params = code[vm->pc++];
+        if (slots - params > VM_STACK - vm->sp)
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_CALL_DEPTH);
         for (int i = params; i < slots; ++i)
             PUSH(make(0, 1));
         break;

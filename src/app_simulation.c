@@ -39,7 +39,8 @@ static int same_electrical_assembly(const Workbench *a, const Workbench *b, int 
         const Part *q = &b->parts[i];
         if (p->type != q->type || p->group != q->group || p->board_layout != q->board_layout)
             return 0;
-        if (compare_controls && (p->on != q->on || p->value != q->value || p->control != q->control))
+        if (compare_controls && (p->on != q->on || p->value != q->value || p->control != q->control ||
+                                 p->states != q->states))
             return 0;
         for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
         {
@@ -354,6 +355,8 @@ static void step_microcontrollers(AppState *app)
     uint64_t now = SDL_GetTicks();
     double elapsed = app->mcu_last_ticks && app->sim.sim_running ? (double)(now - app->mcu_last_ticks) : 0;
     app->mcu_last_ticks = now;
+    if (!app->sim.sim_running)
+        return;
     int measured = sim_state_has_result(&app->sim, SIM_RESULT_DC);
     mcu_runtime_step(app->mcu, &app->bench, measured ? (const double(*)[COMPONENT_MAX_ELEMENTS])app->sim.dc_elements : NULL,
                      elapsed);

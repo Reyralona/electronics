@@ -1,6 +1,8 @@
 #include "app_commands.h"
+#include "app_code_editor.h"
 #include "app_packing.h"
 #include "workbench_pack.h"
+#include "workbench_file.h"
 #include "ui_text.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -122,8 +124,51 @@ static void check_trace_waits_for_live_batch(void)
     app_state_dispose(&app);
 }
 
+static void check_long_code_flow(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    assert(bench_add(&app.bench, PART_ARDUINO_UNO, 300, 200) == 0);
+    char *source = malloc(20001);
+    assert(source);
+    memset(source, ' ', 20000);
+    source[20000] = 0;
+    assert(bench_set_code(&app.bench, 0, source));
+    /* Reopen a long program: the editor refuses it and Execute cannot shorten the source. */
+    assert(workbench_save("build/test-long-code.elec", &app.bench));
+    assert(workbench_load("build/test-long-code.elec", &app.bench));
+    app_code_open(&app, NULL, 0);
+    assert(app.code_part == -1);
+    assert(!strcmp(app.status, tr(TXT_MCU_CODE_TOO_LONG)));
+    assert(!app_code_apply(&app));
+    assert(!strcmp(app.bench.parts[0].code, source));
+    /* A source that fits in bytes may still overflow when tabs become indentation spaces. */
+    memset(source, '\t', MCU_CODE_CAPACITY / 4);
+    source[MCU_CODE_CAPACITY / 4] = 0;
+    assert(bench_set_code(&app.bench, 0, source));
+    app_code_open(&app, NULL, 0);
+    assert(app.code_part == -1 && !strcmp(app.bench.parts[0].code, source));
+    /* The largest plain draft fits, applies without truncation, saves and reopens intact. */
+    memset(source, ' ', MCU_CODE_CAPACITY - 1);
+    source[MCU_CODE_CAPACITY - 1] = 0;
+    assert(bench_set_code(&app.bench, 0, source));
+    app_code_open(&app, NULL, 0);
+    assert(app.code_part == 0 && !strcmp(app.code_text, source));
+    assert(!app_code_apply(&app));
+    app.code_text[0] = '\n';
+    source[0] = '\n';
+    assert(app_code_apply(&app));
+    assert(workbench_save("build/test-long-code.elec", &app.bench));
+    assert(workbench_load("build/test-long-code.elec", &app.bench));
+    assert(!strcmp(app.bench.parts[0].code, source));
+    assert(!remove("build/test-long-code.elec"));
+    free(source);
+    app_state_dispose(&app);
+}
+
 int main(void)
 {
+    check_long_code_flow();
     check_chip_rotation_flow();
     check_mirror_flow();
     check_trace_waits_for_live_batch();

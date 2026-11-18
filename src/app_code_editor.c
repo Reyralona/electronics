@@ -38,10 +38,20 @@ float app_code_advance(void)
 }
 
 /* Tabs become indent spaces so columns and the fixed-pitch drawing agree. */
-static void load_draft(AppState *app, const char *source)
+static int load_draft(AppState *app, const char *source)
 {
     size_t used = 0;
-    for (const char *c = source; *c && used + CODE_INDENT + 1 < sizeof(app->code_text); ++c)
+    for (const char *c = source; *c; ++c)
+    {
+        if (*c == '\t')
+            used += CODE_INDENT;
+        else if (*c != '\r')
+            ++used;
+        if (used >= sizeof(app->code_text))
+            return 0;
+    }
+    used = 0;
+    for (const char *c = source; *c; ++c)
     {
         if (*c == '\t')
         {
@@ -52,6 +62,7 @@ static void load_draft(AppState *app, const char *source)
             app->code_text[used++] = *c;
     }
     app->code_text[used] = 0;
+    return 1;
 }
 
 void app_code_open(AppState *app, SDL_Window *window, int part)
@@ -62,7 +73,11 @@ void app_code_open(AppState *app, SDL_Window *window, int part)
         app_code_close(app, window);
     if (app->code_part != part)
     {
-        load_draft(app, mcu_program_text(&app->bench.parts[part]));
+        if (!load_draft(app, mcu_program_text(&app->bench.parts[part])))
+        {
+            app->status = tr(TXT_MCU_CODE_TOO_LONG);
+            return;
+        }
         app->code_cursor = 0;
         app->code_scroll = 0;
         app->code_dirty = 0;

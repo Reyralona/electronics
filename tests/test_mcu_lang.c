@@ -149,8 +149,25 @@ static void errors(void)
     mcu_program_free(program);
 }
 
+static void random_bounds(void)
+{
+    FakeBoard board;
+    McuHost host;
+    McuProgram *program;
+    McuVm *vm = start("void setup(){Serial.println(random(0.5)); Serial.println(random(0));"
+                      "Serial.println(random(5,5)); Serial.println(random(5,2));"
+                      "Serial.println(random(-2,-1)); Serial.println(random(2.9,3.9));"
+                      "Serial.println(random(pow(10,400))); Serial.println(random(0,4294967296)>=0);}"
+                      "void loop(){delay(1);}", &board, &host, &program);
+    run(vm, &host, 0);
+    assert(!strcmp(board.serial, "0\n0\n5\n5\n-2\n2\n0\n1\n"));
+    mcu_vm_free(vm);
+    mcu_program_free(program);
+}
+
 int main(void)
 {
+    random_bounds();
     blink();
     language();
     errors();

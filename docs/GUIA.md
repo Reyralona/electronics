@@ -172,6 +172,8 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 - Na aba **Digital** estão **Arduino Uno**, **ESP32** e **ATtiny85**. O ATtiny precisa de VCC e GND externos.
 - Dois cliques na placa (ou **Editar código** no painel) abrem o editor à direita, com números de linha, indentação automática e sugestões (`Ctrl+Espaço`).
 - `Ctrl+Enter` ou **Executar** envia o programa e reinicia a placa. Erros de compilação aparecem marcados na linha.
+- O editor aceita até 16.383 bytes após expandir tabulações em quatro espaços e retirar `CR`.
+  Se o programa não couber, o editor avisa e mantém o original sem cortes. Pausar a simulação também pausa a placa.
 - A linguagem é um subconjunto do Arduino: `int`, `float`, `bool`, vetores, funções, `if`/`for`/`while`, `pinMode`, `digitalWrite`/`digitalRead`, `analogRead`/`analogWrite` (PWM como tensão média), `delay`, `millis`, `map`, `random`, `Serial.print`/`println` e `LiquidCrystal_I2C lcd(0x27,16,2)` com `init`, `backlight`, `clear`, `setCursor` e `print`.
 - O **LCD 16x2 I2C** mostra o texto quando tem VCC e GND e quando SDA e SCL estão ligados aos pinos I2C da placa (Uno: A4/A5; ESP32: 21/22). O barramento não é simulado bit a bit.
 - Um pino em `INPUT` sem nada ligado fica indefinido num Arduino real; na Bancada ele tende a ler 1. Use um resistor de pull-down ou `INPUT_PULLUP`, como faria no circuito real.

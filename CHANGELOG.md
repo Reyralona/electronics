@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.44.1
+
+- Corrigido: funções recursivas com muitas variáveis locais param antes de exceder a memória do interpretador.
+- Corrigido: `random` aceita limites fracionários sem fechar o aplicativo; os limites são truncados para inteiros.
+- O editor recusa programas que não cabem, inclusive após expandir tabulações, sem cortar o original.
+- Pausar a simulação também interrompe a execução dos programas das placas.
+- Alterar uma chave DIP invalida a leitura anterior, inclusive com a simulação pausada.
+
 ## 0.44.0
 
 - Fios e LEDs compartilham 10 cores: vermelho, verde, azul, amarelo, branco, laranja, roxo, rosa,

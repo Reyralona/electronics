@@ -1,15 +1,15 @@
 # Continuidade
 
-Estado para retomar o desenvolvimento em 17/11/2026. O histórico detalhado permanece no Git;
+Estado para retomar o desenvolvimento em 18/11/2026. O histórico detalhado permanece no Git;
 este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão atual: 0.44.0 (sem release). Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
+- Versão nesta branch: 0.44.1 (sem release). Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
-- Nenhuma branch de trabalho pendente; tudo integrado à `main`, conforme
-  [VERSIONAMENTO.md](VERSIONAMENTO.md).
+- `fix/audit-runtime` contém as cinco correções da auditoria; permanece separada da `main` por pedido
+  do responsável. Sem tag ou publicação até a integração, conforme [VERSIONAMENTO.md](VERSIONAMENTO.md).
 
 ## Simulação
 

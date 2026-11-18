@@ -732,3 +732,32 @@ terminais, às pernas do LED, ao quadro dos chips e ao mapeamento de cliques. No
 áreas legíveis (visores, dígitos, telas, LCD, marcas de tensão) são desespelhadas no lugar. Vale para peças
 que giram e para chips; breadboard e instrumentos não espelham. Formato 34 salva o espelho de peças e chips.
 
+
+## Correções da auditoria (18/11/2026, 0.44.1)
+
+Escopo: cinco falhas reproduzidas na branch `fix/audit-runtime`, mantida separada da `main`
+a pedido do responsável. Sem alteração de arquitetura, dependências ou formato de projeto.
+
+- O interpretador verifica toda a reserva de variáveis locais antes de escrevê-las. O teste
+  `test_mcu_stack` inspeciona essa fronteira: a mensagem de erro final, sozinha, não detectava
+  uma escrita indevida anterior. O teste falhou antes da correção.
+- `random` trunca os limites, valida valores finitos e usa resto em ponto flutuante para
+  evitar divisão inteira por zero e conversão de intervalos grandes para `unsigned`.
+  Intervalos vazios ou invertidos continuam retornando o limite inferior; não finitos retornam zero.
+- O editor conta o tamanho após normalizar tabulações e CR antes de preencher o rascunho.
+  Se não couber, informa o motivo e conserva o programa original. O limite continua 16 KiB,
+  incluindo o terminador; projetos continuam aceitando programas de até 256 KiB.
+- Durante a pausa, a interface atualiza apenas a referência de tempo da placa, sem executar
+  seu programa. Retomar não acrescenta ao relógio da placa o período passado em pausa.
+- Alterações de `Part.states`, como posições de DIP, não são mais classificadas como edições
+  apenas visuais. A comparação geométrica existente continua preservando resultados ao mover peças.
+
+Regressões: `test_mcu_lang` (limites de random), `test_mcu_stack` (reserva local),
+`test_app_simulation` (pausa/retomada e DIP) e `test_app_commands` (abrir, aplicar, salvar e
+reabrir código no limite; rejeitar programas maiores e expansão excessiva de tabulações).
+Os cinco casos falharam no código anterior; os testes direcionados passaram após as correções.
+
+Validação concluída: `./build.ps1 -GuiTests -OutputName audit-fixes` passou com a suíte completa,
+ngspice, 18 exemplos contínuos e autoteste gráfico com PATH mínimo. O nome alternativo foi
+necessário porque `build/build.exe` estava aberto; o executável temporário foi removido após
+os testes. Não foram gerados pacotes, tag ou release.
