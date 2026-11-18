@@ -292,7 +292,7 @@ static int wire_valid(const Workbench *bench, int wire)
 
 int bench_color_from_legacy_wire(int legacy)
 {
-    static const int colors[BENCH_LEGACY_WIRE_COLORS] = {BENCH_COLOR_BLUE,  BENCH_COLOR_RED,    BENCH_COLOR_BLUE,
+    static const int colors[BENCH_LEGACY_WIRE_COLORS] = {BENCH_COLOR_BLUE,  BENCH_COLOR_RED,    BENCH_COLOR_BLACK,
                                                          BENCH_COLOR_GREEN, BENCH_COLOR_YELLOW, BENCH_COLOR_WHITE};
     if (legacy < 0 || legacy >= BENCH_LEGACY_WIRE_COLORS)
         return -1;

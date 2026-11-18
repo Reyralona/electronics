@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "workbench_file.h"
 
-/* A person reopens a circuit saved before the shared palette: black wires become blue, the other
- * legacy colors keep their hue, and the next save writes the shared palette index. */
+/* A person reopens a circuit saved before the shared palette: every legacy wire color, black included,
+ * keeps its hue, and the next save writes the shared palette index. */
 static void legacy_wire_colors(void)
 {
     Workbench loaded={0};
@@ -14,9 +14,13 @@ static void legacy_wire_colors(void)
           "settings 1 1 1 0 5 0 0 1e-05 0.005\ngrid 24 1 1\ntheme 0 13\n",file);
     rewind(file);
     assert(workbench_read_project(file,&loaded,&settings)); fclose(file);
-    assert(loaded.wires[0].color==BENCH_COLOR_BLUE && loaded.wires[1].color==BENCH_COLOR_RED);
+    assert(loaded.wires[0].color==BENCH_COLOR_BLACK && loaded.wires[1].color==BENCH_COLOR_RED);
     assert(settings.wire_color==BENCH_COLOR_WHITE);
     assert(bench_color_from_legacy_wire(3)==BENCH_COLOR_GREEN && bench_color_from_legacy_wire(6)==-1);
+    /* Black exists for wires only: an LED refuses it and keeps its color. */
+    int led=bench_add(&loaded,PART_LED,400,0);
+    assert(led>=0 && bench_set_states(&loaded,led,BENCH_COLOR_LIME) && !bench_set_states(&loaded,led,BENCH_COLOR_BLACK));
+    assert(loaded.parts[led].states==BENCH_COLOR_LIME && bench_set_wire_color(&loaded,0,BENCH_COLOR_BLACK));
     bench_snapshot_clear(&loaded);
 }
 

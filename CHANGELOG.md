@@ -3,7 +3,7 @@
 ## 0.44.0
 
 - Fios e LEDs compartilham 10 cores: vermelho, verde, azul, amarelo, branco, laranja, roxo, rosa,
-  ciano e verde-limão. O preto saiu; fios pretos de projetos antigos abrem azuis (formato 33).
+  ciano e verde-limão. Os fios têm também o preto. Projetos antigos mantêm as cores (formato 33).
 - O LED apagado ficou bem mais escuro, para distinguir de longe quando acende.
 - Selecionar um fio abre o painel do fio: de onde vem, aonde vai, a corrente e a cor. A cor saiu
   das Configurações.

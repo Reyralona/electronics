@@ -196,7 +196,8 @@ const char *component_color_name(unsigned color)
 {
     static const TextId names[BENCH_COLOR_COUNT] = {TXT_COLOR_RED,    TXT_COLOR_GREEN,  TXT_COLOR_BLUE, TXT_COLOR_YELLOW,
                                                     TXT_COLOR_WHITE,  TXT_COLOR_ORANGE, TXT_COLOR_VIOLET,
-                                                    TXT_COLOR_PINK,   TXT_COLOR_CYAN,   TXT_COLOR_LIME};
+                                                    TXT_COLOR_PINK,   TXT_COLOR_CYAN,   TXT_COLOR_LIME,
+                                                    TXT_COLOR_BLACK};
     return tr(color < BENCH_COLOR_COUNT ? names[color] : names[0]);
 }
 

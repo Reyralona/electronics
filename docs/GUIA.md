@@ -49,8 +49,8 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 - Clique no fio para selecioná-lo: o **painel do fio** abre no canto superior direito, com de onde ele sai e
   aonde chega, a corrente (com **Corrente nos fios** ligada) e as cores. `Delete` apaga.
 - Fios e LEDs têm as mesmas 10 cores: vermelho, verde, azul, amarelo, branco, laranja, roxo, rosa, ciano e
-  verde-limão. Fios novos usam a última cor escolhida. A cor do fio é só visual; a do LED também muda a
-  tensão direta (veja [DECISOES.md](DECISOES.md)). Projetos antigos com fios pretos abrem com esses fios azuis.
+  verde-limão. Os fios têm também o preto, que não existe em LED. Fios novos usam a última cor escolhida.
+  A cor do fio é só visual; a do LED também muda a tensão direta (veja [DECISOES.md](DECISOES.md)).
 
 ### Breadboard e contato direto
 

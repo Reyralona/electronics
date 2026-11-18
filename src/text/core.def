@@ -28,6 +28,7 @@ UI_TEXT(COLOR_VIOLET, "Roxo", "Violet")
 UI_TEXT(COLOR_PINK, "Rosa", "Pink")
 UI_TEXT(COLOR_CYAN, "Ciano", "Cyan")
 UI_TEXT(COLOR_LIME, "Verde-limão", "Lime")
+UI_TEXT(COLOR_BLACK, "Preto", "Black")
 UI_TEXT(SETTINGS_SHOW_CURRENT, "Mostrar corrente nos fios", "Show current in wires")
 UI_TEXT(SETTINGS_SIM_SPEED, "Ritmo da simulação", "Simulation pace")
 UI_TEXT(SETTINGS_CURRENT_SPEED, "Pontos: lentos < 100 µA · médios < 10 mA · rápidos ≥ 10 mA",

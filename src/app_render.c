@@ -138,7 +138,8 @@ static const PaletteTone palette_tones[BENCH_COLOR_COUNT] = {
     {{.12f, .36f, .58f}, {.40f, .62f, 1}},   {{.90f, .72f, .08f}, {1, .92f, .30f}},
     {{.86f, .88f, .89f}, {1, 1, 1}},         {{.92f, .48f, .10f}, {1, .62f, .18f}},
     {{.48f, .24f, .70f}, {.78f, .45f, 1}},   {{.92f, .42f, .64f}, {1, .55f, .78f}},
-    {{.10f, .66f, .76f}, {.35f, .95f, 1}},   {{.52f, .78f, .12f}, {.72f, 1, .25f}}};
+    {{.10f, .66f, .76f}, {.35f, .95f, 1}},   {{.52f, .78f, .12f}, {.72f, 1, .25f}},
+    {{.12f, .12f, .14f}, {.12f, .12f, .14f}}};
 
 static const PaletteTone *palette_tone(int color)
 {
@@ -3418,10 +3419,10 @@ static void draw_environment_control(GLuint font, const Part *part)
     inspector_note_text(font, INSPECTOR_NOTE_TOP, environment->note);
 }
 
-/* Row of palette swatches; the chosen one gets an accent ring. Shared by LEDs and wires. */
-static void draw_color_swatches(AppRect (*swatch)(int), int chosen)
+/* Row of palette swatches; the chosen one gets an accent ring. LEDs show all but black. */
+static void draw_color_swatches(AppRect (*swatch)(int), int count, int chosen)
 {
-    for (int index = 0; index < BENCH_COLOR_COUNT; ++index)
+    for (int index = 0; index < count; ++index)
     {
         AppRect r = swatch(index);
         if (chosen == index)
@@ -3443,7 +3444,7 @@ static void draw_led_colors(GLuint font, const Part *part)
     snprintf(label, sizeof(label), tr(TXT_UI_LED_COLOR), component_color_name(part->states));
     color(UI_INK);
     text(font, inspector_text_x(), INSPECTOR_LINE_2, label);
-    draw_color_swatches(app_layout_color_swatch, (int)part->states);
+    draw_color_swatches(app_layout_color_swatch, COMPONENT_LED_COLORS, (int)part->states);
 }
 
 static void draw_part_inspector(const AppState *app, GLuint font)
@@ -3549,7 +3550,7 @@ static void draw_wire_inspector(const AppState *app, GLuint font)
     name_text(font, inspector_text_x(), INSPECTOR_LINE_1, line_text, inspector_text_w());
     snprintf(line_text, sizeof(line_text), tr(TXT_UI_WIRE_COLOR), component_color_name((unsigned)wire->color));
     text(font, inspector_text_x(), INSPECTOR_LINE_2, line_text);
-    draw_color_swatches(app_layout_color_swatch, wire->color);
+    draw_color_swatches(app_layout_color_swatch, BENCH_COLOR_COUNT, wire->color);
     inspector_note_text(font, INSPECTOR_WIRE_NOTE, tr(TXT_UI_WIRE_COLOR_NOTE));
 }
 

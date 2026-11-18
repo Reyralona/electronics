@@ -719,8 +719,9 @@ alternativas e limites: [COMPARACAO_TEMPO_REAL.md](COMPARACAO_TEMPO_REAL.md).
 Pedido: mais cores, as mesmas para LEDs e fios; LED apagado mais escuro; escolha da cor do fio fora das
 Configurações; espelhar peças para trocar terminais sem estragar mostradores.
 Decisão do responsável: paleta de 10 cores (vermelho, verde, azul, amarelo, branco, laranja, roxo, rosa,
-ciano, verde-limão), sem preto, porque não existe LED preto comum. Fios pretos de arquivos anteriores ao
-formato 33 abrem azuis; as outras cores antigas mantêm o tom. Preferências na versão 1 são convertidas.
+ciano, verde-limão), comum a LEDs e fios. A pedido do responsável, o preto foi mantido só para os fios
+(não existe LED preto comum); é a última posição da paleta. Cores de arquivos anteriores ao formato 33
+mantêm o tom, preto incluído. Preferências na versão 1 são convertidas.
 Modelos de junção das cores novas: roxo, rosa e ciano usam o modelo do azul (~2,9 V a 10 mA), como o branco
 já usava; verde-limão usa o do verde. É uma aproximação didática, sem curva específica de fabricante.
 LED apagado: lente com ~28% da cor acesa (antes ~48%).

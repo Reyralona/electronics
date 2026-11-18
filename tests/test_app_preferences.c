@@ -37,7 +37,7 @@ static void legacy_wire_color(void)
     WorkbenchSettings loaded = workbench_settings_default();
     assert(app_preferences_read(file, &loaded));
     fclose(file);
-    assert(loaded.wire_color == BENCH_COLOR_BLUE);
+    assert(loaded.wire_color == BENCH_COLOR_BLACK);
     file = text_file("bancada-preferences 2\nwire_color 9\n");
     assert(app_preferences_read(file, &loaded));
     fclose(file);
