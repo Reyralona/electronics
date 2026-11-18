@@ -5,11 +5,11 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão nesta branch: 0.44.1 (sem release). Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
+- Versão integrada: 0.44.1 (sem release). Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
-- `fix/audit-runtime` contém as cinco correções da auditoria; permanece separada da `main` por pedido
-  do responsável. Sem tag ou publicação até a integração, conforme [VERSIONAMENTO.md](VERSIONAMENTO.md).
+- As cinco correções de `fix/audit-runtime` foram integradas à `main` em 18/11/2026 por pedido
+  do responsável, com ponto de retorno `v0.44.1`. Nenhuma release foi publicada nesta integração.
 
 ## Simulação
 
