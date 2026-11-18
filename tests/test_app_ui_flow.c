@@ -117,6 +117,14 @@ static void focus_and_save_flow(AppState *app, SDL_Window *window)
     assert(app->project_overwrite == 5);
     uint64_t revision = app->bench.revision;
     key(app, window, SDLK_TAB, 0);
+    SDL_Event repeat;
+    SDL_zero(repeat);
+    repeat.type = SDL_EVENT_KEY_DOWN;
+    repeat.key.key = SDLK_RETURN;
+    repeat.key.repeat = true;
+    assert(SDL_PushEvent(&repeat));
+    drain(app, window);
+    assert(app->project_overwrite == 5); /* Holding Enter must not activate the focused action. */
     key(app, window, SDLK_RETURN, 0);
     assert(app->project_overwrite < 0 && app->bench.revision == revision);
     Workbench saved = {0};

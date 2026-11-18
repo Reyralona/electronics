@@ -1979,6 +1979,8 @@ static int input_keyboard_focus(AppState *app, SDL_Window *window, const SDL_Eve
     }
     if (key != SDLK_RETURN && key != SDLK_KP_ENTER && key != SDLK_SPACE)
         return 0;
+    if (event->key.repeat)
+        return 1;
     if (context == APP_UI_CODE && app_rect_contains(app_layout_code_run(), app_rect_center_x(focus), app_rect_center_y(focus)))
         app_code_apply(app);
     else if (context == APP_UI_CODE && app_rect_contains(app_layout_code_close(), app_rect_center_x(focus), app_rect_center_y(focus)))
