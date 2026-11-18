@@ -34,6 +34,7 @@ UI_TEXT(UI_VIEW_INSIDE, "Ver interior", "View inside")
 UI_TEXT(UI_CHIP_DIMENSIONS, "Largura %.0f · Altura %.0f", "Width %.0f · Height %.0f")
 /* Inspector. */
 UI_TEXT(UI_ROTATE, "Girar", "Rotate")
+UI_TEXT(UI_MIRROR, "Espelhar", "Mirror")
 UI_TEXT(UI_CODE, "Código", "Code")
 UI_TEXT(UI_EDIT_CODE, "Editar código", "Edit code")
 UI_TEXT(UI_VALUE, "Valor", "Value")
@@ -82,15 +83,26 @@ UI_TEXT(UI_LED_COLOR, "Cor: %s", "Color: %s")
 UI_TEXT(UI_GRAPH_WIRE_CURRENT, "Corrente no fio, A → B (A)", "Wire current, A → B (A)")
 UI_TEXT(UI_GRAPH_PIN_CURRENT, "Corrente, pino 1 → 2 (A)", "Current, pin 1 → 2 (A)")
 UI_TEXT(UI_GRAPH_VOLTAGE, "Tensão, terminal %d (V)", "Voltage, terminal %d (V)")
+UI_TEXT(UI_WIRE_TITLE, "Fio", "Wire")
+UI_TEXT(UI_WIRE_FROM, "De", "From")
+UI_TEXT(UI_WIRE_TO, "Para", "To")
+UI_TEXT(UI_WIRE_END, "%s · %s", "%s · %s")
+UI_TEXT(UI_WIRE_TERMINAL, "terminal %d", "terminal %d")
+UI_TEXT(UI_WIRE_CURRENT, "Corrente (A → B): %.4g mA", "Current (A → B): %.4g mA")
+UI_TEXT(UI_WIRE_CURRENT_OFF, "Corrente: ligue \"Corrente nos fios\" nas Configurações.",
+        "Current: turn on \"Wire current\" in Settings.")
+UI_TEXT(UI_WIRE_NO_CURRENT, "Corrente: sem leitura agora.", "Current: no reading now.")
+UI_TEXT(UI_WIRE_COLOR, "Cor: %s", "Color: %s")
+UI_TEXT(UI_WIRE_COLOR_NOTE, "Fios novos usam a última cor escolhida.", "New wires use the last color chosen.")
 UI_TEXT(UI_GRAPH_LIVE, "Ao vivo · %s", "Live · %s")
 UI_TEXT(UI_GRAPH_LIVE_WAITING, "Aguardando amostras da simulação…", "Waiting for samples from the simulation…")
 UI_TEXT(UI_GRAPH_LIVE_NO_READING, "Este ponto não tem leitura (terra ou sem corrente medida).",
         "This point has no reading (ground or no measured current).")
 /* Status bar key hints: "Key: action", joined by " · ". */
 UI_TEXT(UI_HINT_CHIP,
-        "R: girar · Enter: ver interior · 2 cliques no terminal: nomear · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
-        "R: rotate · Enter: view inside · Double-click terminal: name · Alt+drag terminal: rearrange · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
-UI_TEXT(UI_HINT_ROTATE, "R: girar", "R: rotate")
+        "R: girar · M: espelhar · Enter: ver interior · 2 cliques no terminal: nomear · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
+        "R: rotate · M: mirror · Enter: view inside · Double-click terminal: name · Alt+drag terminal: rearrange · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
+UI_TEXT(UI_HINT_ROTATE, "R: girar · M: espelhar", "R: rotate · M: mirror")
 UI_TEXT(UI_HINT_VALUE, "E: valor", "E: value")
 UI_TEXT(UI_HINT_SIZE, "Ctrl+roda: tamanho", "Ctrl+wheel: size")
 UI_TEXT(UI_HINT_LEGS, "Alt+arrastar: pernas", "Alt+drag: legs")

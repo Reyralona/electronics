@@ -89,6 +89,8 @@ int app_preferences_read(FILE *file, WorkbenchSettings *settings)
         if (field ? !read_value(file, field, &draft) : !skip_line(file))
             return 0;
     }
+    if (version < 2)
+        draft.wire_color = bench_color_from_legacy_wire(draft.wire_color);
     if (!feof(file) || !workbench_settings_valid(&draft))
         return 0;
     *settings = draft;

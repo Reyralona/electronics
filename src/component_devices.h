@@ -30,10 +30,11 @@ int component_switch_at(PartType type, float local_x);
 #define COMPONENT_DIP_POSITIONS 4
 #define COMPONENT_SEGMENTS 8
 #define COMPONENT_SCOPE_HISTORY 160
-/* LED colors (Part.states); white uses the blue junction, orange the yellow one. */
-#define COMPONENT_LED_COLORS 6
+/* LED colors (Part.states) share the wire palette (BenchColor). Junction models: white, violet, pink
+ * and cyan use the blue (~2.9 V at 10 mA) one, orange the yellow one and lime the green one. */
+#define COMPONENT_LED_COLORS BENCH_LED_COLOR_COUNT
 const char *component_led_model(unsigned color);
-const char *component_led_color_name(unsigned color);
+const char *component_color_name(unsigned color);
 /* Resistance is unreliable while a supply anywhere on the bench is active. */
 int component_ohmmeter_reading_reliable(const Workbench *bench);
 #endif

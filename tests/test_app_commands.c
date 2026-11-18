@@ -36,6 +36,73 @@ static void check_chip_rotation_flow(void)
     app_state_dispose(&app);
 }
 
+static float pin_distance(const Workbench *bench, Pin a, float x, float y)
+{
+    float px, py;
+    bench_terminal_position(bench, a, &px, &py);
+    return hypotf(px - x, py - y);
+}
+
+/* A person mirrors parts to swap their terminals (requested 17/11/2026): M or the Espelhar button,
+ * undo/redo, a rotated part, a chip, save/reopen, and the board that cannot be mirrored. */
+static void check_mirror_flow(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    assert(bench_add(&app.bench, PART_RESISTOR, 500, 300) == 0);
+    assert(bench_add(&app.bench, PART_BREADBOARD, 400, 600) == 1);
+    float x0, y0, x1, y1;
+    bench_terminal_position(&app.bench, (Pin){0, 0}, &x0, &y0);
+    bench_terminal_position(&app.bench, (Pin){0, 1}, &x1, &y1);
+    /* 1. Select the resistor and press M: its two terminals trade places. */
+    app.selected = 0;
+    app_commands_key(&app, NULL, SDLK_M, 0);
+    assert(app.bench.parts[0].mirrored && !strcmp(app.status, tr(TXT_APP_PART_MIRRORED)));
+    assert(pin_distance(&app.bench, (Pin){0, 0}, x1, y1) < .001f);
+    assert(pin_distance(&app.bench, (Pin){0, 1}, x0, y0) < .001f);
+    /* 2. Undo puts them back; redo mirrors again. */
+    app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
+    assert(!app.bench.parts[0].mirrored && pin_distance(&app.bench, (Pin){0, 0}, x0, y0) < .001f);
+    app_commands_key(&app, NULL, SDLK_Y, SDL_KMOD_CTRL);
+    assert(app.bench.parts[0].mirrored);
+    /* 3. A rotated, mirrored part still maps clicks back to the same local point. */
+    app.selected = 0;
+    app_commands_key(&app, NULL, SDLK_R, 0);
+    const Part *part = &app.bench.parts[0];
+    WirePoint local = {12, -5}, back = bench_part_to_local(part, bench_part_to_world(part, local));
+    assert(fabsf(back.x - local.x) < .001f && fabsf(back.y - local.y) < .001f);
+    /* 4. Opposite case: the breadboard is not mirrored and says so. */
+    app.selected = 1;
+    app_commands_key(&app, NULL, SDLK_M, 0);
+    assert(!app.bench.parts[1].mirrored && !strcmp(app.status, tr(TXT_APP_BOARD_NO_MIRROR)));
+    /* 5. A chip: its terminals move to the other side of the package. */
+    assert(bench_add(&app.bench, PART_SWITCH, 900, 300) == 2);
+    BenchSelection selection = {0};
+    selection.parts[2] = 1;
+    char message[256];
+    assert(bench_pack_selection(&app.bench, &selection, message, sizeof(message)));
+    const BenchGroup *group = &app.bench.groups[app.bench.parts[2].group - 1];
+    float cx, cy;
+    bench_terminal_position(&app.bench, (Pin){2, 0}, &cx, &cy);
+    app.selected = 2;
+    app_commands_key(&app, NULL, SDLK_M, 0);
+    assert(group->mirrored);
+    assert(pin_distance(&app.bench, (Pin){2, 0}, 2 * group->x - cx, cy) < .001f);
+    /* 6. Save and reopen: the mirror of the part and of the chip is kept. */
+    FILE *file = tmpfile();
+    assert(file);
+    WorkbenchSettings settings = workbench_settings_default();
+    assert(workbench_write_project(file, &app.bench, &settings));
+    rewind(file);
+    Workbench reopened = {0};
+    assert(workbench_read_project(file, &reopened, &settings));
+    fclose(file);
+    assert(reopened.parts[0].mirrored && !reopened.parts[1].mirrored);
+    assert(reopened.groups[reopened.parts[2].group - 1].mirrored);
+    bench_snapshot_clear(&reopened);
+    app_state_dispose(&app);
+}
+
 static void check_trace_waits_for_live_batch(void)
 {
     static AppState app;
@@ -58,6 +125,7 @@ static void check_trace_waits_for_live_batch(void)
 int main(void)
 {
     check_chip_rotation_flow();
+    check_mirror_flow();
     check_trace_waits_for_live_batch();
     static AppState app;
     app_state_init(&app);

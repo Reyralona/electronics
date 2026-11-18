@@ -5,7 +5,7 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão atual: 0.43.0 (sem release). Última pré-release publicada: 0.42.0, Windows x64.
+- Versão atual: 0.44.0 (sem release). Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
 - Nenhuma branch de trabalho pendente; tudo integrado à `main`, conforme

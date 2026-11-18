@@ -2,8 +2,31 @@
 #include <stdio.h>
 #include "workbench_file.h"
 
+/* A person reopens a circuit saved before the shared palette: every legacy wire color, black included,
+ * keeps its hue, and the next save writes the shared palette index. */
+static void legacy_wire_colors(void)
+{
+    Workbench loaded={0};
+    WorkbenchSettings settings;
+    FILE *file=tmpfile(); assert(file);
+    fputs("workbench 32\n2 2\n0 0 0 1 5 0 0 1 0\n4 200 0 0 1000 0 0 1 0\n0 0 1 0 0 2\n0 1 1 1 0 1\n"
+          "groups 0\nmembers 0\nports 0\nleads 0\nstates 0\ncode 0\nportnames 0\nlayers 2\n0\n0\n"
+          "settings 1 1 1 0 5 0 0 1e-05 0.005\ngrid 24 1 1\ntheme 0 13\n",file);
+    rewind(file);
+    assert(workbench_read_project(file,&loaded,&settings)); fclose(file);
+    assert(loaded.wires[0].color==BENCH_COLOR_BLACK && loaded.wires[1].color==BENCH_COLOR_RED);
+    assert(settings.wire_color==BENCH_COLOR_WHITE);
+    assert(bench_color_from_legacy_wire(3)==BENCH_COLOR_GREEN && bench_color_from_legacy_wire(6)==-1);
+    /* Black exists for wires only: an LED refuses it and keeps its color. */
+    int led=bench_add(&loaded,PART_LED,400,0);
+    assert(led>=0 && bench_set_states(&loaded,led,BENCH_COLOR_LIME) && !bench_set_states(&loaded,led,BENCH_COLOR_BLACK));
+    assert(loaded.parts[led].states==BENCH_COLOR_LIME && bench_set_wire_color(&loaded,0,BENCH_COLOR_BLACK));
+    bench_snapshot_clear(&loaded);
+}
+
 int main(void)
 {
+    legacy_wire_colors();
     Workbench source={0}, loaded={0}; FILE *file;
     assert(bench_add(&source,PART_SOURCE,10,20)==0);
     assert(bench_add(&source,PART_BREADBOARD,100,200)==1);
@@ -97,12 +120,12 @@ int main(void)
     file=tmpfile(); assert(file);
     fputs("workbench 8\n2 1\n0 0 0 1 5 0\n3 100 200 0 0 0\n0 0 1 0 0\n",file); rewind(file);
     assert(workbench_read(file,&loaded)); fclose(file);
-    assert(loaded.parts[1].board_layout==0 && loaded.wires[0].color==0);
+    assert(loaded.parts[1].board_layout==0 && loaded.wires[0].color==BENCH_DEFAULT_WIRE_COLOR);
     { float x0,y0,x1,y1; bench_pin_position(&loaded.parts[1],0,&x0,&y0); bench_pin_position(&loaded.parts[1],1,&x1,&y1); assert(x0==x1 && y1-y0==7); }
     file=tmpfile(); assert(file);
     fputs("workbench 9\n2 1\n0 0 0 1 5 0 0\n3 100 200 0 0 0 1\n0 0 1 0 0 6\n",file); rewind(file);
     assert(!workbench_read(file,&loaded)); fclose(file);
-    assert(loaded.parts[1].board_layout==0 && loaded.wires[0].color==0);
+    assert(loaded.parts[1].board_layout==0 && loaded.wires[0].color==BENCH_DEFAULT_WIRE_COLOR);
     file=tmpfile(); assert(file); fputs("workbench 8\n1 0\n3 0 0 0 0 1\n",file); rewind(file);
     assert(!workbench_read(file,&loaded)); fclose(file);
     assert(loaded.part_count==2 && loaded.parts[0].rotation==0);

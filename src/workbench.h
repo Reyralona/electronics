@@ -100,6 +100,7 @@ typedef struct
     float io_level[WORKBENCH_MAX_IO];
     unsigned char io_mode[WORKBENCH_MAX_IO];
     int rotation;
+    int mirrored; /* Left-right mirror in the package frame, applied before rotation; saved from format 34. */
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
     uint64_t exposed[(WORKBENCH_MAX_PINS + 63) / 64];
@@ -124,7 +125,29 @@ WirePoint bench_lead_point(const Part *part, int pin, size_t point);
 WirePoint bench_lead_anchor(const Part *part, int pin);
 #define WIRE_MAX_KNEES 16
 #define WIRE_PATH_CAPACITY (WIRE_MAX_KNEES * 9 + 2)
-#define WIRE_COLOR_COUNT 6
+/* One palette for wires and LEDs (Wire.color, LED Part.states), saved by index from format 33.
+ * Black is the last entry and exists only for wires: there is no black LED. */
+typedef enum
+{
+    BENCH_COLOR_RED,
+    BENCH_COLOR_GREEN,
+    BENCH_COLOR_BLUE,
+    BENCH_COLOR_YELLOW,
+    BENCH_COLOR_WHITE,
+    BENCH_COLOR_ORANGE,
+    BENCH_COLOR_VIOLET,
+    BENCH_COLOR_PINK,
+    BENCH_COLOR_CYAN,
+    BENCH_COLOR_LIME,
+    BENCH_COLOR_BLACK,
+    BENCH_COLOR_COUNT
+} BenchColor;
+#define BENCH_LED_COLOR_COUNT BENCH_COLOR_BLACK
+#define WIRE_COLOR_COUNT BENCH_COLOR_COUNT
+#define BENCH_DEFAULT_WIRE_COLOR BENCH_COLOR_BLUE
+/* Wire colors up to format 32 were blue, red, black, green, yellow, white. */
+#define BENCH_LEGACY_WIRE_COLORS 6
+int bench_color_from_legacy_wire(int legacy);
 typedef struct
 {
     Pin a, b;
@@ -149,6 +172,7 @@ typedef struct
     char name[BENCH_GROUP_NAME_CAPACITY];
     float width, height; /* Zero selects the automatic package dimensions. */
     int rotation; /* Package orientation, independent of internal parts; saved from format 29. */
+    int mirrored; /* Terminal sides swapped (left <-> right) before rotation; saved from format 34. */
     uint64_t model; /* Library model identity shared by its copies (0 = none); saved from format 28. */
     /* Number of terminals the custom arrangement covers; 0 or a different terminal count = automatic
      * (first half left, rest right). Saved from format 30. */
@@ -198,6 +222,8 @@ int bench_port_name(const Part *part, int pin, char *name, size_t capacity);
 /* Sets or, with an empty name, removes the name of one terminal. Returns 0 for invalid arguments. */
 int bench_set_port_name(Workbench *bench, Pin pin, const char *name);
 int bench_set_wire_color(Workbench *bench, int wire, int color);
+/* Mirrors a rotatable part (or a chip) left-right: its terminals swap sides. Displays stay readable. */
+int bench_mirror_part(Workbench *bench, int component);
 int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count);
 int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point);
 int wire_pick_segment(const Wire *wire, WirePoint start, WirePoint end, float radius,

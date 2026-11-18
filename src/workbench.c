@@ -290,6 +290,15 @@ static int wire_valid(const Workbench *bench, int wire)
     return bench && wire >= 0 && wire < bench->wire_count;
 }
 
+int bench_color_from_legacy_wire(int legacy)
+{
+    static const int colors[BENCH_LEGACY_WIRE_COLORS] = {BENCH_COLOR_BLUE,  BENCH_COLOR_RED,    BENCH_COLOR_BLACK,
+                                                         BENCH_COLOR_GREEN, BENCH_COLOR_YELLOW, BENCH_COLOR_WHITE};
+    if (legacy < 0 || legacy >= BENCH_LEGACY_WIRE_COLORS)
+        return -1;
+    return colors[legacy];
+}
+
 int bench_set_wire_color(Workbench *bench, int wire, int color)
 {
     if (!wire_valid(bench, wire) || color < 0 || color >= WIRE_COLOR_COUNT)
@@ -538,6 +547,8 @@ WirePoint bench_part_to_world(const Part *part, WirePoint local)
     float scale = bench_part_scale(part);
     local.x *= scale;
     local.y *= scale;
+    if (part->mirrored && part->type != PART_BREADBOARD)
+        local.x = -local.x;
     WirePoint rotated = local;
     int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
     switch (rotation)
@@ -560,17 +571,22 @@ WirePoint bench_part_to_local(const Part *part, WirePoint world)
     float scale = bench_part_scale(part);
     WirePoint offset = {(world.x - part->x) / scale, (world.y - part->y) / scale};
     int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
+    WirePoint local = offset;
     switch (rotation)
     {
     case 1:
-        return (WirePoint){offset.y, -offset.x};
+        local = (WirePoint){offset.y, -offset.x};
+        break;
     case 2:
-        return (WirePoint){-offset.x, -offset.y};
+        local = (WirePoint){-offset.x, -offset.y};
+        break;
     case 3:
-        return (WirePoint){-offset.y, offset.x};
-    default:
-        return offset;
+        local = (WirePoint){-offset.y, offset.x};
+        break;
     }
+    if (part->mirrored && part->type != PART_BREADBOARD)
+        local.x = -local.x;
+    return local;
 }
 
 static void pin_local_position(const Part *p, int pin, float *x, float *y)
@@ -704,9 +720,11 @@ WirePoint bench_lead_anchor(const Part *part, int pin)
         local.y = part->type == PART_SOIL ? -30 : 8;
     if (part->type == PART_LED)
     {
-        float angle = (float)(-part->rotation * 3.141592653589793 * .5);
-        float c = cosf(angle), s = sinf(angle), x = pin ? 10 : -10;
-        local = (WirePoint){x * c - 8 * s, x * s + 8 * c};
+        const float lead_x = 10, lead_y = 8;
+        float x = pin ? lead_x : -lead_x, scale = bench_part_scale(part);
+        if (part->mirrored)
+            x = -x;
+        return (WirePoint){part->x + x * scale, part->y + lead_y * scale};
     }
     return bench_part_to_world(part, local);
 }
@@ -1023,6 +1041,7 @@ int bench_swap_type(Workbench *b, int component, PartType type)
     }
     float x = part->x, y = part->y, scale = part->scale;
     int rotation = component_has_flag(type, COMPONENT_ROTATES) ? part->rotation : 0;
+    int mirrored = component_has_flag(type, COMPONENT_ROTATES) ? part->mirrored : 0;
     bench_part_clear(part);
     *part = (Part){.type = type,
                    .x = x,
@@ -1031,6 +1050,7 @@ int bench_swap_type(Workbench *b, int component, PartType type)
                    .control = component_default_control(type),
                    .value = info->primary ? info->primary->initial : 0,
                    .rotation = rotation,
+                   .mirrored = mirrored,
                    .scale = scale};
     ++b->revision;
     return 1;
@@ -1049,6 +1069,24 @@ int bench_rotate_part(Workbench *b, int component)
         !component_has_flag(b->parts[component].type, COMPONENT_ROTATES))
         return 0;
     b->parts[component].rotation = (b->parts[component].rotation + 1) % 4;
+    ++b->revision;
+    return 1;
+}
+
+int bench_mirror_part(Workbench *b, int component)
+{
+    if (!b || component < 0 || component >= b->part_count)
+        return 0;
+    if (b->parts[component].group)
+    {
+        BenchGroup *group = &b->groups[b->parts[component].group - 1];
+        group->mirrored = !group->mirrored;
+        ++b->revision;
+        return 1;
+    }
+    if (!component_has_flag(b->parts[component].type, COMPONENT_ROTATES))
+        return 0;
+    b->parts[component].mirrored = !b->parts[component].mirrored;
     ++b->revision;
     return 1;
 }
@@ -1081,7 +1119,7 @@ int bench_toggle_wire(Workbench *b, Pin a, Pin c)
     }
     if (b->wire_count == WORKBENCH_MAX_WIRES)
         return 0;
-    b->wires[b->wire_count++] = (Wire){.a = a, .b = c};
+    b->wires[b->wire_count++] = (Wire){.a = a, .b = c, .color = BENCH_DEFAULT_WIRE_COLOR};
     ++b->revision;
     return 1;
 }
@@ -1510,13 +1548,13 @@ void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y
 
 WirePoint bench_group_to_world(const BenchGroup *group, WirePoint local)
 {
-    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation};
+    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation, .mirrored = group->mirrored};
     return bench_part_to_world(&frame, local);
 }
 
 WirePoint bench_group_to_local(const BenchGroup *group, WirePoint world)
 {
-    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation};
+    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation, .mirrored = group->mirrored};
     return bench_part_to_local(&frame, world);
 }
 

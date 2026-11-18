@@ -27,6 +27,7 @@ void app_state_init(AppState *app)
     app->show_handles = 1;
     app->round_wires = 1;
     app->selected_wire = -1;
+    app->wire_color = BENCH_DEFAULT_WIRE_COLOR;
     app->example_index = -1;
     app->show_trace = 1;
     app->transient_step = 1e-5;

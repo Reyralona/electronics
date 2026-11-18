@@ -27,7 +27,8 @@ static int connect(Workbench *b, Pin a, Pin c, int color, const WirePoint *knees
     if (count < 0 || count > WIRE_MAX_KNEES || bench_toggle_wire(b, a, c) != 1)
         return 0;
     Wire *wire = &b->wires[b->wire_count - 1];
-    wire->color = color;
+    /* Example colors are written in the legacy wire palette (signal, supply, return, control). */
+    wire->color = bench_color_from_legacy_wire(color);
     wire->knee_count = count;
     if (count)
         memcpy(wire->knees, knees, (size_t)count * sizeof(*knees));

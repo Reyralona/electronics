@@ -26,6 +26,10 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 
 - Clique numa peça do catálogo e depois na bancada para colocá-la.
 - Arraste para mover. `R` gira 90°.
+- `M` (ou **Espelhar**, no painel da peça) espelha a peça da esquerda para a direita: os terminais trocam de
+  lado e os fios acompanham. Mostradores e textos continuam legíveis: o visor da fonte, o display de
+  7 segmentos, o LCD e as marcas das baterias não ficam invertidos. Como na rotação, a breadboard e os
+  instrumentos de bancada não espelham. Chips também espelham (os terminais passam para o outro lado).
 - `Delete` apaga a peça e os fios ligados a ela.
 - Com uma peça selecionada, escolher outro tipo no catálogo **troca a peça no lugar**, mantendo os fios nos terminais equivalentes.
 - **Tamanho:** clique em **Tamanho** no painel (1% a 10000%) ou use `Ctrl+roda`. É só visual: não muda o valor elétrico.
@@ -42,7 +46,11 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 - **Fio em fio (junção):** com um fio em andamento, clique em cima de outro fio para terminar nele; ali aparece
   um ponto de junção, e tudo que chega ao ponto fica no mesmo nó. `Alt`+clique num fio cria a junção e já
   começa um fio a partir dela. `Alt`+arraste uma junção para movê-la. Apagar o último fio de uma junção a remove.
-- Clique no fio para selecioná-lo. `Delete` apaga. A cor dos próximos fios, ou do fio selecionado, é escolhida em **Configurações**. A cor é só visual.
+- Clique no fio para selecioná-lo: o **painel do fio** abre no canto superior direito, com de onde ele sai e
+  aonde chega, a corrente (com **Corrente nos fios** ligada) e as cores. `Delete` apaga.
+- Fios e LEDs têm as mesmas 10 cores: vermelho, verde, azul, amarelo, branco, laranja, roxo, rosa, ciano e
+  verde-limão. Os fios têm também o preto, que não existe em LED. Fios novos usam a última cor escolhida.
+  A cor do fio é só visual; a do LED também muda a tensão direta (veja [DECISOES.md](DECISOES.md)).
 
 ### Breadboard e contato direto
 
@@ -95,7 +103,7 @@ os limites estão no fim deste guia.
 
 O que aparece na tela:
 
-- **LEDs e lâmpadas** brilham conforme a corrente calculada. Cinza significa que não há resultado válido.
+- **LEDs e lâmpadas** brilham conforme a corrente calculada. O LED apagado fica escuro, bem diferente do aceso. Cinza significa que não há resultado válido.
 - **Corrente nos fios** (ligue em **Configurações**): bolinhas amarelas andam no sentido convencional da corrente, e a velocidade indica a faixa de intensidade.
 - Durante a sessão contínua, a barra inferior mostra o tempo simulado e a velocidade observada (`1,00x` significa 1 segundo simulado por segundo real). O valor depende do circuito e do computador.
 - Em **Configurações → Ritmo da simulação**, use **−/+** para escolher 0,05×, 0,1×, 0,25×, 0,5× ou 1×.
@@ -213,6 +221,7 @@ Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canai
 | `Shift+T` | Curva completa desde t = 0 (pausa a simulação) |
 | `G` | Mostrar/esconder o gráfico |
 | `R` | Girar a peça |
+| `M` | Espelhar a peça (troca os terminais de lado) |
 | `E` | Editar o valor |
 | `+` / `-` | Dobrar / reduzir à metade o valor |
 | `Delete` | Apagar a seleção |

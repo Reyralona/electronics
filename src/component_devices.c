@@ -186,15 +186,19 @@ int component_switch_at(PartType type, float local_x)
 
 const char *component_led_model(unsigned color)
 {
-    static const char *models[COMPONENT_LED_COLORS] = {"LED_RED", "LED_GREEN", "LED_BLUE", "LED_YELLOW", "LED_BLUE", "LED_YELLOW"};
+    static const char *models[COMPONENT_LED_COLORS] = {"LED_RED",  "LED_GREEN",  "LED_BLUE", "LED_YELLOW",
+                                                       "LED_BLUE", "LED_YELLOW", "LED_BLUE", "LED_BLUE",
+                                                       "LED_BLUE", "LED_GREEN"};
     return color < COMPONENT_LED_COLORS ? models[color] : models[0];
 }
 
-const char *component_led_color_name(unsigned color)
+const char *component_color_name(unsigned color)
 {
-    static const TextId names[COMPONENT_LED_COLORS] = {TXT_CAT_LED_RED,    TXT_CAT_LED_GREEN, TXT_CAT_LED_BLUE,
-                                                       TXT_CAT_LED_YELLOW, TXT_CAT_LED_WHITE, TXT_CAT_LED_ORANGE};
-    return tr(color < COMPONENT_LED_COLORS ? names[color] : names[0]);
+    static const TextId names[BENCH_COLOR_COUNT] = {TXT_COLOR_RED,    TXT_COLOR_GREEN,  TXT_COLOR_BLUE, TXT_COLOR_YELLOW,
+                                                    TXT_COLOR_WHITE,  TXT_COLOR_ORANGE, TXT_COLOR_VIOLET,
+                                                    TXT_COLOR_PINK,   TXT_COLOR_CYAN,   TXT_COLOR_LIME,
+                                                    TXT_COLOR_BLACK};
+    return tr(color < BENCH_COLOR_COUNT ? names[color] : names[0]);
 }
 
 int component_ohmmeter_reading_reliable(const Workbench *bench)
