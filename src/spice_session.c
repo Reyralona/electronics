@@ -11,6 +11,7 @@ struct SpiceSession
 {
     HANDLE process, input, output;
     int keep_log;
+    unsigned timeout_ms;
     char log_path[MAX_PATH];
 };
 
@@ -58,7 +59,7 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
 {
     ULONGLONG started = GetTickCount64();
     size_t count = 0;
-    while (GetTickCount64() - started < SPICE_SESSION_TIMEOUT_MS)
+    while (GetTickCount64() - started < session->timeout_ms)
     {
         DWORD available = 0, received = 0;
         if (!PeekNamedPipe(session->output, NULL, 0, NULL, &available, NULL))
@@ -103,7 +104,7 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
     }
     session->keep_log = 1;
     snprintf(message, message_capacity, tr(TXT_ENG_CALCULATION_TIMEOUT_LOG),
-             SPICE_SESSION_TIMEOUT_MS, session->log_path);
+             (int)session->timeout_ms, session->log_path);
     return 0;
 }
 
@@ -174,6 +175,7 @@ SpiceSession *spice_session_open(const char *executable, char *message, size_t c
         snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY));
         return NULL;
     }
+    session->timeout_ms = SPICE_SESSION_TIMEOUT_MS;
     DWORD length = GetFullPathNameA(executable, sizeof(runtime), runtime, NULL);
     if (!length || length >= sizeof(runtime))
         goto failure;
@@ -236,6 +238,13 @@ failure:
         CloseHandle(log);
     spice_session_close(session);
     return NULL;
+}
+
+void spice_session_set_timeout(SpiceSession *session, unsigned milliseconds)
+{
+    if (!session)
+        return;
+    session->timeout_ms = milliseconds ? milliseconds : SPICE_SESSION_TIMEOUT_MS;
 }
 
 int spice_session_load(SpiceSession *session, const char *path, char *message, size_t capacity)

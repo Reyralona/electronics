@@ -166,12 +166,40 @@ static void check_four_input_and(void)
     spice_live_destroy(live);
     bench_snapshot_clear(&bench);
 }
+/* A person runs a heavy circuit: one batch passes the time limit and fails visibly.
+ * The next batch must work again (restarting the session) instead of failing forever. */
+static void check_recovers_after_timeout(void)
+{
+    Workbench rc = {0};
+    bench_add(&rc, PART_SOURCE, 300, 100);
+    bench_add(&rc, PART_RESISTOR, 500, 100);
+    bench_add(&rc, PART_CAPACITOR, 700, 100);
+    wire(&rc, 0, 0, 1, 0);
+    wire(&rc, 1, 1, 2, 0);
+    wire(&rc, 2, 1, 0, 1);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &rc, .001);
+    const unsigned impatient_ms = 1;
+    spice_live_set_timeout_ms(live, impatient_ms);
+    assert(!spice_live_step(live, &rc, executable, &options, 1.0, &result));
+    printf("Timed-out batch reported: %s\n", result.message);
+    spice_live_set_timeout_ms(live, 0);
+    step(live, &rc, .001);
+    assert(spice_live_restarted(live));
+    step(live, &rc, .001);
+    assert(!spice_live_restarted(live));
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rc);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     executable = argv[1];
     check_live_history_policy();
     options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default()};
+    check_recovers_after_timeout();
     check_four_input_and();
     check_led_hold(0);
     check_led_hold(1);

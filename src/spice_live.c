@@ -17,7 +17,8 @@ struct SpiceLive
     SpiceSession *session;
     Workbench previous;
     char *topology;
-    int measures_wires, started, restarted;
+    int measures_wires, started, restarted, discarded;
+    unsigned timeout_ms;
     double time, requested_time;
     unsigned char burnt[WORKBENCH_MAX_COMPONENTS], reason[WORKBENCH_MAX_COMPONENTS];
     double stress[WORKBENCH_MAX_COMPONENTS];
@@ -41,6 +42,26 @@ void spice_live_destroy(SpiceLive *live)
 int spice_live_restarted(const SpiceLive *live)
 {
     return live && live->restarted;
+}
+
+void spice_live_set_timeout_ms(SpiceLive *live, unsigned milliseconds)
+{
+    if (!live)
+        return;
+    live->timeout_ms = milliseconds;
+    spice_session_set_timeout(live->session, milliseconds);
+}
+
+/* After a failed request the child may still be computing, and its late reply would answer the
+ * next request. Closing the child discards that reply; the next batch rebuilds the session. */
+static int discard_session(SpiceLive *live)
+{
+    spice_session_close(live->session);
+    live->session = NULL;
+    free(live->topology);
+    live->topology = NULL;
+    live->discarded = 1;
+    return 0;
 }
 
 double spice_live_time(const SpiceLive *live)
@@ -137,6 +158,7 @@ static int load_session(SpiceLive *live, const Workbench *bench, const char *exe
     }
     spice_session_close(live->session);
     live->session = spice_session_open(executable, message, capacity);
+    spice_session_set_timeout(live->session, live->timeout_ms);
     int success = live->session && spice_session_load(live->session, path, message, capacity);
     DeleteFileA(path);
     live->started = 0;
@@ -395,19 +417,20 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         }
         if (!live->session || !live->topology || strcmp(key, live->topology))
         {
-            rebuilt = live->session != NULL;
+            rebuilt = live->session != NULL || live->discarded;
             live->measures_wires = instrumented;
             if (!load_session(live, bench, executable, result->message, sizeof(result->message)))
             {
                 free(key);
-                return 0;
+                return discard_session(live);
             }
+            live->discarded = 0;
         }
         else if (controls_changed(&live->previous, bench) &&
                  !apply_controls(live, bench, result->message, sizeof(result->message)))
         {
             free(key);
-            return 0;
+            return discard_session(live);
         }
         free(live->topology);
         live->topology = key;
@@ -420,7 +443,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
     if (!protect_sources(live, bench, result->message, sizeof(result->message)) ||
         !advance(live, options->step, span, result->message, sizeof(result->message)) ||
         !read_currents(live, bench, result) || !protect_parts(live, bench, options, result))
-        return 0;
+        return discard_session(live);
     memcpy(result->burnt, live->burnt, sizeof(result->burnt));
     memcpy(result->burn_reason, live->reason, sizeof(result->burn_reason));
     memcpy(result->burn_value, live->stress, sizeof(result->burn_value));
