@@ -9,6 +9,8 @@
   das Configurações.
 - `M` ou o botão **Espelhar** espelha peças e chips, trocando os terminais de lado. Visores,
   displays, LCD e marcas das baterias continuam legíveis (formato 34).
+- Corrigido: clicar no campo **Valor** voltou a abrir a edição; os botões **Girar**,
+  **Espelhar** e o play do topo usam o mesmo caminho direto.
 
 ## 0.43.0
 
