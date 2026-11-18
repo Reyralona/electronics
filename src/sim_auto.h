@@ -26,6 +26,12 @@ double burn_stress(const Part *part, double current, const BurnLimits *limits, B
 int sim_auto_is_dynamic(const Workbench *bench);
 /* Circuits with an active clock repeat; their playback loops. */
 int sim_auto_is_periodic(const Workbench *bench);
+/* Largest solver step of the continuous session. It is independent of the graph step in the
+   settings: clock and square edges are solver breakpoints and capacitors/inductors are bounded by the
+   solver's error control, so only a sine source needs points inside each period. */
+#define SIM_LIVE_MAX_STEP_SECONDS 1e-3
+#define SIM_LIVE_SINE_POINTS_PER_PERIOD 32.0
+double sim_auto_live_max_step(const Workbench *bench);
 /* Worst-case DC copy: active clocks become sources held at their high level (5 V). */
 int sim_auto_dc_equivalent(const Workbench *in, Workbench *out);
 /* Copy in which every marked part becomes an open circuit (a 1 GOhm resistor between its first two pins). */

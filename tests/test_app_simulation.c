@@ -31,15 +31,19 @@ static void test_discard_after_undo(AppState *app)
 
 int main(void)
 {
-    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, 1) - .016) < 1e-12);
-    assert(fabs(app_simulation_live_span(1000, 1100, 1e-5, 1) - .02) < 1e-12);
-    assert(fabs(app_simulation_live_span(1000, 1100, 1e-6, 1) - .002) < 1e-12);
-    assert(fabs(app_simulation_live_span(1000, 1100, .1, 1) - .1) < 1e-12);
-    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .25) - .004) < 1e-12);
-    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .05) - .0008) < 1e-12);
-    assert(app_simulation_live_span(1000, 1100, 0, 1) == 0);
-    assert(app_simulation_live_span(1000, 1100, 1e-5, 0) == 0);
-    assert(app_simulation_live_span(1000, 1100, 1e-5, 2) == 0);
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, 1, 0) - .016) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, 1e-5, 1, 0) - .02) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, 1e-6, 1, 0) - .002) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, .1, 1, 0) - .1) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .25, 0) - .004) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .05, 0) - .0008) < 1e-12);
+    assert(app_simulation_live_span(1000, 1100, 0, 1, 0) == 0);
+    assert(app_simulation_live_span(1000, 1100, 1e-5, 0, 0) == 0);
+    assert(app_simulation_live_span(1000, 1100, 1e-5, 2, 0) == 0);
+    /* A slow circuit gets shorter batches, so the screen keeps updating about ten times a second. */
+    assert(fabs(app_simulation_live_span(1000, 1100, 1e-3, 1, .01) - .001) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, 1e-3, 1, 2) - .02) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1100, 1e-3, 1, 1e-6) - 1e-3) < 1e-12);
     static AppState app;
     app_state_init(&app);
     assert(app.history);

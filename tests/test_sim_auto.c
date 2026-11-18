@@ -176,8 +176,34 @@ static void test_with_ngspice(const char *exe)
     assert(trace.count > 10);
 }
 
+/* The live solver step follows the circuit, not the graph step chosen in the settings. */
+static void test_live_max_step(void)
+{
+    Workbench bench = {0};
+    assert(bench_add(&bench, PART_SOURCE, 0, 0) >= 0);
+    assert(sim_auto_live_max_step(&bench) == SIM_LIVE_MAX_STEP_SECONDS);
+    int clock = bench_add(&bench, PART_CLOCK, 100, 0);
+    assert(clock >= 0 && bench_set_value(&bench, clock, 10000));
+    /* Clock edges are solver breakpoints, so a fast clock does not shrink the step. */
+    assert(sim_auto_live_max_step(&bench) == SIM_LIVE_MAX_STEP_SECONDS);
+    int generator = bench_add(&bench, PART_FUNCTION_GENERATOR, 200, 0);
+    assert(generator >= 0 && bench_set_value(&bench, generator, 1000));
+    bench.parts[generator].states = 0;
+    double sine = sim_auto_live_max_step(&bench);
+    assert(fabs(sine - 1.0 / (1000 * SIM_LIVE_SINE_POINTS_PER_PERIOD)) < 1e-15);
+    bench.parts[generator].states = 1;
+    assert(sim_auto_live_max_step(&bench) == SIM_LIVE_MAX_STEP_SECONDS);
+    bench.parts[generator].states = 2;
+    assert(sim_auto_live_max_step(&bench) == SIM_LIVE_MAX_STEP_SECONDS);
+    assert(bench_set_value(&bench, generator, .5));
+    bench.parts[generator].states = 0;
+    assert(sim_auto_live_max_step(&bench) == SIM_LIVE_MAX_STEP_SECONDS);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
+    test_live_max_step();
     test_limits();
     test_transforms();
     test_shorts();

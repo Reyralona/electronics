@@ -11,13 +11,17 @@
 #define LIVE_FRAME_INTERVAL_MS 16
 #define LIVE_MAX_BATCH_SECONDS .02
 #define LIVE_MAX_BATCH_STEPS 2000.0
+#define LIVE_TARGET_BATCH_WALL_SECONDS .1
 
-double app_simulation_live_span(uint64_t previous_ms, uint64_t now_ms, double step, double speed)
+double app_simulation_live_span(uint64_t previous_ms, uint64_t now_ms, double step, double speed,
+                                double observed_rate)
 {
     if (!isfinite(step) || step <= 0 || !isfinite(speed) || speed < .05 || speed > 1.0)
         return 0;
     double elapsed = previous_ms && now_ms >= previous_ms ? (now_ms - previous_ms) * .001 : .016;
     double maximum = fmin(LIVE_MAX_BATCH_SECONDS, step * LIVE_MAX_BATCH_STEPS);
+    if (isfinite(observed_rate) && observed_rate > 0)
+        maximum = fmin(maximum, observed_rate * LIVE_TARGET_BATCH_WALL_SECONDS);
     return fmax(step, fmin(elapsed * speed, maximum));
 }
 
@@ -306,8 +310,9 @@ static void schedule_analysis(AppState *app)
             if (continuous)
             {
                 uint64_t now = SDL_GetTicks();
+                options.step = sim_auto_live_max_step(&app->bench);
                 double span = app_simulation_live_span(app->live_last_scheduled, now, options.step,
-                                                       app->simulation_speed);
+                                                       app->simulation_speed, app->sim.live_rate);
                 started = spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options,
                                                span);
             }
