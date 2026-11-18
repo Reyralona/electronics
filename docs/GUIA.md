@@ -102,15 +102,26 @@ O que aparece na tela:
   É a razão solicitada entre tempo simulado e tempo real na sessão contínua; não muda a frequência
   dos componentes nem o passo elétrico. A barra mostra o ritmo escolhido e o observado. Se o computador
   não acompanhar, o observado pode ficar abaixo do escolhido. A preferência é salva automaticamente.
+- A sessão contínua escolhe o próprio passo máximo: 1 ms, ou 1/32 do período da senoide mais
+  rápida do gerador de funções. Bordas de clock continuam calculadas com precisão. O passo das
+  Configurações não afeta a velocidade da simulação ao vivo.
+- Se um lote demorar mais de 10 s, a mensagem de erro aparece e o lote seguinte reinicia a sessão
+  em t = 0. Clocks de kHz com muitas portas podem continuar bem abaixo de 1×.
 - **Painel da peça:** corrente, tensão e leitura dos instrumentos.
 - **Queima:** passar de cerca de 30 mA num LED ou 0,25 W num resistor marca a peça como queimada. É um aviso didático e reversível, não um modelo térmico.
 
 ### Gráficos (sondagem)
 
-- Selecione uma peça ou um fio e pressione `T` para calcular um gráfico ao longo do tempo: tensão num terminal ou corrente na peça ou no fio.
-- Em **Configurações**, escolha tensão ou corrente, o terminal, o passo e a duração (padrão 10 µs e 5 ms).
-- `Espaço` reproduz a curva. `N` e `B` avançam e voltam amostra a amostra, `G` esconde o gráfico, e clicar no gráfico escolhe uma amostra.
-- O gráfico é uma análise separada, feita a partir do estado inicial. Ele não altera a simulação contínua.
+- Selecione uma peça ou um fio e pressione `T` para abrir o **gráfico ao vivo**: tensão num
+  terminal ou corrente na peça ou no fio, enquanto a simulação continua rodando. O gráfico mostra
+  os últimos segundos definidos pela **duração** das Configurações e se preenche a partir de t = 0.
+- `Shift+T` calcula a **curva completa** de 0 até a duração, com o **passo** das Configurações
+  (padrão 10 µs e 5 ms). A simulação contínua pausa enquanto essa curva é exibida.
+- Na curva completa, `Espaço` reproduz, `N` e `B` avançam e voltam amostra a amostra, `G` esconde o
+  gráfico e clicar no gráfico escolhe uma amostra.
+- O **X** no canto fecha o gráfico. Fechar a curva completa retoma a simulação contínua.
+- Mudar o número de peças ou de fios fecha o gráfico ao vivo; aperte `T` de novo.
+- Um ponto sem leitura (terra, ou peça sem corrente medida) mostra um aviso em vez de uma linha.
 
 ## Chips
 
@@ -198,7 +209,8 @@ Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canai
 | `P` | Recalcular agora |
 | `N` | Avançar com a simulação pausada; no gráfico, próxima amostra |
 | `B` | Amostra anterior do gráfico, com reprodução pausada |
-| `T` | Gráfico da peça ou do fio selecionado |
+| `T` | Gráfico ao vivo da peça ou do fio selecionado |
+| `Shift+T` | Curva completa desde t = 0 (pausa a simulação) |
 | `G` | Mostrar/esconder o gráfico |
 | `R` | Girar a peça |
 | `E` | Editar o valor |

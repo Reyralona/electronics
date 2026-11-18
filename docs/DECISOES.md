@@ -702,3 +702,14 @@ Decisão: a sessão contínua usa `.save none`, restabelecido após cada `delete
 O gráfico solicitado com `T` continua usando análise separada e histórico completo.
 Tensão, correntes e instrumentos mantiveram os mesmos valores nos testes. O passo
 elétrico e os modelos não mudaram. Medidas e limites: [COMPARACAO_TEMPO_REAL.md](COMPARACAO_TEMPO_REAL.md).
+
+## Passo do solver ao vivo separado do gráfico; gráfico ao vivo (17/11/2026, 0.43.0)
+
+Fato: a sessão contínua usava o passo do gráfico (10 µs) como passo máximo do solver. Circuitos
+digitais rodavam a 0,03–0,08× por isso, e o mesmo circuito salvo com passo de 1 ms rodava a ~0,8×.
+Decisão: o passo máximo ao vivo é 1 ms, ou 1/32 do período da senoide mais rápida. Passo e duração
+das Configurações valem para a curva completa (`Shift+T`); a duração também é a janela do gráfico
+ao vivo. `T` não pausa mais a simulação: o processo auxiliar amostra o ponto a cada lote pelo
+callback de dados do ngspice, sem reter histórico. Um lote que falha (por exemplo, acima de 10 s)
+reinicia a sessão no lote seguinte, em vez de deixar todos os seguintes falhando. Medidas,
+alternativas e limites: [COMPARACAO_TEMPO_REAL.md](COMPARACAO_TEMPO_REAL.md).

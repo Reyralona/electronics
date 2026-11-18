@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 0.43.0
+
+- A simulação contínua escolhe o próprio passo máximo (1 ms, ou 1/32 do período de uma senoide).
+  O passo das Configurações deixa de limitar a velocidade. Na máquina de referência, um
+  decodificador de ~30 portas passou de ~0,08× para mais de 1× de capacidade, e um contador de
+  4 bits com decodificador, de ~0,025× para ~0,6×.
+- Circuitos lentos recebem lotes menores, e a tela continua atualizando.
+- `T` abre um gráfico ao vivo sem pausar a simulação. `Shift+T` mantém a curva completa desde
+  t = 0. A janela do gráfico tem um botão X para fechar.
+- Corrigido: depois de um lote acima de 10 s, todos os lotes seguintes falhavam com "resultado
+  incompleto". Agora a sessão reinicia no lote seguinte.
+
 ## 0.42.1
 
 - `build.ps1`, a preparação do ngspice e o empacotamento encontram o MSYS2 mesmo fora do
