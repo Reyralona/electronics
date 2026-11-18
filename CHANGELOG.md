@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.44.0
+
+- Fios e LEDs compartilham 10 cores: vermelho, verde, azul, amarelo, branco, laranja, roxo, rosa,
+  ciano e verde-limão. O preto saiu; fios pretos de projetos antigos abrem azuis (formato 33).
+- O LED apagado ficou bem mais escuro, para distinguir de longe quando acende.
+- Selecionar um fio abre o painel do fio: de onde vem, aonde vai, a corrente e a cor. A cor saiu
+  das Configurações.
+- `M` ou o botão **Espelhar** espelha peças e chips, trocando os terminais de lado. Visores,
+  displays, LCD e marcas das baterias continuam legíveis (formato 34).
+
 ## 0.43.0
 
 - A simulação contínua escolhe o próprio passo máximo (1 ms, ou 1/32 do período de uma senoide).

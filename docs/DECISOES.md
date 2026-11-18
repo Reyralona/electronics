@@ -713,3 +713,21 @@ ao vivo. `T` não pausa mais a simulação: o processo auxiliar amostra o ponto 
 callback de dados do ngspice, sem reter histórico. Um lote que falha (por exemplo, acima de 10 s)
 reinicia a sessão no lote seguinte, em vez de deixar todos os seguintes falhando. Medidas,
 alternativas e limites: [COMPARACAO_TEMPO_REAL.md](COMPARACAO_TEMPO_REAL.md).
+
+## Paleta única de cores, painel do fio e espelhar (17/11/2026, 0.44.0)
+
+Pedido: mais cores, as mesmas para LEDs e fios; LED apagado mais escuro; escolha da cor do fio fora das
+Configurações; espelhar peças para trocar terminais sem estragar mostradores.
+Decisão do responsável: paleta de 10 cores (vermelho, verde, azul, amarelo, branco, laranja, roxo, rosa,
+ciano, verde-limão), sem preto, porque não existe LED preto comum. Fios pretos de arquivos anteriores ao
+formato 33 abrem azuis; as outras cores antigas mantêm o tom. Preferências na versão 1 são convertidas.
+Modelos de junção das cores novas: roxo, rosa e ciano usam o modelo do azul (~2,9 V a 10 mA), como o branco
+já usava; verde-limão usa o do verde. É uma aproximação didática, sem curva específica de fabricante.
+LED apagado: lente com ~28% da cor acesa (antes ~48%).
+O painel do fio ocupa o lugar do painel da peça e mostra origem, destino, corrente (quando os fios são
+medidos) e as amostras de cor; a escolha também vale para fios novos.
+Espelhar: inversão esquerda-direita no quadro da peça, antes da rotação, aplicada às coordenadas dos
+terminais, às pernas do LED, ao quadro dos chips e ao mapeamento de cliques. No desenho, o corpo espelha e as
+áreas legíveis (visores, dígitos, telas, LCD, marcas de tensão) são desespelhadas no lugar. Vale para peças
+que giram e para chips; breadboard e instrumentos não espelham. Formato 34 salva o espelho de peças e chips.
+
