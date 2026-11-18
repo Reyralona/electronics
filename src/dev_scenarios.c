@@ -1491,6 +1491,20 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     /* Wire on wire: start at a resistor, click the middle of another wire; Ctrl+Z; Alt+click branches. */
     else if (app->selftest_phase >= 229 && app->selftest_phase <= 232)
         queued = queue_junction_phase(app, window);
+    /* Reported 18/11/2026: clicking a resistor's Value field must open the value editor; Esc closes it. */
+    else if (app->selftest_phase == 233)
+    {
+        app->bench = (Workbench){0};
+        app->view = (BenchView){1, 0, 0};
+        bench_selection_clear(&app->selection);
+        app->pending.component = -1;
+        bench_add(&app->bench, PART_RESISTOR, 600, 300);
+        app->selected = 0;
+        app->selected_wire = -1;
+        queued = click_rect(window, app_layout_inspector_value());
+    }
+    else if (app->selftest_phase == 234)
+        queued = dev_test_key(window, SDLK_ESCAPE);
     if (!queued)
     {
         fprintf(stderr, "Nao foi possivel inserir eventos de teste.\n");
@@ -1911,6 +1925,10 @@ void dev_scenario_validate(AppState *app)
     }
     else if (app->selftest_phase >= 229 && app->selftest_phase <= 232)
         valid = junction_phase_valid(app);
+    else if (app->selftest_phase == 233)
+        valid = app->editing == 0;
+    else if (app->selftest_phase == 234)
+        valid = app->editing < 0;
     if (!valid)
     {
         fprintf(stderr, "Autoteste de eventos falhou na fase %d. child=%p editing=%d status=%s\n", app->selftest_phase, (void *)app->editor_child, app->editor_child ? app->editor_child->editing : app->editing, app->editor_child ? app->editor_child->status : app->status);
@@ -1921,7 +1939,7 @@ void dev_scenario_validate(AppState *app)
         app->exit_code = 1;
         app->running = 0;
     }
-    if (++app->selftest_phase == 233)
+    if (++app->selftest_phase == 235)
     {
         if (!app->exit_code)
             puts("Autoteste de eventos, historico, navegacao, encaixe, rotacao e cores passou.");
