@@ -43,6 +43,38 @@ int sim_auto_is_periodic(const Workbench *bench)
     return 0;
 }
 
+int sim_auto_uses_live_session(const Workbench *bench)
+{
+    if (sim_auto_is_dynamic(bench))
+        return 1;
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        PartType type = bench->parts[i].type;
+        if (component_electrical_type(type) == PART_SOURCE || type == PART_DFF || type == PART_CLOCK ||
+            component_environment(type) || component_device(type))
+            return 1;
+    }
+    return 0;
+}
+
+static int is_sine_generator(const Part *part)
+{
+    return part->type == PART_FUNCTION_GENERATOR && part->states == 0 && isfinite(part->value) && part->value > 0;
+}
+
+double sim_auto_live_max_step(const Workbench *bench)
+{
+    double step = SIM_LIVE_MAX_STEP_SECONDS;
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        if (!is_sine_generator(&bench->parts[i]))
+            continue;
+        double sine_step = 1.0 / (bench->parts[i].value * SIM_LIVE_SINE_POINTS_PER_PERIOD);
+        step = fmin(step, sine_step);
+    }
+    return step;
+}
+
 int sim_auto_is_dynamic(const Workbench *bench)
 {
     int i;

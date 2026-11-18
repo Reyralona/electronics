@@ -32,6 +32,12 @@ UI_TEXT(APP_PART_ROTATED, "Peça girada.", "Part rotated.")
 UI_TEXT(APP_BOARD_NO_ROTATE, "Esta placa não gira.", "This board cannot rotate.")
 UI_TEXT(APP_GRAPH_SHOWN, "Gráfico visível.", "Graph shown.")
 UI_TEXT(APP_GRAPH_HIDDEN, "Gráfico oculto. G: mostrar.", "Graph hidden. G: show.")
+UI_TEXT(APP_LIVE_GRAPH_OPENED, "Gráfico ao vivo: a simulação continua. Shift+T: curva completa desde t = 0.",
+        "Live graph: the simulation keeps running. Shift+T: full curve from t = 0.")
+UI_TEXT(APP_LIVE_GRAPH_CLOSED_CHANGED, "Gráfico ao vivo fechado: a montagem mudou. Aperte T de novo.",
+        "Live graph closed: the assembly changed. Press T again.")
+UI_TEXT(APP_GRAPH_CLOSED, "Gráfico fechado.", "Graph closed.")
+UI_TEXT(APP_GRAPH_CLOSED_RESUMED, "Gráfico fechado. A simulação continua.", "Graph closed. The simulation resumes.")
 UI_TEXT(APP_CALCULATION_BUSY, "Cálculo em andamento. Aguarde o resultado.", "Calculation in progress. Wait for the result.")
 UI_TEXT(APP_CALCULATION_START_FAILED, "Não foi possível iniciar o cálculo.", "Cannot start the calculation.")
 UI_TEXT(APP_CALCULATING_WIRE_CURRENT, "Calculando a corrente do fio no tempo...",

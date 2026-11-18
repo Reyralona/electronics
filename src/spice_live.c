@@ -17,8 +17,12 @@ struct SpiceLive
     SpiceSession *session;
     Workbench previous;
     char *topology;
-    int measures_wires, started, restarted;
+    int measures_wires, started, restarted, discarded;
+    unsigned timeout_ms;
     double time, requested_time;
+    char probe_vector[48];
+    double probe_interval;
+    int probe_armed, probe_valid;
     unsigned char burnt[WORKBENCH_MAX_COMPONENTS], reason[WORKBENCH_MAX_COMPONENTS];
     double stress[WORKBENCH_MAX_COMPONENTS];
 };
@@ -41,6 +45,26 @@ void spice_live_destroy(SpiceLive *live)
 int spice_live_restarted(const SpiceLive *live)
 {
     return live && live->restarted;
+}
+
+void spice_live_set_timeout_ms(SpiceLive *live, unsigned milliseconds)
+{
+    if (!live)
+        return;
+    live->timeout_ms = milliseconds;
+    spice_session_set_timeout(live->session, milliseconds);
+}
+
+/* After a failed request the child may still be computing, and its late reply would answer the
+ * next request. Closing the child discards that reply; the next batch rebuilds the session. */
+static int discard_session(SpiceLive *live)
+{
+    spice_session_close(live->session);
+    live->session = NULL;
+    free(live->topology);
+    live->topology = NULL;
+    live->discarded = 1;
+    return 0;
 }
 
 double spice_live_time(const SpiceLive *live)
@@ -137,11 +161,13 @@ static int load_session(SpiceLive *live, const Workbench *bench, const char *exe
     }
     spice_session_close(live->session);
     live->session = spice_session_open(executable, message, capacity);
+    spice_session_set_timeout(live->session, live->timeout_ms);
     int success = live->session && spice_session_load(live->session, path, message, capacity);
     DeleteFileA(path);
     live->started = 0;
     live->time = 0;
     live->requested_time = 0;
+    live->probe_armed = 0;
     memset(live->burnt, 0, sizeof(live->burnt));
     return success;
 }
@@ -278,6 +304,62 @@ static int advance(SpiceLive *live, double step, double span, char *message, siz
     return 1;
 }
 
+_Static_assert(SPICE_SESSION_MAX_SAMPLES <= SIM_LIVE_MAX_SAMPLES, "live samples must fit the result");
+
+/* Solver vector of the probed point; returns 0 when the point has none (for example ground). */
+static int probe_vector(const SpiceLive *live, const Workbench *bench, const SimLiveProbe *probe,
+                        char *vector, size_t capacity)
+{
+    const Pin target = probe->target;
+    if (probe->kind == SIM_LIVE_PROBE_VOLTAGE)
+    {
+        int node = netlist_live_node(bench, live->measures_wires, target);
+        return node > 0 && snprintf(vector, capacity, "%d", node) < (int)capacity;
+    }
+    if (probe->kind == SIM_LIVE_PROBE_PART_CURRENT)
+        return target.component >= 0 && target.component < bench->part_count &&
+               component_current_vector(bench->parts[target.component].type, target.component, vector, capacity);
+    if (probe->kind == SIM_LIVE_PROBE_WIRE_CURRENT)
+        return live->measures_wires && target.component >= 0 && target.component < bench->wire_count &&
+               snprintf(vector, capacity, "vwire%d#branch", target.component) < (int)capacity;
+    return 0;
+}
+
+static int arm_probe(SpiceLive *live, const Workbench *bench, const SimLiveProbe *probe, char *message,
+                     size_t capacity)
+{
+    char vector[sizeof(live->probe_vector)] = "";
+    int active = probe->kind != SIM_LIVE_PROBE_NONE && isfinite(probe->interval) && probe->interval > 0;
+    live->probe_valid = active && probe_vector(live, bench, probe, vector, sizeof(vector));
+    if (!live->probe_valid)
+        vector[0] = 0;
+    double interval = live->probe_valid ? probe->interval : 1;
+    if (live->probe_armed && !strcmp(vector, live->probe_vector) && interval == live->probe_interval)
+        return 1;
+    if (!spice_session_probe(live->session, vector, interval, message, capacity))
+        return 0;
+    snprintf(live->probe_vector, sizeof(live->probe_vector), "%s", vector);
+    live->probe_interval = interval;
+    live->probe_armed = 1;
+    return 1;
+}
+
+static int read_samples(SpiceLive *live, SimAutoResult *result)
+{
+    SimLiveSamples *samples = &result->live_samples;
+    samples->valid = live->probe_valid;
+    if (!live->probe_valid)
+        return 1;
+    SpiceSampleBlock block;
+    if (!spice_session_samples(live->session, &block, result->message, sizeof(result->message)))
+        return 0;
+    samples->start = block.start;
+    samples->interval = block.interval;
+    samples->count = block.count;
+    memcpy(samples->values, block.values, sizeof(double) * (size_t)block.count);
+    return 1;
+}
+
 static int read_currents(SpiceLive *live, const Workbench *bench, SimAutoResult *result)
 {
     char vector[48];
@@ -395,19 +477,20 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         }
         if (!live->session || !live->topology || strcmp(key, live->topology))
         {
-            rebuilt = live->session != NULL;
+            rebuilt = live->session != NULL || live->discarded;
             live->measures_wires = instrumented;
             if (!load_session(live, bench, executable, result->message, sizeof(result->message)))
             {
                 free(key);
-                return 0;
+                return discard_session(live);
             }
+            live->discarded = 0;
         }
         else if (controls_changed(&live->previous, bench) &&
                  !apply_controls(live, bench, result->message, sizeof(result->message)))
         {
             free(key);
-            return 0;
+            return discard_session(live);
         }
         free(live->topology);
         live->topology = key;
@@ -417,10 +500,12 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
             return 0;
         }
     }
-    if (!protect_sources(live, bench, result->message, sizeof(result->message)) ||
+    if (!arm_probe(live, bench, &options->live_probe, result->message, sizeof(result->message)) ||
+        !protect_sources(live, bench, result->message, sizeof(result->message)) ||
         !advance(live, options->step, span, result->message, sizeof(result->message)) ||
-        !read_currents(live, bench, result) || !protect_parts(live, bench, options, result))
-        return 0;
+        !read_currents(live, bench, result) || !protect_parts(live, bench, options, result) ||
+        !read_samples(live, result))
+        return discard_session(live);
     memcpy(result->burnt, live->burnt, sizeof(result->burnt));
     memcpy(result->burn_reason, live->reason, sizeof(result->burn_reason));
     memcpy(result->burn_value, live->stress, sizeof(result->burn_value));

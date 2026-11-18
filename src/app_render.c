@@ -260,6 +260,21 @@ static void trace_title(char *title, size_t capacity, int pin, int current)
         snprintf(title, capacity, tr(TXT_UI_GRAPH_VOLTAGE), pin + 1);
 }
 
+/* Window, title and axes shared by the full curve and the live graph. */
+static void graph_frame(GLuint font, const char *title)
+{
+    AppRect panel = app_layout_graph_panel();
+    color(.62f, .68f, .72f);
+    rect(panel.x + 6, panel.y + 6, panel.w, panel.h);
+    color(.98f, .98f, .99f);
+    rect(panel.x, panel.y, panel.w, panel.h);
+    color(.14f, .22f, .28f);
+    text(font, 856, 410, title);
+    color(.72f, .77f, .79f);
+    line(918, 431, 918, 565);
+    line(918, 565, 1220, 565);
+}
+
 static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int pin, int current)
 {
     int i;
@@ -279,20 +294,13 @@ static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int p
     half_range = high * .5 - low * .5;
     if (half_range < 1e-20)
         half_range = 1.0;
-    color(.62f, .68f, .72f);
-    rect(846, 390, 400, 244);
-    color(.98f, .98f, .99f);
-    rect(840, 384, 400, 244);
-    color(.14f, .22f, .28f);
     trace_title(label, sizeof(label), pin, current);
-    text(font, 856, 410, label);
+    graph_frame(font, label);
+    color(.14f, .22f, .28f);
     snprintf(label, sizeof(label), current ? "%.4g A" : "%.4g V", high);
     text(font, 856, 433, label);
     snprintf(label, sizeof(label), current ? "%.3g A" : "%.3g V", low);
     text(font, 856, 572, label);
-    color(.72f, .77f, .79f);
-    line(918, 431, 918, 565);
-    line(918, 565, 1220, 565);
     color(.12f, .47f, .7f);
     glLineWidth(2);
     glBegin(GL_LINE_STRIP);
@@ -316,6 +324,104 @@ static void trace_draw(GLuint font, const SpiceTrace *trace, int selected, int p
     text(font, 1140, 585, label);
     snprintf(label, sizeof(label), current ? "t=%.5g s   I=%.5g A" : "t=%.5g s   V=%.5g V",
              trace->samples[selected].time, trace->samples[selected].value);
+    text(font, 856, 612, label);
+}
+
+/* Kind of quantity drawn: 0 terminal voltage, 1 part current, 2 wire current (as trace_title). */
+static int live_graph_quantity(const SimLiveProbe *probe)
+{
+    if (probe->kind == SIM_LIVE_PROBE_WIRE_CURRENT)
+        return 2;
+    return probe->kind == SIM_LIVE_PROBE_PART_CURRENT;
+}
+
+/* First stored sample inside the last `span` seconds. */
+static int live_graph_first_visible(const SimLiveGraph *graph, double span, double *first_time, double *last_time)
+{
+    double value;
+    sim_live_graph_sample(graph, graph->count - 1, last_time, &value);
+    /* Until a full window exists the graph fills from t = 0, like a scope sweep. */
+    *first_time = fmax(*last_time - span, 0);
+    int first = graph->count - 1;
+    while (first > 0)
+    {
+        double time;
+        sim_live_graph_sample(graph, first - 1, &time, &value);
+        if (time < *first_time)
+            break;
+        first--;
+    }
+    return first;
+}
+
+static void live_graph_range(const SimLiveGraph *graph, int first, double *low, double *high)
+{
+    double time;
+    sim_live_graph_sample(graph, first, &time, low);
+    *high = *low;
+    for (int i = first + 1; i < graph->count; ++i)
+    {
+        double value;
+        sim_live_graph_sample(graph, i, &time, &value);
+        *low = fmin(*low, value);
+        *high = fmax(*high, value);
+    }
+}
+
+static void live_graph_curve(const SimLiveGraph *graph, int first, double first_time, double span, double low,
+                             double high)
+{
+    const double minimum_half_range = 1e-20;
+    double mid = low * .5 + high * .5, half_range = high * .5 - low * .5;
+    if (half_range < minimum_half_range)
+        half_range = 1.0;
+    color(.12f, .47f, .7f);
+    glLineWidth(2);
+    glBegin(GL_LINE_STRIP);
+    for (int i = first; i < graph->count; ++i)
+    {
+        double time, value;
+        sim_live_graph_sample(graph, i, &time, &value);
+        double x = (time - first_time) / span;
+        double y = (value * .5 - mid * .5) / half_range + .5;
+        glVertex2f((float)(918 + 302 * x), (float)(565 - 134 * y));
+    }
+    glEnd();
+    glLineWidth(1);
+}
+
+/* Last "duration" seconds of the running simulation, newest sample at the right edge. */
+static void live_graph_draw(const AppState *app, GLuint font)
+{
+    const SimLiveGraph *graph = &app->live_graph;
+    int quantity = live_graph_quantity(&graph->probe);
+    char kind[100], label[160];
+    trace_title(kind, sizeof(kind), graph->probe.target.pin, quantity);
+    snprintf(label, sizeof(label), tr(TXT_UI_GRAPH_LIVE), kind);
+    graph_frame(font, label);
+    color(.14f, .22f, .28f);
+    if (!graph->valid || !graph->count)
+    {
+        TextId note = graph->valid ? TXT_UI_GRAPH_LIVE_WAITING : TXT_UI_GRAPH_LIVE_NO_READING;
+        name_text(font, 930, 500, tr(note), 290);
+        return;
+    }
+    double span = app->transient_stop, first_time, last_time, low, high, newest;
+    int first = live_graph_first_visible(graph, span, &first_time, &last_time);
+    live_graph_range(graph, first, &low, &high);
+    const char *unit = quantity ? "A" : "V";
+    snprintf(label, sizeof(label), "%.4g %s", high, unit);
+    text(font, 856, 433, label);
+    snprintf(label, sizeof(label), "%.3g %s", low, unit);
+    text(font, 856, 572, label);
+    live_graph_curve(graph, first, first_time, span, low, high);
+    color(.14f, .22f, .28f);
+    snprintf(label, sizeof(label), "%.4g s", first_time);
+    text(font, 918, 585, label);
+    snprintf(label, sizeof(label), "%.4g s", first_time + span);
+    text(font, 1140, 585, label);
+    sim_live_graph_sample(graph, graph->count - 1, &last_time, &newest);
+    snprintf(label, sizeof(label), quantity ? "t=%.5g s   I=%.5g A" : "t=%.5g s   V=%.5g V", last_time, newest);
     text(font, 856, 612, label);
 }
 
@@ -3379,8 +3485,13 @@ static void status_hint(const AppState *app, char *hint, size_t capacity)
 
 static void draw_status(const AppState *app, GLuint font)
 {
-    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace && !app->settings)
+    if (app->live_graph.active && !app->settings)
+        live_graph_draw(app, font);
+    else if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace && !app->settings)
         trace_draw(font, &app->sim.trace, app->sim.trace_index, app->sim.trace_pin, app->sim.trace_current);
+    if (!app->settings && (app->live_graph.active || (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) &&
+                                                      app->show_trace)))
+        ui_close_button(app, app_layout_graph_close());
     color(UI_SURFACE);
     rect(APP_PALETTE_WIDTH, 660, 1280 - APP_PALETTE_WIDTH, 60);
     color(UI_BORDER);

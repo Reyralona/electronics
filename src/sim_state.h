@@ -4,6 +4,7 @@
 #include "workbench.h"
 #include "spice_process.h"
 #include "component_devices.h"
+#include "sim_auto.h"
 
 typedef enum
 {
@@ -64,4 +65,25 @@ void sim_state_leds(const SimState *sim, const Workbench *bench, int leds[]);
 /* Stores device measurements of an accepted sample and advances scope history and motor angles. */
 void sim_state_accept_elements(SimState *sim, const Workbench *bench,
                                const double elements[WORKBENCH_MAX_COMPONENTS][COMPONENT_MAX_ELEMENTS], double time);
+
+/* Live graph: samples of one point gathered while the continuous session keeps running. */
+#define SIM_LIVE_GRAPH_CAPACITY 4096
+typedef struct
+{
+    int active;
+    SimLiveProbe probe;
+    int valid; /* 0 when the last batch had no solver vector for the point */
+    int part_count, wire_count; /* assembly size when opened; a change closes the graph */
+    int start, count;
+    double time[SIM_LIVE_GRAPH_CAPACITY], value[SIM_LIVE_GRAPH_CAPACITY];
+} SimLiveGraph;
+
+void sim_live_graph_open(SimLiveGraph *graph, SimLiveProbe probe, const Workbench *bench);
+void sim_live_graph_close(SimLiveGraph *graph);
+/* Appends a batch; samples older than the stored ones (a restarted session) clear the graph first. */
+void sim_live_graph_append(SimLiveGraph *graph, const SimLiveSamples *samples);
+/* index 0 is the oldest stored sample. */
+void sim_live_graph_sample(const SimLiveGraph *graph, int index, double *time, double *value);
+/* The assembly changed size, so the probed index may now name another part or wire. */
+int sim_live_graph_stale(const SimLiveGraph *graph, const Workbench *bench);
 #endif

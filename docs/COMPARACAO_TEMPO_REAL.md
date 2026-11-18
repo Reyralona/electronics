@@ -88,3 +88,72 @@ Experimento descartado: o pacote ngspice 47-1 foi baixado em `build/` e verifica
 SHA256 publicado pelo MSYS2. Com `tran` de longa duração, essa versão tentou reservar
 gigabytes antes de calcular o primeiro ponto, mesmo com `save none`. O pacote fixado
 permanece em 45.2; não houve mudança de dependência nem de modelo elétrico.
+
+## Passo do solver ao vivo, recuperação e gráfico ao vivo (17/11/2026)
+
+Fontes: as mesmas já registradas neste documento, consultadas em 17/11/2026: a
+[API da biblioteca compartilhada](https://ngspice.sourceforge.io/shared.html), que descreve o
+callback de dados enviado a cada ponto calculado, e o
+[manual do ngspice](https://ngspice.sourceforge.io/docs/ngspice-manual.pdf) (`.tran` com
+passo máximo `TMAX`; fontes `PULSE` geram pontos de quebra nos cantos da onda). O comportamento
+abaixo foi confirmado em testes locais com o ngspice 45.2 empacotado.
+
+### Fatos medidos
+
+- O app usava o "passo" das Configurações (padrão 10 µs) como `TMAX` da sessão contínua
+  (`tran passo 1e12 0 passo uic`). Cada lote de 20 ms custava pelo menos 2.000 pontos, mesmo
+  com o circuito parado. O custo por ponto cresce com o número de portas: cada porta vira ADC,
+  porta XSPICE, DAC, fontes `B` e duas chaves `SW`. Com `rusage`, quase todo o tempo ficava na
+  avaliação dos dispositivos (load), e pouco na fatoração da matriz.
+- Mesmo computador (Ryzen 5 5500), lotes de 20 ms, tempo real por lote:
+
+  | Circuito | passo 10 µs | passo máximo 1 ms |
+  |---|---|---|
+  | decodificador BCD (~30 portas, sem clock) | ~240–260 ms | ~11 ms |
+  | contador JK + decodificador, clock 10 Hz | ~380 ms | ~18 ms |
+  | contador 4 bits + BCD (398 fontes `B`, 204 chaves) | ~820 ms | ~33 ms |
+
+  O ritmo de 0,8× observado em outro computador vinha de um circuito salvo com passo de 1 ms;
+  com o passo padrão, o mesmo arquivo roda a ~0,025× aqui. Nem o build nem o ngspice explicavam
+  a diferença.
+- Com clock de 10 kHz, as bordas dominam: ~21.000 pontos aceitos e ~3.400 rejeitados em 20 ms.
+  Um lote pode passar de 10 s. Depois desse estouro, a resposta atrasada do processo auxiliar
+  respondia o pedido seguinte, e todos os lotes falhavam com "resultado incompleto".
+- Com `save none`, o callback de dados do ngspice continua entregando todos os vetores a cada
+  ponto, sem reter histórico. Registrar o callback não mudou o custo medido (slot de
+  ~30 portas: ~240 ms por lote, contra ~260 ms antes).
+
+### Alternativas consideradas
+
+| Alternativa | Vantagem | Custo ou risco |
+|---|---|---|
+| Manter `TMAX` = passo do gráfico | Nada muda | Lento em todo circuito digital; o "passo" vira uma configuração escondida de desempenho |
+| `TMAX` fixo de 1 ms | Simples; bordas de clock e quadradas continuam como pontos de quebra | Uma senoide rápida ficaria com poucos pontos |
+| `TMAX` = 1 ms, ou 1/32 do período da senoide mais rápida | Mantém a resolução da senoide | Ainda não cobre fontes futuras sem pontos de quebra |
+| Gráfico ao vivo com `save <nó>` | Usa vetores comuns | O vetor cresce durante toda a sessão (o problema resolvido pelo `save none`) |
+| Gráfico ao vivo com várias paradas por lote | Não muda o processo auxiliar | Cada parada custa ~1–2 ms de ida e volta |
+| Gráfico ao vivo pelo callback de dados, amostrado no processo auxiliar | Sem histórico no ngspice; uma resposta por lote | Protocolo novo (`P`, `S`) e limite de amostras por resposta |
+
+### Decisões
+
+- Passo máximo da sessão contínua: 1 ms, ou 1/32 do período da senoide mais rápida do gerador
+  de funções. Clock e ondas quadrada/triangular dependem dos pontos de quebra das fontes `PULSE`.
+  Capacitores e indutores continuam sob o controle de erro do solver. O passo e a duração das
+  Configurações passam a valer só para a curva completa (`Shift+T`); a duração também define a
+  janela do gráfico ao vivo.
+- O lote ao vivo encolhe quando o ritmo observado é baixo, mirando ~0,1 s de tempo real por lote.
+- Um lote que falha fecha o processo auxiliar; o próximo recria a sessão em t = 0 e avisa
+  ("sessão reiniciada"). O teste reproduz o estouro com um limite de 1 ms por pedido.
+- `T` abre o gráfico ao vivo: o processo auxiliar amostra o ponto em grade regular (400 amostras
+  por janela), com interpolação linear entre pontos do solver, e devolve até 256 amostras por lote.
+  Se um lote gerar mais, a resolução guardada cai pela metade. `Shift+T` mantém a curva completa
+  antiga, calculada de 0 até a duração com a simulação pausada.
+
+### Limites e pendências
+
+- O gráfico ao vivo mostra o que o solver calculou: entre dois pontos do solver a curva é uma
+  reta. Com passo máximo de 1 ms, uma rampa lenta aparece em segmentos de até 1 ms.
+- Mudanças de topologia ainda reiniciam a sessão. Mudar o número de peças ou fios fecha o
+  gráfico ao vivo, porque o índice sondado pode passar a apontar outra peça.
+- Não há meta de razão mínima definida. Clocks de kHz com dezenas de portas continuam bem abaixo
+  de 1×.

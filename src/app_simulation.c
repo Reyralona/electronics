@@ -11,13 +11,19 @@
 #define LIVE_FRAME_INTERVAL_MS 16
 #define LIVE_MAX_BATCH_SECONDS .02
 #define LIVE_MAX_BATCH_STEPS 2000.0
+#define LIVE_TARGET_BATCH_WALL_SECONDS .1
+/* The live graph shows the last "duration" seconds; this many samples span that window. */
+#define LIVE_GRAPH_POINTS_PER_WINDOW 400.0
 
-double app_simulation_live_span(uint64_t previous_ms, uint64_t now_ms, double step, double speed)
+double app_simulation_live_span(uint64_t previous_ms, uint64_t now_ms, double step, double speed,
+                                double observed_rate)
 {
     if (!isfinite(step) || step <= 0 || !isfinite(speed) || speed < .05 || speed > 1.0)
         return 0;
     double elapsed = previous_ms && now_ms >= previous_ms ? (now_ms - previous_ms) * .001 : .016;
     double maximum = fmin(LIVE_MAX_BATCH_SECONDS, step * LIVE_MAX_BATCH_STEPS);
+    if (isfinite(observed_rate) && observed_rate > 0)
+        maximum = fmin(maximum, observed_rate * LIVE_TARGET_BATCH_WALL_SECONDS);
     return fmax(step, fmin(elapsed * speed, maximum));
 }
 
@@ -102,6 +108,13 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
     return NULL;
 }
 
+/* A batch started before T (or before the probe changed) measured something else. */
+static int same_live_probe(const SimLiveProbe *measured, const SimLiveProbe *shown)
+{
+    return measured->kind == shown->kind && measured->target.component == shown->target.component &&
+           measured->target.pin == shown->target.pin;
+}
+
 static void accept_automatic_result(AppState *app)
 {
     const SimAutoResult *r = &app->dc_job.auto_result;
@@ -120,6 +133,8 @@ static void accept_automatic_result(AppState *app)
             app->sim.live_rate = 0;
         app->sim.live_time = time;
         app->sim.live_sample_at = now;
+        if (same_live_probe(&app->dc_job.auto_options.live_probe, &app->live_graph.probe))
+            sim_live_graph_append(&app->live_graph, &r->live_samples);
     }
     app->sim.burn_revision = app->dc_job.snapshot.revision;
     memcpy(app->sim.burnt, r->burnt, sizeof(app->sim.burnt));
@@ -260,16 +275,24 @@ static void poll_result(AppState *app)
     }
 }
 
-static int needs_live_session(const Workbench *bench)
+
+/* The live graph samples one point inside every batch; a wire current needs instrumented wires. */
+static void set_live_probe(const AppState *app, SimAutoOptions *options)
 {
-    if (sim_auto_is_dynamic(bench))
-        return 1;
-    for (int i = 0; i < bench->part_count; ++i)
-        if (component_electrical_type(bench->parts[i].type) == PART_SOURCE ||
-            bench->parts[i].type == PART_DFF || bench->parts[i].type == PART_CLOCK ||
-            component_environment(bench->parts[i].type) || component_device(bench->parts[i].type))
-            return 1;
-    return 0;
+    if (!app->live_graph.active)
+        return;
+    options->live_probe = app->live_graph.probe;
+    options->live_probe.interval = app->transient_stop / LIVE_GRAPH_POINTS_PER_WINDOW;
+    if (options->live_probe.kind == SIM_LIVE_PROBE_WIRE_CURRENT)
+        options->instrument_wires = 1;
+}
+
+static void close_stale_live_graph(AppState *app)
+{
+    if (!sim_live_graph_stale(&app->live_graph, &app->bench))
+        return;
+    sim_live_graph_close(&app->live_graph);
+    app->status = tr(TXT_APP_LIVE_GRAPH_CLOSED_CHANGED);
 }
 
 static void schedule_analysis(AppState *app)
@@ -283,7 +306,7 @@ static void schedule_analysis(AppState *app)
     if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic && app->show_trace &&
         app->sim.result_revision == app->bench.revision)
         return;
-    int continuous = needs_live_session(&app->bench);
+    int continuous = sim_auto_uses_live_session(&app->bench);
     if (app->sim.auto_enabled && app->sim.sim_running && !app->dc_job.thread &&
         (continuous || SDL_GetTicks() - app->sim.bench_changed_at >= AUTO_DEBOUNCE_MS))
     {
@@ -296,7 +319,7 @@ static void schedule_analysis(AppState *app)
         if (dirty)
         {
             SimAutoOptions options = {app->show_current, sim_state_probe(&app->bench, app->selected, app->probe_pin),
-                                      app->transient_step, app->transient_stop, burn_limits_default()};
+                                      app->transient_step, app->transient_stop, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
             app->sim.requested_revision = app->bench.revision;
             app->sim.auto_requested_valid = 1;
             app->sim.auto_show_current = app->show_current;
@@ -306,8 +329,10 @@ static void schedule_analysis(AppState *app)
             if (continuous)
             {
                 uint64_t now = SDL_GetTicks();
+                options.step = sim_auto_live_max_step(&app->bench);
+                set_live_probe(app, &options);
                 double span = app_simulation_live_span(app->live_last_scheduled, now, options.step,
-                                                       app->simulation_speed);
+                                                       app->simulation_speed, app->sim.live_rate);
                 started = spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options,
                                                span);
             }
@@ -381,6 +406,7 @@ void app_simulation_update(AppState *app)
 {
     retain_visual_edit_result(app);
     poll_result(app);
+    close_stale_live_graph(app);
     start_pending_trace(app);
     step_microcontrollers(app);
     app->sim.display_pending = sim_state_has_result(&app->sim, SIM_RESULT_DC) &&

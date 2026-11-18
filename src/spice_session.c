@@ -11,6 +11,7 @@ struct SpiceSession
 {
     HANDLE process, input, output;
     int keep_log;
+    unsigned timeout_ms;
     char log_path[MAX_PATH];
 };
 
@@ -58,7 +59,7 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
 {
     ULONGLONG started = GetTickCount64();
     size_t count = 0;
-    while (GetTickCount64() - started < SPICE_SESSION_TIMEOUT_MS)
+    while (GetTickCount64() - started < session->timeout_ms)
     {
         DWORD available = 0, received = 0;
         if (!PeekNamedPipe(session->output, NULL, 0, NULL, &available, NULL))
@@ -103,7 +104,7 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
     }
     session->keep_log = 1;
     snprintf(message, message_capacity, tr(TXT_ENG_CALCULATION_TIMEOUT_LOG),
-             SPICE_SESSION_TIMEOUT_MS, session->log_path);
+             (int)session->timeout_ms, session->log_path);
     return 0;
 }
 
@@ -174,6 +175,7 @@ SpiceSession *spice_session_open(const char *executable, char *message, size_t c
         snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY));
         return NULL;
     }
+    session->timeout_ms = SPICE_SESSION_TIMEOUT_MS;
     DWORD length = GetFullPathNameA(executable, sizeof(runtime), runtime, NULL);
     if (!length || length >= sizeof(runtime))
         goto failure;
@@ -236,6 +238,62 @@ failure:
         CloseHandle(log);
     spice_session_close(session);
     return NULL;
+}
+
+int spice_session_probe(SpiceSession *session, const char *vector, double interval, char *message, size_t capacity)
+{
+    char command[SPICE_SESSION_COMMAND_CAPACITY], reply[512];
+    const char *name = vector ? vector : "";
+    if (!isfinite(interval) || interval <= 0 || strchr(name, ' ') ||
+        snprintf(command, sizeof(command), "P %.17g %s", interval, name) >= (int)sizeof(command))
+    {
+        snprintf(message, capacity, "%s", tr(TXT_ENG_REQUEST_INVALID));
+        return 0;
+    }
+    return request(session, command, reply, sizeof(reply), message, capacity);
+}
+
+/* "OK <start> <interval> <count> <values...>": every field must parse, or the block is rejected. */
+static int parse_samples(const char *reply, SpiceSampleBlock *block)
+{
+    char *end;
+    if (strncmp(reply, "OK ", 3))
+        return 0;
+    block->start = strtod(reply + 3, &end);
+    block->interval = strtod(end, &end);
+    long count = strtol(end, &end, 10);
+    if (count < 0 || count > SPICE_SESSION_MAX_SAMPLES || !isfinite(block->interval) || block->interval <= 0)
+        return 0;
+    block->count = (int)count;
+    for (int i = 0; i < block->count; ++i)
+    {
+        const char *field = end;
+        block->values[i] = strtod(field, &end);
+        if (end == field || !isfinite(block->values[i]))
+            return 0;
+    }
+    return 1;
+}
+
+int spice_session_samples(SpiceSession *session, SpiceSampleBlock *block, char *message, size_t capacity)
+{
+    /* Each value is at most "%.9g" plus a separator. */
+    char reply[96 + SPICE_SESSION_MAX_SAMPLES * 18];
+    if (!block || !request(session, "S", reply, sizeof(reply), message, capacity))
+        return 0;
+    if (!parse_samples(reply, block))
+    {
+        snprintf(message, capacity, "%s", tr(TXT_ENG_RESULT_INVALID));
+        return 0;
+    }
+    return 1;
+}
+
+void spice_session_set_timeout(SpiceSession *session, unsigned milliseconds)
+{
+    if (!session)
+        return;
+    session->timeout_ms = milliseconds ? milliseconds : SPICE_SESSION_TIMEOUT_MS;
 }
 
 int spice_session_load(SpiceSession *session, const char *path, char *message, size_t capacity)

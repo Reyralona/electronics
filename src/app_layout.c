@@ -428,6 +428,16 @@ AppRect app_layout_code_close(void)
     return close_button(app_layout_code_panel());
 }
 
+AppRect app_layout_graph_panel(void)
+{
+    return (AppRect){840, 384, 400, 244};
+}
+
+AppRect app_layout_graph_close(void)
+{
+    return close_button(app_layout_graph_panel());
+}
+
 AppRect app_layout_code_text(void)
 {
     AppRect panel = app_layout_code_panel();

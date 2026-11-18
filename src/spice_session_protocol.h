@@ -3,6 +3,12 @@
 /* Internal IPC bound, not a limit on circuits or saved paths. */
 #define SPICE_SESSION_COMMAND_CAPACITY 4096
 #define SPICE_SESSION_TIMEOUT_MS 10000
+/* Live graph samples kept by the host between two "S" requests. When a batch produces more, the
+ * host halves the resolution of what it holds, so one reply never grows beyond this. */
+#define SPICE_SESSION_MAX_SAMPLES 256
+/* Requests: "L <file>", "C <ngspice command>", "V <vector>" (last value),
+ * "P <interval> [vector]" (sample a vector on a time grid; no vector stops sampling) and
+ * "S" (answers "OK <start> <interval> <count> <values...>" and empties the samples). */
 /* A failed request answers "ERR <code> <number> <ngspice text>". The host sends no interface text:
  * the app turns the code into a sentence in the current language. */
 typedef enum

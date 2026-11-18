@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     compile_error_releases_pins();
     assert(argc == 2);
     executable = argv[1];
-    options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default()};
+    options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
     blink_drives_led();
     analog_and_lcd();
     puts("MCU boards: blink drives an LED, analogRead follows a pot, LCD over I2C pins and compile errors passed.");
