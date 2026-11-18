@@ -761,3 +761,26 @@ Validação concluída: `./build.ps1 -GuiTests -OutputName audit-fixes` passou c
 ngspice, 18 exemplos contínuos e autoteste gráfico com PATH mínimo. O nome alternativo foi
 necessário porque `build/build.exe` estava aberto; o executável temporário foi removido após
 os testes. Não foram gerados pacotes, tag ou release.
+
+## Usabilidade da interface (18/11/2026, 0.45.0)
+
+Escopo autorizado: as cinco prioridades da revisão Impeccable, em `feature/interface-usability`,
+a partir da main 0.44.1. Comparação anterior à implementação: [PLANO_INTERFACE.md](PLANO_INTERFACE.md).
+
+- Preservar SDL/OpenGL e os comandos existentes. A nova lista de controles compartilha a geometria
+  com desenho e entrada; o foco guarda o alvo geométrico para não saltar quando uma ação fica indisponível.
+- Salvar em slot ocupado exige confirmação. O alvo é o slot mostrado, não uma seleção posterior.
+  Resumo de peças/fios identifica o conteúdo sem migração do formato 34.
+- A preferência existente `gui_font_size` passa a solicitar escala da janela inteira (15 = 100%).
+  O desenho mantém coordenadas lógicas e recebe viewport proporcional; mouse e capturas usam a transformação inversa.
+  Escala que não cabe no monitor tem recusa visível. Não introduzimos reflow global ou um novo toolkit.
+- A busca usa nomes e identificadores do registro do catálogo padrão. A normalização cobre ASCII e Latin-1,
+  incluindo português; não acrescentamos biblioteca Unicode. A biblioteca de chips continua na aba Chips.
+- Medida e terminal do gráfico ao vivo se referem ao ponto plotado, mesmo com outra peça selecionada.
+  Alterar a escolha reinicia a série. Corrente de fio não oferece tensão fictícia.
+- Tab percorre controles; Ctrl+Tab conserva a categoria e dá acesso aos controles do editor de código.
+  F2 abre a escolha de exemplos; Ctrl+F2 conserva o avanço direto.
+
+Foco de teclado não fornece suporte a leitor de tela. Provedores de UI Automation e validação
+em múltiplos monitores/DPI ficam pendentes; a 1.0 não foi declarada. Mapa, capturas e fluxos estão em
+[REVISAO_INTERFACE.md](REVISAO_INTERFACE.md).

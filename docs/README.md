@@ -1,7 +1,7 @@
 # Documentação
 
 O [README do projeto](../README.md) apresenta o programa e os downloads.
-Os guias abaixo descrevem a versão 0.42.0, revisada em 17/11/2026.
+O guia de uso acompanha a versão 0.45.0, revisada em 18/11/2026. Registros históricos mantêm suas datas.
 
 ## Usar e desenvolver
 
@@ -23,6 +23,8 @@ Os guias abaixo descrevem a versão 0.42.0, revisada em 17/11/2026.
 | [META_1_0.md](META_1_0.md) | Critérios de aceite. A versão 1.0 ainda não foi atingida. |
 | [QUALIDADE_DE_USO.md](QUALIDADE_DE_USO.md) | Requisitos de interação e instrumentos. Estados antigos têm data. |
 | [QUALIDADE_CODIGO.md](QUALIDADE_CODIGO.md) | Convenções atuais e revisão original de arquitetura. |
+| [PLANO_INTERFACE.md](PLANO_INTERFACE.md) | Comparação técnica, escopo e aceite das melhorias de usabilidade. |
+| [REVISAO_INTERFACE.md](REVISAO_INTERFACE.md) | Mapa das telas, entregas, capturas e limites da revisão Impeccable. |
 | [DECISOES.md](DECISOES.md) | Decisões em ordem cronológica. Uma entrada posterior pode substituir outra. |
 | [CHIPS_RECURSIVOS.md](CHIPS_RECURSIVOS.md) | Comparação técnica e decisão para a composição de chips. |
 | [LOGICA_DIGITAL.md](LOGICA_DIGITAL.md) | Estudo inicial dos modelos digitais e seus limites. |

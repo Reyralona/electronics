@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.45.0
+
+- Projetos mostram um resumo de peças/fios. Substituir um slot ocupado exige confirmação; cancelar preserva o arquivo.
+- Barra com Desfazer, Refazer, Um passo, Criar chip, Ao vivo e Curva completa, usando os comandos existentes.
+- Busca de peças por nome/identificador em todo o catálogo, sem distinguir maiúsculas ou acentos portugueses.
+- Tab/Shift+Tab percorrem controles com foco visível; Enter/Espaço ativam. Ctrl+Tab mantém a troca de categorias.
+- No editor de código, Tab continua indentando; Ctrl+Tab acessa os controles.
+- Escala amplia a interface inteira; desenho e cliques preservam proporção em janelas de outros formatos.
+- Configurações separam Simulação de aparência; explicação do gráfico aparece inteira. Medida/terminal ficam junto ao gráfico ao vivo.
+- Biblioteca vazia explica como criar chips; edição de valores tem Confirmar/Cancelar e erros junto ao campo.
+- F2 abre Exemplos como o botão; Ctrl+F2 mantém o avanço direto. Idiomas usam nomes, em vez de bandeiras.
+- Sem alteração do formato de projeto (34), dependências ou modelos elétricos.
+
 ## 0.44.1
 
 - Corrigido: funções recursivas com muitas variáveis locais param antes de exceder a memória do interpretador.

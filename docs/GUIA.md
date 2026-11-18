@@ -1,11 +1,13 @@
 # Guia de uso da Bancada
 
-Este guia descreve o programa como ele está na versão 0.42.0. Para instalar, veja o [README](../README.md).
+Este guia descreve o programa como ele está na versão 0.45.0. Para instalar, veja o [README](../README.md).
 
 ## A tela
 
 - **Topo:** **Projetos** (slots de salvamento), **Exemplos**, **Configurações** e o botão **Simulando/Pausado** da simulação.
-- **Esquerda:** o catálogo de peças, em seis abas: **Básicos**, **Digital**, **Chips** (seus chips), **Sensores**, **Saídas** e **Medição**. `Tab` alterna entre as abas, e a roda do mouse rola a lista.
+- **Esquerda:** o catálogo de peças, em seis abas: **Básicos**, **Digital**, **Chips** (seus chips), **Sensores**, **Saídas** e **Medição**. `Ctrl+Tab` alterna entre as abas, e a roda do mouse rola a lista.
+- **Busca:** clique em **Buscar peças** ou use `Ctrl+F`. A busca procura nomes e identificadores do catálogo padrão. Aceita maiúsculas e nomes sem acentos. **×** limpa a busca e volta à categoria escolhida.
+- **Barra da bancada:** **Desfazer**, **Refazer**, **Um passo**, **Criar chip**, **Ao vivo** e **Curva completa**. Ações indisponíveis ficam desabilitadas.
 - **Centro:** a bancada.
 - **Direita:** o painel da peça selecionada, com valor, tamanho, leitura de corrente e controles próprios (cursor do potenciômetro, ambiente dos sensores, código da placa).
   O botão **–** no canto do painel o recolhe numa etiqueta pequena com o nome da peça; clique na etiqueta para abri-lo.
@@ -14,13 +16,25 @@ Este guia descreve o programa como ele está na versão 0.42.0. Para instalar, v
 
 ## Idioma
 
-Abra **Configurações** e clique na bandeira do Brasil ou dos Estados Unidos para escolher
-português ou inglês. A escolha fica salva nas preferências do programa. Projetos não mudam o idioma.
+Abra **Configurações** e clique em **Português** ou **English** para escolher o idioma.
+A escolha fica salva nas preferências do programa. Projetos não mudam o idioma.
 Na primeira execução, o programa usa português se o idioma do sistema for português; caso contrário, inglês.
 Nomes de chips digitados e código das placas mantêm o conteúdo original. Mensagens de status já exibidas
 mudam de idioma quando uma nova ação gera outra mensagem.
 
 ## Montar
+
+### Teclado e escala
+
+- `Tab` e `Shift+Tab` percorrem os controles visíveis. O contorno mostra o foco; `Enter` ou `Espaço` ativa.
+- Nos diálogos, o foco permanece nas ações daquele diálogo. `Esc` cancela ou fecha; não confirma substituição de arquivo.
+- No editor de código, `Tab` indenta e `Ctrl+Tab` percorre os controles. Clique no texto para voltar a digitar.
+- **Configurações → Escala da interface** amplia texto e alvos juntos (80% a 133%). A preferência é salva.
+  Ela define o tamanho solicitado para a janela. Ao redimensionar manualmente, a ampliação acompanha a área disponível.
+  A janela mínima tem área cliente de 1024×576. A escala solicitada precisa caber na área útil do monitor;
+  caso contrário, o programa informa o motivo e conserva a preferência anterior.
+- Redimensionar preserva a proporção de desenho e dos cliques, com margens quando necessário.
+  Isso não oferece suporte automático a leitor de tela; essa integração continua pendente.
 
 ### Peças
 
@@ -67,6 +81,7 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 ### Valores
 
 - Selecione a peça e pressione `E`, ou clique em **Valor** no painel. Aceita ponto ou vírgula e notação científica (`2.2e-6` = 2,2 µF).
+- Use **Confirmar**/**Cancelar**, ou `Enter`/`Esc`. Entrada inválida permanece no campo, com a causa exibida junto dele.
 - `+` e `-` dobram ou reduzem o valor à metade.
 - **Potenciômetro:** `Shift+roda` move o cursor.
 - **Sensores:** o controle de ambiente no painel (luz, temperatura, força, distância…) muda o comportamento elétrico. `Shift+roda` também ajusta.
@@ -130,6 +145,9 @@ O que aparece na tela:
 - O **X** no canto fecha o gráfico. Fechar a curva completa retoma a simulação contínua.
 - Mudar o número de peças ou de fios fecha o gráfico ao vivo; aperte `T` de novo.
 - Um ponto sem leitura (terra, ou peça sem corrente medida) mostra um aviso em vez de uma linha.
+- No gráfico ao vivo de uma peça, os controles acima do gráfico trocam a grandeza ou o terminal
+  da peça que está sendo medida, mesmo se outra peça estiver selecionada. Trocar reinicia a série de amostras.
+  No fio, a grandeza é corrente. **Configurações** dá acesso aos parâmetros da curva completa.
 
 ## Chips
 
@@ -180,9 +198,9 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 
 ## Projetos, exemplos e configurações
 
-- **Projetos** (ou `F3`): 9 slots. Escolha um e use **Salvar**/**Carregar**, ou `Ctrl+S`/`Ctrl+L`. Carregar um arquivo inválido não apaga a montagem aberta. Os slots guardam a montagem e as configurações, não o instante da simulação.
-- **Exemplos** (ou `F2` para o próximo): 18 circuitos prontos, com título e explicação. `Ctrl+Z` volta à montagem anterior.
-- **Configurações:** tema claro/escuro, tamanho do texto, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, cor dos fios, curvas e alças dos fios, nomes dos terminais, corrente nos fios e parâmetros do gráfico. As preferências são salvas automaticamente em `saves/preferences.txt`.
+- **Projetos** (ou `F3`): 9 slots com resumo de peças/fios. Escolha um e use **Salvar**/**Carregar**, ou `Ctrl+S`/`Ctrl+L`. Em slot ocupado, **Substituir** pede confirmação; cancelar conserva o arquivo salvo. Carregar um arquivo inválido não apaga a montagem aberta. Os slots guardam a montagem e as configurações, não o instante da simulação.
+- **Exemplos** (ou `F2`): 18 circuitos prontos, com título e explicação. `Ctrl+F2` avança diretamente para o próximo. `Ctrl+Z` volta à montagem anterior.
+- **Configurações:** tema claro/escuro, escala da interface, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, curvas e alças dos fios, nomes dos terminais, simulação e parâmetros do gráfico. A cor fica no painel do fio. As preferências são salvas automaticamente em `saves/preferences.txt`.
 
 ### Onde ficam os arquivos
 
@@ -233,10 +251,13 @@ Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canai
 | `Ctrl+G` / `Ctrl+Shift+G` | Criar chip / desagrupar chip |
 | `Enter` | Abrir o chip selecionado |
 | `X` | Transparência das peças |
-| `Tab` | Próxima aba do catálogo |
 | `Home` | Vista inicial |
 | `Esc` | Cancelar / limpar a seleção / fechar diálogo |
-| `F1` / `F2` / `F3` | Configurações / próximo exemplo / projetos |
+| `F1` / `F2` / `F3` | Configurações / exemplos / projetos |
+| `Ctrl+F2` | Próximo exemplo diretamente |
+| `Ctrl+F` | Buscar peças |
+| `Tab` / `Shift+Tab` | Próximo controle / controle anterior |
+| `Ctrl+Tab` | Próxima categoria; no editor de código, percorrer controles |
 | `Ctrl+roda` | Tamanho da peça (no chip: largura; com `Shift`: altura) |
 | `Shift+roda` | Cursor do potenciômetro / ambiente do sensor |
 | `Alt`+arrastar | Mover só a perna (terminal), reorganizar terminal de chip ou suspender o encaixe na grade |

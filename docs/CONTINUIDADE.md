@@ -5,11 +5,16 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão integrada: 0.44.1 (sem release). Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
+- Versão da branch `feature/interface-usability`: 0.45.0 (sem integração ou release).
+  `main` permanece em 0.44.1. Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
 - As cinco correções de `fix/audit-runtime` foram integradas à `main` em 18/11/2026 por pedido
   do responsável, com ponto de retorno `v0.44.1`. Nenhuma release foi publicada nesta integração.
+- A branch de interface implementa o [plano de usabilidade](PLANO_INTERFACE.md), sem trocar toolkit ou modelo elétrico.
+  `app_controls.c` lista os alvos de foco; geometria e transformação proporcional ficam em `app_layout.c`.
+  `gui_font_size` preserva o campo de preferências existente e passa a representar escala integral (15 = 100%).
+  Leitor de tela continua pendente: foco de teclado não equivale a um provedor de acessibilidade.
 
 ## Simulação
 
@@ -40,6 +45,9 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Verificação e próximos passos
 
+- 0.45.0: `./build.ps1 -GuiTests` passou; CMake/CTest verificaram novamente o fluxo de interface
+  e os 235 passos do autoteste gráfico após o ajuste final de autorrepetição. Capturas e limites
+  estão em [REVISAO_INTERFACE.md](REVISAO_INTERFACE.md). Branch separada, sem tag/release.
 - `./build.ps1 -GuiTests` passou com os testes de simulação, instrumentos e interface.
 - **Teste instável em aberto (17/11/2026):** `tests/test_chip_library_flow.c` falha de vez
   em quando em `assert(app_editor_save(inside))` (vistas as linhas 106 e 183): cerca de 2 falhas

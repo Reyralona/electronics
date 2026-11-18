@@ -36,3 +36,5 @@ Leitor de tela: investigação concluída quanto à necessidade de provedores; n
 - Texto, alvos e ponteiro permanecem alinhados ao redimensionar e mudar escala; tamanho indisponível tem causa visível.
 - Ritmo fica em Simulação; explicação de gráfico aparece inteira; medida/terminal podem ser escolhidos junto ao gráfico.
 - Testes de fluxo incluem casos opostos e reprodução anterior à correção; capturas claro/escuro são revisadas depois do build.
+
+Implementação e evidências: [REVISAO_INTERFACE.md](REVISAO_INTERFACE.md).
