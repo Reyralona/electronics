@@ -490,6 +490,25 @@ static SurfaceColor resistor_band(int digit)
     return colors[digit];
 }
 
+/* Set while a mirrored part body is drawn. Digits, screens and labels drawn between readable_begin and
+ * readable_end are flipped back around center_x, so they never read backwards. */
+static int drawing_mirrored;
+
+static void readable_begin(float center_x)
+{
+    glPushMatrix();
+    if (!drawing_mirrored)
+        return;
+    glTranslatef(center_x, 0, 0);
+    glScalef(-1, 1, 1);
+    glTranslatef(-center_x, 0, 0);
+}
+
+static void readable_end(void)
+{
+    glPopMatrix();
+}
+
 /* Seven-segment digit (segments a..g, bit 0 = a). Shared by the supply display and future displays. */
 static void seven_segment_digit(float x, float y, float height, int digit, int lit)
 {
@@ -533,11 +552,14 @@ static void draw_part_source(const Part *p)
     rounded_rect(x - 33, y - 20, 42, 19, 3);
     double volts = fmin(99.9, fmax(0, p->value));
     int tenths = (int)lround(volts * 10);
+    const float display_center = -12;
+    readable_begin(x + display_center);
     seven_segment_digit(x - 29, y - 17, 13, tenths >= 100 ? tenths / 100 % 10 : -1, p->on);
     seven_segment_digit(x - 20, y - 17, 13, tenths / 10 % 10, p->on);
     glColor3f(p->on ? .40f : .10f, p->on ? .98f : .19f, p->on ? .58f : .14f);
     rect(x - 12.5f, y - 5.5f, 1.6f, 1.6f);
     seven_segment_digit(x - 9, y - 17, 13, tenths % 10, p->on);
+    readable_end();
     glColor3f(.16f, .17f, .19f);
     circle(x + 24, y - 10, 8);
     glColor3f(.58f, .60f, .62f);
@@ -741,7 +763,7 @@ static void draw_part_led(const Part *p, int led, float brightness)
     /* The leads follow package rotation; the standing lens keeps its projection. */
     glPushMatrix();
     glTranslatef(x, y, 0);
-    glRotatef(-p->rotation * 90.0f, 0, 0, 1);
+    glRotatef((drawing_mirrored ? 1 : -1) * p->rotation * 90.0f, 0, 0, 1);
     glTranslatef(-x, -y, 0);
     /* Unlit lens is much darker than the lit one, so a change of state is obvious at a glance. */
     const float unlit_share = .28f, rim_share = .18f, white_unlit = .40f;
@@ -791,7 +813,18 @@ static void draw_polarity(float x, float y, int positive)
         rect(x - .7f, y - 3, 1.4f, 6);
 }
 
+static void voltage_mark_strokes(float x, float y, int digit, int decimal);
+
+/* Printed voltage label ("9V", "1.5V", "3V") kept readable on mirrored batteries. */
 static void voltage_mark(float x, float y, int digit, int decimal)
+{
+    const float label_center = decimal ? 14 : 8;
+    readable_begin(x + label_center);
+    voltage_mark_strokes(x, y, digit, decimal);
+    readable_end();
+}
+
+static void voltage_mark_strokes(float x, float y, int digit, int decimal)
 {
     static const unsigned char segments[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f};
     unsigned char mask = segments[digit];
@@ -804,7 +837,7 @@ static void voltage_mark(float x, float y, int digit, int decimal)
     if (decimal)
     {
         rect(x + 8, y + 9, 1, 1);
-        voltage_mark(x + 12, y, 5, 0);
+        voltage_mark_strokes(x + 12, y, 5, 0);
         return;
     }
     glLineWidth(fmaxf(1, drawing_scale));
@@ -1060,11 +1093,13 @@ static void draw_seven_segment(const Part *p)
     rounded_rect(x - 30, y - 44, 60, 88, 4);
     glColor3f(.16f, .16f, .18f);
     rounded_rect(x - 26, y - 40, 52, 80, 3);
+    readable_begin(x);
     for (int segment = 0; segment < COMPONENT_SEGMENTS; ++segment)
     {
         float glow = led_glow(device_element(segment));
         segment_shape(x - 15, y - 30, 58, segment, glow > .02f, glow);
     }
+    readable_end();
 }
 
 static void draw_dip_switch(const Part *p)
@@ -1229,7 +1264,10 @@ static void draw_function_generator(const Part *p)
     gradient_rect(x - 39, y - 27, 78, 54, (SurfaceColor){.42f, .45f, .48f}, (SurfaceColor){.28f, .30f, .33f});
     glColor3f(.04f, .07f, .06f);
     rounded_rect(x - 34, y - 22, 44, 22, 3);
+    const float wave_center = -12;
+    readable_begin(x + wave_center);
     draw_wave_icon(x - 30, y - 11, p->states);
+    readable_end();
     glColor3f(.16f, .17f, .19f);
     circle(x + 24, y - 11, 8);
     glColor3f(.62f, .64f, .66f);
@@ -1268,7 +1306,9 @@ static void draw_multimeter(const Part *p)
     gradient_rect(x - 32, y - 48, 64, 96, (SurfaceColor){.98f, .80f, .15f}, (SurfaceColor){.88f, .66f, .08f});
     glColor3f(.62f, .70f, .58f);
     rounded_rect(x - 27, y - 42, 54, 24, 3);
+    readable_begin(x);
     draw_number(x - 25, y - 38, 15, reading, p->states == 2 ? 0 : 2);
+    readable_end();
     glColor3f(.15f, .15f, .16f);
     circle(x, y + 8, 16);
     glColor3f(.85f, .85f, .86f);
@@ -1287,6 +1327,8 @@ static void draw_oscilloscope(const Part *p)
     const float screen_w = 100, screen_h = 64, volts_per_screen = 10;
     glColor3f(.18f, .20f, .23f);
     rounded_rect(x - 70, y - 52, 140, 104, 6);
+    /* Time runs left to right on the screen even when the instrument is mirrored. */
+    readable_begin(x - 64 + screen_w / 2);
     glColor3f(.03f, .08f, .06f);
     rect(x - 64, y - 46, screen_w, screen_h);
     glColor3f(.08f, .22f, .16f);
@@ -1303,6 +1345,7 @@ static void draw_oscilloscope(const Part *p)
         glVertex2f(x - 64 + screen_w * i / (float)(COMPONENT_SCOPE_HISTORY - 1), y - 46 + screen_h / 2 - v * screen_h / 2);
     }
     glEnd();
+    readable_end();
     glColor3f(.55f, .57f, .60f);
     for (int knob = 0; knob < 3; ++knob)
         circle(x + 52, y - 36 + knob * 22, 6);
@@ -1498,6 +1541,8 @@ static void draw_lcd(const Part *p)
     glColor3f(.85f, .86f, .87f);
     for (int hole = 0; hole < 4; ++hole)
         circle(x + (hole % 2 ? 116 : -116), y + (hole / 2 ? 38 : -38), 3.5f);
+    const float screen_center = 2;
+    readable_begin(x + screen_center);
     glColor3f(.06f, .07f, .08f);
     rect(x - 108, y - 34, 220, 68);
     glColor3f(lit ? .10f : .36f, lit ? .25f : .46f, lit ? .70f : .16f);
@@ -1509,6 +1554,7 @@ static void draw_lcd(const Part *p)
             unsigned char c = powered && screen && screen->used ? (unsigned char)screen->text[row][column] : ' ';
             lcd_character(x - 100 + column * cell, y - 23 + row * 26.0f, c ? c : ' ', pixel, lit);
         }
+    readable_end();
 }
 
 /* Rigid multi-pin packages: metal legs from each terminal to the nearest body edge. */
@@ -1828,8 +1874,12 @@ static void part_draw_oriented(const Part *part, int selected, int led, float br
     glRotatef((float)part->rotation * 90.0f, 0, 0, 1);
     float scale = bench_part_scale(part);
     glScalef(scale, scale, 1);
+    drawing_mirrored = part->mirrored && part->type != PART_BREADBOARD;
+    if (drawing_mirrored)
+        glScalef(-1, 1, 1);
     glLineWidth(fmaxf(1, drawing_scale * scale));
     part_draw(&local, selected, led, brightness);
+    drawing_mirrored = 0;
     glLineWidth(1);
     glPopMatrix();
 }
@@ -2997,6 +3047,8 @@ static void draw_groups(const AppState *app, GLuint font)
         glPushMatrix();
         glTranslatef(group->x, group->y, 0);
         glRotatef(group->rotation * 90.0f, 0, 0, 1);
+        if (group->mirrored)
+            glScalef(-1, 1, 1);
         glTranslatef(-group->x, -group->y, 0);
         float left = group->x - width * .5f, top = group->y - height * .5f;
         glColor3f(.10f, .11f, .12f);
@@ -3422,8 +3474,9 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     float title_right = app_layout_inspector_minimize().x;
     if (part->type != PART_BREADBOARD)
     {
-        title_right = app_layout_inspector_rotate().x;
+        title_right = app_layout_inspector_mirror().x;
         ui_button(app, font, app_layout_inspector_rotate(), tr(TXT_UI_ROTATE), UI_BUTTON_NEUTRAL);
+        ui_button(app, font, app_layout_inspector_mirror(), tr(TXT_UI_MIRROR), UI_BUTTON_NEUTRAL);
     }
     draw_inspector_title(app, font, part_name(part->type), title_right);
     if (mcu_board(part->type))

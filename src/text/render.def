@@ -34,6 +34,7 @@ UI_TEXT(UI_VIEW_INSIDE, "Ver interior", "View inside")
 UI_TEXT(UI_CHIP_DIMENSIONS, "Largura %.0f · Altura %.0f", "Width %.0f · Height %.0f")
 /* Inspector. */
 UI_TEXT(UI_ROTATE, "Girar", "Rotate")
+UI_TEXT(UI_MIRROR, "Espelhar", "Mirror")
 UI_TEXT(UI_CODE, "Código", "Code")
 UI_TEXT(UI_EDIT_CODE, "Editar código", "Edit code")
 UI_TEXT(UI_VALUE, "Valor", "Value")
@@ -99,9 +100,9 @@ UI_TEXT(UI_GRAPH_LIVE_NO_READING, "Este ponto não tem leitura (terra ou sem cor
         "This point has no reading (ground or no measured current).")
 /* Status bar key hints: "Key: action", joined by " · ". */
 UI_TEXT(UI_HINT_CHIP,
-        "R: girar · Enter: ver interior · 2 cliques no terminal: nomear · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
-        "R: rotate · Enter: view inside · Double-click terminal: name · Alt+drag terminal: rearrange · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
-UI_TEXT(UI_HINT_ROTATE, "R: girar", "R: rotate")
+        "R: girar · M: espelhar · Enter: ver interior · 2 cliques no terminal: nomear · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
+        "R: rotate · M: mirror · Enter: view inside · Double-click terminal: name · Alt+drag terminal: rearrange · Ctrl+wheel: width · Ctrl+Shift+wheel: height · Delete: delete")
+UI_TEXT(UI_HINT_ROTATE, "R: girar · M: espelhar", "R: rotate · M: mirror")
 UI_TEXT(UI_HINT_VALUE, "E: valor", "E: value")
 UI_TEXT(UI_HINT_SIZE, "Ctrl+roda: tamanho", "Ctrl+wheel: size")
 UI_TEXT(UI_HINT_LEGS, "Alt+arrastar: pernas", "Alt+drag: legs")

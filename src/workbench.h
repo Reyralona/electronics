@@ -100,6 +100,7 @@ typedef struct
     float io_level[WORKBENCH_MAX_IO];
     unsigned char io_mode[WORKBENCH_MAX_IO];
     int rotation;
+    int mirrored; /* Left-right mirror in the package frame, applied before rotation; saved from format 34. */
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
     uint64_t exposed[(WORKBENCH_MAX_PINS + 63) / 64];
@@ -168,6 +169,7 @@ typedef struct
     char name[BENCH_GROUP_NAME_CAPACITY];
     float width, height; /* Zero selects the automatic package dimensions. */
     int rotation; /* Package orientation, independent of internal parts; saved from format 29. */
+    int mirrored; /* Terminal sides swapped (left <-> right) before rotation; saved from format 34. */
     uint64_t model; /* Library model identity shared by its copies (0 = none); saved from format 28. */
     /* Number of terminals the custom arrangement covers; 0 or a different terminal count = automatic
      * (first half left, rest right). Saved from format 30. */
@@ -217,6 +219,8 @@ int bench_port_name(const Part *part, int pin, char *name, size_t capacity);
 /* Sets or, with an empty name, removes the name of one terminal. Returns 0 for invalid arguments. */
 int bench_set_port_name(Workbench *bench, Pin pin, const char *name);
 int bench_set_wire_color(Workbench *bench, int wire, int color);
+/* Mirrors a rotatable part (or a chip) left-right: its terminals swap sides. Displays stay readable. */
+int bench_mirror_part(Workbench *bench, int component);
 int bench_set_wire_route(Workbench *bench, int wire, const WirePoint *points, int count);
 int bench_insert_knee(Workbench *bench, int wire, int slot, WirePoint point);
 int wire_pick_segment(const Wire *wire, WirePoint start, WirePoint end, float radius,

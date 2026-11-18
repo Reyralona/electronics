@@ -98,6 +98,7 @@ AppRect app_layout_inspector_minimize(void);
 /* Collapsed inspector: a small tab with the part name; clicking it expands the panel again. */
 AppRect app_layout_inspector_tab(void);
 AppRect app_layout_inspector_rotate(void);
+AppRect app_layout_inspector_mirror(void);
 AppRect app_layout_inspector_value(void);
 AppRect app_layout_inspector_scale(void);
 AppRect app_layout_environment_slider(void);

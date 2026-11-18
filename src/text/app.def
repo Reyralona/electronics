@@ -30,6 +30,8 @@ UI_TEXT(APP_RECALCULATING, "Recalculando o circuito...", "Recalculating the circ
 UI_TEXT(APP_RESETTING, "Reiniciando o estado elétrico...", "Resetting the electrical state...")
 UI_TEXT(APP_PART_ROTATED, "Peça girada.", "Part rotated.")
 UI_TEXT(APP_BOARD_NO_ROTATE, "Esta placa não gira.", "This board cannot rotate.")
+UI_TEXT(APP_PART_MIRRORED, "Peça espelhada: os terminais trocaram de lado.", "Part mirrored: its terminals swapped sides.")
+UI_TEXT(APP_BOARD_NO_MIRROR, "Esta placa não pode ser espelhada.", "This board cannot be mirrored.")
 UI_TEXT(APP_GRAPH_SHOWN, "Gráfico visível.", "Graph shown.")
 UI_TEXT(APP_GRAPH_HIDDEN, "Gráfico oculto. G: mostrar.", "Graph hidden. G: show.")
 UI_TEXT(APP_LIVE_GRAPH_OPENED, "Gráfico ao vivo: a simulação continua. Shift+T: curva completa desde t = 0.",

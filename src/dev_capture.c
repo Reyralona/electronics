@@ -7,7 +7,7 @@
 int dev_capture_requested(const char *argument)
 {
     static const char *modes[] = {
-        "--capture-live-rc", "--capture-live-off", "--capture-live-graph", "--capture-wire-panel",
+        "--capture-live-rc", "--capture-live-off", "--capture-live-graph", "--capture-wire-panel", "--capture-mirror",
         "--capture-catalog", "--capture-leads", "--capture-environment",
         "--capture-inspector", "--capture-inspector-minimized",
         "--capture-dark",

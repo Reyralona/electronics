@@ -24,6 +24,7 @@
 #define INSPECTOR_HEADER_BUTTON 26.0f
 #define INSPECTOR_HEADER_Y (INSPECTOR_TOP + 7)
 #define INSPECTOR_ROTATE_W 64.0f
+#define INSPECTOR_MIRROR_W 78.0f
 #define INSPECTOR_TAB_W 180.0f
 #define INSPECTOR_TAB_H 32.0f
 #define INSPECTOR_SWATCH_W 24.0f
@@ -258,6 +259,12 @@ AppRect app_layout_inspector_rotate(void)
 {
     float x = app_layout_inspector_minimize().x - 6 - INSPECTOR_ROTATE_W;
     return (AppRect){x, INSPECTOR_HEADER_Y, INSPECTOR_ROTATE_W, INSPECTOR_HEADER_BUTTON};
+}
+
+AppRect app_layout_inspector_mirror(void)
+{
+    float x = app_layout_inspector_rotate().x - 6 - INSPECTOR_MIRROR_W;
+    return (AppRect){x, INSPECTOR_HEADER_Y, INSPECTOR_MIRROR_W, INSPECTOR_HEADER_BUTTON};
 }
 
 AppRect app_layout_inspector_value(void)

@@ -235,6 +235,22 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             bench_set_wire_color(&app->bench, 2, BENCH_COLOR_ORANGE);
         }
     }
+    if (app->capture && !strcmp(argv[1], "--capture-mirror"))
+    {
+        /* Top row as placed, bottom row mirrored: terminals swap sides, displays stay readable. */
+        static const PartType types[] = {PART_SOURCE, PART_SEVEN_SEGMENT, PART_MULTIMETER, PART_OSCILLOSCOPE,
+                                         PART_BATTERY_9V, PART_DIODE, PART_LED, PART_AND};
+        const int count = (int)(sizeof(types) / sizeof(types[0]));
+        bench_snapshot_clear(&app->bench);
+        for (int row = 0; row < 2; ++row)
+            for (int i = 0; i < count; ++i)
+            {
+                int part = bench_add(&app->bench, types[i], 300 + i * 120.0f, 200 + row * 220.0f);
+                if (part >= 0 && row)
+                    bench_mirror_part(&app->bench, part);
+            }
+        app->selected = -1;
+    }
     if (app->capture && !strcmp(argv[1], "--capture-live-graph"))
     {
         bench_snapshot_clear(&app->bench);

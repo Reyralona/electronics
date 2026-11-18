@@ -742,6 +742,11 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
         push_shortcut(SDLK_R);
         return 1;
     }
+    if (part->type != PART_BREADBOARD && app_rect_contains(app_layout_inspector_mirror(), x, y))
+    {
+        push_shortcut(SDLK_M);
+        return 1;
+    }
     return 0;
 }
 

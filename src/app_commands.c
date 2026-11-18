@@ -196,6 +196,28 @@ static void command_rotate(AppState *app)
         app->status = tr(TXT_APP_BOARD_NO_ROTATE);
 }
 
+static void command_mirror(AppState *app)
+{
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench))
+    {
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
+        return;
+    }
+    if (!bench_mirror_part(&app->bench, app->selected))
+    {
+        app->status = tr(TXT_APP_BOARD_NO_MIRROR);
+        return;
+    }
+    if (!app->bench.parts[app->selected].group)
+        bench_snap_to_breadboard(&app->bench, app->selected);
+    bench_history_record(app->history, &before);
+    app->dragging = -1;
+    app->pending.component = -1;
+    app->route_count = 0;
+    app->status = tr(TXT_APP_PART_MIRRORED);
+}
+
 static void command_graph(AppState *app)
 {
     app->show_trace = !app->show_trace;
@@ -422,7 +444,8 @@ static void command_delete_wire(AppState *app)
 
 static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
-    if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T && key != SDLK_R)
+    if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T && key != SDLK_R &&
+        key != SDLK_M)
     {
         app->status = tr(TXT_APP_CHIP_ACTION_UNAVAILABLE);
         return;
@@ -431,6 +454,9 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
     {
     case SDLK_R:
         command_rotate(app);
+        break;
+    case SDLK_M:
+        command_mirror(app);
         break;
     case SDLK_T:
         if (app->bench.parts[app->selected].type != PART_BREADBOARD)
