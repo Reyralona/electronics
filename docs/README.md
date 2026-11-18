@@ -27,6 +27,7 @@ Os guias abaixo descrevem a versão 0.42.0, revisada em 17/11/2026.
 | [CHIPS_RECURSIVOS.md](CHIPS_RECURSIVOS.md) | Comparação técnica e decisão para a composição de chips. |
 | [LOGICA_DIGITAL.md](LOGICA_DIGITAL.md) | Estudo inicial dos modelos digitais e seus limites. |
 | [REVISAO_VISUAL.md](REVISAO_VISUAL.md) | Evidências das rodadas de revisão de arte. Capturas ficam no build local. |
+| [AUDITORIA_REPOSITORIO.md](AUDITORIA_REPOSITORIO.md) | Auditorias consolidadas, falhas confirmadas e bateria de uso planejada. |
 | [CONTINUIDADE.md](CONTINUIDADE.md) | Diário interno. Leia as entradas finais para retomar o trabalho. |
 
 O [CHANGELOG](../CHANGELOG.md) registra as versões.
