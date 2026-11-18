@@ -290,6 +290,15 @@ static int wire_valid(const Workbench *bench, int wire)
     return bench && wire >= 0 && wire < bench->wire_count;
 }
 
+int bench_color_from_legacy_wire(int legacy)
+{
+    static const int colors[BENCH_LEGACY_WIRE_COLORS] = {BENCH_COLOR_BLUE,  BENCH_COLOR_RED,    BENCH_COLOR_BLUE,
+                                                         BENCH_COLOR_GREEN, BENCH_COLOR_YELLOW, BENCH_COLOR_WHITE};
+    if (legacy < 0 || legacy >= BENCH_LEGACY_WIRE_COLORS)
+        return -1;
+    return colors[legacy];
+}
+
 int bench_set_wire_color(Workbench *bench, int wire, int color)
 {
     if (!wire_valid(bench, wire) || color < 0 || color >= WIRE_COLOR_COUNT)
@@ -1081,7 +1090,7 @@ int bench_toggle_wire(Workbench *b, Pin a, Pin c)
     }
     if (b->wire_count == WORKBENCH_MAX_WIRES)
         return 0;
-    b->wires[b->wire_count++] = (Wire){.a = a, .b = c};
+    b->wires[b->wire_count++] = (Wire){.a = a, .b = c, .color = BENCH_DEFAULT_WIRE_COLOR};
     ++b->revision;
     return 1;
 }

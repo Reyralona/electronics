@@ -127,10 +127,24 @@ static void line(float x, float y, float x2, float y2)
 }
 static void circle(float x, float y, float radius);
 static void rounded_rect(float x, float y, float w, float h, float radius);
-static const float wire_palette[WIRE_COLOR_COUNT][3] = {{.12f, .36f, .48f}, {.75f, .12f, .12f}, {.12f, .12f, .14f},
-                                                        {.12f, .52f, .25f}, {.9f, .7f, .08f},   {.84f, .86f, .87f}};
-static const TextId wire_color_names[WIRE_COLOR_COUNT] = {TXT_WIRE_COLOR_BLUE,  TXT_WIRE_COLOR_RED,    TXT_WIRE_COLOR_BLACK,
-                                                         TXT_WIRE_COLOR_GREEN, TXT_WIRE_COLOR_YELLOW, TXT_WIRE_COLOR_WHITE};
+/* Shared palette (BenchColor): wire insulation and swatch tone, and the lit LED lens. */
+typedef struct
+{
+    float wire[3];
+    float lit[3];
+} PaletteTone;
+static const PaletteTone palette_tones[BENCH_COLOR_COUNT] = {
+    {{.78f, .14f, .12f}, {1, .30f, .24f}},   {{.12f, .55f, .25f}, {.40f, 1, .45f}},
+    {{.12f, .36f, .58f}, {.40f, .62f, 1}},   {{.90f, .72f, .08f}, {1, .92f, .30f}},
+    {{.86f, .88f, .89f}, {1, 1, 1}},         {{.92f, .48f, .10f}, {1, .62f, .18f}},
+    {{.48f, .24f, .70f}, {.78f, .45f, 1}},   {{.92f, .42f, .64f}, {1, .55f, .78f}},
+    {{.10f, .66f, .76f}, {.35f, .95f, 1}},   {{.52f, .78f, .12f}, {.72f, 1, .25f}}};
+
+static const PaletteTone *palette_tone(int color)
+{
+    return &palette_tones[color >= 0 && color < BENCH_COLOR_COUNT ? color : BENCH_DEFAULT_WIRE_COLOR];
+}
+
 static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
 {
     float dx = next.x - hole.x, dy = next.y - hole.y, length = hypotf(dx, dy);
@@ -138,7 +152,8 @@ static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
         return;
     dx /= length;
     dy /= length;
-    color(wire_palette[wire_color][0], wire_palette[wire_color][1], wire_palette[wire_color][2]);
+    const float *tone = palette_tone(wire_color)->wire;
+    color(tone[0], tone[1], tone[2]);
     glLineWidth(5);
     line(hole.x + dx * 14, hole.y + dy * 14, hole.x + dx * 5, hole.y + dy * 5);
     color(.75f, .52f, .22f);
@@ -728,12 +743,17 @@ static void draw_part_led(const Part *p, int led, float brightness)
     glTranslatef(x, y, 0);
     glRotatef(-p->rotation * 90.0f, 0, 0, 1);
     glTranslatef(-x, -y, 0);
-    /* Per color: dark rim, unlit lens and lit lens (Part.states, see component_led_color_name). */
-    static const float palette[COMPONENT_LED_COLORS][3][3] = {
-        {{.38f, .08f, .07f}, {.48f, .08f, .08f}, {1, .33f, .26f}},  {{.06f, .30f, .12f}, {.10f, .40f, .16f}, {.40f, 1, .45f}},
-        {{.06f, .14f, .40f}, {.10f, .20f, .52f}, {.40f, .62f, 1}},  {{.42f, .36f, .04f}, {.55f, .48f, .08f}, {1, .92f, .30f}},
-        {{.55f, .56f, .58f}, {.80f, .82f, .84f}, {1, 1, 1}},        {{.45f, .20f, .03f}, {.62f, .30f, .06f}, {1, .62f, .18f}}};
-    const float(*tone)[3] = palette[p->states < COMPONENT_LED_COLORS ? p->states : 0];
+    /* Unlit lens is much darker than the lit one, so a change of state is obvious at a glance. */
+    const float unlit_share = .28f, rim_share = .18f, white_unlit = .40f;
+    const float *lit = palette_tone(p->states < COMPONENT_LED_COLORS ? (int)p->states : 0)->lit;
+    int white = p->states == BENCH_COLOR_WHITE;
+    float tone[3][3];
+    for (int c = 0; c < 3; ++c)
+    {
+        tone[1][c] = white ? white_unlit + .02f * c : lit[c] * unlit_share;
+        tone[0][c] = white ? white_unlit * .7f : lit[c] * rim_share;
+        tone[2][c] = lit[c];
+    }
     glColor3f(tone[0][0], tone[0][1], tone[0][2]);
     ellipse(x, y + 9, 17, 5);
     rect(x - 14, y - 12, 28, 21);
@@ -755,8 +775,8 @@ static void draw_part_led(const Part *p, int led, float brightness)
                   tone[1][2] + (tone[2][2] - tone[1][2]) * glow);
         circle(x, y - 14, 13);
         rect(x - 13, y - 14, 26, 23);
-        glColor3f(fminf(1, tone[1][0] + .3f + .3f * glow), fminf(1, tone[1][1] + .3f + .3f * glow),
-                  fminf(1, tone[1][2] + .3f + .3f * glow));
+        const float shine = .12f + .45f * glow;
+        glColor3f(fminf(1, tone[1][0] + shine), fminf(1, tone[1][1] + shine), fminf(1, tone[1][2] + shine));
         circle(x - 4, y - 18, 4);
         rect(x - 8, y - 17, 3, 14);
     }
@@ -2471,13 +2491,14 @@ static void draw_workspace_wires(const AppState *app)
             }
             else if (pass == 1)
             {
-                color(wire_palette[w->color][0], wire_palette[w->color][1], wire_palette[w->color][2]);
+                const float *tone = palette_tone(w->color)->wire;
+                color(tone[0], tone[1], tone[2]);
                 glLineWidth(5);
             }
             else
             {
-                color(wire_palette[w->color][0] * .65f + .25f, wire_palette[w->color][1] * .65f + .25f,
-                      wire_palette[w->color][2] * .65f + .25f);
+                const float *tone = palette_tone(w->color)->wire;
+                color(tone[0] * .65f + .25f, tone[1] * .65f + .25f, tone[2] * .65f + .25f);
                 glLineWidth(2);
             }
             glBegin(GL_LINE_STRIP);
@@ -3112,6 +3133,7 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
 #define INSPECTOR_LED_HEIGHT 176.0f
 #define INSPECTOR_ENVIRONMENT_HEIGHT 228.0f
 #define INSPECTOR_GROUP_HEIGHT 104.0f
+#define INSPECTOR_WIRE_NOTE 268.0f
 
 static float inspector_text_x(void)
 {
@@ -3344,28 +3366,32 @@ static void draw_environment_control(GLuint font, const Part *part)
     inspector_note_text(font, INSPECTOR_NOTE_TOP, environment->note);
 }
 
-static void draw_led_colors(const AppState *app, GLuint font, const Part *part)
+/* Row of palette swatches; the chosen one gets an accent ring. Shared by LEDs and wires. */
+static void draw_color_swatches(AppRect (*swatch)(int), int chosen)
 {
-    static const float swatches[APP_LED_SWATCHES][3] = {{.90f, .18f, .14f}, {.20f, .75f, .30f}, {.20f, .42f, .95f},
-                                                        {.98f, .85f, .15f}, {.96f, .97f, .98f}, {1, .55f, .10f}};
-    char label[64];
-    snprintf(label, sizeof(label), tr(TXT_UI_LED_COLOR), component_led_color_name(part->states));
-    color(UI_INK);
-    text(font, inspector_text_x(), INSPECTOR_LINE_2, label);
-    for (int index = 0; index < APP_LED_SWATCHES; ++index)
+    for (int index = 0; index < BENCH_COLOR_COUNT; ++index)
     {
-        AppRect r = app_layout_led_swatch(index);
-        if (part->states == (unsigned)index)
+        AppRect r = swatch(index);
+        if (chosen == index)
         {
             glColor3f(UI_ACCENT);
             rounded_rect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 7);
         }
         color(UI_BORDER);
         ui_rounded(r, 5);
-        glColor3f(swatches[index][0], swatches[index][1], swatches[index][2]);
+        const float *tone = palette_tone(index)->wire;
+        glColor3f(tone[0], tone[1], tone[2]);
         rounded_rect(r.x + 1, r.y + 1, r.w - 2, r.h - 2, 4);
-        (void)app;
     }
+}
+
+static void draw_led_colors(GLuint font, const Part *part)
+{
+    char label[64];
+    snprintf(label, sizeof(label), tr(TXT_UI_LED_COLOR), component_color_name(part->states));
+    color(UI_INK);
+    text(font, inspector_text_x(), INSPECTOR_LINE_2, label);
+    draw_color_swatches(app_layout_color_swatch, (int)part->states);
 }
 
 static void draw_part_inspector(const AppState *app, GLuint font)
@@ -3420,14 +3446,73 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     if (environment)
         draw_environment_control(font, part);
     else if (part->type == PART_LED)
-        draw_led_colors(app, font, part);
+        draw_led_colors(font, part);
     else if (note[0])
         inspector_note_text(font, INSPECTOR_LINE_2, note);
 }
 
+/* "Part · terminal" for one end of a wire; chip members show the chip name. */
+static void wire_end_text(const AppState *app, Pin end, char *text_out, size_t capacity)
+{
+    const Part *part = &app->bench.parts[end.component];
+    const char *name = part->group ? app->bench.groups[part->group - 1].name : part_name(part->type);
+    const ComponentPinInfo *info = component_pin_info(part->type, end.pin);
+    char terminal[48];
+    if (info && info->name && info->name[0])
+        snprintf(terminal, sizeof(terminal), "%s", info->name);
+    else
+        snprintf(terminal, sizeof(terminal), tr(TXT_UI_WIRE_TERMINAL), end.pin + 1);
+    snprintf(text_out, capacity, tr(TXT_UI_WIRE_END), name, terminal);
+}
+
+static void wire_current_text(const AppState *app, int wire, char *text_out, size_t capacity)
+{
+    if (!app->show_current)
+    {
+        snprintf(text_out, capacity, "%s", tr(TXT_UI_WIRE_CURRENT_OFF));
+        return;
+    }
+    if (!sim_state_has_result(&app->sim, SIM_RESULT_DC) || !app->sim.dc_wire_valid)
+    {
+        snprintf(text_out, capacity, "%s", tr(TXT_UI_WIRE_NO_CURRENT));
+        return;
+    }
+    const double milliamps_per_amp = 1e3;
+    snprintf(text_out, capacity, tr(TXT_UI_WIRE_CURRENT), app->sim.dc_wire_currents[wire] * milliamps_per_amp);
+}
+
+static void draw_wire_inspector(const AppState *app, GLuint font)
+{
+    const Wire *wire = &app->bench.wires[app->selected_wire];
+    char from[160], to[160], line_text[200];
+    ui_panel(app_layout_wire_inspector());
+    draw_inspector_title(app, font, tr(TXT_UI_WIRE_TITLE), app_layout_inspector_minimize().x);
+    wire_end_text(app, wire->a, from, sizeof(from));
+    wire_end_text(app, wire->b, to, sizeof(to));
+    draw_inspector_row(app, font, app_layout_inspector_value(), tr(TXT_UI_WIRE_FROM), from, 0);
+    draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_WIRE_TO), to, 0);
+    wire_current_text(app, app->selected_wire, line_text, sizeof(line_text));
+    color(UI_INK);
+    name_text(font, inspector_text_x(), INSPECTOR_LINE_1, line_text, inspector_text_w());
+    snprintf(line_text, sizeof(line_text), tr(TXT_UI_WIRE_COLOR), component_color_name((unsigned)wire->color));
+    text(font, inspector_text_x(), INSPECTOR_LINE_2, line_text);
+    draw_color_swatches(app_layout_color_swatch, wire->color);
+    inspector_note_text(font, INSPECTOR_WIRE_NOTE, tr(TXT_UI_WIRE_COLOR_NOTE));
+}
+
 static void draw_inspector(const AppState *app, GLuint font)
 {
-    if (app->selected < 0 || app->settings || app->projects_open || app->examples_open || app->code_part >= 0)
+    if (app->settings || app->projects_open || app->examples_open || app->code_part >= 0)
+        return;
+    if (app->selected < 0 && app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count)
+    {
+        if (app->inspector_minimized)
+            draw_inspector_tab(app, font, tr(TXT_UI_WIRE_TITLE));
+        else
+            draw_wire_inspector(app, font);
+        return;
+    }
+    if (app->selected < 0)
         return;
     const Part *part = &app->bench.parts[app->selected];
     if (app->inspector_minimized)
@@ -3549,25 +3634,8 @@ static void draw_settings_snapping(const AppState *app, GLuint font)
 static void draw_settings_wires(const AppState *app, GLuint font)
 {
     ui_section(font, app_layout_settings_section(1, 0), tr(TXT_SETTINGS_WIRES));
-    AppRect first = app_layout_wire_swatch(0);
-    color(UI_INK);
-    text(font, first.x, first.y - 8, app->selected_wire >= 0 ? tr(TXT_SETTINGS_SELECTED_WIRE_COLOR) : tr(TXT_SETTINGS_NEW_WIRE_COLOR));
-    for (int swatch = 0; swatch < WIRE_COLOR_COUNT; ++swatch)
-    {
-        AppRect r = app_layout_wire_swatch(swatch);
-        if (swatch == app->wire_color)
-        {
-            glColor3f(UI_ACCENT);
-            rounded_rect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 8);
-        }
-        color(UI_BORDER);
-        ui_rounded(r, 6);
-        glColor3f(wire_palette[swatch][0], wire_palette[swatch][1], wire_palette[swatch][2]);
-        rounded_rect(r.x + 1, r.y + 1, r.w - 2, r.h - 2, 5);
-    }
-    color(UI_MUTED);
-    AppRect last = app_layout_wire_swatch(WIRE_COLOR_COUNT - 1);
-    text(font, last.x + last.w + 12, ui_baseline(last), tr(wire_color_names[app->wire_color]));
+    AppRect first_row = app_layout_settings_section(1, 0);
+    ui_note(font, first_row.x, first_row.y + first_row.h + 30, tr(TXT_SETTINGS_WIRE_COLOR_MOVED), 400);
     AppRect current = app_layout_setting(APP_SETTING_SHOW_CURRENT);
     ui_toggle(app, font, current, tr(TXT_SETTINGS_SHOW_CURRENT), app->show_current);
     AppRect minus = app_layout_setting(APP_SETTING_SIM_SPEED_SLOWER);

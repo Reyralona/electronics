@@ -5,7 +5,8 @@
 /* Application preferences persisted between sessions as "key value" lines after a
  * "bancada-preferences 1" header. Unknown keys are ignored and missing keys keep defaults, so
  * older and newer files stay readable. Pure module: no SDL/OpenGL. */
-#define APP_PREFERENCES_VERSION 1
+/* 2: wire_color indexes the shared palette (BenchColor); 1 used the legacy wire colors. */
+#define APP_PREFERENCES_VERSION 2
 int app_preferences_write(FILE *file, const WorkbenchSettings *settings);
 /* Transactional: on failure *settings is unchanged. */
 int app_preferences_read(FILE *file, WorkbenchSettings *settings);

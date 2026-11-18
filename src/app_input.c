@@ -517,12 +517,6 @@ static void choose_language(AppState *app, UiLanguage language)
 
 static void input_settings(AppState *app, SDL_Window *window, float x, float y)
 {
-    int swatch = app_layout_wire_swatch_at(x, y);
-    if (swatch >= 0 && swatch < WIRE_COLOR_COUNT)
-    {
-        choose_wire_color(app, swatch);
-        return;
-    }
     switch (app_layout_setting_at(x, y))
     {
     case APP_SETTING_DARK_THEME:
@@ -655,10 +649,35 @@ static int selected_plain_part(const AppState *app)
     return !app->settings && !app->projects_open && !app->examples_open && app->selected >= 0 && !app->bench.parts[app->selected].group;
 }
 
-static int inspector_visible(const AppState *app)
+static int panels_closed(const AppState *app)
 {
     return !app->settings && !app->projects_open && !app->examples_open && app->code_part < 0 &&
-           app->selected >= 0 && !app->editor_confirm_close;
+           !app->editor_confirm_close;
+}
+
+static int wire_inspector_visible(const AppState *app)
+{
+    return panels_closed(app) && app->selected < 0 && app->selected_wire >= 0 &&
+           app->selected_wire < app->bench.wire_count;
+}
+
+static int inspector_visible(const AppState *app)
+{
+    return panels_closed(app) && (app->selected >= 0 || wire_inspector_visible(app));
+}
+
+/* Wire panel: a swatch recolors the selected wire; other clicks on the panel stay on it. */
+static int input_click_wire_inspector(AppState *app, float x, float y)
+{
+    if (!wire_inspector_visible(app) || app->inspector_minimized)
+        return 0;
+    int swatch = app_layout_color_swatch_at(x, y);
+    if (swatch >= 0)
+    {
+        choose_wire_color(app, swatch);
+        return 1;
+    }
+    return app_rect_contains(app_layout_wire_inspector(), x, y);
 }
 
 /* Minimize collapses the inspector to a tab; clicking the tab expands it. */
@@ -695,7 +714,7 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
     if (app->inspector_minimized || !selected_plain_part(app))
         return 0;
     const Part *part = &app->bench.parts[app->selected];
-    int swatch = part->type == PART_LED ? app_layout_led_swatch_at(x, y) : -1;
+    int swatch = part->type == PART_LED ? app_layout_color_swatch_at(x, y) : -1;
     if (swatch >= 0)
     {
         if (part->states != (unsigned)swatch && bench_history_record(app->history, &app->bench))
@@ -842,7 +861,7 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
         return 1;
     if (app_editor_click(app, window, x, y))
         return 1;
-    if (input_click_inspector(app, window, x, y))
+    if (input_click_inspector(app, window, x, y) || input_click_wire_inspector(app, x, y))
         return 1;
     if (input_click_header(app, x, y) || input_projects(app, x, y) || input_examples(app, x, y))
         return 1;

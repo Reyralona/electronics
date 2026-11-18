@@ -124,7 +124,26 @@ WirePoint bench_lead_point(const Part *part, int pin, size_t point);
 WirePoint bench_lead_anchor(const Part *part, int pin);
 #define WIRE_MAX_KNEES 16
 #define WIRE_PATH_CAPACITY (WIRE_MAX_KNEES * 9 + 2)
-#define WIRE_COLOR_COUNT 6
+/* One palette for wires and LEDs (Wire.color, LED Part.states), saved by index from format 33. */
+typedef enum
+{
+    BENCH_COLOR_RED,
+    BENCH_COLOR_GREEN,
+    BENCH_COLOR_BLUE,
+    BENCH_COLOR_YELLOW,
+    BENCH_COLOR_WHITE,
+    BENCH_COLOR_ORANGE,
+    BENCH_COLOR_VIOLET,
+    BENCH_COLOR_PINK,
+    BENCH_COLOR_CYAN,
+    BENCH_COLOR_LIME,
+    BENCH_COLOR_COUNT
+} BenchColor;
+#define WIRE_COLOR_COUNT BENCH_COLOR_COUNT
+#define BENCH_DEFAULT_WIRE_COLOR BENCH_COLOR_BLUE
+/* Wire colors up to format 32 were blue, red, black, green, yellow, white; black became blue. */
+#define BENCH_LEGACY_WIRE_COLORS 6
+int bench_color_from_legacy_wire(int legacy);
 typedef struct
 {
     Pin a, b;

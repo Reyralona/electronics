@@ -26,9 +26,10 @@
 #define INSPECTOR_ROTATE_W 64.0f
 #define INSPECTOR_TAB_W 180.0f
 #define INSPECTOR_TAB_H 32.0f
-#define INSPECTOR_SWATCH_W 28.0f
+#define INSPECTOR_SWATCH_W 24.0f
 #define INSPECTOR_SWATCH_H 20.0f
-#define INSPECTOR_SWATCH_PITCH 34.0f
+#define INSPECTOR_SWATCH_PITCH 30.0f
+#define INSPECTOR_WIRE_HEIGHT 200.0f
 #define CLOSE_BUTTON 36.0f
 #define FLAG_W 42.0f
 #define FLAG_H 28.0f
@@ -200,22 +201,6 @@ AppSetting app_layout_setting_at(float x, float y)
         if (app_rect_contains(app_layout_setting((AppSetting)setting), x, y))
             return (AppSetting)setting;
     return APP_SETTING_COUNT;
-}
-
-AppRect app_layout_wire_swatch(int index)
-{
-    if (index < 0 || index >= APP_WIRE_SWATCHES)
-        return NO_RECT;
-    AppRect row = settings_row(SETTINGS_RIGHT, 0);
-    return (AppRect){row.x + index * 52.0f, row.y + 26, 44, 30};
-}
-
-int app_layout_wire_swatch_at(float x, float y)
-{
-    for (int index = 0; index < APP_WIRE_SWATCHES; ++index)
-        if (app_rect_contains(app_layout_wire_swatch(index), x, y))
-            return index;
-    return -1;
 }
 
 AppRect app_layout_projects_panel(void)
@@ -396,20 +381,25 @@ AppRect app_layout_palette_delete(int slot)
     return (AppRect){card.x + card.w - 30, card.y + (card.h - 24) / 2, 24, 24};
 }
 
-AppRect app_layout_led_swatch(int color)
+AppRect app_layout_color_swatch(int color)
 {
-    if (color < 0 || color >= APP_LED_SWATCHES)
+    if (color < 0 || color >= BENCH_COLOR_COUNT)
         return NO_RECT;
     return (AppRect){INSPECTOR_ROW_X + color * INSPECTOR_SWATCH_PITCH, INSPECTOR_TOP + 146, INSPECTOR_SWATCH_W,
                      INSPECTOR_SWATCH_H};
 }
 
-int app_layout_led_swatch_at(float x, float y)
+int app_layout_color_swatch_at(float x, float y)
 {
-    for (int color = 0; color < APP_LED_SWATCHES; ++color)
-        if (app_rect_contains(app_layout_led_swatch(color), x, y))
+    for (int color = 0; color < BENCH_COLOR_COUNT; ++color)
+        if (app_rect_contains(app_layout_color_swatch(color), x, y))
             return color;
     return -1;
+}
+
+AppRect app_layout_wire_inspector(void)
+{
+    return app_layout_inspector(INSPECTOR_WIRE_HEIGHT);
 }
 
 AppRect app_layout_code_panel(void)

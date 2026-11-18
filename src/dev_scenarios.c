@@ -207,7 +207,8 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
                 bench_set_wire_color(&app->bench, wire, wire == 0 ? 0 : wire == 1 ? 1 : 3);
         }
     }
-    if (app->capture && (!strcmp(argv[1], "--capture-live-rc") || !strcmp(argv[1], "--capture-live-off")))
+    if (app->capture && (!strcmp(argv[1], "--capture-live-rc") || !strcmp(argv[1], "--capture-live-off") ||
+                         !strcmp(argv[1], "--capture-wire-panel")))
     {
         bench_snapshot_clear(&app->bench);
         bench_add(&app->bench, PART_SOURCE, 350, 300);
@@ -225,6 +226,14 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         bench_set_wire_route(&app->bench, 4, (WirePoint[]){{1049, 520}, {399, 520}}, 2);
         app->selected = 3;
         app->dark_theme = 1;
+        if (!strcmp(argv[1], "--capture-wire-panel"))
+        {
+            app->selected = -1;
+            app->selected_wire = 2;
+            app->show_current = 1;
+            app->dark_theme = 0;
+            bench_set_wire_color(&app->bench, 2, BENCH_COLOR_ORANGE);
+        }
     }
     if (app->capture && !strcmp(argv[1], "--capture-live-graph"))
     {
@@ -486,7 +495,8 @@ int dev_scenario_analyze(AppState *app, char **argv)
 {
     if (app->capture && !strcmp(argv[1], "--capture-live-graph") && capture_live_graph(app))
         return 1;
-    if (app->capture && (!strcmp(argv[1], "--capture-live-rc") || !strcmp(argv[1], "--capture-live-off")))
+    if (app->capture && (!strcmp(argv[1], "--capture-live-rc") || !strcmp(argv[1], "--capture-live-off") ||
+                         !strcmp(argv[1], "--capture-wire-panel")))
     {
         SimAutoOptions options = {1, {2, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
         if (!spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options, .005))
@@ -836,9 +846,9 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 27)
         queued = dev_test_click(window, 505, 220);
     else if (app->selftest_phase == 28)
-        queued = dev_test_key(window, SDLK_F1);
+        queued = click_rect(window, app_layout_color_swatch(BENCH_COLOR_RED));
     else if (app->selftest_phase == 29)
-        queued = click_rect(window, app_layout_wire_swatch(1));
+        queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 30)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 31)
@@ -1397,14 +1407,14 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = click_rect(window, app_layout_inspector_minimize());
     }
     else if (app->selftest_phase == 199)
-        queued = click_rect(window, app_layout_led_swatch(2));
+        queued = click_rect(window, app_layout_color_swatch(2));
     else if (app->selftest_phase == 200)
     {
         app->selected = 0;
         queued = click_rect(window, app_layout_inspector_tab());
     }
     else if (app->selftest_phase == 201)
-        queued = click_rect(window, app_layout_led_swatch(2));
+        queued = click_rect(window, app_layout_color_swatch(2));
     /* Header panels: opening one closes the other; clicking the open one closes it. */
     else if (app->selftest_phase == 202 || app->selftest_phase == 204)
         queued = click_rect(window, app_layout_header(APP_HEADER_EXAMPLES));
@@ -1539,15 +1549,15 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 27)
         valid = app->selected_wire == 0;
     else if (app->selftest_phase == 28)
-        valid = app->settings == 1;
+        valid = app->bench.wires[0].color == BENCH_COLOR_RED;
     else if (app->selftest_phase == 29)
-        valid = app->bench.wires[0].color == 1;
+        valid = app->settings == 1;
     else if (app->selftest_phase == 30)
         valid = app->settings == 0;
     else if (app->selftest_phase == 31)
-        valid = app->bench.wires[0].color == 0;
+        valid = app->bench.wires[0].color == BENCH_DEFAULT_WIRE_COLOR;
     else if (app->selftest_phase == 32)
-        valid = app->bench.wires[0].color == 1;
+        valid = app->bench.wires[0].color == BENCH_COLOR_RED;
     else if (app->selftest_phase == 33)
         valid = app->settings == 1;
     else if (app->selftest_phase == 34)
@@ -1599,7 +1609,7 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 57)
         valid = app->probe_current == 0;
     else if (app->selftest_phase == 58)
-        valid = app->probe_current == 1 && app->probe_pin == 1 && app->transient_step == 2e-5 && app->wire_color == 1;
+        valid = app->probe_current == 1 && app->probe_pin == 1 && app->transient_step == 2e-5 && app->wire_color == BENCH_COLOR_RED;
     else if (app->selftest_phase == 59)
         valid = app->settings == 0;
     else if (app->selftest_phase == 60)

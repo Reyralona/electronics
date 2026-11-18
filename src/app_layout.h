@@ -2,6 +2,7 @@
 #define APP_LAYOUT_H
 /* Interface geometry in the fixed 1280x720 interface space, shared by rendering, input and the
  * GUI self-test. Pure module: no SDL/OpenGL. Change a rectangle here, never in callers. */
+#include "workbench.h"
 typedef struct
 {
     float x, y, w, h;
@@ -35,9 +36,11 @@ int app_layout_palette_item_at(float x, float y);
 AppRect app_layout_palette_scrollbar(void);
 /* Remove button on a saved block card (Blocos tab). */
 AppRect app_layout_palette_delete(int slot);
-#define APP_LED_SWATCHES 6
-AppRect app_layout_led_swatch(int color);
-int app_layout_led_swatch_at(float x, float y);
+/* Palette swatches of the LED and wire panels (same row, same order: BenchColor). */
+AppRect app_layout_color_swatch(int color);
+int app_layout_color_swatch_at(float x, float y);
+/* Wire panel: the inspector shown while a wire is selected. */
+AppRect app_layout_wire_inspector(void);
 /* Microcontroller code editor (right side panel). */
 #define APP_CODE_GUTTER 36.0f
 AppRect app_layout_code_panel(void);
@@ -74,15 +77,12 @@ typedef enum
     APP_SETTING_CLOSE,
     APP_SETTING_COUNT
 } AppSetting;
-#define APP_WIRE_SWATCHES 6
 AppRect app_layout_settings_panel(void);
 AppRect app_layout_setting(AppSetting setting);
 /* Returns APP_SETTING_COUNT when no setting is hit. */
 AppSetting app_layout_setting_at(float x, float y);
 /* Section heading above a row: column 0 = left, 1 = right. */
 AppRect app_layout_settings_section(int column, int row);
-AppRect app_layout_wire_swatch(int index);
-int app_layout_wire_swatch_at(float x, float y);
 
 #define APP_PROJECT_SLOTS 9
 AppRect app_layout_projects_panel(void);

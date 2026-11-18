@@ -11,7 +11,7 @@
 
 WorkbenchSettings workbench_settings_default(void)
 {
-    return (WorkbenchSettings){1, 1, 1, 0, 0, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15, 0, UI_LANG_PT_BR, 1.0};
+    return (WorkbenchSettings){1, 1, 1, 0, BENCH_DEFAULT_WIRE_COLOR, 0, 0, 1e-5, .005, 24, 0, 1, 0, 15, 0, UI_LANG_PT_BR, 1.0};
 }
 int workbench_settings_valid(const WorkbenchSettings *s)
 {
@@ -322,12 +322,22 @@ static int read_leads(FILE *file, Workbench *bench)
     return 1;
 }
 
+/* Format 33 indexes the shared palette; older files use the six legacy wire colors. */
+static int read_wire_color(FILE *f, int version, int *color)
+{
+    int saved;
+    if (fscanf(f, "%d", &saved) != 1)
+        return 0;
+    *color = version < 33 ? bench_color_from_legacy_wire(saved) : saved;
+    return *color >= 0 && *color < WIRE_COLOR_COUNT;
+}
+
 int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings *s)
 {
     int i, k;
     if (!f || !b || !workbench_settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 32\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 33\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -373,7 +383,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 32) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 33) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -444,8 +454,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
             bench_toggle_wire(&b, a, c) != 1)
             goto cleanup;
         b.wires[i].knee_count = knees;
-        if (version >= 9 &&
-            (fscanf(f, "%d", &b.wires[i].color) != 1 || b.wires[i].color < 0 || b.wires[i].color >= WIRE_COLOR_COUNT))
+        if (version >= 9 && !read_wire_color(f, version, &b.wires[i].color))
             goto cleanup;
         for (k = 0; k < knees; ++k)
         {
@@ -473,7 +482,11 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         if (fscanf(f, "%31s %d %d %d %d %d %d %d %lf %lf", tag, &saved.show_grid, &saved.show_handles,
                    &saved.round_wires, &saved.show_current, &saved.wire_color, &saved.probe_pin, &saved.probe_current,
                    &saved.transient_step, &saved.transient_stop) != 10 ||
-            strcmp(tag, "settings") || !workbench_settings_valid(&saved))
+            strcmp(tag, "settings"))
+            goto cleanup;
+        if (version < 33)
+            saved.wire_color = bench_color_from_legacy_wire(saved.wire_color);
+        if (!workbench_settings_valid(&saved))
             goto cleanup;
     }
     if (version >= 18)

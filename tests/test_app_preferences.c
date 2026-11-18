@@ -30,6 +30,20 @@ static void roundtrip(void)
     assert(app_preferences_equal(&original, &loaded));
 }
 
+/* Preferences saved before the shared palette convert the default wire color. */
+static void legacy_wire_color(void)
+{
+    FILE *file = text_file("bancada-preferences 1\nwire_color 2\n");
+    WorkbenchSettings loaded = workbench_settings_default();
+    assert(app_preferences_read(file, &loaded));
+    fclose(file);
+    assert(loaded.wire_color == BENCH_COLOR_BLUE);
+    file = text_file("bancada-preferences 2\nwire_color 9\n");
+    assert(app_preferences_read(file, &loaded));
+    fclose(file);
+    assert(loaded.wire_color == BENCH_COLOR_LIME);
+}
+
 /* An unknown language index is rejected without touching the other settings. */
 static void invalid_language(void)
 {
@@ -81,6 +95,7 @@ static void save_replaces_file(void)
 int main(void)
 {
     roundtrip();
+    legacy_wire_color();
     invalid_language();
     tolerant_keys();
     rejects_invalid("not-preferences 1\n");

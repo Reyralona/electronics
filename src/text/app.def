@@ -184,7 +184,7 @@ UI_TEXT(APP_CHIP_RESIZED, "Ctrl+scroll: largura · Ctrl+Shift+scroll: altura.",
         "Ctrl+scroll: width · Ctrl+Shift+scroll: height.")
 UI_TEXT(APP_SELECT_PART_FOR_SIZE, "Selecione uma peça. Ctrl+scroll: tamanho.", "Select a part. Ctrl+scroll: size.")
 UI_TEXT(APP_CONTROL_HINT, "Shift+scroll: ajustar o controle.", "Shift+scroll: adjust the control.")
-UI_TEXT(APP_NEW_WIRE_COLOR, "Cor dos novos fios escolhida.", "Color of new wires selected.")
+UI_TEXT(APP_NEW_WIRE_COLOR, "Cor escolhida; fios novos também a usarão.", "Color chosen; new wires will use it too.")
 UI_TEXT(APP_WIRE_COLOR_CHANGED, "Cor do fio alterada.", "Wire color changed.")
 UI_TEXT(APP_SELECT_WIRE_FOR_CURRENT, "Selecione um fio e aperte T para medir a corrente no tempo.",
         "Select a wire and press T to measure its current over time.")
