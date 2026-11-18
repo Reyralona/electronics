@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 static void reset_interaction(AppState *app)
 {
@@ -137,14 +138,23 @@ void app_projects_refresh(AppState *app)
     {
         char path[128];
         slot_path(app, i, path, sizeof(path));
-        FILE *file = fopen(path, "r");
-        app->saved_slots[i] = file != NULL;
-        if (file)
-            fclose(file);
+        struct _stat metadata;
+        app->saved_slots[i] = _stat(path, &metadata) == 0 || errno != ENOENT;
+        app->project_parts[i] = -1;
+        app->project_wires[i] = -1;
+        if (!app->saved_slots[i])
+            continue;
+        Workbench saved BENCH_AUTO_CLEAR = {0};
+        WorkbenchSettings settings;
+        if (workbench_load_project(path, &saved, &settings))
+        {
+            app->project_parts[i] = saved.part_count;
+            app->project_wires[i] = saved.wire_count;
+        }
     }
 }
 
-void app_projects_save(AppState *app)
+static void save_project_slot(AppState *app, int slot)
 {
     char path[128];
     const char *directory = app->selftest ? "build/test-slots" : "saves";
@@ -156,16 +166,44 @@ void app_projects_save(AppState *app)
         return;
     }
     WorkbenchSettings settings = app_settings_capture(app);
-    slot_path(app, app->save_slot, path, sizeof(path));
+    slot_path(app, slot, path, sizeof(path));
     int saved = workbench_save_project(path, &app->bench, &settings);
     snprintf(app->selection_status, sizeof(app->selection_status),
-             tr(saved ? TXT_APP_PROJECT_SAVED : TXT_APP_PROJECT_SAVE_FAILED), app->save_slot + 1);
+             tr(saved ? TXT_APP_PROJECT_SAVED : TXT_APP_PROJECT_SAVE_FAILED), slot + 1);
     app->status = app->selection_status;
     app_projects_refresh(app);
 }
 
+void app_projects_save(AppState *app)
+{
+    if (app->save_slot < 0 || app->save_slot >= PROJECT_SLOT_COUNT || app->project_overwrite >= 0)
+        return;
+    app_projects_refresh(app);
+    if (app->saved_slots[app->save_slot])
+    {
+        app->project_overwrite = app->save_slot;
+        app->status = tr(TXT_UI_REPLACE_NOTE);
+        return;
+    }
+    save_project_slot(app, app->save_slot);
+}
+
+void app_projects_confirm(AppState *app, int replace)
+{
+    int slot = app->project_overwrite;
+    app->project_overwrite = -1;
+    if (slot < 0 || slot >= PROJECT_SLOT_COUNT)
+        return;
+    if (replace)
+        save_project_slot(app, slot);
+    else
+        app->status = tr(TXT_APP_EDIT_CANCELED);
+}
+
 void app_projects_load(AppState *app)
 {
+    if (app->project_overwrite >= 0 || app->save_slot < 0 || app->save_slot >= PROJECT_SLOT_COUNT)
+        return;
     char path[128];
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))

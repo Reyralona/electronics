@@ -478,6 +478,12 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
 
 void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
+    if (app->project_overwrite >= 0)
+    {
+        if (key == SDLK_ESCAPE)
+            app_projects_confirm(app, 0);
+        return;
+    }
     if (app_editor_key(app, window, key, mod))
         return;
     if (app->examples_open && key == SDLK_ESCAPE)

@@ -69,6 +69,8 @@ typedef struct AppState
     BenchClipboard clipboard;
     int selecting_area, projects_open, save_slot, examples_open;
     int saved_slots[PROJECT_SLOT_COUNT];
+    int project_overwrite; /* Slot presented by the confirmation; -1 when no confirmation is open. */
+    int project_parts[PROJECT_SLOT_COUNT], project_wires[PROJECT_SLOT_COUNT];
     WirePoint area_start, area_end, mouse_world, mouse_screen;
     uint64_t area_scroll_ticks; /* Last edge auto-scroll step while selecting an area; 0 = idle. */
     int mouse_position_valid;

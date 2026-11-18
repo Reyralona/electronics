@@ -3865,7 +3865,12 @@ static void draw_project_slot(const AppState *app, GLuint font, int slot)
         glColor3f(UI_POSITIVE);
     else
         color(UI_MUTED);
-    text(font, r.x + 16, r.y + 58, app->saved_slots[slot] ? tr(TXT_UI_SLOT_SAVED) : tr(TXT_UI_SLOT_EMPTY));
+    char summary[80];
+    if (app->saved_slots[slot] && app->project_parts[slot] >= 0)
+        snprintf(summary, sizeof(summary), tr(TXT_UI_PROJECT_SUMMARY), app->project_parts[slot], app->project_wires[slot]);
+    else
+        snprintf(summary, sizeof(summary), "%s", tr(app->saved_slots[slot] ? TXT_UI_SLOT_UNREADABLE : TXT_UI_SLOT_EMPTY));
+    name_text(font, r.x + 16, r.y + 58, summary, (int)r.w - 32);
 }
 
 static void draw_projects(const AppState *app, GLuint font)
@@ -3881,7 +3886,7 @@ static void draw_projects(const AppState *app, GLuint font)
     for (int slot = 0; slot < APP_PROJECT_SLOTS; ++slot)
         draw_project_slot(app, font, slot);
     char label[48];
-    snprintf(label, sizeof(label), tr(TXT_UI_SAVE_TO_SLOT), app->save_slot + 1);
+    snprintf(label, sizeof(label), tr(app->saved_slots[app->save_slot] ? TXT_UI_REPLACE_SLOT : TXT_UI_SAVE_TO_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_save(), label, UI_BUTTON_PRIMARY);
     snprintf(label, sizeof(label), tr(TXT_UI_LOAD_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_load(), label,
@@ -3918,6 +3923,21 @@ static void draw_pin_help(const AppState *app, GLuint font)
     pin_role_color(info->role);
     text(font, panel.x + 16, panel.y + 54, component_pin_role_label(info->role));
     ui_note(font, panel.x + 16, panel.y + 74, tr(TXT_UI_PIN_HELP_NOTE), 490);
+}
+
+static void draw_project_confirmation(const AppState *app, GLuint font)
+{
+    if (app->project_overwrite < 0)
+        return;
+    AppRect panel = app_layout_confirm_panel();
+    ui_panel(panel);
+    char title[64];
+    snprintf(title, sizeof(title), tr(TXT_UI_REPLACE_SLOT), app->project_overwrite + 1);
+    color(UI_INK);
+    text(font, panel.x + 30, panel.y + 40, title);
+    ui_wrapped(font, panel.x + 30, panel.y + 74, tr(TXT_UI_REPLACE_NOTE), 580, 2, 22);
+    ui_button(app, font, app_layout_confirm_button(0), tr(TXT_UI_REPLACE), UI_BUTTON_DANGER);
+    ui_button(app, font, app_layout_confirm_button(2), tr(TXT_UI_CANCEL), UI_BUTTON_NEUTRAL);
 }
 
 static void draw_editor_confirmation(const AppState *app, GLuint font)
@@ -4233,4 +4253,5 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_examples(app, font);
     draw_value_editor(app, font);
     draw_editor_confirmation(app, font);
+    draw_project_confirmation(app, font);
 }

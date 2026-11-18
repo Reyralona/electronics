@@ -1,6 +1,7 @@
 #include "app_commands.h"
 #include "app_code_editor.h"
 #include "app_packing.h"
+#include "app_editing.h"
 #include "workbench_pack.h"
 #include "workbench_file.h"
 #include "ui_text.h"
@@ -166,8 +167,42 @@ static void check_long_code_flow(void)
     app_state_dispose(&app);
 }
 
+static void check_project_overwrite_flow(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    app.selftest = 1;
+    app.save_slot = 7;
+    remove("build/test-slots/slot-8.elec");
+    /* Save a resistor, add an LED, then try saving over the occupied slot. */
+    assert(bench_add(&app.bench, PART_RESISTOR, 400, 300) == 0);
+    app_projects_save(&app);
+    assert(app.saved_slots[7]);
+    assert(bench_add(&app.bench, PART_LED, 600, 300) == 1);
+    app_projects_save(&app);
+    Workbench saved = {0};
+    WorkbenchSettings settings;
+    assert(workbench_load_project("build/test-slots/slot-8.elec", &saved, &settings));
+    assert(saved.part_count == 1);
+    bench_snapshot_clear(&saved);
+    app_commands_key(&app, NULL, SDLK_ESCAPE, 0);
+    assert(app.bench.part_count == 2);
+    assert(app.project_overwrite == -1);
+    /* Confirm targets the slot shown, even if another selection changes underneath. */
+    app_projects_save(&app);
+    assert(app.project_overwrite == 7);
+    app.save_slot = 6;
+    app_projects_confirm(&app, 1);
+    assert(workbench_load_project("build/test-slots/slot-8.elec", &saved, &settings));
+    assert(saved.part_count == 2);
+    bench_snapshot_clear(&saved);
+    remove("build/test-slots/slot-8.elec");
+    app_state_dispose(&app);
+}
+
 int main(void)
 {
+    check_project_overwrite_flow();
     check_long_code_flow();
     check_chip_rotation_flow();
     check_mirror_flow();
@@ -243,6 +278,7 @@ int main(void)
 
     app.selftest = 1;
     app.save_slot = 8;
+    remove("build/test-slots/slot-9.elec");
     app.show_grid = 0;
     app.wire_color = 4;
     app_commands_key(&app, NULL, SDLK_S, SDL_KMOD_CTRL);

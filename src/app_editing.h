@@ -4,5 +4,6 @@
 int app_editing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod);
 void app_projects_refresh(AppState *app);
 void app_projects_save(AppState *app);
+void app_projects_confirm(AppState *app, int replace);
 void app_projects_load(AppState *app);
 #endif

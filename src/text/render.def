@@ -139,6 +139,13 @@ UI_TEXT(UI_SLOT_SAVED, "Salvo", "Saved")
 UI_TEXT(UI_SLOT_EMPTY, "Vazio", "Empty")
 UI_TEXT(UI_SAVE_TO_SLOT, "Salvar no slot %d", "Save to slot %d")
 UI_TEXT(UI_LOAD_SLOT, "Carregar slot %d", "Load slot %d")
+UI_TEXT(UI_REPLACE_SLOT, "Substituir slot %d", "Replace slot %d")
+UI_TEXT(UI_PROJECT_SUMMARY, "%d peças · %d fios", "%d parts · %d wires")
+UI_TEXT(UI_SLOT_UNREADABLE, "Arquivo indisponível", "File unavailable")
+UI_TEXT(UI_REPLACE_NOTE, "O arquivo anterior será substituído. Cancelar mantém o projeto salvo.",
+        "The previous file will be replaced. Cancel keeps the saved project.")
+UI_TEXT(UI_REPLACE, "Substituir", "Replace")
+UI_TEXT(UI_CONFIRM, "Confirmar", "Confirm")
 /* Terminal help. */
 UI_TEXT(UI_PIN_HELP, "%s · terminal %d (%s)", "%s · terminal %d (%s)")
 UI_TEXT(UI_PIN_HELP_IN_CHIP, "Chip %d › %s · terminal %d (%s)", "Chip %d › %s · terminal %d (%s)")

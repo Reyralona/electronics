@@ -861,6 +861,13 @@ static int input_click_palette(AppState *app, float x, float y)
 
 static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
 {
+    if (app->project_overwrite >= 0)
+    {
+        int choice = app_layout_confirm_button_at(x, y);
+        if (choice == 0 || choice == 2)
+            app_projects_confirm(app, choice == 0);
+        return 1;
+    }
     if (input_click_inspector_toggle(app, x, y))
         return 1;
     if (input_click_environment(app, x, y))
