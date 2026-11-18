@@ -199,6 +199,13 @@ int main(int argc, char **argv)
         return 1;
     }
     font = app_render_font_create();
+    if (!app_input_apply_scale(&app, window))
+    {
+        app.gui_font_size = APP_FONT_MIN;
+        if (!app_input_apply_scale(&app, window))
+            app.status = tr(TXT_UI_WINDOW_SIZE_FAILED);
+    }
+    int window_scale = app.gui_font_size;
     SDL_GL_SetSwapInterval(1);
     if (dev_scenario_analyze(&app, argv))
         return 1;
@@ -210,6 +217,12 @@ int main(int argc, char **argv)
             dev_scenario_queue(&app, window);
         app_input_poll(active, window);
         active = app_editor_route(active);
+        if (active->gui_font_size != window_scale)
+        {
+            if (!app_input_apply_scale(active, window))
+                active->gui_font_size = window_scale;
+            window_scale = active->gui_font_size;
+        }
         if (app.capture && !strcmp(argv[1], "--capture-editor-deep") && active->editor_parent)
         {
             active->selected = 0;

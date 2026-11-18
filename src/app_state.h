@@ -20,6 +20,18 @@
 #define APP_EDIT_GRID (WORKBENCH_MAX_COMPONENTS + 3)
 #define APP_EDIT_GROUP_NAME (WORKBENCH_MAX_COMPONENTS + 2)
 
+typedef enum
+{
+    APP_UI_BENCH,
+    APP_UI_REPLACE,
+    APP_UI_EDITOR_CONFIRM,
+    APP_UI_VALUE,
+    APP_UI_SETTINGS,
+    APP_UI_PROJECTS,
+    APP_UI_EXAMPLES,
+    APP_UI_CODE
+} AppControlContext;
+
 /* Owned by the application thread. The worker receives its own snapshot. */
 typedef struct AppState
 {
@@ -35,6 +47,12 @@ typedef struct AppState
     int settings, show_grid, show_handles, round_wires, show_current;
     int wire_color, selected_wire, palette_page, example_index;
     int palette_offset, held_button, dragging_environment;
+    char palette_search[96];
+    int palette_search_active;
+    int palette_search_select_all;
+    int keyboard_focus;
+    AppControlContext keyboard_context;
+    WirePoint keyboard_target;
     int leds[WORKBENCH_MAX_COMPONENTS];
     float offset_x, offset_y;
     SpiceJob dc_job;
@@ -56,6 +74,7 @@ typedef struct AppState
     int panning, editing;
     char edit_text[BENCH_GROUP_NAME_CAPACITY];
     int name_target_group, edit_select_all;
+    int edit_error;
     int selftest, selftest_phase, exit_code;
     const char *status;
     int capture, auto_capture;

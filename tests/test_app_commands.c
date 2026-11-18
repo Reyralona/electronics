@@ -210,7 +210,7 @@ int main(void)
     static AppState app;
     app_state_init(&app);
     assert(app.history);
-    app_commands_key(&app, NULL, SDLK_F2, 0);
+    app_commands_key(&app, NULL, SDLK_F2, SDL_KMOD_CTRL);
     assert(app.bench.part_count == 4 && app.selected == 3);
     app.selected = 2;
     double original = app.bench.parts[2].value;
@@ -234,9 +234,9 @@ int main(void)
     app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
     assert(app.bench.part_count == 4 && app.bench.parts[2].type == PART_RESISTOR);
 
-    app_commands_key(&app, NULL, SDLK_F2, 0);
+    app_commands_key(&app, NULL, SDLK_F2, SDL_KMOD_CTRL);
     assert(app.bench.parts[2].type == PART_DFF);
-    app_commands_key(&app, NULL, SDLK_F2, 0);
+    app_commands_key(&app, NULL, SDLK_F2, SDL_KMOD_CTRL);
     assert(app.bench.parts[2].type == PART_74HC00);
     app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
     assert(app.bench.parts[2].type == PART_DFF);

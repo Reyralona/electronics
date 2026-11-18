@@ -37,6 +37,7 @@ void app_state_init(AppState *app)
     app->view = (BenchView){1, 0, 0};
     app->editing = -1;
     app->project_overwrite = -1;
+    app->keyboard_focus = -1;
     app->name_target_group = -1;
     app->library_delete_armed = -1;
     app->code_part = -1;

@@ -351,8 +351,9 @@ static void interface_point(SDL_Window *window, float window_x, float window_y, 
 {
     int width = 1, height = 1;
     SDL_GetWindowSize(window, &width, &height);
-    *x = window_x * 1280.0f / (width > 0 ? width : 1);
-    *y = window_y * 720.0f / (height > 0 ? height : 1);
+    WirePoint point = app_layout_to_ui(width, height, window_x, window_y);
+    *x = point.x;
+    *y = point.y;
 }
 
 int app_code_event(AppState *app, SDL_Window *window, const SDL_Event *event)

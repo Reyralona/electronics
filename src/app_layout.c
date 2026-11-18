@@ -1,7 +1,8 @@
 #include "app_layout.h"
+#include <math.h>
 
-#define PALETTE_ITEM_TOP 172.0f
-#define PALETTE_ITEM_PITCH 64.0f
+#define PALETTE_ITEM_TOP 210.0f
+#define PALETTE_ITEM_PITCH 59.0f
 #define HEADER_BUTTON_Y 14.0f
 #define HEADER_BUTTON_H 40.0f
 #define SETTINGS_LEFT 280.0f
@@ -32,8 +33,8 @@
 #define INSPECTOR_SWATCH_PITCH 27.0f
 #define INSPECTOR_WIRE_HEIGHT 200.0f
 #define CLOSE_BUTTON 36.0f
-#define FLAG_W 42.0f
-#define FLAG_H 28.0f
+#define FLAG_W 92.0f
+#define FLAG_H 32.0f
 #define FLAG_GAP 10.0f
 #define NO_RECT ((AppRect){0, 0, 0, 0})
 
@@ -50,6 +51,30 @@ float app_rect_center_x(AppRect rect)
 float app_rect_center_y(AppRect rect)
 {
     return rect.y + rect.h / 2;
+}
+
+AppRect app_layout_viewport(int width, int height)
+{
+    if (width <= 0 || height <= 0)
+        return NO_RECT;
+    float scale = fminf(width / 1280.0f, height / 720.0f);
+    float w = floorf(1280 * scale);
+    float h = floorf(720 * scale);
+    return (AppRect){floorf((width - w) / 2), floorf((height - h) / 2), w, h};
+}
+
+WirePoint app_layout_to_ui(int width, int height, float x, float y)
+{
+    AppRect viewport = app_layout_viewport(width, height);
+    if (viewport.w <= 0 || viewport.h <= 0)
+        return (WirePoint){-1, -1};
+    return (WirePoint){(x - viewport.x) * 1280 / viewport.w, (y - viewport.y) * 720 / viewport.h};
+}
+
+WirePoint app_layout_from_ui(int width, int height, float x, float y)
+{
+    AppRect viewport = app_layout_viewport(width, height);
+    return (WirePoint){viewport.x + x * viewport.w / 1280, viewport.y + y * viewport.h / 720};
 }
 
 AppRect app_layout_header(AppHeaderButton button)
@@ -92,7 +117,7 @@ AppRect app_layout_palette_item(int slot)
 {
     if (slot < 0 || slot >= APP_PALETTE_VISIBLE)
         return NO_RECT;
-    return (AppRect){14, PALETTE_ITEM_TOP + slot * PALETTE_ITEM_PITCH, 186, 58};
+    return (AppRect){14, PALETTE_ITEM_TOP + slot * PALETTE_ITEM_PITCH, 186, 53};
 }
 
 int app_layout_palette_item_at(float x, float y)
@@ -164,19 +189,19 @@ AppRect app_layout_setting(AppSetting setting)
     case APP_SETTING_SNAP_BOARD:
         return settings_row(SETTINGS_LEFT, 9);
     case APP_SETTING_SHOW_CURRENT:
-        return settings_row(SETTINGS_RIGHT, 2);
+        return settings_row(SETTINGS_RIGHT, 0);
     case APP_SETTING_SIM_SPEED_SLOWER:
-        return row_button(settings_row(SETTINGS_RIGHT, 3), 1);
+        return row_button(settings_row(SETTINGS_RIGHT, 1), 1);
     case APP_SETTING_SIM_SPEED_FASTER:
-        return row_button(settings_row(SETTINGS_RIGHT, 3), 0);
+        return row_button(settings_row(SETTINGS_RIGHT, 1), 0);
     case APP_SETTING_PROBE_MEASURE:
-        return settings_row(SETTINGS_RIGHT, 5);
+        return settings_row(SETTINGS_RIGHT, 4);
     case APP_SETTING_PROBE_PIN:
-        return settings_row(SETTINGS_RIGHT, 6);
+        return settings_row(SETTINGS_RIGHT, 5);
     case APP_SETTING_STEP:
-        return settings_row(SETTINGS_RIGHT, 7);
+        return settings_row(SETTINGS_RIGHT, 6);
     case APP_SETTING_STOP:
-        return settings_row(SETTINGS_RIGHT, 8);
+        return settings_row(SETTINGS_RIGHT, 7);
     case APP_SETTING_LANGUAGE_PT_BR:
         return language_flag(panel, 0);
     case APP_SETTING_LANGUAGE_EN_US:
@@ -445,4 +470,41 @@ AppRect app_layout_code_serial(void)
 {
     AppRect panel = app_layout_code_panel();
     return (AppRect){panel.x + 12, panel.y + 458, panel.w - 24, panel.h - 470};
+}
+
+AppRect app_layout_action(AppAction action)
+{
+    if (action < 0 || action >= APP_ACTION_COUNT)
+        return NO_RECT;
+    return (AppRect){234 + action * 116.0f, 78, 108, 32};
+}
+
+AppRect app_layout_search(void)
+{
+    return (AppRect){14, 170, 186, 32};
+}
+
+AppRect app_layout_search_clear(void)
+{
+    return (AppRect){172, 170, 28, 32};
+}
+
+AppRect app_layout_value_panel(void)
+{
+    return (AppRect){410, 234, 460, 222};
+}
+
+AppRect app_layout_value_button(int confirm)
+{
+    return (AppRect){434 + (confirm ? 0 : 218), 392, 194, 40};
+}
+
+AppRect app_layout_graph_measure(void)
+{
+    return (AppRect){840, 348, 192, 30};
+}
+
+AppRect app_layout_graph_pin(void)
+{
+    return (AppRect){1040, 348, 200, 30};
 }

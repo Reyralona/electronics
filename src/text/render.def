@@ -7,6 +7,8 @@ UI_TEXT(UI_PAGE_SENSORS, "Sensores", "Sensors")
 UI_TEXT(UI_PAGE_OUTPUTS, "Saídas", "Outputs")
 UI_TEXT(UI_PAGE_METERS, "Medição", "Meters")
 UI_TEXT(UI_UNKNOWN_PART, "Peça desconhecida", "Unknown part")
+UI_TEXT(UI_LANGUAGE_PT, "Português", "Português")
+UI_TEXT(UI_LANGUAGE_EN, "English", "English")
 UI_TEXT(UI_TEXT_MISSING, "[texto ausente]", "[text missing]")
 /* Header and simulation state. */
 UI_TEXT(UI_PROJECTS, "Projetos", "Projects")
@@ -30,6 +32,24 @@ UI_TEXT(UI_DISCARD, "Descartar", "Discard")
 UI_TEXT(UI_CANCEL, "Cancelar", "Cancel")
 /* Chip library and chips on the bench. */
 UI_TEXT(UI_LIBRARY_NEW, "Novo: Ctrl+G", "New: Ctrl+G")
+UI_TEXT(UI_LIBRARY_GUIDE, "Selecione peças na bancada. Use Criar chip para salvar seu primeiro chip.",
+        "Select parts on the bench. Use Create chip to save your first chip.")
+UI_TEXT(UI_SEARCH, "Buscar peças (Ctrl+F)", "Find parts (Ctrl+F)")
+UI_TEXT(UI_SEARCH_EMPTY, "Nenhuma peça encontrada. Limpe a busca ou tente outro nome.",
+        "No parts found. Clear the search or try another name.")
+UI_TEXT(UI_SEARCH_TOO_LONG, "A busca está longa demais. Use um nome menor.",
+        "The search is too long. Use a shorter name.")
+UI_TEXT(UI_UNDO, "Desfazer", "Undo")
+UI_TEXT(UI_REDO, "Refazer", "Redo")
+UI_TEXT(UI_STEP, "Um passo", "One step")
+UI_TEXT(UI_CREATE_CHIP, "Criar chip", "Create chip")
+UI_TEXT(UI_LIVE_GRAPH, "Ao vivo", "Live graph")
+UI_TEXT(UI_FULL_CURVE, "Curva completa", "Full curve")
+UI_TEXT(UI_GRAPH_WIRE_MEASURE, "Corrente do fio", "Wire current")
+UI_TEXT(UI_SCALE_UNAVAILABLE, "A escala não cabe neste monitor. Escolha uma escala menor.",
+        "The scale does not fit this monitor. Choose a smaller scale.")
+UI_TEXT(UI_WINDOW_SIZE_FAILED, "Não foi possível ajustar a janela. Tente redimensioná-la.",
+        "Cannot adjust the window. Try resizing it.")
 UI_TEXT(UI_VIEW_INSIDE, "Ver interior", "View inside")
 UI_TEXT(UI_CHIP_DIMENSIONS, "Largura %.0f · Altura %.0f", "Width %.0f · Height %.0f")
 /* Inspector. */
