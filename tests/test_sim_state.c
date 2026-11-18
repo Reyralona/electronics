@@ -1,3 +1,4 @@
+#include <math.h>
 #include "sim_state.h"
 #include "ui_text.h"
 #include <assert.h>
@@ -118,8 +119,61 @@ static void test_result_transitions(void)
     assert(sim_state_has_result(&sim, SIM_RESULT_NONE) && !sim.dc_wire_valid);
 }
 
+static void live_batch(SimLiveSamples *samples, double start, int count, double first_value)
+{
+    memset(samples, 0, sizeof(*samples));
+    samples->valid = 1;
+    samples->start = start;
+    samples->interval = .001;
+    samples->count = count;
+    for (int i = 0; i < count; ++i)
+        samples->values[i] = first_value + i;
+}
+
+/* Live graph: batches join in order, a restarted session starts over and old samples roll off. */
+static void test_live_graph(void)
+{
+    static SimLiveGraph graph;
+    static SimLiveSamples samples;
+    Workbench bench = {0};
+    assert(bench_add(&bench, PART_SOURCE, 0, 0) >= 0);
+    sim_live_graph_open(&graph, (SimLiveProbe){SIM_LIVE_PROBE_VOLTAGE, {0, 0}, .001}, &bench);
+    assert(graph.active && graph.count == 0);
+    live_batch(&samples, 0, 10, 0);
+    sim_live_graph_append(&graph, &samples);
+    live_batch(&samples, .01, 10, 10);
+    sim_live_graph_append(&graph, &samples);
+    double time, value;
+    assert(graph.count == 20);
+    sim_live_graph_sample(&graph, 19, &time, &value);
+    assert(fabs(time - .019) < 1e-12 && value == 19);
+    live_batch(&samples, 0, 5, 100);
+    sim_live_graph_append(&graph, &samples);
+    assert(graph.count == 5);
+    sim_live_graph_sample(&graph, 0, &time, &value);
+    assert(time == 0 && value == 100);
+    for (int batch = 0; batch < 20; ++batch)
+    {
+        live_batch(&samples, .005 + batch * .256, SIM_LIVE_MAX_SAMPLES, batch * 1000.0);
+        sim_live_graph_append(&graph, &samples);
+    }
+    assert(graph.count == SIM_LIVE_GRAPH_CAPACITY);
+    sim_live_graph_sample(&graph, SIM_LIVE_GRAPH_CAPACITY - 1, &time, &value);
+    assert(value == 19000 + SIM_LIVE_MAX_SAMPLES - 1);
+    samples.valid = 0;
+    sim_live_graph_append(&graph, &samples);
+    assert(!graph.valid && graph.count == SIM_LIVE_GRAPH_CAPACITY);
+    assert(!sim_live_graph_stale(&graph, &bench));
+    assert(bench_add(&bench, PART_LED, 100, 0) >= 0);
+    assert(sim_live_graph_stale(&graph, &bench));
+    sim_live_graph_close(&graph);
+    assert(!graph.active && !sim_live_graph_stale(&graph, &bench));
+    bench_snapshot_clear(&bench);
+}
+
 int main(void)
 {
+    test_live_graph();
     test_result_transitions();
     test_invalidation();
     test_playback();

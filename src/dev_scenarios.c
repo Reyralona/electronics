@@ -226,6 +226,20 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         app->selected = 3;
         app->dark_theme = 1;
     }
+    if (app->capture && !strcmp(argv[1], "--capture-live-graph"))
+    {
+        bench_snapshot_clear(&app->bench);
+        bench_add(&app->bench, PART_CLOCK, 400, 300);
+        bench_add(&app->bench, PART_RESISTOR, 650, 300);
+        bench_set_value(&app->bench, 0, 100);
+        bench_set_on(&app->bench, 0, 1);
+        bench_toggle_wire(&app->bench, (Pin){0, 0}, (Pin){1, 0});
+        bench_toggle_wire(&app->bench, (Pin){1, 1}, (Pin){0, 1});
+        app->transient_stop = .05;
+        app->selected = 1;
+        sim_live_graph_open(&app->live_graph, (SimLiveProbe){SIM_LIVE_PROBE_VOLTAGE, {1, 0}, 0}, &app->bench);
+        app->show_trace = 1;
+    }
     if (app->capture && !strcmp(argv[1], "--capture-leads"))
     {
         bench_snapshot_clear(&app->bench);
@@ -442,11 +456,39 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     return 0;
 }
 
+/* Live graph capture: a few synchronous live batches feed the graph before the first frame. */
+static int capture_live_graph(AppState *app)
+{
+    const int batches = 5;
+    const double batch_seconds = .01;
+    SimAutoOptions options = {0, {1, 0}, sim_auto_live_max_step(&app->bench), app->transient_stop,
+                              burn_limits_default(), app->live_graph.probe};
+    options.live_probe.interval = app->transient_stop / 400;
+    for (int batch = 0; batch < batches; ++batch)
+    {
+        if (!spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options, batch_seconds))
+            return 1;
+        while (!SDL_GetAtomicInt(&app->dc_job.done))
+            SDL_Delay(1);
+        spice_job_poll(&app->dc_job);
+        if (!app->dc_job.success)
+        {
+            fprintf(stderr, "%s\n", app->dc_job.message);
+            return 1;
+        }
+        sim_live_graph_append(&app->live_graph, &app->dc_job.auto_result.live_samples);
+    }
+    app->status = tr(TXT_APP_LIVE_GRAPH_OPENED);
+    return 0;
+}
+
 int dev_scenario_analyze(AppState *app, char **argv)
 {
+    if (app->capture && !strcmp(argv[1], "--capture-live-graph") && capture_live_graph(app))
+        return 1;
     if (app->capture && (!strcmp(argv[1], "--capture-live-rc") || !strcmp(argv[1], "--capture-live-off")))
     {
-        SimAutoOptions options = {1, {2, 0}, 1e-5, .005, burn_limits_default()};
+        SimAutoOptions options = {1, {2, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
         if (!spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options, .005))
             return 1;
         while (!SDL_GetAtomicInt(&app->dc_job.done))
@@ -471,7 +513,7 @@ int dev_scenario_analyze(AppState *app, char **argv)
     {
         /* Captures need the result in the first frame: start the analysis now and wait for it. */
         SimAutoOptions options = {app->show_current, sim_state_probe(&app->bench, app->selected, app->probe_pin),
-                                  app->transient_step, app->transient_stop, burn_limits_default()};
+                                  app->transient_step, app->transient_stop, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
         if (spice_job_start_auto(&app->dc_job, &app->bench, app->ngspice, &options))
         {
             while (!SDL_GetAtomicInt(&app->dc_job.done))

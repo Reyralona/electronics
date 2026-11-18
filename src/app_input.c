@@ -749,12 +749,24 @@ static int input_click_header(AppState *app, float x, float y)
     }
 }
 
+static int graph_visible(const AppState *app)
+{
+    if (app->settings)
+        return 0;
+    return app->live_graph.active || (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace);
+}
+
+/* Clicks inside the graph window never reach the bench below it. */
 static int input_click_trace(AppState *app, float x, float y)
 {
-    if (!sim_state_has_result(&app->sim, SIM_RESULT_TRACE) || !app->show_trace || x < 840 || x > 1240 || y < 384 ||
-        y > 628)
+    if (!graph_visible(app) || !app_rect_contains(app_layout_graph_panel(), x, y))
         return 0;
-    if (x >= 918 && x <= 1220 && y >= 431 && y <= 565)
+    if (app_rect_contains(app_layout_graph_close(), x, y))
+    {
+        app_commands_close_graph(app);
+        return 1;
+    }
+    if (!app->live_graph.active && x >= 918 && x <= 1220 && y >= 431 && y <= 565)
     {
         app->sim.trace_index = spice_trace_nearest(&app->sim.trace, (x - 918) / 302.0);
         app->sim.sim_running = 0;

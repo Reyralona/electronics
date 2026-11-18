@@ -64,6 +64,7 @@ typedef struct AppState
     WorkbenchSettings preferences_saved;
     char ngspice[1024];
     SimState sim;
+    SimLiveGraph live_graph; /* T while the live session runs: graph fed by the running simulation. */
     BenchSelection selection;
     BenchClipboard clipboard;
     int selecting_area, projects_open, save_slot, examples_open;

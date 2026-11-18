@@ -178,3 +178,61 @@ void sim_state_accept_elements(SimState *sim, const Workbench *bench,
         sim->scope_history[i][sim->scope_count[i] - 1] = (float)elements[i][0];
     }
 }
+
+void sim_live_graph_open(SimLiveGraph *graph, SimLiveProbe probe, const Workbench *bench)
+{
+    memset(graph, 0, sizeof(*graph));
+    graph->active = 1;
+    graph->valid = 1;
+    graph->probe = probe;
+    graph->part_count = bench->part_count;
+    graph->wire_count = bench->wire_count;
+}
+
+void sim_live_graph_close(SimLiveGraph *graph)
+{
+    memset(graph, 0, sizeof(*graph));
+}
+
+void sim_live_graph_sample(const SimLiveGraph *graph, int index, double *time, double *value)
+{
+    int slot = (graph->start + index) % SIM_LIVE_GRAPH_CAPACITY;
+    *time = graph->time[slot];
+    *value = graph->value[slot];
+}
+
+static void live_graph_push(SimLiveGraph *graph, double time, double value)
+{
+    int slot = (graph->start + graph->count) % SIM_LIVE_GRAPH_CAPACITY;
+    graph->time[slot] = time;
+    graph->value[slot] = value;
+    if (graph->count < SIM_LIVE_GRAPH_CAPACITY)
+        graph->count++;
+    else
+        graph->start = (graph->start + 1) % SIM_LIVE_GRAPH_CAPACITY;
+}
+
+void sim_live_graph_append(SimLiveGraph *graph, const SimLiveSamples *samples)
+{
+    if (!graph->active)
+        return;
+    graph->valid = samples->valid;
+    if (!samples->valid || samples->count <= 0)
+        return;
+    double newest = 0, ignored;
+    if (graph->count)
+        sim_live_graph_sample(graph, graph->count - 1, &newest, &ignored);
+    const double restart_tolerance = samples->interval * .5;
+    if (graph->count && samples->start < newest - restart_tolerance)
+    {
+        graph->start = 0;
+        graph->count = 0;
+    }
+    for (int i = 0; i < samples->count; ++i)
+        live_graph_push(graph, samples->start + i * samples->interval, samples->values[i]);
+}
+
+int sim_live_graph_stale(const SimLiveGraph *graph, const Workbench *bench)
+{
+    return graph->active && (graph->part_count != bench->part_count || graph->wire_count != bench->wire_count);
+}

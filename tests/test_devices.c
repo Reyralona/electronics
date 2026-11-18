@@ -254,7 +254,7 @@ int main(int argc, char **argv)
     states_roundtrip();
     assert(argc == 2);
     executable = argv[1];
-    options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default()};
+    options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
     rgb_led();
     seven_segment();
     dip_switch();

@@ -21,7 +21,21 @@ typedef struct
 
 typedef int (*OutputCallback)(char *, int, void *);
 typedef int (*ExitCallback)(int, bool, bool, int, void *);
-struct vecvaluesall;
+/* Per-point values sent to the data callback; delivered even under "save none". */
+struct vecvalues
+{
+    char *name;
+    double creal;
+    double cimag;
+    bool is_scale;
+    bool is_complex;
+};
+struct vecvaluesall
+{
+    int veccount;
+    int vecindex;
+    struct vecvalues **vecsa;
+};
 struct vecinfoall;
 typedef int (*StatusCallback)(char *, int, void *);
 typedef int (*DataCallback)(struct vecvaluesall *, int, int, void *);
@@ -63,6 +77,135 @@ static int output(char *message, int identifier, void *user)
         set_error(SPICE_HOST_SOLVER, 0, detail);
     }
     return 0;
+}
+
+/* One vector sampled on a regular time grid with linear interpolation between solver points. */
+typedef struct
+{
+    char name[64];
+    double interval, step, start, next;
+    double previous_time, previous_value;
+    int index, scale, has_previous, count;
+    double values[SPICE_SESSION_MAX_SAMPLES];
+} Probe;
+
+static Probe probe;
+
+/* ngspice names numbered nodes "V(841)"; the app asks for "841", as with the "V" request. */
+static int probe_matches(const char *name)
+{
+    if (!_stricmp(name, probe.name))
+        return 1;
+    size_t length = strlen(name);
+    if (length < 4 || (name[0] != 'V' && name[0] != 'v') || name[1] != '(' || name[length - 1] != ')')
+        return 0;
+    return length - 3 == strlen(probe.name) && !_strnicmp(name + 2, probe.name, length - 3);
+}
+
+static void probe_resolve(const struct vecvaluesall *all)
+{
+    probe.index = -1;
+    probe.scale = -1;
+    for (int i = 0; i < all->veccount; ++i)
+    {
+        if (all->vecsa[i]->is_scale)
+            probe.scale = i;
+        else if (probe_matches(all->vecsa[i]->name))
+            probe.index = i;
+    }
+}
+
+static void probe_restart_grid(double start)
+{
+    probe.start = start;
+    probe.next = start;
+    probe.step = probe.interval;
+    probe.count = 0;
+}
+
+static void probe_halve_resolution(void)
+{
+    for (int i = 0; i < SPICE_SESSION_MAX_SAMPLES / 2; ++i)
+        probe.values[i] = probe.values[2 * i];
+    probe.count = SPICE_SESSION_MAX_SAMPLES / 2;
+    probe.step *= 2;
+}
+
+static double probe_interpolate(double time, double value, double at)
+{
+    if (!probe.has_previous || time <= probe.previous_time || at <= probe.previous_time)
+        return value;
+    double fraction = (at - probe.previous_time) / (time - probe.previous_time);
+    return probe.previous_value + (value - probe.previous_value) * fraction;
+}
+
+static void probe_record(double time, double value)
+{
+    if (probe.next < 0)
+        probe_restart_grid(time);
+    while (probe.next <= time)
+    {
+        if (probe.count == SPICE_SESSION_MAX_SAMPLES)
+            probe_halve_resolution();
+        else
+            probe.values[probe.count++] = probe_interpolate(time, value, probe.next);
+        probe.next = probe.start + probe.count * probe.step;
+    }
+    probe.previous_time = time;
+    probe.previous_value = value;
+    probe.has_previous = 1;
+}
+
+static int receive_data(struct vecvaluesall *all, int count, int identifier, void *user)
+{
+    (void)count;
+    (void)identifier;
+    (void)user;
+    if (!probe.name[0] || !all)
+        return 0;
+    if (probe.index < 0 || probe.index >= all->veccount || probe.scale < 0 || probe.scale >= all->veccount ||
+        !probe_matches(all->vecsa[probe.index]->name))
+        probe_resolve(all);
+    if (probe.index < 0 || probe.scale < 0)
+        return 0;
+    probe_record(all->vecsa[probe.scale]->creal, all->vecsa[probe.index]->creal);
+    return 0;
+}
+
+/* Each tran/resume announces its vectors again; indices are found on the next point. */
+static int receive_vector_info(struct vecinfoall *info, int identifier, void *user)
+{
+    (void)info;
+    (void)identifier;
+    (void)user;
+    probe.index = -1;
+    return 0;
+}
+
+static int set_probe(const char *arguments)
+{
+    double interval = 0;
+    char name[sizeof(probe.name)] = "";
+    int fields = sscanf(arguments, "%lf %63s", &interval, name);
+    if (fields < 1 || !(interval > 0) || interval > 1e12)
+        return 1;
+    memset(&probe, 0, sizeof(probe));
+    snprintf(probe.name, sizeof(probe.name), "%s", fields == 2 ? name : "");
+    probe.interval = interval;
+    probe.index = -1;
+    probe.next = -1;
+    return 0;
+}
+
+static void send_samples(void)
+{
+    printf("OK %.17g %.17g %d", probe.start, probe.step, probe.count);
+    for (int i = 0; i < probe.count; ++i)
+        printf(" %.9g", probe.values[i]);
+    putchar('\n');
+    fflush(stdout);
+    if (probe.next >= 0)
+        probe_restart_grid(probe.next);
 }
 
 static int controlled_exit(int status, bool unload, bool quitting, int identifier, void *user)
@@ -169,7 +312,7 @@ int main(int argc, char **argv)
         printf("ERR %d %lu\n", SPICE_HOST_LOAD, GetLastError());
         return 3;
     }
-    int failed = initialize(output, NULL, controlled_exit, NULL, NULL, NULL, NULL);
+    int failed = initialize(output, NULL, controlled_exit, receive_data, receive_vector_info, NULL, NULL);
     char model[MAX_PATH], input[SPICE_SESSION_COMMAND_CAPACITY];
     /* ngspice resolves relative codemodel paths against the host executable, not its CWD.
      * The packaged layout therefore needs no quoting or Windows 8.3 short names. */
@@ -217,6 +360,10 @@ int main(int argc, char **argv)
                 fflush(stdout);
             }
         }
+        else if (!strncmp(input, "P ", 2))
+            respond(set_probe(input + 2));
+        else if (!strcmp(input, "S"))
+            send_samples();
         else
             respond(1);
     }

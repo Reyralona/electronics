@@ -156,6 +156,24 @@ static void command_recalculate(AppState *app)
     app->status = tr(TXT_APP_RECALCULATING);
 }
 
+void app_commands_close_graph(AppState *app)
+{
+    if (app->live_graph.active)
+    {
+        sim_live_graph_close(&app->live_graph);
+        app->status = tr(TXT_APP_GRAPH_CLOSED);
+        return;
+    }
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic)
+    {
+        command_recalculate(app);
+        app->status = tr(TXT_APP_GRAPH_CLOSED_RESUMED);
+        return;
+    }
+    app->show_trace = 0;
+    app->status = tr(TXT_APP_GRAPH_CLOSED);
+}
+
 static void command_rotate(AppState *app)
 {
     Workbench before BENCH_AUTO_CLEAR = {0};
@@ -184,8 +202,34 @@ static void command_graph(AppState *app)
     app->status = app->show_trace ? tr(TXT_APP_GRAPH_SHOWN) : tr(TXT_APP_GRAPH_HIDDEN);
 }
 
-static void command_trace_wire(AppState *app)
+/* T keeps the running simulation and graphs it live; Shift+T asks for the full curve from t = 0. */
+static int wants_live_graph(const AppState *app, int full_graph)
 {
+    return !full_graph && app->sim.auto_enabled && sim_auto_uses_live_session(&app->bench);
+}
+
+static void open_live_graph(AppState *app, SimLiveProbe probe)
+{
+    if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && !app->sim.trace_automatic)
+    {
+        sim_state_clear_result(&app->sim);
+        app->sim.auto_requested_valid = 0;
+        app->sim.sim_running = 1;
+    }
+    app->trace_pending_kind = 0;
+    sim_live_graph_open(&app->live_graph, probe, &app->bench);
+    app->show_trace = 1;
+    app->status = tr(TXT_APP_LIVE_GRAPH_OPENED);
+}
+
+static void command_trace_wire(AppState *app, int full_graph)
+{
+    if (wants_live_graph(app, full_graph))
+    {
+        open_live_graph(app, (SimLiveProbe){SIM_LIVE_PROBE_WIRE_CURRENT, {app->selected_wire, 0}, 0});
+        return;
+    }
+    sim_live_graph_close(&app->live_graph);
     if (app->dc_job.thread)
     {
         if (app->dc_job.automatic && app->dc_job.continuous)
@@ -222,8 +266,42 @@ static int start_part_trace(AppState *app)
                                      app->transient_step, app->transient_stop);
 }
 
-static void command_trace_part(AppState *app)
+/* Reason a part cannot be graphed with the current probe choice; 0 when it can. */
+static int part_trace_problem(const AppState *app, TextId *problem)
 {
+    PartType type = app->bench.parts[app->selected].type;
+    if (!app->probe_current && app->probe_pin >= bench_pin_count(type))
+        *problem = TXT_APP_NO_SUCH_TERMINAL;
+    else if (app->probe_current && (is_gate(type) || component_has_flag(type, COMPONENT_QUAD_GATE)))
+        *problem = TXT_APP_GATE_CURRENT_UNAVAILABLE;
+    else if (app->probe_current && type == PART_SWITCH)
+        *problem = TXT_APP_SWITCH_CURRENT_UNAVAILABLE;
+    else
+        return 0;
+    return 1;
+}
+
+static SimLiveProbe part_live_probe(const AppState *app)
+{
+    if (app->probe_current)
+        return (SimLiveProbe){SIM_LIVE_PROBE_PART_CURRENT, {app->selected, 0}, 0};
+    return (SimLiveProbe){SIM_LIVE_PROBE_VOLTAGE, {app->selected, app->probe_pin}, 0};
+}
+
+static void command_trace_part(AppState *app, int full_graph)
+{
+    TextId problem;
+    if (part_trace_problem(app, &problem))
+    {
+        app->status = tr(problem);
+        return;
+    }
+    if (wants_live_graph(app, full_graph))
+    {
+        open_live_graph(app, part_live_probe(app));
+        return;
+    }
+    sim_live_graph_close(&app->live_graph);
     if (app->dc_job.thread)
     {
         if (app->dc_job.automatic && app->dc_job.continuous)
@@ -239,13 +317,6 @@ static void command_trace_part(AppState *app)
         else
             app->status = tr(TXT_APP_CALCULATION_BUSY);
     }
-    else if (!app->probe_current && app->probe_pin >= bench_pin_count(app->bench.parts[app->selected].type))
-        app->status = tr(TXT_APP_NO_SUCH_TERMINAL);
-    else if (app->probe_current &&
-             (is_gate(app->bench.parts[app->selected].type) || component_has_flag(app->bench.parts[app->selected].type, COMPONENT_QUAD_GATE)))
-        app->status = tr(TXT_APP_GATE_CURRENT_UNAVAILABLE);
-    else if (app->probe_current && app->bench.parts[app->selected].type == PART_SWITCH)
-        app->status = tr(TXT_APP_SWITCH_CURRENT_UNAVAILABLE);
     else if (start_part_trace(app))
     {
         sim_state_clear_result(&app->sim);
@@ -349,7 +420,7 @@ static void command_delete_wire(AppState *app)
     app->status = tr(TXT_APP_WIRE_DELETED);
 }
 
-static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key)
+static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
     if (app->bench.parts[app->selected].group && key != SDLK_DELETE && key != SDLK_T && key != SDLK_R)
     {
@@ -363,7 +434,7 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
         break;
     case SDLK_T:
         if (app->bench.parts[app->selected].type != PART_BREADBOARD)
-            command_trace_part(app);
+            command_trace_part(app, (mod & SDL_KMOD_SHIFT) != 0);
         break;
     case SDLK_E:
         command_edit_value(app, window);
@@ -453,9 +524,9 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
         return;
     }
     if (key == SDLK_T && app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count)
-        command_trace_wire(app);
+        command_trace_wire(app, (mod & SDL_KMOD_SHIFT) != 0);
     else if (app->selected >= 0)
-        command_selection(app, window, key);
+        command_selection(app, window, key, mod);
     else if (key == SDLK_DELETE && app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count)
         command_delete_wire(app);
 }

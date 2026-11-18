@@ -12,7 +12,7 @@ static SpiceLive *open_example(int index, Workbench *bench)
 {
     int selected;
     assert(workbench_example_create(index, bench, &selected));
-    options = (SimAutoOptions){1, {selected, 0}, 1e-5, .005, burn_limits_default()};
+    options = (SimAutoOptions){1, {selected, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
     SpiceLive *live = spice_live_create();
     assert(live);
     return live;

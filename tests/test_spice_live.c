@@ -193,13 +193,88 @@ static void check_recovers_after_timeout(void)
     bench_snapshot_clear(&rc);
 }
 
+/* Samples of consecutive batches must join without gaps or overlaps. */
+static double check_samples_follow(const SimLiveSamples *samples, double expected_start)
+{
+    assert(samples->valid && samples->count > 0 && samples->interval > 0);
+    if (expected_start >= 0)
+        assert(fabs(samples->start - expected_start) < samples->interval * 1e-6);
+    return samples->start + samples->count * samples->interval;
+}
+
+/* A person opens the live graph on a charging capacitor and on a clock while the simulation runs. */
+static void check_live_probe(void)
+{
+    Workbench rc = {0};
+    bench_add(&rc, PART_SOURCE, 300, 100);
+    bench_add(&rc, PART_RESISTOR, 500, 100);
+    bench_add(&rc, PART_CAPACITOR, 700, 100);
+    bench_set_value(&rc, 1, 1000);
+    bench_set_value(&rc, 2, 1e-6);
+    wire(&rc, 0, 0, 1, 0);
+    wire(&rc, 1, 1, 2, 0);
+    wire(&rc, 2, 1, 0, 1);
+    SimAutoOptions probed = options;
+    probed.step = 1e-3;
+    probed.live_probe = (SimLiveProbe){SIM_LIVE_PROBE_VOLTAGE, {2, 0}, 5e-5};
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    double next = -1, last = -1;
+    for (int batch = 0; batch < 4; ++batch)
+    {
+        assert(spice_live_step(live, &rc, executable, &probed, .001, &result));
+        next = check_samples_follow(&result.live_samples, next);
+        for (int i = 0; i < result.live_samples.count; ++i)
+        {
+            assert(result.live_samples.values[i] >= last - 1e-9);
+            last = result.live_samples.values[i];
+        }
+    }
+    printf("Live probe on RC: last sample %.4f V at t=%.4f s\n", last, next);
+    assert(last > 4.5 && last < 5.01);
+    /* The opposite case: a point without a solver vector says so instead of drawing zeros. */
+    probed.live_probe.target = (Pin){2, 1};
+    assert(spice_live_step(live, &rc, executable, &probed, .001, &result));
+    assert(!result.live_samples.valid);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rc);
+
+    Workbench clock = {0};
+    bench_add(&clock, PART_CLOCK, 300, 100);
+    bench_add(&clock, PART_RESISTOR, 500, 100);
+    bench_set_value(&clock, 0, 100);
+    bench_set_on(&clock, 0, 1);
+    wire(&clock, 0, 0, 1, 0);
+    wire(&clock, 1, 1, 0, 1);
+    probed.live_probe = (SimLiveProbe){SIM_LIVE_PROBE_VOLTAGE, {1, 0}, 1e-4};
+    live = spice_live_create();
+    assert(live);
+    double low = 1e9, high = -1e9;
+    next = -1;
+    for (int batch = 0; batch < 4; ++batch)
+    {
+        assert(spice_live_step(live, &clock, executable, &probed, .005, &result));
+        next = check_samples_follow(&result.live_samples, next);
+        for (int i = 0; i < result.live_samples.count; ++i)
+        {
+            low = fmin(low, result.live_samples.values[i]);
+            high = fmax(high, result.live_samples.values[i]);
+        }
+    }
+    printf("Live probe on 100 Hz clock: %.3f V to %.3f V\n", low, high);
+    assert(high - low > 4.5);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&clock);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     executable = argv[1];
     check_live_history_policy();
-    options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default()};
+    options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
     check_recovers_after_timeout();
+    check_live_probe();
     check_four_input_and();
     check_led_hold(0);
     check_led_hold(1);

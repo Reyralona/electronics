@@ -152,7 +152,7 @@ static void sensor_live(PartType type)
     bench_set_control(&bench, 1, 0);
     SpiceLive *live = spice_live_create();
     assert(live);
-    SimAutoOptions options = {0, {0, 0}, 1e-5, .001, burn_limits_default()};
+    SimAutoOptions options = {0, {0, 0}, 1e-5, .001, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
     SimAutoResult result;
     assert(spice_live_step(live, &bench, executable, &options, .001, &result));
     double initial = result.currents[2];
@@ -214,7 +214,7 @@ static void powered_sensor(PartType type)
         assert(currents[2] > 1e-6 && currents[2] < 2e-6);
     SpiceLive *live = spice_live_create();
     assert(live);
-    SimAutoOptions options = {0, {0, 0}, 1e-5, .001, burn_limits_default()};
+    SimAutoOptions options = {0, {0, 0}, 1e-5, .001, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
     SimAutoResult result;
     char message[512];
     int success = spice_live_step(live, &bench, executable, &options, .001, &result);

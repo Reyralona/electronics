@@ -43,6 +43,9 @@ int app_layout_led_swatch_at(float x, float y);
 AppRect app_layout_code_panel(void);
 AppRect app_layout_code_run(void);
 AppRect app_layout_code_close(void);
+/* Graph window (T): static curve or live graph, with its close button. */
+AppRect app_layout_graph_panel(void);
+AppRect app_layout_graph_close(void);
 AppRect app_layout_code_text(void);
 AppRect app_layout_code_serial(void);
 

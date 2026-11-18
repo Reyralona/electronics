@@ -82,6 +82,10 @@ UI_TEXT(UI_LED_COLOR, "Cor: %s", "Color: %s")
 UI_TEXT(UI_GRAPH_WIRE_CURRENT, "Corrente no fio, A → B (A)", "Wire current, A → B (A)")
 UI_TEXT(UI_GRAPH_PIN_CURRENT, "Corrente, pino 1 → 2 (A)", "Current, pin 1 → 2 (A)")
 UI_TEXT(UI_GRAPH_VOLTAGE, "Tensão, terminal %d (V)", "Voltage, terminal %d (V)")
+UI_TEXT(UI_GRAPH_LIVE, "Ao vivo · %s", "Live · %s")
+UI_TEXT(UI_GRAPH_LIVE_WAITING, "Aguardando amostras da simulação…", "Waiting for samples from the simulation…")
+UI_TEXT(UI_GRAPH_LIVE_NO_READING, "Este ponto não tem leitura (terra ou sem corrente medida).",
+        "This point has no reading (ground or no measured current).")
 /* Status bar key hints: "Key: action", joined by " · ". */
 UI_TEXT(UI_HINT_CHIP,
         "R: girar · Enter: ver interior · 2 cliques no terminal: nomear · Alt+arrastar terminal: reorganizar · Ctrl+roda: largura · Ctrl+Shift+roda: altura · Delete: apagar",
@@ -92,7 +96,7 @@ UI_TEXT(UI_HINT_SIZE, "Ctrl+roda: tamanho", "Ctrl+wheel: size")
 UI_TEXT(UI_HINT_LEGS, "Alt+arrastar: pernas", "Alt+drag: legs")
 UI_TEXT(UI_HINT_WIPER, "Shift+roda: posição", "Shift+wheel: position")
 UI_TEXT(UI_HINT_ENVIRONMENT, "Shift+roda: ambiente", "Shift+wheel: environment")
-UI_TEXT(UI_HINT_GRAPH, "T: gráfico", "T: graph")
+UI_TEXT(UI_HINT_GRAPH, "T: gráfico ao vivo · Shift+T: curva completa", "T: live graph · Shift+T: full curve")
 UI_TEXT(UI_HINT_REPLACE, "Catálogo: trocar peça", "Catalog: replace part")
 UI_TEXT(UI_HINT_DELETE, "Delete: apagar", "Delete: delete")
 UI_TEXT(UI_HINT_WIRE, "Duplo clique: adicionar ou remover dobra · T: gráfico da corrente · Delete: apagar",

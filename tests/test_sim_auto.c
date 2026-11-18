@@ -68,7 +68,7 @@ static void test_shorts(void)
 
 static void run(const Workbench *b, const char *exe, SimAutoResult *result, SpiceTrace *trace)
 {
-    SimAutoOptions options = {0, {0, 0}, 1e-5, .005, burn_limits_default()};
+    SimAutoOptions options = {0, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
     int ok = sim_auto_run(b, exe, &options, result, trace);
     if (!ok)
         fprintf(stderr, "sim_auto_run: %s\n", result->message);
@@ -159,7 +159,7 @@ static void test_with_ngspice(const char *exe)
     wire(&b, 0, 0, 3, 0);
     wire(&b, 0, 0, 3, 1);
     {
-        SimAutoOptions options = {1, {0, 0}, 1e-5, .005, burn_limits_default()};
+        SimAutoOptions options = {1, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
         assert(sim_auto_run(&b, exe, &options, &r, &trace));
         assert(r.has_trace && !trace.measures_wires);
         assert(!strncmp(r.message, tr(TXT_ENG_WIRE_CURRENTS_UNAVAILABLE), strcspn(tr(TXT_ENG_WIRE_CURRENTS_UNAVAILABLE), "%")));

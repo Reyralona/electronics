@@ -36,8 +36,8 @@ UI_TEXT(SETTINGS_TERMINAL, "Terminal", "Terminal")
 UI_TEXT(TERMINAL_NUMBER, "Terminal %d", "Terminal %d")
 UI_TEXT(SETTINGS_STEP, "Passo", "Step")
 UI_TEXT(SETTINGS_DURATION, "Duração", "Duration")
-UI_TEXT(SETTINGS_LIVE_FRAME, "Valem para o gráfico T. A simulação ao vivo escolhe o próprio passo.",
-        "They apply to the T graph. The live simulation picks its own step.")
+UI_TEXT(SETTINGS_LIVE_FRAME, "Curva completa (Shift+T). Ao vivo, a duração é a janela do gráfico.",
+        "Full curve (Shift+T). Live, the duration is the graph window.")
 UI_TEXT(SETTINGS_AUTOSAVE, "Salvo automaticamente.", "Saved automatically.")
 UI_TEXT(SETTINGS_RESTORE_DEFAULTS, "Restaurar padrões", "Restore defaults")
 UI_TEXT(PREFERENCES_SAVE_FAILED, "Não foi possível salvar as preferências.", "Cannot save preferences.")
