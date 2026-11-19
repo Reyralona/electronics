@@ -122,8 +122,9 @@ O que aparece na tela:
 
 - **LEDs e lâmpadas** brilham conforme a corrente calculada. O LED apagado fica escuro, bem diferente do aceso. Cinza significa que não há resultado válido.
 - **Corrente nos fios** (ligue em **Configurações**): bolinhas amarelas andam no sentido convencional da corrente, e a velocidade indica a faixa de intensidade.
-- Durante a sessão contínua, a barra inferior mostra o tempo simulado e a velocidade observada (`1,00x` significa 1 segundo simulado por segundo real). O valor depende do circuito e do computador.
-- Em **Configurações → Ritmo da simulação**, use **−/+** para escolher 0,05×, 0,1×, 0,25×, 0,5× ou 1×.
+- Durante a sessão contínua, a barra inferior mostra o tempo simulado e a velocidade observada (`1x` significa 1 segundo simulado por segundo real). O valor depende do circuito e do computador.
+- Em **Configurações → Ritmo da simulação**, use **−/+** para escolher de 0,001× (câmera lenta: 1 ms do
+  circuito por segundo) a 1×: 0,001×, 0,002×, 0,005×, 0,01×, 0,02×, 0,05×, 0,1×, 0,25×, 0,5× ou 1×.
   É a razão solicitada entre tempo simulado e tempo real na sessão contínua; não muda a frequência
   dos componentes nem o passo elétrico. A barra mostra o ritmo escolhido e o observado. Se o computador
   não acompanhar, o observado pode ficar abaixo do escolhido. A preferência é salva automaticamente.

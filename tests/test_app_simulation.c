@@ -88,6 +88,10 @@ int main(void)
     assert(fabs(app_simulation_live_span(1000, 1100, .1, 1, 0) - .1) < 1e-12);
     assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .25, 0) - .004) < 1e-12);
     assert(fabs(app_simulation_live_span(1000, 1016, 1e-5, .05, 0) - .0008) < 1e-12);
+    /* Slow motion asks for less than one 1 ms step per frame: 16 ms at 0.001x is 16 us of circuit time. */
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-3, .001, 0) - 1.6e-5) < 1e-12);
+    assert(fabs(app_simulation_live_span(1000, 1016, 1e-3, .01, 0) - 1.6e-4) < 1e-12);
+    assert(app_simulation_live_span(1000, 1016, 1e-3, .0005, 0) == 0);
     assert(app_simulation_live_span(1000, 1100, 0, 1, 0) == 0);
     assert(app_simulation_live_span(1000, 1100, 1e-5, 0, 0) == 0);
     assert(app_simulation_live_span(1000, 1100, 1e-5, 2, 0) == 0);

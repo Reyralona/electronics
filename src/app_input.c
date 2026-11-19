@@ -636,7 +636,7 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     case APP_SETTING_SIM_SPEED_SLOWER:
     case APP_SETTING_SIM_SPEED_FASTER:
     {
-        static const double speeds[] = {.05, .1, .25, .5, 1.0};
+        static const double speeds[] = {WORKBENCH_SPEED_MIN, .002, .005, .01, .02, .05, .1, .25, .5, WORKBENCH_SPEED_MAX};
         int index = 0;
         while (index + 1 < (int)(sizeof(speeds) / sizeof(speeds[0])) &&
                speeds[index] < app->simulation_speed - 1e-9)

@@ -24,7 +24,7 @@ int workbench_settings_valid(const WorkbenchSettings *s)
            (s->snap_grid == 0 || s->snap_grid == 1) && (s->snap_board == 0 || s->snap_board == 1) &&
            (s->show_pin_labels == 0 || s->show_pin_labels == 1) && s->language >= 0 && s->language < UI_LANG_COUNT &&
            s->transient_step <= s->transient_stop && s->transient_stop / s->transient_step <= 500.0 * (1.0 + 1e-12) &&
-           isfinite(s->simulation_speed) && s->simulation_speed >= .05 && s->simulation_speed <= 1.0;
+           isfinite(s->simulation_speed) && s->simulation_speed >= WORKBENCH_SPEED_MIN && s->simulation_speed <= WORKBENCH_SPEED_MAX;
 }
 
 static int write_leads(FILE *file, const Workbench *bench)

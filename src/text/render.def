@@ -89,8 +89,8 @@ UI_TEXT(UI_METER_RESISTANCE, "Resistência: %.4g Ω (circuito sem alimentação)
         "Resistance: %.4g Ω (circuit without supply)")
 UI_TEXT(UI_METER_RESISTANCE_POWERED, "Resistência indisponível: desligue as fontes.",
         "Resistance unavailable: turn off the supplies.")
-UI_TEXT(UI_LIVE_PACE_STATUS, "t = %.6g s · %.2fx observado / %.2fx escolhido · %s",
-        "t = %.6g s · %.2fx observed / %.2fx selected · %s")
+UI_TEXT(UI_LIVE_PACE_STATUS, "t = %.6g s · %.2gx observado / %.2gx escolhido · %s",
+        "t = %.6g s · %.2gx observed / %.2gx selected · %s")
 UI_TEXT(UI_METER_VOLTAGE, "Tensão: %.4g V (entre VΩ e COM)", "Voltage: %.4g V (between VΩ and COM)")
 UI_TEXT(UI_SCOPE_NOTE, "CH1: %.3g V · Escala ±5 V · Mostra as últimas amostras",
         "CH1: %.3g V · Scale ±5 V · Shows the last samples")
