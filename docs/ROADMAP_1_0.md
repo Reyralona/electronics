@@ -64,7 +64,7 @@ Dívidas encontradas, em ordem de impacto:
    migrar para uma tabela de fases `{ação, verificação}`; hoje inserir uma fase no meio exige renumerar.
 4. ~~Uma corrente por peça~~: resolvido na 0.32.0 (`component_devices`, até 8 medições e `states`).
    Falta proteção de queima por elemento (hoje RGB/7 segmentos não "queimam").
-5. **Limites fixos**: 256 peças, 512 fios, 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
+5. **Limites fixos**: 1024 peças e 2048 fios desde a 0.47.0 (eram 256/512), 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
    capacidades dinâmicas.
 6. **Tipos persistidos como códigos numéricos** (formato 32); a migração para IDs textuais já foi
    decidida e deve usar um número de formato novo, mantendo leitura das versões anteriores.

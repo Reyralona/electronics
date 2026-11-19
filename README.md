@@ -26,7 +26,7 @@ Dê dois cliques na fonte para ligar ou desligar. O LED acompanha.
 - Criar chips reutilizáveis e salvar projetos.
 
 Os modelos são didáticos. Não use os resultados para dimensionar circuitos reais.
-Há limites de 256 peças e 512 fios por montagem.
+Há limites de 1024 peças e 2048 fios por montagem.
 
 ## Documentação
 
