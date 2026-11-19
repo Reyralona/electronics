@@ -91,6 +91,7 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     if (argc > 1 && !strcmp(argv[1], "--capture-overwrite"))
     {
         app->projects_open = 1;
+        app_projects_refresh(app);
         app->saved_slots[0] = 1;
         app->project_parts[0] = 4;
         app->project_wires[0] = 3;
@@ -198,7 +199,10 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         app->settings = 1;
     }
     if (argc > 1 && strcmp(argv[1], "--capture-projects") == 0)
+    {
         app->projects_open = 1;
+        app_projects_refresh(app);
+    }
     if (argc > 1 && strcmp(argv[1], "--capture-examples") == 0)
         app->examples_open = 1;
     if (argc > 1 && strcmp(argv[1], "--capture-settings") == 0)

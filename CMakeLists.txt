@@ -44,6 +44,7 @@ add_executable(bancada WIN32
     src/component_devices.c
     src/workbench_examples.c
     src/workbench_view.c
+    src/workbench_fit.c
     src/workbench_file.c
     src/workbench_pack_file.c
     src/workbench_group_name.c

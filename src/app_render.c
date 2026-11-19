@@ -18,6 +18,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <SDL3/SDL.h>
 
 /* Transparent ("raio-x") part bodies: every primitive of a part is drawn at XRAY_ALPHA through the
  * constant blend colour, so terminals and wires behind it stay visible. glBlendColor is GL 1.4 and is
@@ -3870,33 +3872,91 @@ static void draw_value_editor(const AppState *app, GLuint font)
     ui_button(app, font, app_layout_value_button(0), tr(TXT_UI_CANCEL), UI_BUTTON_NEUTRAL);
 }
 
+static void draw_project_thumbnail(const AppState *app, GLuint font, int index, AppRect card)
+{
+    static GLuint textures[PROJECT_SLOTS_PER_PAGE];
+    static int cached_slots[PROJECT_SLOTS_PER_PAGE] = {-1, -1, -1, -1, -1, -1};
+    static time_t cached_times[PROJECT_SLOTS_PER_PAGE];
+    static unsigned cached_revisions[PROJECT_SLOTS_PER_PAGE];
+    int cell = index % PROJECT_SLOTS_PER_PAGE;
+    char path[128];
+    snprintf(path, sizeof(path), "%s/slot-%d.bmp", app->selftest ? "build/test-slots" : "saves", index + 1);
+    struct _stat metadata;
+    int exists = _stat(path, &metadata) == 0;
+    if (cached_slots[cell] != index || cached_revisions[cell] != app->project_thumbnail_revision ||
+        (exists && cached_times[cell] != metadata.st_mtime) || (!exists && textures[cell]))
+    {
+        if (textures[cell])
+            glDeleteTextures(1, &textures[cell]);
+        textures[cell] = 0;
+        cached_slots[cell] = index;
+        cached_revisions[cell] = app->project_thumbnail_revision;
+        cached_times[cell] = exists ? metadata.st_mtime : 0;
+        SDL_Surface *loaded = exists ? SDL_LoadBMP(path) : NULL;
+        SDL_Surface *rgba = loaded ? SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_RGBA32) : NULL;
+        if (rgba)
+        {
+            glGenTextures(1, &textures[cell]);
+            glBindTexture(GL_TEXTURE_2D, textures[cell]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgba->w, rgba->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba->pixels);
+        }
+        if (rgba)
+            SDL_DestroySurface(rgba);
+        if (loaded)
+            SDL_DestroySurface(loaded);
+    }
+    AppRect preview = {card.x + 12, card.y + 43, card.w - 24, 112};
+    color(.88f, .91f, .93f);
+    ui_rounded(preview, UI_RADIUS);
+    if (!textures[cell])
+    {
+        color(UI_MUTED);
+        text(font, preview.x + preview.w / 2 - 8, preview.y + preview.h / 2 + 5,
+             app->saved_slots[index] ? tr(TXT_UI_SLOT_SAVED) : "+");
+        return;
+    }
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[cell]);
+    glColor3f(1, 1, 1);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0); glVertex2f(preview.x, preview.y);
+    glTexCoord2f(1, 0); glVertex2f(preview.x + preview.w, preview.y);
+    glTexCoord2f(1, 1); glVertex2f(preview.x + preview.w, preview.y + preview.h);
+    glTexCoord2f(0, 1); glVertex2f(preview.x, preview.y + preview.h);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+}
+
 static void draw_project_slot(const AppState *app, GLuint font, int slot)
 {
+    int index = app->project_page * PROJECT_SLOTS_PER_PAGE + slot;
+    if (index >= app->project_slot_count)
+        return;
     AppRect r = app_layout_project_slot(slot);
-    if (slot == app->save_slot)
+    color(ui_hovered(app, r) ? .90f : .94f, ui_hovered(app, r) ? .93f : .955f, ui_hovered(app, r) ? .97f : .97f);
+    ui_rounded(r, UI_RADIUS);
+    if (index == app->save_slot)
     {
         glColor3f(UI_ACCENT);
         ui_outline(r, UI_RADIUS, 2);
     }
-    else
-    {
-        color(ui_hovered(app, r) ? .90f : .94f, ui_hovered(app, r) ? .93f : .955f, ui_hovered(app, r) ? .97f : .97f);
-        ui_rounded(r, UI_RADIUS);
-    }
+    draw_project_thumbnail(app, font, index, r);
     char label[32];
-    snprintf(label, sizeof(label), tr(TXT_UI_SLOT_NUMBER), slot + 1);
+    snprintf(label, sizeof(label), tr(TXT_UI_SLOT_NUMBER), index + 1);
     color(UI_INK);
     text(font, r.x + 16, r.y + 32, label);
-    if (app->saved_slots[slot])
+    if (app->saved_slots[index])
         glColor3f(UI_POSITIVE);
     else
         color(UI_MUTED);
     char summary[80];
-    if (app->saved_slots[slot] && app->project_parts[slot] >= 0)
-        snprintf(summary, sizeof(summary), tr(TXT_UI_PROJECT_SUMMARY), app->project_parts[slot], app->project_wires[slot]);
+    if (app->saved_slots[index] && app->project_parts[index] >= 0)
+        snprintf(summary, sizeof(summary), tr(TXT_UI_PROJECT_SUMMARY), app->project_parts[index], app->project_wires[index]);
     else
-        snprintf(summary, sizeof(summary), "%s", tr(app->saved_slots[slot] ? TXT_UI_SLOT_UNREADABLE : TXT_UI_SLOT_EMPTY));
-    name_text(font, r.x + 16, r.y + 58, summary, (int)r.w - 32);
+        snprintf(summary, sizeof(summary), "%s", tr(app->saved_slots[index] ? TXT_UI_SLOT_UNREADABLE : TXT_UI_SLOT_EMPTY));
+    name_text(font, r.x + 16, r.y + r.h - 17, summary, (int)r.w - 32);
 }
 
 static void draw_projects(const AppState *app, GLuint font)
@@ -3907,16 +3967,25 @@ static void draw_projects(const AppState *app, GLuint font)
     ui_panel(panel);
     color(UI_INK);
     text(font, panel.x + 30, panel.y + 42, tr(TXT_UI_PROJECTS));
-    ui_note(font, panel.x + 30, panel.y + 70, tr(TXT_UI_PROJECTS_NOTE), 560);
+    char page_label[32];
+    int pages = (app->project_slot_count + PROJECT_SLOTS_PER_PAGE - 1) / PROJECT_SLOTS_PER_PAGE;
+    snprintf(page_label, sizeof(page_label), "%d / %d", app->project_page + 1, pages > 0 ? pages : 1);
+    color(UI_MUTED);
+    text(font, panel.x + panel.w - 150, panel.y + 42, page_label);
+    ui_note(font, panel.x + 30, panel.y + 70, tr(TXT_UI_PROJECTS_NOTE), 820);
     ui_close_button(app, app_layout_project_close());
     for (int slot = 0; slot < APP_PROJECT_SLOTS; ++slot)
         draw_project_slot(app, font, slot);
     char label[48];
-    snprintf(label, sizeof(label), tr(app->saved_slots[app->save_slot] ? TXT_UI_REPLACE_SLOT : TXT_UI_SAVE_TO_SLOT), app->save_slot + 1);
+    int occupied = app->saved_slots && app->save_slot < app->project_slot_count && app->saved_slots[app->save_slot];
+    snprintf(label, sizeof(label), tr(occupied ? TXT_UI_REPLACE_SLOT : TXT_UI_SAVE_TO_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_save(), label, UI_BUTTON_PRIMARY);
     snprintf(label, sizeof(label), tr(TXT_UI_LOAD_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_load(), label,
-              app->saved_slots[app->save_slot] ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
+              occupied ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
+    ui_button(app, font, app_layout_project_previous(), "<", app->project_page > 0 ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
+    ui_button(app, font, app_layout_project_next(), ">",
+              (app->project_page + 1) * PROJECT_SLOTS_PER_PAGE < app->project_slot_count ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
 }
 
 static void draw_pin_help(const AppState *app, GLuint font)
@@ -4269,6 +4338,8 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_chrome(app, font, width, height);
     interface_layer = 0;
     draw_workspace(app, font, width, height);
+    if (app->project_thumbnail_render)
+        return;
     interface_layer = 1;
     draw_actions(app, font);
     draw_inspector(app, font);

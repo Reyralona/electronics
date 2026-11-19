@@ -9,7 +9,7 @@
 #include "mcu_runtime.h"
 #define MCU_CODE_CAPACITY 16384
 
-#define PROJECT_SLOT_COUNT 9
+#define PROJECT_SLOTS_PER_PAGE 6
 #define BLOCK_LIBRARY_SLOTS 8
 #define APP_EDIT_STEP WORKBENCH_MAX_COMPONENTS
 #define APP_EDIT_STOP (WORKBENCH_MAX_COMPONENTS + 1)
@@ -87,9 +87,13 @@ typedef struct AppState
     BenchSelection selection;
     BenchClipboard clipboard;
     int selecting_area, projects_open, save_slot, examples_open;
-    int saved_slots[PROJECT_SLOT_COUNT];
+    int *saved_slots;
     int project_overwrite; /* Slot presented by the confirmation; -1 when no confirmation is open. */
-    int project_parts[PROJECT_SLOT_COUNT], project_wires[PROJECT_SLOT_COUNT];
+    int *project_parts, *project_wires;
+    int project_slot_count, project_page;
+    int project_thumbnail_pending;
+    unsigned project_thumbnail_revision;
+    int project_thumbnail_render;
     WirePoint area_start, area_end, mouse_world, mouse_screen;
     uint64_t area_scroll_ticks; /* Last edge auto-scroll step while selecting an area; 0 = idle. */
     int mouse_position_valid;

@@ -228,14 +228,14 @@ AppSetting app_layout_setting_at(float x, float y)
 
 AppRect app_layout_projects_panel(void)
 {
-    return (AppRect){300, 110, 680, 450};
+    return (AppRect){175, 64, 930, 592};
 }
 
 AppRect app_layout_project_slot(int slot)
 {
     if (slot < 0 || slot >= APP_PROJECT_SLOTS)
         return NO_RECT;
-    return (AppRect){330 + (slot % 3) * 210.0f, 196 + (slot / 3) * 92.0f, 198, 80};
+    return (AppRect){201 + (slot % 3) * 305.0f, 161 + (slot / 3) * 205.0f, 288, 190};
 }
 
 int app_layout_project_slot_at(float x, float y)
@@ -248,12 +248,22 @@ int app_layout_project_slot_at(float x, float y)
 
 AppRect app_layout_project_save(void)
 {
-    return (AppRect){330, 486, 300, 44};
+    return (AppRect){201, 584, 314, 44};
 }
 
 AppRect app_layout_project_load(void)
 {
-    return (AppRect){650, 486, 300, 44};
+    return (AppRect){527, 584, 314, 44};
+}
+
+AppRect app_layout_project_previous(void)
+{
+    return (AppRect){863, 574, 90, 44};
+}
+
+AppRect app_layout_project_next(void)
+{
+    return (AppRect){967, 574, 90, 44};
 }
 
 AppRect app_layout_project_close(void)

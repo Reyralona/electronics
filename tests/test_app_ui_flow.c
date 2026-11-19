@@ -292,6 +292,7 @@ int main(void)
     graph_options_flow(&app, window);
     bench_snapshot_clear(&app.bench);
     app.selected = -1;
+    app.view = (BenchView){1, 0, 0};
     dense_led_selection_flow(&app, window);
     app_state_dispose(&app);
     SDL_DestroyWindow(window);

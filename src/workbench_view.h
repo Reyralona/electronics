@@ -1,5 +1,6 @@
 #ifndef WORKBENCH_VIEW_H
 #define WORKBENCH_VIEW_H
+#include "workbench.h"
 typedef struct { float zoom, pan_x, pan_y; } BenchView;
 /* Zoom limits for wheel zoom and fitting. */
 #define BENCH_VIEW_ZOOM_MIN 0.12f
@@ -17,4 +18,5 @@ void bench_view_zoom_at(BenchView *view,float factor,float screen_x,float screen
 float bench_view_edge_push(float position, float low, float high, float zone);
 /* Zoom and pan so the world rectangle fits the workspace, within the zoom limits. */
 void bench_view_fit(BenchView *view, float min_x, float min_y, float max_x, float max_y);
+void bench_view_fit_workbench(BenchView *view, const Workbench *bench);
 #endif

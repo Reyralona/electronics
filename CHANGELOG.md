@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.46.0
+
+- Ao carregar um projeto válido, a bancada ajusta zoom e posição para enquadrar peças, terminais, chips e fios.
+- Projetos passam a crescer além dos nove slots anteriores, com seis cartões por página e navegação por setas ou Page Up/Page Down.
+- A galeria maior mostra miniaturas da bancada enquadrada. Cada imagem é salva ao lado do projeto e gerada para saves antigos quando o cartão aparece.
+- O formato `.elec` e o modelo elétrico continuam na versão anterior.
+
 ## 0.45.1
 
 - A bancada ocupa toda a largura da janela maximizada.

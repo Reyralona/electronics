@@ -676,7 +676,22 @@ static int input_projects(AppState *app, float x, float y)
         return 0;
     int slot = app_layout_project_slot_at(x, y);
     if (slot >= 0)
-        app->save_slot = slot;
+    {
+        int selected = app->project_page * PROJECT_SLOTS_PER_PAGE + slot;
+        if (selected < app->project_slot_count)
+            app->save_slot = selected;
+    }
+    else if (app_rect_contains(app_layout_project_previous(), x, y) && app->project_page > 0)
+    {
+        app->project_page--;
+        app->save_slot = app->project_page * PROJECT_SLOTS_PER_PAGE;
+    }
+    else if (app_rect_contains(app_layout_project_next(), x, y) &&
+             (app->project_page + 1) * PROJECT_SLOTS_PER_PAGE < app->project_slot_count)
+    {
+        app->project_page++;
+        app->save_slot = app->project_page * PROJECT_SLOTS_PER_PAGE;
+    }
     else if (app_rect_contains(app_layout_project_save(), x, y))
         app_projects_save(app);
     else if (app_rect_contains(app_layout_project_load(), x, y))

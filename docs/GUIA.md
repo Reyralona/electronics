@@ -198,7 +198,7 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 
 ## Projetos, exemplos e configurações
 
-- **Projetos** (ou `F3`): 9 slots com resumo de peças/fios. Escolha um e use **Salvar**/**Carregar**, ou `Ctrl+S`/`Ctrl+L`. Em slot ocupado, **Substituir** pede confirmação; cancelar conserva o arquivo salvo. Carregar um arquivo inválido não apaga a montagem aberta. Os slots guardam a montagem e as configurações, não o instante da simulação.
+- **Projetos** (ou `F3`): slots que crescem conforme os projetos são salvos, em páginas de seis cartões com miniaturas e resumo de peças/fios. Ao carregar, a vista tenta enquadrar o circuito inteiro. Escolha um e use **Salvar**/**Carregar**, ou `Ctrl+S`/`Ctrl+L`. Em slot ocupado, **Substituir** pede confirmação; cancelar conserva o arquivo salvo. Carregar um arquivo inválido não apaga a montagem aberta. Os slots guardam a montagem e as configurações, não o instante da simulação.
 - **Exemplos** (ou `F2`): 18 circuitos prontos, com título e explicação. `Ctrl+F2` avança diretamente para o próximo. `Ctrl+Z` volta à montagem anterior.
 - **Configurações:** tema claro/escuro, escala da interface, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, curvas e alças dos fios, nomes dos terminais, simulação e parâmetros do gráfico. A cor fica no painel do fio. As preferências são salvas automaticamente em `saves/preferences.txt`.
 
@@ -210,7 +210,7 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 | ZIP portátil | Ao lado de `bancada.exe` |
 | Build de desenvolvimento, sem marcador de distribuição | Diretório de onde o programa foi aberto |
 
-Dentro dessa pasta, `saves/` guarda os nove slots e `preferences.txt`.
+Dentro dessa pasta, `saves/` guarda os projetos `slot-N.elec`, suas miniaturas `slot-N.bmp` e `preferences.txt`.
 `blocks/` guarda os oito chips da biblioteca; os removidos vão para `blocks/lixeira`.
 Desinstalar preserva os dados. Não há migração automática entre essas pastas.
 Para mover projetos antigos, feche o programa e copie `saves/` e `blocks/` para o destino escolhido.
@@ -279,4 +279,4 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
   limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
 - O **tempo simulado** corre bem mais devagar que o real: cerca de 1 ms simulado por segundo na tela. Um RC de 1 kΩ × 1 µF leva de 1 a 3 s para descarregar visivelmente.
 - Adicionar ou remover peças ou ligações, ou mudar a frequência de um clock, reinicia a simulação contínua. O rodapé avisa quando isso acontece.
-- Capacidade: 256 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 512 fios, 256 grupos, 9 slots e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.
+- Capacidade: 256 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 512 fios, 256 grupos, slots de projeto conforme o espaço disponível e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.

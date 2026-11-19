@@ -106,13 +106,15 @@ AppSetting app_layout_setting_at(float x, float y);
 /* Section heading above a row: column 0 = left, 1 = right. */
 AppRect app_layout_settings_section(int column, int row);
 
-#define APP_PROJECT_SLOTS 9
+#define APP_PROJECT_SLOTS 6
 AppRect app_layout_projects_panel(void);
 AppRect app_layout_project_slot(int slot);
 int app_layout_project_slot_at(float x, float y);
 AppRect app_layout_project_save(void);
 AppRect app_layout_project_load(void);
 AppRect app_layout_project_close(void);
+AppRect app_layout_project_previous(void);
+AppRect app_layout_project_next(void);
 
 AppRect app_layout_inspector(float height);
 /* Header button that collapses the inspector into the small tab below. */

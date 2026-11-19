@@ -4,6 +4,7 @@
 #include "app_settings.h"
 #include "workbench_file.h"
 #include <direct.h>
+#include <io.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -75,6 +76,8 @@ int app_editing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
     {
         app_state_toggle_panel(app, APP_PANEL_PROJECTS);
         app_projects_refresh(app);
+        if (app->projects_open)
+            app->project_page = app->save_slot / PROJECT_SLOTS_PER_PAGE;
         reset_interaction(app);
         return 1;
     }
@@ -95,8 +98,18 @@ int app_editing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
     }
     if (app->projects_open)
     {
-        if (key >= SDLK_1 && key <= SDLK_9)
-            app->save_slot = (int)(key - SDLK_1);
+        if (key >= SDLK_1 && key <= SDLK_6)
+        {
+            int slot = app->project_page * PROJECT_SLOTS_PER_PAGE + (int)(key - SDLK_1);
+            if (slot < app->project_slot_count)
+                app->save_slot = slot;
+        }
+        if (key == SDLK_PAGEUP && app->project_page > 0)
+            app->project_page--;
+        if (key == SDLK_PAGEDOWN && (app->project_page + 1) * PROJECT_SLOTS_PER_PAGE < app->project_slot_count)
+            app->project_page++;
+        if (key == SDLK_PAGEUP || key == SDLK_PAGEDOWN)
+            app->save_slot = app->project_page * PROJECT_SLOTS_PER_PAGE;
         return 1;
     }
     if ((mod & SDL_KMOD_CTRL) && key == SDLK_A)
@@ -134,7 +147,50 @@ static void slot_path(const AppState *app, int slot, char *path, size_t capacity
 
 void app_projects_refresh(AppState *app)
 {
-    for (int i = 0; i < PROJECT_SLOT_COUNT; ++i)
+    const char *directory = app->selftest ? "build/test-slots" : "saves";
+    char pattern[128];
+    snprintf(pattern, sizeof(pattern), "%s/slot-*.elec", directory);
+    struct _finddata_t entry;
+    intptr_t search = _findfirst(pattern, &entry);
+    int highest = 0;
+    if (search != -1)
+    {
+        do
+        {
+            int slot = 0;
+            int length = 0;
+            sscanf(entry.name, "slot-%d.elec%n", &slot, &length);
+            if (length > 0 && !entry.name[length] && slot > highest)
+                highest = slot;
+        } while (_findnext(search, &entry) == 0);
+        _findclose(search);
+    }
+    int count = highest + 1;
+    if (app->save_slot >= count)
+        count = app->save_slot + 1;
+    if (count < 1)
+        count = 1;
+    int *saved = calloc((size_t)count, sizeof(*saved));
+    int *parts = malloc((size_t)count * sizeof(*parts));
+    int *wires = malloc((size_t)count * sizeof(*wires));
+    if (!saved || !parts || !wires)
+    {
+        free(saved);
+        free(parts);
+        free(wires);
+        app->status = tr(TXT_APP_OUT_OF_MEMORY);
+        return;
+    }
+    free(app->saved_slots);
+    free(app->project_parts);
+    free(app->project_wires);
+    app->saved_slots = saved;
+    app->project_parts = parts;
+    app->project_wires = wires;
+    app->project_slot_count = count;
+    if (app->save_slot >= count)
+        app->save_slot = count - 1;
+    for (int i = 0; i < count; ++i)
     {
         char path[128];
         slot_path(app, i, path, sizeof(path));
@@ -172,13 +228,15 @@ static void save_project_slot(AppState *app, int slot)
              tr(saved ? TXT_APP_PROJECT_SAVED : TXT_APP_PROJECT_SAVE_FAILED), slot + 1);
     app->status = app->selection_status;
     app_projects_refresh(app);
+    if (saved)
+        app->project_thumbnail_pending = slot;
 }
 
 void app_projects_save(AppState *app)
 {
-    if (app->save_slot < 0 || app->save_slot >= PROJECT_SLOT_COUNT || app->project_overwrite >= 0)
-        return;
     app_projects_refresh(app);
+    if (app->save_slot < 0 || app->save_slot >= app->project_slot_count || app->project_overwrite >= 0)
+        return;
     if (app->saved_slots[app->save_slot])
     {
         app->project_overwrite = app->save_slot;
@@ -192,7 +250,7 @@ void app_projects_confirm(AppState *app, int replace)
 {
     int slot = app->project_overwrite;
     app->project_overwrite = -1;
-    if (slot < 0 || slot >= PROJECT_SLOT_COUNT)
+    if (slot < 0 || slot >= app->project_slot_count)
         return;
     if (replace)
         save_project_slot(app, slot);
@@ -202,7 +260,7 @@ void app_projects_confirm(AppState *app, int replace)
 
 void app_projects_load(AppState *app)
 {
-    if (app->project_overwrite >= 0 || app->save_slot < 0 || app->save_slot >= PROJECT_SLOT_COUNT)
+    if (app->project_overwrite >= 0 || app->save_slot < 0 || app->save_slot >= app->project_slot_count)
         return;
     char path[128];
     Workbench before BENCH_AUTO_CLEAR = {0};
@@ -223,6 +281,7 @@ void app_projects_load(AppState *app)
     reset_interaction(app);
     bench_selection_clear(&app->selection);
     app_settings_apply_project(app, &settings);
+    bench_view_fit_workbench(&app->view, &app->bench);
     sim_state_clear_result(&app->sim);
     memset(app->leds, 0, sizeof(app->leds));
     app->projects_open = 0;

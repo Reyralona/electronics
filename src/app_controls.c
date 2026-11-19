@@ -116,7 +116,11 @@ int app_controls_targets(const AppState *app, AppRect targets[APP_CONTROL_LIMIT]
         for (int i = 0; i < APP_PROJECT_SLOTS; ++i)
             target(targets, &count, app_layout_project_slot(i));
         target(targets, &count, app_layout_project_save());
-        if (app->saved_slots[app->save_slot])
+        if (app->project_page > 0)
+            target(targets, &count, app_layout_project_previous());
+        if ((app->project_page + 1) * PROJECT_SLOTS_PER_PAGE < app->project_slot_count)
+            target(targets, &count, app_layout_project_next());
+        if (app->saved_slots && app->save_slot < app->project_slot_count && app->saved_slots[app->save_slot])
             target(targets, &count, app_layout_project_load());
         target(targets, &count, app_layout_project_close());
         return count;

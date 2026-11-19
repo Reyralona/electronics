@@ -1,11 +1,11 @@
 # Continuidade
 
-Estado para retomar o desenvolvimento em 18/11/2026. O histórico detalhado permanece no Git;
+Estado para retomar o desenvolvimento em 19/11/2026. O histórico detalhado permanece no Git;
 este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão da branch `feature/interface-usability`: 0.45.1 (sem integração ou release).
+- Versão da branch `feature/interface-usability`: 0.46.0 (sem integração ou release).
   `main` permanece em 0.44.1. Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
@@ -42,6 +42,12 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
   e testa a interface com `PATH` mínimo. O pacote de distribuição inclui o runtime.
 - O executável local de desenvolvimento é `build/build.exe`; arquivos em `build/` são
   descartáveis e não devem aparecer como dependência de fonte ou fixture.
+
+## Projetos e miniaturas
+
+- A galeria usa slots numerados dinâmicos em páginas de seis; projetos antigos `slot-N.elec` são preservados.
+- Carregar projeto válido enquadra corpos, terminais, chips e fios. Miniaturas `slot-N.bmp` são criadas ao salvar ou quando um save antigo aparece na galeria.
+- A comparação técnica está em `COMPARACAO_PROJETOS_2026_11_19.md`; `build.ps1` verifica crescimento além do slot 9 e carga enquadrada.
 
 ## Verificação e próximos passos
 
