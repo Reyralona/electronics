@@ -621,19 +621,20 @@ static void draw_part_clock(const Part *p)
 static void draw_part_chip(const Part *p)
 {
     float x = p->x, y = p->y;
-    int leg;
+    int side = bench_pin_count(p->type) / 2;
+    float half = (float)((side - 1) * BENCH_DIP_PITCH / 2), body = half + 7;
     color(.72f, .74f, .76f);
-    for (leg = 0; leg < 7; ++leg)
+    for (int leg = 0; leg < side; ++leg)
     {
-        rect(x - 44 + leg * 14, y - 17, 4, 9);
-        rect(x - 44 + leg * 14, y + 8, 4, 9);
+        rect(x - half - 2 + (float)(leg * BENCH_DIP_PITCH), y - 17, 4, 9);
+        rect(x - half - 2 + (float)(leg * BENCH_DIP_PITCH), y + 8, 4, 9);
     }
     color(.14f, .16f, .18f);
-    rect(x - 49, y - 13, 98, 28);
+    rect(x - body, y - 13, 2 * body, 28);
     color(.24f, .27f, .30f);
-    rect(x - 49, y - 16, 98, 26);
+    rect(x - body, y - 16, 2 * body, 26);
     color(.72f, .76f, .78f);
-    circle(x - 40, y - 8, 3);
+    circle(x - body + 9, y - 8, 3);
 }
 
 static void draw_part_gate(const Part *p)
@@ -1770,7 +1771,7 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     {
         draw_part_clock(p);
     }
-    else if (component_has_flag(p->type, COMPONENT_QUAD_GATE))
+    else if (component_has_flag(p->type, COMPONENT_DIP))
     {
         draw_part_chip(p);
     }
@@ -2723,7 +2724,7 @@ static void draw_workspace_parts(const AppState *app)
                 int snapped = bench_find_contact(&app->bench, i, p, &contact);
                 float outer_radius = snapped ? 5.0f : 8.0f;
                 float inner_radius = snapped ? 3.0f : 5.0f;
-                if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
+                if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_DIP))
                 {
                     outer_radius = 4.0f;
                     inner_radius = 2.5f;
@@ -2970,7 +2971,7 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
     const Part *part = &app->bench.parts[app->selected];
     if (part->group || part->type == PART_BREADBOARD)
         return;
-    if (!component_has_flag(part->type, COMPONENT_QUAD_GATE))
+    if (!component_has_flag(part->type, COMPONENT_DIP))
     {
         draw_pin_name_labels(app, font, part, -1);
         return;
@@ -2999,7 +3000,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
         return;
     }
     for (i = 0; i < app->bench.part_count; ++i)
-        if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
+        if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_DIP))
         {
             color(.85f, .88f, .9f);
             text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_symbol(app->bench.parts[i].type));

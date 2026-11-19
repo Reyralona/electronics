@@ -1177,7 +1177,7 @@ static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom, in
             float radius = 12.0f;
             if (board)
                 radius = 4.0f;
-            else if (component_has_flag(bench->parts[i].type, COMPONENT_QUAD_GATE))
+            else if (component_has_flag(bench->parts[i].type, COMPONENT_DIP))
                 radius = 5.0f;
             radius = fmaxf(4, radius * fminf(1, bench_part_scale(&bench->parts[i]))) / zoom;
             if (board != pass)

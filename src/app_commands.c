@@ -294,7 +294,7 @@ static int part_trace_problem(const AppState *app, TextId *problem)
     PartType type = app->bench.parts[app->selected].type;
     if (!app->probe_current && app->probe_pin >= bench_pin_count(type))
         *problem = TXT_APP_NO_SUCH_TERMINAL;
-    else if (app->probe_current && (is_gate(type) || component_has_flag(type, COMPONENT_QUAD_GATE)))
+    else if (app->probe_current && (is_gate(type) || component_has_flag(type, COMPONENT_DIP)))
         *problem = TXT_APP_GATE_CURRENT_UNAVAILABLE;
     else if (app->probe_current && type == PART_SWITCH)
         *problem = TXT_APP_SWITCH_CURRENT_UNAVAILABLE;

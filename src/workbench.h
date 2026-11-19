@@ -7,6 +7,7 @@
 #define WORKBENCH_MAX_WIRES 2048
 #define WORKBENCH_MAX_PINS 420
 #define WORKBENCH_MAX_IO 24
+#define BENCH_DIP_PITCH 14 /* distance between neighboring IC pins */
 #define BREADBOARD_PINS 420
 #define PART_SCALE_MIN 0.01f
 #define PART_SCALE_MAX 100.0f

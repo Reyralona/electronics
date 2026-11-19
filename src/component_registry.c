@@ -95,10 +95,10 @@ static const ComponentInfo components[] = {
     [PART_XNOR] = {PART_XNOR, "xnor", NULL, 3, COMPONENT_ROTATES | COMPONENT_GATE_SYMBOL, 21, NULL, pins_gate},
     [PART_POTENTIOMETER] = {PART_POTENTIOMETER, "potentiometer", NULL, 3, COMPONENT_ROTATES, 21, &resistance, pins_pot},
     [PART_BUTTON] = {PART_BUTTON, "button", NULL, 2, COMPONENT_ROTATES | COMPONENT_CONNECTIVITY, 21, NULL, pins_passive},
-    [PART_74HC08] = {PART_74HC08, "74hc08", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
-    [PART_74HC32] = {PART_74HC32, "74hc32", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
-    [PART_74HC86] = {PART_74HC86, "74hc86", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 22, NULL, pins_74hc00},
-    [PART_74HC00] = {PART_74HC00, "74hc00", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE, 15, NULL, pins_74hc00},
+    [PART_74HC08] = {PART_74HC08, "74hc08", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE | COMPONENT_DIP, 22, NULL, pins_74hc00},
+    [PART_74HC32] = {PART_74HC32, "74hc32", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE | COMPONENT_DIP, 22, NULL, pins_74hc00},
+    [PART_74HC86] = {PART_74HC86, "74hc86", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE | COMPONENT_DIP, 22, NULL, pins_74hc00},
+    [PART_74HC00] = {PART_74HC00, "74hc00", NULL, 14, COMPONENT_ROTATES | COMPONENT_QUAD_GATE | COMPONENT_DIP, 15, NULL, pins_74hc00},
     [PART_DIODE] = {PART_DIODE, "diode", NULL, 2, COMPONENT_ROTATES, 24, NULL, pins_led},
     [PART_LDR] = {PART_LDR, "ldr", NULL, 2, COMPONENT_ROTATES, 24, &force_resistance, pins_passive},
     [PART_FLEX] = {PART_FLEX, "flex", NULL, 2, COMPONENT_ROTATES, 24, &flex_resistance, pins_passive},
@@ -598,9 +598,9 @@ void component_body_extent(PartType type, float *half_width, float *half_height)
         *half_width = 227;
         *half_height = 112;
     }
-    else if (component_has_flag(type, COMPONENT_QUAD_GATE))
+    else if (component_has_flag(type, COMPONENT_DIP))
     {
-        *half_width = 50;
+        *half_width = (float)((component_info(type)->pin_count / 2 - 1) * BENCH_DIP_PITCH / 2 + 8);
         *half_height = 20;
     }
     else if (type == PART_BATTERY_9V || type == PART_BATTERY_AA)
