@@ -7,10 +7,9 @@
   somador **74HC283** e EEPROM **AT28C16**. A lógica interna de cada um é digital; só os pinos passam pelo
   circuito analógico, por isso dezenas de CIs simulam perto do tempo real.
 - A EEPROM lê seu conteúdo em hexadecimal (texto da peça). Endereços não gravados leem `FF`; gravar pelo pino WE
-  não é simulado. Por enquanto, o conteúdo só vem dos exemplos e dos arquivos: ainda não há editor na interface.
-- Novo exemplo **Computador de 8 bits**: barramento, registradores, somador/subtrator, microcódigo em duas
-  EEPROMs e programa em outra. Calcula 28 + 14 - 7, mostra 35 nos LEDs e para o clock. São 312 peças e 596 fios.
-- A janela de exemplos tem quatro colunas. Exemplos maiores que a janela abrem enquadrados.
+  não é simulado. Por enquanto, o conteúdo só vem do arquivo de projeto: ainda não há editor na interface.
+- Um computador de 8 bits no estilo SAP-1 (25 CIs, 312 peças) foi montado e testado com esses CIs durante o
+  desenvolvimento, mas não entrou nos exemplos: a montagem ainda precisa de um desenho mais legível.
 - Formato de projeto 35, por causa dos tipos novos. Projetos anteriores continuam abrindo.
 
 ## 0.46.0

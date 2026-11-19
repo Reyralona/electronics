@@ -1,5 +1,4 @@
 #include "workbench_examples.h"
-#include "workbench_computer.h"
 #include "component_devices.h"
 #include "ui_text.h"
 #include <string.h>
@@ -392,7 +391,6 @@ static const ExampleInfo examples[] = {
      build_generator_scope},
     {TXT_ENG_EXAMPLE_RELAY_MOTOR, TXT_ENG_CATEGORY_OUTPUTS, TXT_ENG_EXAMPLE_RELAY_MOTOR_INFO, build_relay_motor},
     {TXT_ENG_EXAMPLE_DIP_DISPLAY, TXT_ENG_CATEGORY_OUTPUTS, TXT_ENG_EXAMPLE_DIP_DISPLAY_INFO, build_dip_display},
-    {TXT_ENG_EXAMPLE_COMPUTER, TXT_ENG_CATEGORY_DIGITAL, TXT_ENG_EXAMPLE_COMPUTER_INFO, workbench_build_computer},
 };
 
 _Static_assert(sizeof(examples) / sizeof(examples[0]) == WORKBENCH_EXAMPLE_COUNT, "example table size");

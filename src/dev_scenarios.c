@@ -460,7 +460,6 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             fprintf(stderr, "Falha no exemplo de captura.\n");
             return 1;
         }
-        bench_view_open_example(&app->view, &app->bench);
         app->probe_pin = which == 1 || which == 2 ? 2 : 0;
         app->status = workbench_example_name(which);
     }

@@ -202,12 +202,7 @@ quando desabilitadas.
 - **AT28C16**: lê com `~CE` e `~OE` baixos e `~WE` alto. O conteúdo é texto hexadecimal guardado na peça,
   por exemplo `00: 1E 2F 3D` (o endereço antes de `:` é opcional). `;` ou `#` começam comentário.
   Endereços não gravados leem `FF`, como uma memória apagada. Gravar pelo `~WE` não é simulado, e a
-  interface ainda não edita o conteúdo: ele vem dos exemplos e dos arquivos de projeto.
-
-O exemplo **Computador de 8 bits** usa esses CIs num computador no estilo SAP-1: instruções LDA, ADD, SUB,
-OUT e HLT, programa numa EEPROM e microcódigo em outras duas. Ele calcula 28 + 14 - 7 e mostra 35 nos
-oito LEDs (bit 0 à esquerda); depois o clock para. As linhas verticais à esquerda são o barramento, os
-sinais de controle, a alimentação e os clocks.
+  interface ainda não edita o conteúdo: ele vem do arquivo de projeto.
 
 ## Microcontroladores
 
@@ -223,7 +218,7 @@ sinais de controle, a alimentação e os clocks.
 ## Projetos, exemplos e configurações
 
 - **Projetos** (ou `F3`): slots que crescem conforme os projetos são salvos, em páginas de seis cartões com miniaturas e resumo de peças/fios. Ao carregar, a vista tenta enquadrar o circuito inteiro. Escolha um e use **Salvar**/**Carregar**, ou `Ctrl+S`/`Ctrl+L`. Em slot ocupado, **Substituir** pede confirmação; cancelar conserva o arquivo salvo. Carregar um arquivo inválido não apaga a montagem aberta. Os slots guardam a montagem e as configurações, não o instante da simulação.
-- **Exemplos** (ou `F2`): 19 circuitos prontos, com título e explicação. `Ctrl+F2` avança diretamente para o próximo. `Ctrl+Z` volta à montagem anterior.
+- **Exemplos** (ou `F2`): 18 circuitos prontos, com título e explicação. `Ctrl+F2` avança diretamente para o próximo. `Ctrl+Z` volta à montagem anterior.
 - **Configurações:** tema claro/escuro, escala da interface, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, curvas e alças dos fios, nomes dos terminais, simulação e parâmetros do gráfico. A cor fica no painel do fio. As preferências são salvas automaticamente em `saves/preferences.txt`.
 
 ### Onde ficam os arquivos

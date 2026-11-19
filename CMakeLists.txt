@@ -43,7 +43,6 @@ add_executable(bancada WIN32
     src/component_registry.c
     src/component_devices.c
     src/workbench_examples.c
-    src/workbench_computer.c
     src/workbench_view.c
     src/workbench_fit.c
     src/workbench_file.c
@@ -166,7 +165,6 @@ if(BUILD_TESTING)
     add_executable(test_workbench_examples
         tests/test_workbench_examples.c
         src/workbench_examples.c
-        src/workbench_computer.c
         src/spice_process.c
         src/netlist.c
         src/netlist_devices.c
@@ -183,7 +181,6 @@ if(BUILD_TESTING)
     add_executable(test_terminal_contacts
         tests/test_terminal_contacts.c
         src/workbench_examples.c
-        src/workbench_computer.c
         src/workbench_pack.c
         src/workbench_selection.c
         src/workbench_file.c

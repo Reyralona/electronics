@@ -59,9 +59,6 @@ UI_TEXT(ENG_EXAMPLE_RELAY_MOTOR_INFO, "Feche o interruptor. A bobina fecha o con
 UI_TEXT(ENG_EXAMPLE_DIP_DISPLAY, "Chave DIP no display", "DIP switch on a display")
 UI_TEXT(ENG_EXAMPLE_DIP_DISPLAY_INFO, "Cada alavanca acende um segmento (a-d). Duplo clique: alternar.",
         "Each lever lights one segment (a-d). Double-click: toggle.")
-UI_TEXT(ENG_EXAMPLE_COMPUTER, "Computador de 8 bits", "8-bit computer")
-UI_TEXT(ENG_EXAMPLE_COMPUTER_INFO, "Roda 28 + 14 - 7 da EEPROM. Os LEDs mostram 35 em binário e o clock para.",
-        "Runs 28 + 14 - 7 from the EEPROM. The LEDs show 35 in binary and the clock stops.")
 /* Calculation results and failures. */
 UI_TEXT(ENG_NO_MEMORY, "Memória insuficiente. Feche outros programas e tente de novo.",
         "Not enough memory. Close other programs and try again.")

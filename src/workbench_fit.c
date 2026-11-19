@@ -67,9 +67,4 @@ void bench_view_fit_workbench(BenchView *view, const Workbench *bench)
         bench_view_fit(view, bounds.min_x, bounds.min_y, bounds.max_x, bounds.max_y);
 }
 
-void bench_view_open_example(BenchView *view, const Workbench *bench)
-{
-    BenchView fitted;
-    bench_view_fit_workbench(&fitted, bench);
-    *view = fitted.zoom < 1 ? fitted : (BenchView){1, 0, 0};
-}
+
