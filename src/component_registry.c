@@ -26,6 +26,36 @@ static const ComponentPinInfo pins_74hc00[] = {
     {"1A", PIN_INPUT},  {"1B", PIN_INPUT},   {"1Y", PIN_OUTPUT}, {"2A", PIN_INPUT},           {"2B", PIN_INPUT},
     {"2Y", PIN_OUTPUT}, {"GND", PIN_GROUND}, {"3Y", PIN_OUTPUT}, {"3A", PIN_INPUT},           {"3B", PIN_INPUT},
     {"4Y", PIN_OUTPUT}, {"4A", PIN_INPUT},   {"4B", PIN_INPUT},  {"VCC", PIN_SUPPLY_POSITIVE}};
+/* 0-based pin order = datasheet pin - 1; "~" marks an active-low pin. SN74HC161 checked in TI SCLS297D;
+ * the others follow the standard family pinout (docs/COMPARACAO_COMPUTADOR_8_BITS.md). */
+static const ComponentPinInfo pins_74hc161[] = {
+    {"~CLR", PIN_INPUT}, {"CLK", PIN_CLOCK_INPUT}, {"A", PIN_INPUT},    {"B", PIN_INPUT},     {"C", PIN_INPUT},
+    {"D", PIN_INPUT},    {"ENP", PIN_INPUT},       {"GND", PIN_GROUND}, {"~LOAD", PIN_INPUT}, {"ENT", PIN_INPUT},
+    {"QD", PIN_OUTPUT},  {"QC", PIN_OUTPUT},       {"QB", PIN_OUTPUT},  {"QA", PIN_OUTPUT},   {"RCO", PIN_OUTPUT},
+    {"VCC", PIN_SUPPLY_POSITIVE}};
+static const ComponentPinInfo pins_74hc173[] = {
+    {"M", PIN_INPUT},   {"N", PIN_INPUT},             {"1Q", PIN_OUTPUT},  {"2Q", PIN_OUTPUT}, {"3Q", PIN_OUTPUT},
+    {"4Q", PIN_OUTPUT}, {"CLK", PIN_CLOCK_INPUT},     {"GND", PIN_GROUND}, {"~G1", PIN_INPUT}, {"~G2", PIN_INPUT},
+    {"4D", PIN_INPUT},  {"3D", PIN_INPUT},            {"2D", PIN_INPUT},   {"1D", PIN_INPUT},  {"CLR", PIN_INPUT},
+    {"VCC", PIN_SUPPLY_POSITIVE}};
+static const ComponentPinInfo pins_74hc245[] = {
+    {"DIR", PIN_INPUT},        {"A1", PIN_BIDIRECTIONAL}, {"A2", PIN_BIDIRECTIONAL}, {"A3", PIN_BIDIRECTIONAL},
+    {"A4", PIN_BIDIRECTIONAL}, {"A5", PIN_BIDIRECTIONAL}, {"A6", PIN_BIDIRECTIONAL}, {"A7", PIN_BIDIRECTIONAL},
+    {"A8", PIN_BIDIRECTIONAL}, {"GND", PIN_GROUND},       {"B8", PIN_BIDIRECTIONAL}, {"B7", PIN_BIDIRECTIONAL},
+    {"B6", PIN_BIDIRECTIONAL}, {"B5", PIN_BIDIRECTIONAL}, {"B4", PIN_BIDIRECTIONAL}, {"B3", PIN_BIDIRECTIONAL},
+    {"B2", PIN_BIDIRECTIONAL}, {"B1", PIN_BIDIRECTIONAL}, {"~OE", PIN_INPUT},        {"VCC", PIN_SUPPLY_POSITIVE}};
+static const ComponentPinInfo pins_74hc283[] = {
+    {"S2", PIN_OUTPUT}, {"B2", PIN_INPUT}, {"A2", PIN_INPUT},   {"S1", PIN_OUTPUT}, {"A1", PIN_INPUT},
+    {"B1", PIN_INPUT},  {"C0", PIN_INPUT}, {"GND", PIN_GROUND}, {"C4", PIN_OUTPUT}, {"S4", PIN_OUTPUT},
+    {"B4", PIN_INPUT},  {"A4", PIN_INPUT}, {"S3", PIN_OUTPUT},  {"A3", PIN_INPUT},  {"B3", PIN_INPUT},
+    {"VCC", PIN_SUPPLY_POSITIVE}};
+/* AT28C16 in read mode: the data pins only drive (writing is not modeled). */
+static const ComponentPinInfo pins_at28c16[] = {
+    {"A7", PIN_INPUT},   {"A6", PIN_INPUT},   {"A5", PIN_INPUT},   {"A4", PIN_INPUT},   {"A3", PIN_INPUT},
+    {"A2", PIN_INPUT},   {"A1", PIN_INPUT},   {"A0", PIN_INPUT},   {"IO0", PIN_OUTPUT}, {"IO1", PIN_OUTPUT},
+    {"IO2", PIN_OUTPUT}, {"GND", PIN_GROUND}, {"IO3", PIN_OUTPUT}, {"IO4", PIN_OUTPUT}, {"IO5", PIN_OUTPUT},
+    {"IO6", PIN_OUTPUT}, {"IO7", PIN_OUTPUT}, {"~CE", PIN_INPUT},  {"A10", PIN_INPUT},  {"~OE", PIN_INPUT},
+    {"~WE", PIN_INPUT},  {"A9", PIN_INPUT},   {"A8", PIN_INPUT},   {"VCC", PIN_SUPPLY_POSITIVE}};
 static const ComponentParameter battery_9v = {"voltage", "V", 9, 1e-12, 1e12};
 static const ComponentParameter battery_aa = {"voltage", "V", 1.5, 1e-12, 1e12};
 static const ComponentParameter battery_coin = {"voltage", "V", 3, 1e-12, 1e12};
@@ -136,6 +166,11 @@ static const ComponentInfo components[] = {
     [PART_ATTINY85] = {PART_ATTINY85, "attiny85", NULL, 8, COMPONENT_ROTATES, 27, NULL, pins_tiny},
     [PART_LCD_I2C] = {PART_LCD_I2C, "lcd-16x2-i2c", NULL, 4, COMPONENT_ROTATES, 27, NULL, pins_lcd},
     [PART_JUNCTION] = {PART_JUNCTION, "junction", NULL, 1, 0, 31, NULL, pins_junction},
+    [PART_74HC161] = {PART_74HC161, "74hc161", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_74hc161},
+    [PART_74HC173] = {PART_74HC173, "74hc173", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_74hc173},
+    [PART_74HC245] = {PART_74HC245, "74hc245", NULL, 20, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_74hc245},
+    [PART_74HC283] = {PART_74HC283, "74hc283", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_74hc283},
+    [PART_AT28C16] = {PART_AT28C16, "at28c16", NULL, 24, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_at28c16},
 };
 
 /* Display names; component_info() returns them in the current language. */
@@ -162,6 +197,11 @@ static const TextId display_texts[] = {
     [PART_74HC32] = TXT_CAT_74HC32,
     [PART_74HC86] = TXT_CAT_74HC86,
     [PART_74HC00] = TXT_CAT_74HC00,
+    [PART_74HC161] = TXT_CAT_74HC161,
+    [PART_74HC173] = TXT_CAT_74HC173,
+    [PART_74HC245] = TXT_CAT_74HC245,
+    [PART_74HC283] = TXT_CAT_74HC283,
+    [PART_AT28C16] = TXT_CAT_AT28C16,
     [PART_DIODE] = TXT_CAT_DIODE,
     [PART_LDR] = TXT_CAT_LDR,
     [PART_FLEX] = TXT_CAT_FLEX,
@@ -320,7 +360,7 @@ static const LocalizedCatalog *localized_catalog(void)
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION, PART_74HC161, PART_74HC173, PART_74HC245, PART_74HC283, PART_AT28C16};
 
 size_t component_registry_count(void)
 {
@@ -390,7 +430,7 @@ const char *component_pin_role_label(ComponentPinRole role)
         TXT_CAT_ROLE_PASSIVE,  TXT_CAT_ROLE_INPUT,   TXT_CAT_ROLE_CLOCK_INPUT, TXT_CAT_ROLE_OUTPUT,
         TXT_CAT_ROLE_SUPPLY_POSITIVE, TXT_CAT_ROLE_SUPPLY_RETURN, TXT_CAT_ROLE_GROUND, TXT_CAT_ROLE_ANODE,
         TXT_CAT_ROLE_CATHODE,  TXT_CAT_ROLE_CONTACT, TXT_CAT_ROLE_COLLECTOR,   TXT_CAT_ROLE_BASE,
-        TXT_CAT_ROLE_EMITTER};
+        TXT_CAT_ROLE_EMITTER,  TXT_CAT_ROLE_BIDIRECTIONAL};
     if ((unsigned)role >= sizeof(labels) / sizeof(labels[0]))
         return tr(TXT_CAT_ROLE_UNKNOWN);
     return tr(labels[role]);
@@ -407,7 +447,9 @@ const char *component_symbol(PartType type)
     static const PartSymbol symbols[] = {
         {PART_AND, "AND"},       {PART_NAND, "NAND"},     {PART_OR, "OR"},         {PART_XOR, "XOR"},
         {PART_NOT, "NOT"},       {PART_NOR, "NOR"},       {PART_XNOR, "XNOR"},     {PART_DFF, "DFF"},
-        {PART_74HC08, "74HC08"}, {PART_74HC32, "74HC32"}, {PART_74HC86, "74HC86"}, {PART_74HC00, "74HC00"}};
+        {PART_74HC08, "74HC08"}, {PART_74HC32, "74HC32"}, {PART_74HC86, "74HC86"}, {PART_74HC00, "74HC00"},
+        {PART_74HC161, "74HC161"}, {PART_74HC173, "74HC173"}, {PART_74HC245, "74HC245"}, {PART_74HC283, "74HC283"},
+        {PART_AT28C16, "AT28C16"}};
     for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); ++i)
         if (symbols[i].type == type)
             return symbols[i].symbol;
@@ -416,7 +458,7 @@ const char *component_symbol(PartType type)
 
 const char *component_pin_marker(ComponentPinRole role)
 {
-    static const char *marks[] = {"IO", "IN", "CLK", "OUT", "V+", "V-", "GND", "A", "K", "CONT", "C", "B", "E"};
+    static const char *marks[] = {"IO", "IN", "CLK", "OUT", "V+", "V-", "GND", "A", "K", "CONT", "C", "B", "E", "I/O"};
     if ((unsigned)role >= sizeof(marks) / sizeof(marks[0]))
         return "?";
     return marks[role];

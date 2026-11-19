@@ -24,7 +24,8 @@ typedef enum
     PIN_CONTACT,
     PIN_COLLECTOR,
     PIN_BASE,
-    PIN_EMITTER
+    PIN_EMITTER,
+    PIN_BIDIRECTIONAL /* bus terminal that can be input or output */
 } ComponentPinRole;
 
 typedef struct

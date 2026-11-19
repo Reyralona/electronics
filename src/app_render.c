@@ -2815,7 +2815,7 @@ static void pin_role_color(ComponentPinRole role)
 
 static char pin_role_symbol(ComponentPinRole role)
 {
-    static const char symbols[] = {'B', 'I', 'C', 'O', '+', '-', 'G', 'A', 'K', '.', 'C', 'B', 'E'};
+    static const char symbols[] = {'B', 'I', 'C', 'O', '+', '-', 'G', 'A', 'K', '.', 'C', 'B', 'E', 'D'};
     return (unsigned)role < sizeof(symbols) / sizeof(symbols[0]) ? symbols[role] : '?';
 }
 

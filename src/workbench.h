@@ -73,7 +73,13 @@ typedef enum
     PART_ESP32,
     PART_ATTINY85,
     PART_LCD_I2C,
-    PART_JUNCTION /* wire-to-wire connection point: one pin, no body; saved from format 31 */
+    PART_JUNCTION, /* wire-to-wire connection point: one pin, no body; saved from format 31 */
+    /* Medium-scale logic ICs, saved from format 35 (see netlist_logic.h). */
+    PART_74HC161,
+    PART_74HC173,
+    PART_74HC245,
+    PART_74HC283,
+    PART_AT28C16
 } PartType;
 typedef struct BenchPartLayer
 {

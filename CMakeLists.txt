@@ -51,6 +51,8 @@ add_executable(bancada WIN32
     src/workbench_history.c
     src/netlist.c
     src/netlist_devices.c
+    src/netlist_logic.c
+    src/rom_image.c
     src/mcu_board.c
     src/spice_process.c
     src/spice_job.c
@@ -77,6 +79,8 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_devices.c
+        src/netlist_logic.c
+        src/rom_image.c
         src/mcu_board.c
         src/workbench_group_edit.c
         src/workbench_group_name.c
@@ -95,6 +99,9 @@ if(BUILD_TESTING)
     add_executable(test_ui_text tests/test_ui_text.c src/ui_text.c)
     target_include_directories(test_ui_text PRIVATE src)
     add_test(NAME ui_text COMMAND test_ui_text)
+    add_executable(test_rom_image tests/test_rom_image.c src/rom_image.c)
+    target_include_directories(test_rom_image PRIVATE src)
+    add_test(NAME rom_image COMMAND test_rom_image)
     add_executable(test_spice_session
         tests/test_spice_session.c
         src/spice_session.c
@@ -109,6 +116,8 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_devices.c
+        src/netlist_logic.c
+        src/rom_image.c
         src/mcu_board.c
         src/workbench.c
         src/bench_path.c
@@ -125,6 +134,8 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_devices.c
+        src/netlist_logic.c
+        src/rom_image.c
         src/mcu_board.c
         src/workbench.c
         src/bench_path.c
@@ -141,6 +152,8 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_devices.c
+        src/netlist_logic.c
+        src/rom_image.c
         src/mcu_board.c
         src/workbench.c
         src/bench_path.c
@@ -155,6 +168,8 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_devices.c
+        src/netlist_logic.c
+        src/rom_image.c
         src/mcu_board.c
         src/workbench.c
         src/bench_path.c
@@ -174,6 +189,8 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_devices.c
+        src/netlist_logic.c
+        src/rom_image.c
         src/mcu_board.c
         src/workbench.c
         src/bench_path.c

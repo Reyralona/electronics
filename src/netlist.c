@@ -1,5 +1,6 @@
 #include "netlist.h"
 #include "netlist_devices.h"
+#include "netlist_logic.h"
 #include "mcu_board.h"
 #include "component_devices.h"
 #include "component_registry.h"
@@ -222,22 +223,6 @@ static int write_gate_input(FILE *out, const char *owner, int index, int input, 
                    NETLIST_GATE_INPUT_OHMS) >= 0;
 }
 
-/* 74HC family (TI SN74HC08 / Nexperia 74HC08 datasheets, consulted 16/11/2026): specified for VCC 2..6 V;
- * input low <= ~30% VCC, high >= ~70% VCC; output high close to VCC. Both the quad chips and the loose gate
- * symbols use these supply-relative thresholds and this window; outside it the gates are off.
- * Quad drives are continuous (linear between thresholds, logic by products) instead of ideal steps:
- * a step made the transient timestep collapse when a clock edge crossed a threshold. */
-#define LOGIC_INPUT_LOW_RATIO .3
-#define LOGIC_INPUT_HIGH_RATIO .7
-#define LOGIC_SUPPLY_MIN 2.0
-#define LOGIC_SUPPLY_MAX 6.0
-#define LOGIC_SUPPLY_FLOOR .1 /* avoids dividing by an unpowered supply */
-/* XSPICE digital gates keep fixed bridge thresholds; inputs are rescaled to a 5 V domain where 1.5/3.5 V
- * are exactly 30%/70% of the real supply. */
-#define LOGIC_BRIDGE_VOLTS 5.0
-#define QUAD_SUPPLY_MIN LOGIC_SUPPLY_MIN
-#define QUAD_SUPPLY_MAX LOGIC_SUPPLY_MAX
-#define QUAD_EDGE_VOLTS .1
 #define QUAD_INPUT_TEXT_CAPACITY 96
 #define QUAD_DRIVE_TEXT_CAPACITY (4 * QUAD_INPUT_TEXT_CAPACITY + 16)
 
@@ -307,7 +292,7 @@ static void quad_gate_drive(PartType type, int chip, int gate, char *high, char 
 static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient, int measure_wires, Pin probe,
                                    double step, double stop, int session)
 {
-    int parents[PIN_TOTAL], i, source = -1, ground, positive, gate_count = 0, chip_count = 0;
+    int parents[PIN_TOTAL], i, source = -1, ground, positive, gate_count = 0, chip_count = 0, logic_count = 0;
     if (!out || !b || b->part_count < 0 || b->part_count > WORKBENCH_MAX_COMPONENTS || b->wire_count < 0 ||
         b->wire_count > WORKBENCH_MAX_WIRES)
         return NETLIST_INVALID;
@@ -369,6 +354,15 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_INDUCTOR:
         case PART_CLOCK:
         case PART_JUNCTION:
+            break;
+        case PART_74HC161:
+        case PART_74HC173:
+        case PART_74HC245:
+        case PART_74HC283:
+        case PART_AT28C16:
+            if (!netlist_logic_valid(&b->parts[i]))
+                return NETLIST_INVALID;
+            ++logic_count;
             break;
         default:
             if (!netlist_device_supported(component_electrical_type(b->parts[i].type)))
@@ -521,6 +515,18 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
+        if (netlist_logic_supported(b->parts[i].type))
+        {
+            int nodes[COMPONENT_MAX_DEVICE_PINS] = {0};
+            for (int pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
+            {
+                int root = find_root(parents, i * WORKBENCH_MAX_PINS + pin);
+                nodes[pin] = root == ground ? 0 : root + 1;
+            }
+            if (!netlist_logic_write(out, &b->parts[i], i, nodes))
+                return NETLIST_IO_ERROR;
+        }
+    for (i = 0; i < b->part_count; ++i)
         if (b->parts[i].type == PART_LED)
         {
             int a = find_root(parents, i * WORKBENCH_MAX_PINS), c = find_root(parents, i * WORKBENCH_MAX_PINS + 1);
@@ -658,6 +664,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         return NETLIST_IO_ERROR;
     /* RS: series resistance so an LED wired straight to a source gives a finite current in this didactic model.
        rshunt: 1 TOhm from every node to ground so unfinished circuits (floating nodes) still solve. */
+    if (logic_count && !netlist_logic_models(out))
+        return NETLIST_IO_ERROR;
     if (!netlist_device_models(out))
         return NETLIST_IO_ERROR;
     if (fprintf(out, ".model LED_GENERIC D(IS=1e-18 N=2 RS=%.17g)\n.options rshunt=1e12\n", NETLIST_LED_SERIES_OHMS) <
