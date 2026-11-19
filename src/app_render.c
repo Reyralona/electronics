@@ -150,6 +150,8 @@ static const PaletteTone *palette_tone(int color)
     return &palette_tones[color >= 0 && color < BENCH_COLOR_COUNT ? color : BENCH_DEFAULT_WIRE_COLOR];
 }
 
+#define WIRE_TIP_INSULATION 14.0f /* colored end drawn over the hole, along the wire */
+#define WIRE_TIP_METAL 6.0f       /* bare lead entering the hole */
 static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
 {
     float dx = next.x - hole.x, dy = next.y - hole.y, length = hypotf(dx, dy);
@@ -157,13 +159,19 @@ static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
         return;
     dx /= length;
     dy /= length;
+    /* Never past the first knee: a knee next to the hole would otherwise leave a spur beyond the bend. */
+    float insulation = fminf(WIRE_TIP_INSULATION, length), metal = fminf(WIRE_TIP_METAL, length);
     const float *tone = palette_tone(wire_color)->wire;
-    color(tone[0], tone[1], tone[2]);
-    glLineWidth(5);
-    line(hole.x + dx * 14, hole.y + dy * 14, hole.x + dx * 5, hole.y + dy * 5);
+    if (insulation > WIRE_TIP_METAL - 1)
+    {
+        color(tone[0], tone[1], tone[2]);
+        glLineWidth(5);
+        line(hole.x + dx * insulation, hole.y + dy * insulation, hole.x + dx * (WIRE_TIP_METAL - 1),
+             hole.y + dy * (WIRE_TIP_METAL - 1));
+    }
     color(.75f, .52f, .22f);
     glLineWidth(3);
-    line(hole.x + dx * 6, hole.y + dy * 6, hole.x, hole.y);
+    line(hole.x + dx * metal, hole.y + dy * metal, hole.x, hole.y);
     color(.98f, .8f, .43f);
     circle(hole.x, hole.y, 2.5f);
     glLineWidth(1);
@@ -2597,60 +2605,90 @@ static void draw_wire_dc_current(const AppState *app, int i, const WirePoint *pa
         wire_direction_marker(path, count, app->sim.dc_wire_currents[i] < 0, level);
 }
 
+/* Wire widths in screen units, so a wire looks the same at every zoom. */
+#define WIRE_BODY_WIDTH 5.0f
+#define WIRE_SHINE_WIDTH 2.0f
+#define WIRE_SELECTED_WIDTH 10.0f
+#define WIRE_SHADOW_WIDTH 7.0f
+#define WIRE_SHADOW_DROP 1.0f
+#define WIRE_SHADOW_ALPHA .16f
+
+/* Polyline of a given width with round joins: no notch or spur at a knee, whatever its angle. */
+static void thick_path(const WirePoint *path, int count, float width, float dx, float dy)
+{
+    float half = width / 2;
+    for (int k = 0; k + 1 < count; ++k)
+    {
+        float ax = path[k].x + dx, ay = path[k].y + dy, bx = path[k + 1].x + dx, by = path[k + 1].y + dy;
+        float length = hypotf(bx - ax, by - ay);
+        if (length <= 0)
+            continue;
+        float nx = -(by - ay) / length * half, ny = (bx - ax) / length * half;
+        glBegin(GL_QUADS);
+        glVertex2f(ax + nx, ay + ny);
+        glVertex2f(bx + nx, by + ny);
+        glVertex2f(bx - nx, by - ny);
+        glVertex2f(ax - nx, ay - ny);
+        glEnd();
+    }
+    for (int k = 0; k < count; ++k)
+        circle(path[k].x + dx, path[k].y + dy, half);
+}
+
+static int visible_wire_path(const AppState *app, int wire, WirePoint *path)
+{
+    const Wire *w = &app->bench.wires[wire];
+    if (bench_group_wire_internal(&app->bench, w))
+        return 0;
+    WirePoint start, end;
+    bench_terminal_position(&app->bench, w->a, &start.x, &start.y);
+    bench_terminal_position(&app->bench, w->b, &end.x, &end.y);
+    return wire_path(w, start, end, app->round_wires ? 18.0f : 0.0f, path);
+}
+
+/* Every shadow goes down before any wire, so wires laid side by side never shade each other's color. */
+static void draw_wire_shadows(const AppState *app, float unit)
+{
+    if (app->dark_theme)
+        return;
+    glPushAttrib(GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT | GL_CURRENT_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(.10f, .14f, .18f, WIRE_SHADOW_ALPHA);
+    for (int i = 0; i < app->bench.wire_count; ++i)
+    {
+        WirePoint path[WIRE_PATH_CAPACITY];
+        int count = visible_wire_path(app, i, path);
+        if (count)
+            thick_path(path, count, WIRE_SHADOW_WIDTH * unit, 0, WIRE_SHADOW_DROP * unit);
+    }
+    glPopAttrib();
+}
+
 static void draw_workspace_wires(const AppState *app)
 {
-    int i;
-    color(.25f, .45f, .57f);
-    glLineWidth(3);
-    for (i = 0; i < app->bench.wire_count; ++i)
+    float unit = 1 / app->view.zoom;
+    draw_wire_shadows(app, unit);
+    for (int i = 0; i < app->bench.wire_count; ++i)
     {
-        WirePoint start, end, path[WIRE_PATH_CAPACITY];
-        int k, count, pass;
-        const Wire *w = &app->bench.wires[i];
-        if (bench_group_wire_internal(&app->bench, w))
+        WirePoint path[WIRE_PATH_CAPACITY];
+        int count = visible_wire_path(app, i, path);
+        if (!count)
             continue;
-        bench_terminal_position(&app->bench, w->a, &start.x, &start.y);
-        bench_terminal_position(&app->bench, w->b, &end.x, &end.y);
-        count = wire_path(w, start, end, app->round_wires ? 18.0f : 0.0f, path);
+        const float *tone = palette_tone(app->bench.wires[i].color)->wire;
         if (i == app->selected_wire)
         {
             color(.15f, .49f, .9f);
-            glLineWidth(10);
-            glBegin(GL_LINE_STRIP);
-            for (k = 0; k < count; ++k)
-                glVertex2f(path[k].x, path[k].y);
-            glEnd();
+            thick_path(path, count, WIRE_SELECTED_WIDTH * unit, 0, 0);
         }
-        for (pass = 0; pass < 3; ++pass)
-        {
-            if (pass == 0 && app->dark_theme)
-                continue;
-            float offset = pass == 0 ? 3.0f : 0.0f;
-            if (pass == 0)
-            {
-                color(.72f, .76f, .78f);
-                glLineWidth(6);
-            }
-            else if (pass == 1)
-            {
-                const float *tone = palette_tone(w->color)->wire;
-                color(tone[0], tone[1], tone[2]);
-                glLineWidth(5);
-            }
-            else
-            {
-                const float *tone = palette_tone(w->color)->wire;
-                color(tone[0] * .65f + .25f, tone[1] * .65f + .25f, tone[2] * .65f + .25f);
-                glLineWidth(2);
-            }
-            glBegin(GL_LINE_STRIP);
-            for (k = 0; k < count; ++k)
-                glVertex2f(path[k].x + offset, path[k].y + offset);
-            glEnd();
-        }
+        color(tone[0], tone[1], tone[2]);
+        thick_path(path, count, WIRE_BODY_WIDTH * unit, 0, 0);
+        color(tone[0] * .65f + .25f, tone[1] * .65f + .25f, tone[2] * .65f + .25f);
+        thick_path(path, count, WIRE_SHINE_WIDTH * unit, 0, 0);
         draw_wire_trace_current(app, i, path, count);
         draw_wire_dc_current(app, i, path, count);
     }
+    glLineWidth(2); /* the route preview drawn next keeps its former width */
 }
 
 static void draw_workspace_route(const AppState *app)

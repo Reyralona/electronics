@@ -11,6 +11,9 @@
 - Um computador de 8 bits no estilo SAP-1 (25 CIs, 312 peças) foi montado e testado com esses CIs durante o
   desenvolvimento, mas não entrou nos exemplos: a montagem ainda precisa de um desenho mais legível.
 - Formato de projeto 35, por causa dos tipos novos. Projetos anteriores continuam abrindo.
+- Fios lado a lado na breadboard: as sombras são desenhadas antes de todos os fios e não cobrem mais os vizinhos;
+  a sombra é uma faixa translúcida de contato, sem deslocamento sólido. Dobras têm junção arredondada, sem degrau.
+- A ponta do fio no furo para no primeiro joelho; com uma dobra perto do furo, não sobra mais um toco para fora.
 - Ritmos mais lentos da simulação: 0,001×, 0,002×, 0,005×, 0,01× e 0,02×, além dos anteriores. Em 0,001×,
   um clock de 1 kHz pisca uma vez por segundo. O passo elétrico e o estado do circuito não mudam ao trocar o ritmo.
 - **Escala da interface** funciona dentro da janela maximizada ou em tela cheia: diminuir a escala reduz a
