@@ -1,0 +1,302 @@
+#include "app_input.h"
+#include "app_controls.h"
+#include "app_palette.h"
+#include "app_editing.h"
+#include "app_packing.h"
+#include "ui_text.h"
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+static void drain(AppState *app, SDL_Window *window)
+{
+    /* SDL may end a poll turn at a sentinel preceding an event just injected by the test. */
+    for (int turn = 0; turn < 8; ++turn)
+    {
+        app_input_poll(app, window);
+        if (!SDL_HasEvents(SDL_EVENT_KEY_DOWN, SDL_EVENT_TEXT_INPUT) &&
+            !SDL_HasEvents(SDL_EVENT_MOUSE_BUTTON_DOWN, SDL_EVENT_MOUSE_BUTTON_UP))
+            return;
+    }
+    assert(!"UI events were not consumed");
+}
+
+static void key(AppState *app, SDL_Window *window, SDL_Keycode code, SDL_Keymod mod)
+{
+    SDL_Event event;
+    SDL_zero(event);
+    event.type = SDL_EVENT_KEY_DOWN;
+    event.key.key = code;
+    event.key.mod = mod;
+    event.key.down = true;
+    event.key.windowID = SDL_GetWindowID(window);
+    event.key.scancode = SDL_GetScancodeFromKey(code, NULL);
+    assert(SDL_PushEvent(&event));
+    event.type = SDL_EVENT_KEY_UP;
+    event.key.down = false;
+    assert(SDL_PushEvent(&event));
+    drain(app, window);
+}
+
+static void click(AppState *app, SDL_Window *window, AppRect rect)
+{
+    int width, height;
+    assert(SDL_GetWindowSize(window, &width, &height));
+    WirePoint point = app_layout_from_ui(width, height, app_rect_center_x(rect), app_rect_center_y(rect));
+    SDL_Event event;
+    SDL_zero(event);
+    event.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    event.button.button = SDL_BUTTON_LEFT;
+    event.button.clicks = 1;
+    event.button.windowID = SDL_GetWindowID(window);
+    event.button.x = point.x;
+    event.button.y = point.y;
+    assert(SDL_PushEvent(&event));
+    drain(app, window);
+    event.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    assert(SDL_PushEvent(&event));
+    drain(app, window);
+}
+
+static void type(AppState *app, SDL_Window *window, const char *text)
+{
+    SDL_Event event;
+    SDL_zero(event);
+    event.type = SDL_EVENT_TEXT_INPUT;
+    event.text.text = text;
+    event.text.windowID = SDL_GetWindowID(window);
+    assert(SDL_PushEvent(&event));
+    drain(app, window);
+}
+
+static void dense_led_selection_flow(AppState *app, SDL_Window *window)
+{
+    assert(bench_add(&app->bench, PART_LED, 500, 350) == 0);
+    assert(bench_add(&app->bench, PART_LED, 520, 350) == 1);
+    click(app, window, (AppRect){500, 340, 1, 1});
+    assert(app->selected == 0);
+    click(app, window, (AppRect){520, 340, 1, 1});
+    assert(app->selected == 1);
+    assert(app_input_part_at(&app->bench, 565, 340, 1) == -1);
+    bench_snapshot_clear(&app->bench);
+    app->selected = -1;
+    bench_selection_clear(&app->selection);
+}
+
+static void search_flow(AppState *app, SDL_Window *window)
+{
+    /* Find a board from Basics, pick it, place it; clearing restores that category. */
+    key(app, window, SDLK_F, SDL_KMOD_CTRL);
+    type(app, window, "ARDUINO");
+    assert(!strcmp(app->palette_search, "ARDUINO"));
+    assert(palette_filtered_count(0, app->palette_search) == 1);
+    key(app, window, SDLK_RETURN, 0);
+    click(app, window, app_layout_palette_item(0));
+    assert(app->placing == PART_ARDUINO_UNO);
+    click(app, window, (AppRect){500, 350, 2, 2});
+    assert(app->bench.part_count == 1 && app->bench.parts[0].type == PART_ARDUINO_UNO);
+    click(app, window, app_layout_search_clear());
+    assert(!app->palette_search[0] && app->palette_page == 0);
+    /* Opposite: no match cannot pick a hidden card or change the circuit. */
+    key(app, window, SDLK_F, SDL_KMOD_CTRL);
+    type(app, window, "no-such-part");
+    key(app, window, SDLK_RETURN, 0);
+    int count = app->bench.part_count;
+    click(app, window, app_layout_palette_item(0));
+    assert(app->placing < 0 && app->bench.part_count == count);
+    click(app, window, app_layout_search_clear());
+}
+
+static void focus_and_save_flow(AppState *app, SDL_Window *window)
+{
+    /* Tab focuses Projects without changing catalog; Enter opens the dialog. */
+    key(app, window, SDLK_TAB, 0);
+    assert(app->palette_page == 0 && app->keyboard_focus == 0);
+    key(app, window, SDLK_RETURN, 0);
+    assert(app->projects_open);
+    /* Focus stays in the dialog; reverse traversal reaches its close control. */
+    key(app, window, SDLK_TAB, SDL_KMOD_SHIFT);
+    AppRect focus = app_controls_focus(app);
+    AppRect close = app_layout_project_close();
+    assert(focus.x == close.x && focus.y == close.y);
+    key(app, window, SDLK_SPACE, 0);
+    assert(!app->projects_open);
+    /* Save, change the circuit, then cancel and confirm replacing the same slot. */
+    app->save_slot = 5;
+    remove("build/test-slots/slot-6.elec");
+    key(app, window, SDLK_S, SDL_KMOD_CTRL);
+    assert(app->saved_slots[5]);
+    assert(bench_add(&app->bench, PART_LED, 650, 350) == 1);
+    key(app, window, SDLK_S, SDL_KMOD_CTRL);
+    assert(app->project_overwrite == 5);
+    uint64_t revision = app->bench.revision;
+    key(app, window, SDLK_TAB, 0);
+    SDL_Event repeat;
+    SDL_zero(repeat);
+    repeat.type = SDL_EVENT_KEY_DOWN;
+    repeat.key.key = SDLK_RETURN;
+    repeat.key.repeat = true;
+    assert(SDL_PushEvent(&repeat));
+    drain(app, window);
+    assert(app->project_overwrite == 5); /* Holding Enter must not activate the focused action. */
+    key(app, window, SDLK_RETURN, 0);
+    assert(app->project_overwrite < 0 && app->bench.revision == revision);
+    Workbench saved = {0};
+    WorkbenchSettings settings;
+    assert(workbench_load_project("build/test-slots/slot-6.elec", &saved, &settings));
+    assert(saved.part_count == 1);
+    bench_snapshot_clear(&saved);
+    key(app, window, SDLK_S, SDL_KMOD_CTRL);
+    assert(app->project_overwrite == 5);
+    click(app, window, app_layout_confirm_button(0));
+    key(app, window, SDLK_L, SDL_KMOD_CTRL);
+    assert(app->bench.part_count == 2 && app->project_parts[5] == 2);
+    remove("build/test-slots/slot-6.elec");
+}
+
+static void actions_and_scaling_flow(AppState *app, SDL_Window *window)
+{
+    /* Undo/redo visible buttons share the existing history, including at another aspect ratio. */
+    int before = app->bench.part_count;
+    click(app, window, app_layout_action(APP_ACTION_UNDO));
+    click(app, window, app_layout_action(APP_ACTION_REDO));
+    assert(app->bench.part_count == before);
+    assert(SDL_SetWindowSize(window, 1000, 900));
+    assert(SDL_SyncWindow(window));
+    click(app, window, app_layout_header(APP_HEADER_SETTINGS));
+    assert(app->settings);
+    int dark = app->dark_theme;
+    click(app, window, app_layout_setting(APP_SETTING_DARK_THEME));
+    assert(app->dark_theme != dark);
+    int scale = app->gui_font_size;
+    click(app, window, app_layout_setting(APP_SETTING_FONT_LARGER));
+    if (app->gui_font_size == scale)
+        assert(!strcmp(app->status, tr(TXT_UI_SCALE_UNAVAILABLE)) || !strcmp(app->status, tr(TXT_UI_WINDOW_SIZE_FAILED)));
+    else
+    {
+        assert(app->gui_font_size == scale + 1);
+        assert(SDL_SyncWindow(window));
+        click(app, window, app_layout_setting(APP_SETTING_DARK_THEME));
+        assert(app->dark_theme == dark);
+    }
+    key(app, window, SDLK_ESCAPE, 0);
+    assert(!app->settings);
+    /* A disabled chip action with no selection has no effect. */
+    app->selected = -1;
+    bench_selection_clear(&app->selection);
+    before = app->bench.part_count;
+    click(app, window, app_layout_action(APP_ACTION_CHIP));
+    assert(app->bench.part_count == before && !app->bench.groups[0].active);
+}
+
+static void graph_options_flow(AppState *app, SDL_Window *window)
+{
+    /* Change the terminal on the plotted part, even after selecting another part. */
+    bench_snapshot_clear(&app->bench);
+    bench_selection_clear(&app->selection);
+    assert(bench_add(&app->bench, PART_CLOCK, 400, 300) == 0);
+    assert(bench_add(&app->bench, PART_RESISTOR, 650, 300) == 1);
+    assert(bench_toggle_wire(&app->bench, (Pin){0, 0}, (Pin){1, 0}));
+    app->sim.auto_enabled = 1;
+    app->selected = 0;
+    app->selected_wire = -1;
+    app->probe_pin = 0;
+    app->probe_current = 0;
+    click(app, window, app_layout_action(APP_ACTION_GRAPH));
+    assert(app->live_graph.active && app->live_graph.probe.target.component == 0);
+    app->selected = 1;
+    click(app, window, app_layout_graph_pin());
+    assert(app->live_graph.probe.target.component == 0 && app->live_graph.probe.target.pin == 1);
+    assert(app->selected == 1);
+    click(app, window, app_layout_graph_close());
+    assert(!app->live_graph.active);
+    /* A wire measures current; its disabled quantity control cannot pretend to measure voltage. */
+    app->selected = -1;
+    app->selected_wire = 0;
+    click(app, window, app_layout_action(APP_ACTION_GRAPH));
+    assert(app->live_graph.probe.kind == SIM_LIVE_PROBE_WIRE_CURRENT);
+    click(app, window, app_layout_graph_measure());
+    assert(!app->settings && app->live_graph.probe.kind == SIM_LIVE_PROBE_WIRE_CURRENT);
+    click(app, window, app_layout_graph_close());
+    assert(!app->live_graph.active);
+}
+
+static void values_and_chip_flow(AppState *app, SDL_Window *window)
+{
+    /* Add a resistor, reject invalid text beside its field, confirm a value, then undo. */
+    click(app, window, app_layout_palette_item(4));
+    assert(app->placing == PART_RESISTOR);
+    click(app, window, (AppRect){750, 450, 2, 2});
+    click(app, window, (AppRect){750, 450, 2, 2}); /* Select the newly placed part before editing. */
+    int part = app->selected;
+    assert(part >= 0 && app->bench.parts[part].type == PART_RESISTOR);
+    double original = app->bench.parts[part].value;
+    click(app, window, app_layout_inspector_value());
+    for (int i = 0; i < 32; ++i)
+        key(app, window, SDLK_BACKSPACE, 0);
+    type(app, window, "bad");
+    click(app, window, app_layout_value_button(1));
+    assert(app->editing == part && app->edit_error && app->bench.parts[part].value == original);
+    for (int i = 0; i < 3; ++i)
+        key(app, window, SDLK_BACKSPACE, 0);
+    type(app, window, "2200");
+    click(app, window, app_layout_value_button(1));
+    assert(app->editing < 0 && app->bench.parts[part].value == 2200);
+    click(app, window, app_layout_action(APP_ACTION_UNDO));
+    assert(app->bench.parts[part].value == original);
+    /* Create chip uses the same selection and library identity as Ctrl+G. */
+    app->selected = part;
+    app_packing_refresh(app);
+    int available[BLOCK_LIBRARY_SLOTS];
+    memcpy(available, app->library_available, sizeof(available));
+    click(app, window, app_layout_action(APP_ACTION_CHIP));
+    assert(app->bench.parts[part].group && app->palette_page == 2);
+    for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
+    {
+        if (available[i] || !app->library_available[i])
+            continue;
+        char path[128];
+        snprintf(path, sizeof(path), "build/test-blocks/block-%d.elec", i + 1);
+        assert(remove(path) == 0);
+    }
+}
+
+int main(void)
+{
+    static Workbench dense_leds;
+    assert(bench_add(&dense_leds, PART_LED, 500, 350) == 0);
+    assert(bench_add(&dense_leds, PART_LED, 520, 350) == 1);
+    assert(app_input_part_at(&dense_leds, 500, 340, 1) == 0);
+    assert(app_input_part_at(&dense_leds, 520, 340, 1) == 1);
+    assert(app_input_part_at(&dense_leds, 565, 340, 1) == -1);
+    assert(app_input_part_at(&dense_leds, 500, 340, 7) == 0);
+    static Workbench dense_passives;
+    assert(bench_add(&dense_passives, PART_RESISTOR, 500, 350) == 0);
+    assert(bench_add(&dense_passives, PART_CAPACITOR, 530, 350) == 1);
+    assert(app_input_part_at(&dense_passives, 500, 350, 1) == 0);
+    assert(app_input_part_at(&dense_passives, 530, 350, 1) == 1);
+    assert(app_input_part_at(&dense_passives, 500, 370, 1) == -1);
+    assert(SDL_Init(SDL_INIT_VIDEO));
+    assert(palette_filtered_count(0, "JUNCAO") == 1);
+    assert(palette_filtered_part(0, "JUNÇÃO", 0) == PART_JUNCTION);
+    SDL_Window *window = SDL_CreateWindow("UI flow", 1280, 720, SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE);
+    assert(window);
+    static AppState app;
+    app_state_init(&app);
+    app.selftest = 1;
+    app_input_poll(&app, window);
+    search_flow(&app, window);
+    focus_and_save_flow(&app, window);
+    actions_and_scaling_flow(&app, window);
+    values_and_chip_flow(&app, window);
+    graph_options_flow(&app, window);
+    bench_snapshot_clear(&app.bench);
+    app.selected = -1;
+    app.view = (BenchView){1, 0, 0};
+    dense_led_selection_flow(&app, window);
+    app_state_dispose(&app);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    puts("UI flow: search, focus, safe replacement, actions and proportional input passed.");
+    return 0;
+}

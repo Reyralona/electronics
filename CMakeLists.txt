@@ -26,6 +26,7 @@ add_executable(bancada WIN32
     src/workbench_selection.c
     src/workbench_pack.c
     src/app_input.c
+    src/app_controls.c
     src/app_code_editor.c
     src/app_render.c
     src/app_palette.c
@@ -43,6 +44,7 @@ add_executable(bancada WIN32
     src/component_devices.c
     src/workbench_examples.c
     src/workbench_view.c
+    src/workbench_fit.c
     src/workbench_file.c
     src/workbench_pack_file.c
     src/workbench_group_name.c
@@ -63,6 +65,13 @@ add_executable(spice-live-host src/spice_live_host.c src/ui_text.c)
 target_include_directories(spice-live-host PRIVATE src)
 include(CTest)
 if(BUILD_TESTING)
+    get_target_property(BANCADA_UI_SOURCES bancada SOURCES)
+    list(REMOVE_ITEM BANCADA_UI_SOURCES src/workbench_window.c)
+    add_executable(test_app_ui_flow tests/test_app_ui_flow.c ${BANCADA_UI_SOURCES})
+    target_include_directories(test_app_ui_flow PRIVATE src)
+    target_link_libraries(test_app_ui_flow PRIVATE SDL3::SDL3 opengl32 gdi32)
+    add_test(NAME app_ui_flow COMMAND test_app_ui_flow)
+    set_tests_properties(app_ui_flow PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" TIMEOUT 30)
     add_executable(test_recursive_chips
         tests/test_recursive_chips.c
         src/spice_process.c

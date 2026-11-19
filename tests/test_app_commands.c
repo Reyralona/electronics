@@ -1,6 +1,7 @@
 #include "app_commands.h"
 #include "app_code_editor.h"
 #include "app_packing.h"
+#include "app_editing.h"
 #include "workbench_pack.h"
 #include "workbench_file.h"
 #include "ui_text.h"
@@ -166,8 +167,87 @@ static void check_long_code_flow(void)
     app_state_dispose(&app);
 }
 
+static void check_project_overwrite_flow(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    app.selftest = 1;
+    app.save_slot = 7;
+    remove("build/test-slots/slot-8.elec");
+    /* Save a resistor, add an LED, then try saving over the occupied slot. */
+    assert(bench_add(&app.bench, PART_RESISTOR, 400, 300) == 0);
+    app_projects_save(&app);
+    assert(app.saved_slots[7]);
+    assert(bench_add(&app.bench, PART_LED, 600, 300) == 1);
+    app_projects_save(&app);
+    Workbench saved = {0};
+    WorkbenchSettings settings;
+    assert(workbench_load_project("build/test-slots/slot-8.elec", &saved, &settings));
+    assert(saved.part_count == 1);
+    bench_snapshot_clear(&saved);
+    app_commands_key(&app, NULL, SDLK_ESCAPE, 0);
+    assert(app.bench.part_count == 2);
+    assert(app.project_overwrite == -1);
+    /* Confirm targets the slot shown, even if another selection changes underneath. */
+    app_projects_save(&app);
+    assert(app.project_overwrite == 7);
+    app.save_slot = 6;
+    app_projects_confirm(&app, 1);
+    assert(workbench_load_project("build/test-slots/slot-8.elec", &saved, &settings));
+    assert(saved.part_count == 2);
+    bench_snapshot_clear(&saved);
+    remove("build/test-slots/slot-8.elec");
+    app_state_dispose(&app);
+}
+
+static void check_project_growth_and_fit_flow(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    app.selftest = 1;
+    assert(bench_add(&app.bench, PART_LED, -400, -200) == 0);
+    assert(bench_add(&app.bench, PART_RESISTOR, 1600, 900) == 1);
+    for (int slot = 0; slot < 11; ++slot)
+    {
+        char path[128];
+        snprintf(path, sizeof(path), "build/test-slots/slot-%d.elec", slot + 1);
+        remove(path);
+    }
+    for (int slot = 0; slot < 11; ++slot)
+    {
+        app.save_slot = slot;
+        app_projects_save(&app);
+        assert(app.saved_slots[slot]);
+        assert(app.project_slot_count >= slot + 2);
+    }
+    app.projects_open = 1;
+    app.project_page = 1;
+    app_editing_key(&app, SDLK_5, 0);
+    assert(app.save_slot == 10);
+    app.view = (BenchView){1, 0, 0};
+    app_projects_load(&app);
+    assert(!app.projects_open && app.bench.part_count == 2);
+    for (int part = 0; part < app.bench.part_count; ++part)
+    {
+        float x, y;
+        bench_view_to_screen(&app.view, app.bench.parts[part].x, app.bench.parts[part].y, &x, &y);
+        assert(x >= BENCH_VIEW_LEFT && x <= BENCH_VIEW_LEFT + BENCH_VIEW_WIDTH);
+        assert(y >= BENCH_VIEW_TOP && y <= BENCH_VIEW_TOP + BENCH_VIEW_HEIGHT);
+    }
+    if (!getenv("BANCADA_KEEP_PROJECT_FIXTURE"))
+        for (int slot = 0; slot < 11; ++slot)
+        {
+            char path[128];
+            snprintf(path, sizeof(path), "build/test-slots/slot-%d.elec", slot + 1);
+            remove(path);
+        }
+    app_state_dispose(&app);
+}
+
 int main(void)
 {
+    check_project_overwrite_flow();
+    check_project_growth_and_fit_flow();
     check_long_code_flow();
     check_chip_rotation_flow();
     check_mirror_flow();
@@ -175,7 +255,7 @@ int main(void)
     static AppState app;
     app_state_init(&app);
     assert(app.history);
-    app_commands_key(&app, NULL, SDLK_F2, 0);
+    app_commands_key(&app, NULL, SDLK_F2, SDL_KMOD_CTRL);
     assert(app.bench.part_count == 4 && app.selected == 3);
     app.selected = 2;
     double original = app.bench.parts[2].value;
@@ -199,9 +279,9 @@ int main(void)
     app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
     assert(app.bench.part_count == 4 && app.bench.parts[2].type == PART_RESISTOR);
 
-    app_commands_key(&app, NULL, SDLK_F2, 0);
+    app_commands_key(&app, NULL, SDLK_F2, SDL_KMOD_CTRL);
     assert(app.bench.parts[2].type == PART_DFF);
-    app_commands_key(&app, NULL, SDLK_F2, 0);
+    app_commands_key(&app, NULL, SDLK_F2, SDL_KMOD_CTRL);
     assert(app.bench.parts[2].type == PART_74HC00);
     app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
     assert(app.bench.parts[2].type == PART_DFF);
@@ -243,6 +323,7 @@ int main(void)
 
     app.selftest = 1;
     app.save_slot = 8;
+    remove("build/test-slots/slot-9.elec");
     app.show_grid = 0;
     app.wire_color = 4;
     app_commands_key(&app, NULL, SDLK_S, SDL_KMOD_CTRL);

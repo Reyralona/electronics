@@ -167,6 +167,7 @@ int app_editor_begin_name(AppState *app, SDL_Window *window)
     }
     app->name_target_group = 0;
     app->editing = APP_EDIT_GROUP_NAME;
+    app->edit_error = 0;
     app->edit_select_all = 1;
     snprintf(app->edit_text, sizeof(app->edit_text), "%s",
              app->editor_name);

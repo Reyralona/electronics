@@ -9,7 +9,7 @@
 #include "mcu_runtime.h"
 #define MCU_CODE_CAPACITY 16384
 
-#define PROJECT_SLOT_COUNT 9
+#define PROJECT_SLOTS_PER_PAGE 6
 #define BLOCK_LIBRARY_SLOTS 8
 #define APP_EDIT_STEP WORKBENCH_MAX_COMPONENTS
 #define APP_EDIT_STOP (WORKBENCH_MAX_COMPONENTS + 1)
@@ -19,6 +19,18 @@
 #define APP_EDIT_PORT_NAME (WORKBENCH_MAX_COMPONENTS + 5) /* name of chip terminal name_target_pin */
 #define APP_EDIT_GRID (WORKBENCH_MAX_COMPONENTS + 3)
 #define APP_EDIT_GROUP_NAME (WORKBENCH_MAX_COMPONENTS + 2)
+
+typedef enum
+{
+    APP_UI_BENCH,
+    APP_UI_REPLACE,
+    APP_UI_EDITOR_CONFIRM,
+    APP_UI_VALUE,
+    APP_UI_SETTINGS,
+    APP_UI_PROJECTS,
+    APP_UI_EXAMPLES,
+    APP_UI_CODE
+} AppControlContext;
 
 /* Owned by the application thread. The worker receives its own snapshot. */
 typedef struct AppState
@@ -35,6 +47,12 @@ typedef struct AppState
     int settings, show_grid, show_handles, round_wires, show_current;
     int wire_color, selected_wire, palette_page, example_index;
     int palette_offset, held_button, dragging_environment;
+    char palette_search[96];
+    int palette_search_active;
+    int palette_search_select_all;
+    int keyboard_focus;
+    AppControlContext keyboard_context;
+    WirePoint keyboard_target;
     int leds[WORKBENCH_MAX_COMPONENTS];
     float offset_x, offset_y;
     SpiceJob dc_job;
@@ -56,6 +74,7 @@ typedef struct AppState
     int panning, editing;
     char edit_text[BENCH_GROUP_NAME_CAPACITY];
     int name_target_group, edit_select_all;
+    int edit_error;
     int selftest, selftest_phase, exit_code;
     const char *status;
     int capture, auto_capture;
@@ -68,7 +87,13 @@ typedef struct AppState
     BenchSelection selection;
     BenchClipboard clipboard;
     int selecting_area, projects_open, save_slot, examples_open;
-    int saved_slots[PROJECT_SLOT_COUNT];
+    int *saved_slots;
+    int project_overwrite; /* Slot presented by the confirmation; -1 when no confirmation is open. */
+    int *project_parts, *project_wires;
+    int project_slot_count, project_page;
+    int project_thumbnail_pending;
+    unsigned project_thumbnail_revision;
+    int project_thumbnail_render;
     WirePoint area_start, area_end, mouse_world, mouse_screen;
     uint64_t area_scroll_ticks; /* Last edge auto-scroll step while selecting an area; 0 = idle. */
     int mouse_position_valid;

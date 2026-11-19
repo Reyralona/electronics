@@ -10,6 +10,8 @@
 #include "spice_trace.h"
 #include "app_layout.h"
 #include "app_palette.h"
+#include "app_controls.h"
+#include "app_editing.h"
 #include "ui_text.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +22,8 @@ static int component_closeup(AppState *app, const char *argument)
 {
     const char *id = NULL;
     int dark = 0;
+    char id_buffer[64];
+    float requested_zoom = 7;
     if (!strncmp(argument, "--capture-component=", 20))
         id = argument + 20;
     else if (!strncmp(argument, "--capture-component-dark=", 25))
@@ -29,6 +33,17 @@ static int component_closeup(AppState *app, const char *argument)
     }
     if (!id)
         return 0;
+    const char *zoom_option = strchr(id, '@');
+    if (zoom_option)
+    {
+        size_t length = (size_t)(zoom_option - id);
+        if (!length || length >= sizeof(id_buffer) || sscanf(zoom_option + 1, "%f", &requested_zoom) != 1 ||
+            !isfinite(requested_zoom) || requested_zoom < 1 || requested_zoom > 7)
+            return -1;
+        memcpy(id_buffer, id, length);
+        id_buffer[length] = 0;
+        id = id_buffer;
+    }
     const ComponentInfo *info = component_by_id(id);
     if (!info)
     {
@@ -38,7 +53,7 @@ static int component_closeup(AppState *app, const char *argument)
     bench_snapshot_clear(&app->bench);
     if (bench_add(&app->bench, info->type, 750, 365) < 0)
         return -1;
-    float zoom = info->type == PART_BREADBOARD ? 1.8f : 7;
+    float zoom = info->type == PART_BREADBOARD ? fminf(requested_zoom, 1.8f) : requested_zoom;
     Part *part = &app->bench.parts[0];
     float min_y = part->y - 48, max_y = part->y + 45;
     for (int pin = 0; pin < info->pin_count; ++pin)
@@ -65,6 +80,53 @@ static int component_closeup(AppState *app, const char *argument)
 
 int dev_scenario_prepare(AppState *app, int argc, char **argv)
 {
+    if (app->selftest)
+        remove("build/test-slots/slot-1.elec");
+    if (argc > 1 && !strcmp(argv[1], "--capture-search"))
+    {
+        snprintf(app->palette_search, sizeof(app->palette_search), "arduino");
+        app->palette_search_active = 1;
+        return 0;
+    }
+    if (argc > 1 && !strcmp(argv[1], "--capture-overwrite"))
+    {
+        app->projects_open = 1;
+        app_projects_refresh(app);
+        app->saved_slots[0] = 1;
+        app->project_parts[0] = 4;
+        app->project_wires[0] = 3;
+        app->project_overwrite = 0;
+        app->keyboard_context = APP_UI_REPLACE;
+        app->keyboard_focus = 0;
+        AppRect cancel = app_layout_confirm_button(2);
+        app->keyboard_target = (WirePoint){app_rect_center_x(cancel), app_rect_center_y(cancel)};
+        return 0;
+    }
+    if (argc > 1 && !strcmp(argv[1], "--capture-ui-large"))
+    {
+        app->gui_font_size = APP_FONT_MAX;
+        app->settings = 1;
+        app->dark_theme = 1;
+        return 0;
+    }
+    if (argc > 1 && !strcmp(argv[1], "--capture-focus"))
+    {
+        app->settings = 1;
+        app->keyboard_context = APP_UI_SETTINGS;
+        app->keyboard_focus = APP_SETTING_DARK_THEME;
+        AppRect setting = app_layout_setting(APP_SETTING_DARK_THEME);
+        app->keyboard_target = (WirePoint){app_rect_center_x(setting), app_rect_center_y(setting)};
+        return 0;
+    }
+    if (argc > 1 && !strcmp(argv[1], "--capture-code"))
+    {
+        app->selected = bench_add(&app->bench, PART_ARDUINO_UNO, 500, 360);
+        app->code_part = app->selected;
+        snprintf(app->code_text, sizeof(app->code_text), "void setup() {\n    pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n    digitalWrite(13, HIGH);\n    delay(500);\n}\n");
+        app->code_dirty = 1;
+        app->sim.sim_running = 0;
+        return 0;
+    }
     if (argc > 1)
     {
         int closeup = component_closeup(app, argv[1]);
@@ -137,7 +199,10 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
         app->settings = 1;
     }
     if (argc > 1 && strcmp(argv[1], "--capture-projects") == 0)
+    {
         app->projects_open = 1;
+        app_projects_refresh(app);
+    }
     if (argc > 1 && strcmp(argv[1], "--capture-examples") == 0)
         app->examples_open = 1;
     if (argc > 1 && strcmp(argv[1], "--capture-settings") == 0)
@@ -246,6 +311,19 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             for (int i = 0; i < count; ++i)
             {
                 int part = bench_add(&app->bench, types[i], 300 + i * 120.0f, 200 + row * 220.0f);
+                if (part >= 0 && row)
+                    bench_mirror_part(&app->bench, part);
+            }
+        app->selected = -1;
+    }
+    if (app->capture && !strcmp(argv[1], "--capture-mirror-gates"))
+    {
+        static const PartType types[] = {PART_AND, PART_NAND, PART_OR, PART_XOR};
+        bench_snapshot_clear(&app->bench);
+        for (int row = 0; row < 2; ++row)
+            for (int i = 0; i < 4; ++i)
+            {
+                int part = bench_add(&app->bench, types[i], 330 + i * 235.0f, 270 + row * 250.0f);
                 if (part >= 0 && row)
                     bench_mirror_part(&app->bench, part);
             }
@@ -699,12 +777,15 @@ int dev_scenario_analyze(AppState *app, char **argv)
 
 static int move_pointer(SDL_Window *window, float x, float y)
 {
+    int width, height;
+    SDL_GetWindowSize(window, &width, &height);
+    WirePoint point = app_layout_from_ui(width, height, x, y);
     SDL_Event event;
     SDL_zero(event);
     event.type = SDL_EVENT_MOUSE_MOTION;
     event.motion.windowID = SDL_GetWindowID(window);
-    event.motion.x = x;
-    event.motion.y = y;
+    event.motion.x = point.x;
+    event.motion.y = point.y;
     return SDL_PushEvent(&event);
 }
 
@@ -742,6 +823,15 @@ static int reports_project_saved(const AppState *app)
     char expected[sizeof(app->selection_status)];
     snprintf(expected, sizeof(expected), tr(TXT_APP_PROJECT_SAVED), app->save_slot + 1);
     return !strcmp(app->status, expected);
+}
+
+/* The person confirms replacement when a previous step already filled the slot. */
+static int save_test_project(AppState *app, SDL_Window *window)
+{
+    app_projects_refresh(app);
+    int occupied = app->saved_slots[app->save_slot];
+    return dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL) &&
+           (!occupied || click_rect(window, app_layout_confirm_button(0)));
 }
 
 static int deleted_block = -1;
@@ -926,7 +1016,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 54)
         queued = dev_test_key(window, SDLK_T);
     else if (app->selftest_phase == 55)
-        queued = dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL);
+        queued = save_test_project(app, window);
     else if (app->selftest_phase == 56)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 57)
@@ -938,7 +1028,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 60)
         queued = click_palette(window, 7) && dev_test_click(window, 1000, 300);
     else if (app->selftest_phase == 61)
-        queued = dev_test_key(window, SDLK_TAB);
+        queued = dev_test_shortcut(window, SDLK_TAB, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 62)
         queued = click_palette(window, 3) && dev_test_click(window, 1100, 400);
     else if (app->selftest_phase == 63)
@@ -991,11 +1081,11 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 74)
         queued = dev_test_key(window, SDLK_ESCAPE) && click_palette(window, 7) && dev_test_click(window, 750, 450);
     else if (app->selftest_phase == 75)
-        queued = dev_test_key(window, SDLK_F2);
+        queued = dev_test_shortcut(window, SDLK_F2, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 76)
-        queued = dev_test_key(window, SDLK_F2);
+        queued = dev_test_shortcut(window, SDLK_F2, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 77)
-        queued = dev_test_key(window, SDLK_F2);
+        queued = dev_test_shortcut(window, SDLK_F2, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 78)
         queued = dev_test_key(window, SDLK_Z);
     else if (app->selftest_phase == 79)
@@ -1027,7 +1117,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 93 || app->selftest_phase == 98)
         queued = dev_test_key(window, SDLK_Z);
     else if (app->selftest_phase == 94)
-        queued = dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL);
+        queued = save_test_project(app, window);
     else if (app->selftest_phase == 95)
         queued = dev_test_shortcut(window, SDLK_L, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 96)
@@ -1122,7 +1212,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 130)
     {
         SDL_SetModState(SDL_KMOD_NONE);
-        queued = dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL);
+        queued = save_test_project(app, window);
     }
     else if (app->selftest_phase == 131)
     {
@@ -1151,7 +1241,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 135)
         queued = dev_test_click_count(window, 620, 200, 2);
     else if (app->selftest_phase == 136)
-        queued = dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL);
+        queued = save_test_project(app, window);
     else if (app->selftest_phase == 137)
         queued = dev_test_shortcut(window, SDLK_L, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 138)
@@ -1174,7 +1264,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 143)
         queued = dev_test_key(window, SDLK_Y);
     else if (app->selftest_phase == 144)
-        queued = dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL);
+        queued = save_test_project(app, window);
     else if (app->selftest_phase == 145)
         queued = dev_test_shortcut(window, SDLK_L, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 146)
@@ -1193,7 +1283,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 149)
         queued = click_setting(window, APP_SETTING_DARK_THEME);
     else if (app->selftest_phase == 150)
-        queued = dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL);
+        queued = save_test_project(app, window);
     else if (app->selftest_phase == 151)
     {
         app->dark_theme = 0;
@@ -1239,7 +1329,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 161)
         queued = dev_test_drag_finish(window, 800, 300);
     else if (app->selftest_phase == 162)
-        queued = dev_test_key(window, SDLK_TAB);
+        queued = dev_test_shortcut(window, SDLK_TAB, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 163)
         queued = dev_test_wheel(window, 50, 400, -2);
     else if (app->selftest_phase == 164)
@@ -1316,7 +1406,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, app->selftest_phase == 176 ? SDLK_Z : SDLK_Y);
     }
     else if (app->selftest_phase == 178)
-        queued = dev_test_shortcut(window, SDLK_S, SDL_KMOD_CTRL);
+        queued = save_test_project(app, window);
     else if (app->selftest_phase == 179)
         queued = dev_test_shortcut(window, SDLK_L, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 180)

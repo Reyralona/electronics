@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <windows.h>
 #include <direct.h>
 #include <wchar.h>
@@ -24,8 +26,92 @@
 #include "app_text_utf8.h"
 #include "app_input.h"
 #include "app_render.h"
+#include "app_layout.h"
 #include "app_simulation.h"
 #include "dev_scenarios.h"
+
+static void save_project_thumbnail(AppState *app, GLuint font, int width, int height)
+{
+    int slot = app->project_thumbnail_pending;
+    if (app->selftest || app->editor_parent)
+        return;
+    if (slot < 0 && app->projects_open)
+    {
+        for (int cell = 0; cell < PROJECT_SLOTS_PER_PAGE; ++cell)
+        {
+            int candidate = app->project_page * PROJECT_SLOTS_PER_PAGE + cell;
+            if (candidate >= app->project_slot_count || !app->saved_slots[candidate])
+                continue;
+            char path[128];
+            snprintf(path, sizeof(path), "saves/slot-%d.bmp", candidate + 1);
+            struct _stat metadata;
+            if (_stat(path, &metadata) != 0)
+            {
+                slot = candidate;
+                break;
+            }
+        }
+    }
+    if (slot < 0)
+        return;
+    app->project_thumbnail_pending = -1;
+    char project_path[128];
+    snprintf(project_path, sizeof(project_path), "saves/slot-%d.elec", slot + 1);
+    Workbench saved = {0};
+    WorkbenchSettings settings;
+    if (!workbench_load_project(project_path, &saved, &settings))
+    {
+        bench_snapshot_clear(&saved);
+        return;
+    }
+    AppState *preview = malloc(sizeof(*preview));
+    if (!preview)
+    {
+        bench_snapshot_clear(&saved);
+        return;
+    }
+    *preview = *app;
+    preview->bench = saved;
+    preview->projects_open = 0;
+    preview->settings = 0;
+    preview->examples_open = 0;
+    preview->selected = -1;
+    bench_selection_clear(&preview->selection);
+    memset(&preview->sim, 0, sizeof(preview->sim));
+    memset(preview->leds, 0, sizeof(preview->leds));
+    preview->show_handles = 0;
+    preview->project_thumbnail_render = 1;
+    bench_view_fit_workbench(&preview->view, &preview->bench);
+    app_render_draw(preview, font, width, height);
+    if (dev_capture_save("build/project-thumbnail-frame.bmp", width, height))
+    {
+        SDL_Surface *frame = SDL_LoadBMP("build/project-thumbnail-frame.bmp");
+        SDL_Surface *thumbnail = SDL_CreateSurface(264, 112, SDL_PIXELFORMAT_RGB24);
+        if (frame && thumbnail)
+        {
+            AppRect viewport = app_layout_viewport(width, height);
+            SDL_Rect source = {(int)(viewport.x + viewport.w * BENCH_VIEW_LEFT / 1280),
+                               (int)(viewport.y + viewport.h * BENCH_VIEW_TOP / 720),
+                               (int)(viewport.w * BENCH_VIEW_WIDTH / 1280),
+                               (int)(viewport.h * BENCH_VIEW_HEIGHT / 720)};
+            SDL_Rect target = {0, 0, 264, 112};
+            if (SDL_BlitSurfaceScaled(frame, &source, thumbnail, &target, SDL_SCALEMODE_LINEAR))
+            {
+                char path[128];
+                snprintf(path, sizeof(path), "saves/slot-%d.bmp", slot + 1);
+                if (SDL_SaveBMP(thumbnail, path))
+                    app->project_thumbnail_revision++;
+            }
+        }
+        if (frame)
+            SDL_DestroySurface(frame);
+        if (thumbnail)
+            SDL_DestroySurface(thumbnail);
+    }
+    remove("build/project-thumbnail-frame.bmp");
+    free(preview);
+    bench_snapshot_clear(&saved);
+}
 
 /* ngspice lives next to the executable (build/spice-local); fall back to the path relative to the project root. */
 static void find_ngspice(char *path, size_t capacity)
@@ -199,6 +285,13 @@ int main(int argc, char **argv)
         return 1;
     }
     font = app_render_font_create();
+    if (!app_input_apply_scale(&app, window))
+    {
+        app.gui_font_size = APP_FONT_MIN;
+        if (!app_input_apply_scale(&app, window))
+            app.status = tr(TXT_UI_WINDOW_SIZE_FAILED);
+    }
+    int window_scale = app.gui_font_size;
     SDL_GL_SetSwapInterval(1);
     if (dev_scenario_analyze(&app, argv))
         return 1;
@@ -210,6 +303,12 @@ int main(int argc, char **argv)
             dev_scenario_queue(&app, window);
         app_input_poll(active, window);
         active = app_editor_route(active);
+        if (active->gui_font_size != window_scale)
+        {
+            if (!app_input_apply_scale(active, window))
+                active->gui_font_size = window_scale;
+            window_scale = active->gui_font_size;
+        }
         if (app.capture && !strcmp(argv[1], "--capture-editor-deep") && active->editor_parent)
         {
             active->selected = 0;
@@ -224,8 +323,8 @@ int main(int argc, char **argv)
         app_simulation_update(active);
         app_settings_autosave(&app);
         SDL_GetWindowSizeInPixels(window, &width, &height);
+        save_project_thumbnail(active, font, width, height);
         app_render_draw(active, font, width, height);
-        SDL_GL_SwapWindow(window);
         if (app.capture)
         {
             const char *destination = "build/bancada-capture.bmp";
@@ -238,6 +337,7 @@ int main(int argc, char **argv)
             }
             app.running = 0;
         }
+        SDL_GL_SwapWindow(window);
     }
     while (active->editor_parent)
         active = app_editor_dispose(active);

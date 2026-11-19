@@ -533,6 +533,66 @@ void component_body_extent(PartType type, float *half_width, float *half_height)
         *half_width = 4;
         *half_height = 4;
     }
+    else if (type == PART_LED)
+    {
+        *half_width = 17;
+        *half_height = 28;
+    }
+    else if (type == PART_SOURCE)
+    {
+        *half_width = 41;
+        *half_height = 27;
+    }
+    else if (type == PART_SWITCH)
+    {
+        *half_width = 30;
+        *half_height = 21;
+    }
+    else if (type == PART_CLOCK)
+    {
+        *half_width = 34;
+        *half_height = 26;
+    }
+    else if (type == PART_BUTTON)
+    {
+        *half_width = 25;
+        *half_height = 22;
+    }
+    else if (type == PART_RESISTOR || type == PART_DIODE)
+    {
+        *half_width = 21;
+        *half_height = 8;
+    }
+    else if (type == PART_CAPACITOR)
+    {
+        *half_width = 25;
+        *half_height = 22;
+    }
+    else if (type == PART_INDUCTOR)
+    {
+        *half_width = 34;
+        *half_height = 14;
+    }
+    else if (type == PART_POTENTIOMETER)
+    {
+        *half_width = 28;
+        *half_height = 30;
+    }
+    else if (type == PART_BATTERY_COIN)
+    {
+        *half_width = 27;
+        *half_height = 27;
+    }
+    else if (type == PART_NPN || type == PART_PNP || type == PART_TEMPERATURE)
+    {
+        *half_width = 19;
+        *half_height = 22;
+    }
+    else if (component_has_flag(type, COMPONENT_GATE_SYMBOL))
+    {
+        *half_width = 31;
+        *half_height = 27;
+    }
     else if (type == PART_BREADBOARD)
     {
         *half_width = 227;

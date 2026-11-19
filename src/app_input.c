@@ -15,6 +15,8 @@
 #include "app_settings.h"
 #include "ui_text.h"
 #include "app_palette.h"
+#include "app_controls.h"
+#include "code_text.h"
 #include "workbench_file.h"
 #include "workbench_examples.h"
 #include "spice_trace.h"
@@ -85,7 +87,7 @@ static void input_insert_knee(AppState *app, float x, float y)
     app->status = tr(TXT_APP_BEND_ADDED);
 }
 
-static int part_at(const Workbench *bench, float x, float y, float zoom)
+int app_input_part_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
         if (bench->groups[g].active && !bench->groups[g].parent)
@@ -98,6 +100,9 @@ static int part_at(const Workbench *bench, float x, float y, float zoom)
 
     int pass, i;
     for (pass = 0; pass < 2; ++pass)
+    {
+        int closest = -1;
+        float closest_distance = INFINITY;
         for (i = bench->part_count - 1; i >= 0; --i)
         {
             const Part *part = &bench->parts[i];
@@ -109,12 +114,26 @@ static int part_at(const Workbench *bench, float x, float y, float zoom)
             WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
             float half_width, half_height;
             component_body_extent(part->type, &half_width, &half_height);
+            if (part->type == PART_LED)
+                local.y += 6;
             float minimum_hit = 6 / (zoom * bench_part_scale(part));
             half_width = fmaxf(half_width, minimum_hit);
             half_height = fmaxf(half_height, minimum_hit);
             if (fabsf(local.x) < half_width && fabsf(local.y) < half_height)
-                return i;
+            {
+                float nx = local.x / half_width;
+                float ny = local.y / half_height;
+                float distance = nx * nx + ny * ny;
+                if (distance < closest_distance)
+                {
+                    closest_distance = distance;
+                    closest = i;
+                }
+            }
         }
+        if (closest >= 0)
+            return closest;
+    }
     return -1;
 }
 
@@ -135,6 +154,7 @@ static void start_port_name_edit(AppState *app, SDL_Window *window, Pin pin)
     app->route_count = 0;
     app->name_target_pin = pin;
     app->editing = APP_EDIT_PORT_NAME;
+    app->edit_error = 0;
     app->edit_select_all = 1;
     bench_port_name(&app->bench.parts[pin.component], pin.pin, app->edit_text, sizeof(app->edit_text));
     app->status = tr(TXT_APP_TYPE_TERMINAL_NAME);
@@ -174,6 +194,7 @@ static int commit_name(AppState *app)
 
 static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
+    app->edit_error = 0;
     (void)window;
 
     if (editing_name(app))
@@ -203,6 +224,8 @@ static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event
 
 static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
+    if (event->key.key == SDLK_RETURN || event->key.key == SDLK_KP_ENTER)
+        app->edit_error = 1;
 
     if (editing_name(app))
     {
@@ -328,11 +351,14 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
     SDL_GetWindowSize(window, &w, &h);
     if (w > 0 && h > 0)
     {
-        x = event->wheel.mouse_x * 1280.0f / w;
-        y = event->wheel.mouse_y * 720.0f / h;
+        WirePoint point = app_layout_to_ui(w, h, event->wheel.mouse_x, event->wheel.mouse_y);
+        x = point.x;
+        y = point.y;
         if (x < 220 && y >= 140 && direction != 0)
         {
-            int last = palette_count(app->palette_page) - 8;
+            int last = palette_filtered_count(app->palette_page, app->palette_search) - APP_PALETTE_VISIBLE;
+            if (last < 0)
+                last = 0;
             app->palette_offset += direction < 0 ? 1 : -1;
             if (app->palette_offset < 0)
                 app->palette_offset = 0;
@@ -432,12 +458,13 @@ static void input_rotate(AppState *app, SDL_Window *window, const SDL_Event *eve
     SDL_GetWindowSize(window, &w, &h);
     if (w <= 0 || h <= 0)
         return;
-    x = event->button.x * 1280.0f / w;
-    y = event->button.y * 720.0f / h;
+    WirePoint point = app_layout_to_ui(w, h, event->button.x, event->button.y);
+    x = point.x;
+    y = point.y;
     if (x < 220 || y < 70 || y > 660)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
-    hit = part_at(&app->bench, x, y, app->view.zoom);
+    hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
     if (hit >= 0 && app->bench.parts[hit].type != PART_BREADBOARD)
     {
         SDL_Event shortcut = {0};
@@ -454,8 +481,8 @@ static void input_pan_start(AppState *app, SDL_Window *window, const SDL_Event *
 
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
-    if (w > 0 && h > 0 && event->button.x * 1280.0f / w >= 220 && event->button.y * 720.0f / h >= 70 &&
-        event->button.y * 720.0f / h < 660)
+    WirePoint point = app_layout_to_ui(w, h, event->button.x, event->button.y);
+    if (w > 0 && h > 0 && point.x >= 220 && point.y >= 70 && point.y < 660)
         app->panning = 1;
 }
 
@@ -466,8 +493,9 @@ static void input_pan(AppState *app, SDL_Window *window, const SDL_Event *event)
     SDL_GetWindowSize(window, &w, &h);
     if (w > 0 && h > 0)
     {
-        app->view.pan_x += event->motion.xrel * 1280.0f / w;
-        app->view.pan_y += event->motion.yrel * 720.0f / h;
+        AppRect viewport = app_layout_viewport(w, h);
+        app->view.pan_x += event->motion.xrel * 1280.0f / viewport.w;
+        app->view.pan_y += event->motion.yrel * 720.0f / viewport.h;
     }
 }
 
@@ -476,6 +504,7 @@ static void start_settings_edit(AppState *app, SDL_Window *window, int target, d
     if (!SDL_StartTextInput(window))
         return;
     app->editing = target;
+    app->edit_error = 0;
     snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", value);
 }
 
@@ -502,9 +531,8 @@ static void toggle_wire_current(AppState *app)
 
 static void cycle_probe_pin(AppState *app)
 {
-    const int quad_gate_pins = 14, default_pins = 3;
-    int quad = app->selected >= 0 && component_has_flag(app->bench.parts[app->selected].type, COMPONENT_QUAD_GATE);
-    app->probe_pin = (app->probe_pin + 1) % (quad ? quad_gate_pins : default_pins);
+    int pins = app->selected >= 0 ? bench_pin_count(app->bench.parts[app->selected].type) : 2;
+    app->probe_pin = pins > 0 ? (app->probe_pin + 1) % pins : 0;
 }
 
 /* The whole interface switches at once; texts already on screen are rebuilt from their ids next frame. */
@@ -515,8 +543,35 @@ static void choose_language(AppState *app, UiLanguage language)
     app->status = tr(language == UI_LANG_PT_BR ? TXT_LANGUAGE_NAME_PT_BR : TXT_LANGUAGE_NAME_EN_US);
 }
 
+int app_input_apply_scale(AppState *app, SDL_Window *window)
+{
+    int width = (int)ceil(1280.0 * app->gui_font_size / 15);
+    int height = (int)ceil(720.0 * app->gui_font_size / 15);
+    SDL_Rect bounds;
+    SDL_DisplayID display = SDL_GetDisplayForWindow(window);
+    if (!display || !SDL_GetDisplayUsableBounds(display, &bounds))
+    {
+        app->status = tr(TXT_UI_WINDOW_SIZE_FAILED);
+        return 0;
+    }
+    if (width > bounds.w || height > bounds.h - 40)
+    {
+        app->status = tr(TXT_UI_SCALE_UNAVAILABLE);
+        return 0;
+    }
+    if (!SDL_SetWindowMinimumSize(window, 1024, 576) ||
+        ((SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED) && !SDL_RestoreWindow(window)) ||
+        !SDL_SetWindowSize(window, width, height))
+    {
+        app->status = tr(TXT_UI_WINDOW_SIZE_FAILED);
+        return 0;
+    }
+    return 1;
+}
+
 static void input_settings(AppState *app, SDL_Window *window, float x, float y)
 {
+    int previous_scale = app->gui_font_size;
     switch (app_layout_setting_at(x, y))
     {
     case APP_SETTING_DARK_THEME:
@@ -599,6 +654,8 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
     default:
         break;
     }
+    if (app->gui_font_size != previous_scale && !app_input_apply_scale(app, window))
+        app->gui_font_size = previous_scale;
 }
 
 static int input_examples(AppState *app, float x, float y)
@@ -619,7 +676,22 @@ static int input_projects(AppState *app, float x, float y)
         return 0;
     int slot = app_layout_project_slot_at(x, y);
     if (slot >= 0)
-        app->save_slot = slot;
+    {
+        int selected = app->project_page * PROJECT_SLOTS_PER_PAGE + slot;
+        if (selected < app->project_slot_count)
+            app->save_slot = selected;
+    }
+    else if (app_rect_contains(app_layout_project_previous(), x, y) && app->project_page > 0)
+    {
+        app->project_page--;
+        app->save_slot = app->project_page * PROJECT_SLOTS_PER_PAGE;
+    }
+    else if (app_rect_contains(app_layout_project_next(), x, y) &&
+             (app->project_page + 1) * PROJECT_SLOTS_PER_PAGE < app->project_slot_count)
+    {
+        app->project_page++;
+        app->save_slot = app->project_page * PROJECT_SLOTS_PER_PAGE;
+    }
     else if (app_rect_contains(app_layout_project_save(), x, y))
         app_projects_save(app);
     else if (app_rect_contains(app_layout_project_load(), x, y))
@@ -776,14 +848,36 @@ static int input_click_header(AppState *app, float x, float y)
 
 static int graph_visible(const AppState *app)
 {
-    if (app->settings)
-        return 0;
-    return app->live_graph.active || (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace);
+    return app_controls_graph_visible(app);
 }
 
 /* Clicks inside the graph window never reach the bench below it. */
 static int input_click_trace(AppState *app, float x, float y)
 {
+    if (graph_visible(app) && (app_rect_contains(app_layout_graph_measure(), x, y) ||
+                               app_rect_contains(app_layout_graph_pin(), x, y)))
+    {
+        if (app->live_graph.active && app->live_graph.probe.kind == SIM_LIVE_PROBE_WIRE_CURRENT &&
+            app_rect_contains(app_layout_graph_measure(), x, y))
+            return 1;
+        if (!app->live_graph.active || app->live_graph.probe.kind == SIM_LIVE_PROBE_WIRE_CURRENT)
+        {
+            app_state_toggle_panel(app, APP_PANEL_SETTINGS);
+            return 1;
+        }
+        int selected = app->selected;
+        int wire = app->selected_wire;
+        app->selected = app->live_graph.probe.target.component;
+        app->selected_wire = -1;
+        if (app_rect_contains(app_layout_graph_measure(), x, y))
+            app->probe_current = !app->probe_current;
+        else
+            cycle_probe_pin(app);
+        app_commands_key(app, NULL, SDLK_T, 0);
+        app->selected = selected;
+        app->selected_wire = wire;
+        return 1;
+    }
     if (!graph_visible(app) || !app_rect_contains(app_layout_graph_panel(), x, y))
         return 0;
     if (app_rect_contains(app_layout_graph_close(), x, y))
@@ -836,7 +930,7 @@ static int input_click_palette(AppState *app, float x, float y)
     int slot = app_layout_palette_item_at(x, y);
     if (slot < 0)
         return 1;
-    if (app->palette_page == 2)
+    if (app->palette_page == 2 && !app->palette_search[0])
     {
         if (app->library_available[slot] && app_rect_contains(app_layout_palette_delete(slot), x, y))
         {
@@ -848,19 +942,76 @@ static int input_click_palette(AppState *app, float x, float y)
         return 1;
     }
     int item = slot + app->palette_offset;
-    if (item >= palette_count(app->palette_page))
+    if (item >= palette_filtered_count(app->palette_page, app->palette_search))
         return 1;
     app->packed_placing = 0;
     app->pending.component = -1;
-    if (input_swap_selected(app, palette_part(app->palette_page, item)))
+    if (input_swap_selected(app, palette_filtered_part(app->palette_page, app->palette_search, item)))
         return 1;
-    app->placing = palette_part(app->palette_page, item);
+    app->placing = palette_filtered_part(app->palette_page, app->palette_search, item);
     app->status = tr(TXT_APP_CLICK_TO_PLACE);
     return 1;
 }
 
 static int input_click_controls(AppState *app, SDL_Window *window, float x, float y)
 {
+    if (app->project_overwrite >= 0)
+    {
+        int choice = app_layout_confirm_button_at(x, y);
+        if (choice == 0 || choice == 2)
+            app_projects_confirm(app, choice == 0);
+        return 1;
+    }
+    if (app->editing >= 0)
+    {
+        SDL_Event key;
+        SDL_zero(key);
+        key.key.key = app_rect_contains(app_layout_value_button(1), x, y) ? SDLK_RETURN : SDLK_ESCAPE;
+        if (app_rect_contains(app_layout_value_button(1), x, y) || app_rect_contains(app_layout_value_button(0), x, y))
+            input_edit_key(app, window, &key);
+        return 1;
+    }
+    if (app->editor_confirm_close)
+        return app_editor_click(app, window, x, y);
+    if (app->settings || app->projects_open || app->examples_open)
+    {
+        if ((!app->editor_parent || app_layout_header_at(x, y) == APP_HEADER_PLAY) && input_click_header(app, x, y))
+            return 1;
+        if (input_projects(app, x, y) || input_examples(app, x, y))
+            return 1;
+        input_settings(app, window, x, y);
+        return 1;
+    }
+    if (panels_closed(app))
+    {
+        if (app_rect_contains(app_layout_search_clear(), x, y))
+        {
+            app->palette_search[0] = 0;
+            app->palette_offset = 0;
+            return 1;
+        }
+        if (app_rect_contains(app_layout_search(), x, y))
+        {
+            if (SDL_StartTextInput(window))
+                app->palette_search_active = 1;
+            else
+                app->status = tr(TXT_APP_TEXT_INPUT_FAILED);
+            return 1;
+        }
+        for (int action = 0; action < APP_ACTION_COUNT; ++action)
+        {
+            if (!app_rect_contains(app_layout_action((AppAction)action), x, y))
+                continue;
+            if (!app_controls_action_enabled(app, (AppAction)action))
+                return 1;
+            static const SDL_Keycode keys[] = {SDLK_Z, SDLK_Y, SDLK_N, SDLK_G, SDLK_T, SDLK_T};
+            SDL_Keymod mod = action <= APP_ACTION_REDO || action == APP_ACTION_CHIP ? SDL_KMOD_CTRL : SDL_KMOD_NONE;
+            if (action == APP_ACTION_CURVE)
+                mod = SDL_KMOD_SHIFT;
+            app_commands_key(app, window, keys[action], mod);
+            return 1;
+        }
+    }
     if (input_click_inspector_toggle(app, x, y))
         return 1;
     if (input_click_environment(app, x, y))
@@ -1130,7 +1281,7 @@ static int input_toggle_device(AppState *app, int hit, float x, float y)
 static void input_select(AppState *app, float x, float y, int clicks)
 {
     int hit;
-    hit = part_at(&app->bench, x, y, app->view.zoom);
+    hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
     if (hit < 0 || !app->selection.parts[hit])
         bench_selection_clear(&app->selection);
     if (hit >= 0)
@@ -1428,8 +1579,9 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     SDL_GetWindowSize(window, &w, &h);
     if (w <= 0 || h <= 0)
         return;
-    x = event->button.x * 1280.0f / w;
-    y = event->button.y * 720.0f / h;
+    WirePoint point = app_layout_to_ui(w, h, event->button.x, event->button.y);
+    x = point.x;
+    y = point.y;
     if (input_click_controls(app, window, x, y))
         return;
     if (x < 220 || y < 70 || y > 660)
@@ -1574,7 +1726,7 @@ static void input_drag_lead(AppState *app, SDL_Window *window, const SDL_Event *
     int component = app->drag_lead.component, pin = app->drag_lead.pin;
     if (component < 0 || component >= app->bench.part_count)
         return;
-    WirePoint world = {event->motion.x * 1280.0f / width, event->motion.y * 720.0f / height};
+    WirePoint world = app_layout_to_ui(width, height, event->motion.x, event->motion.y);
     bench_view_to_world(&app->view, world.x, world.y, &world.x, &world.y);
     if (app->drag_lead_point + 1 == bench_lead_count(&app->bench.parts[component], pin))
         world = snap_lead_tip(app, component, world);
@@ -1598,7 +1750,9 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
     SDL_GetWindowSize(window, &w, &h);
     if (w > 0 && h > 0 && app->drag_wire < app->bench.wire_count)
     {
-        float x = event->motion.x * 1280.0f / w, y = event->motion.y * 720.0f / h;
+        WirePoint pointer = app_layout_to_ui(w, h, event->motion.x, event->motion.y);
+        float x = pointer.x;
+        float y = pointer.y;
         WirePoint *point = &app->bench.wires[app->drag_wire].knees[app->drag_knee];
         bench_view_to_world(&app->view, x, y, &x, &y);
         input_snap_grid(app, &x, &y);
@@ -1684,7 +1838,9 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
     if (w > 0 && h > 0)
     {
         app->drag_snap_mode = snap_suspended() ? 2 : grid_only() ? 1 : 0;
-        float x = event->motion.x * 1280.0f / w, y = event->motion.y * 720.0f / h;
+        WirePoint point = app_layout_to_ui(w, h, event->motion.x, event->motion.y);
+        float x = point.x;
+        float y = point.y;
         bench_view_to_world(&app->view, x, y, &x, &y);
         x -= app->offset_x;
         y -= app->offset_y;
@@ -1749,7 +1905,9 @@ static void input_mouse_position(AppState *app, SDL_Window *window, const SDL_Ev
     SDL_GetWindowSize(window, &width, &height);
     if (width <= 0 || height <= 0)
         return;
-    float x = event->motion.x * 1280.0f / width, y = event->motion.y * 720.0f / height;
+    WirePoint point = app_layout_to_ui(width, height, event->motion.x, event->motion.y);
+    float x = point.x;
+    float y = point.y;
     bench_view_to_world(&app->view, x, y, &app->mouse_world.x, &app->mouse_world.y);
     app->mouse_screen = (WirePoint){x, y};
     app->mouse_position_valid = 1;
@@ -1792,6 +1950,141 @@ static void input_area_autoscroll(AppState *app)
     input_area_update(app);
 }
 
+static int input_keyboard_focus(AppState *app, SDL_Window *window, const SDL_Event *event)
+{
+    if (event->type != SDL_EVENT_KEY_DOWN)
+        return 0;
+    SDL_Keycode key = event->key.key;
+    AppControlContext context = app_controls_context(app);
+    if (app->keyboard_context != context)
+    {
+        app->keyboard_context = context;
+        app->keyboard_focus = -1;
+    }
+    if (key == SDLK_TAB)
+    {
+        if (context == APP_UI_BENCH && (event->key.mod & SDL_KMOD_CTRL))
+            return 0;
+        if (app->code_part >= 0 && !(event->key.mod & SDL_KMOD_CTRL) && context == APP_UI_CODE)
+            return 0;
+        AppRect targets[APP_CONTROL_LIMIT];
+        int count = app_controls_targets(app, targets);
+        int direction = event->key.mod & SDL_KMOD_SHIFT ? -1 : 1;
+        if (app->keyboard_focus >= 0)
+        {
+            app->keyboard_focus = -1;
+            for (int i = 0; i < count; ++i)
+                if (app_rect_center_x(targets[i]) == app->keyboard_target.x &&
+                    app_rect_center_y(targets[i]) == app->keyboard_target.y)
+                    app->keyboard_focus = i;
+        }
+        if (app->keyboard_focus < 0)
+            app->keyboard_focus = direction > 0 ? 0 : count - 1;
+        else
+            app->keyboard_focus = (app->keyboard_focus + direction + count) % count;
+        AppRect focus = targets[app->keyboard_focus];
+        app->keyboard_target = (WirePoint){app_rect_center_x(focus), app_rect_center_y(focus)};
+        if (app->palette_search_active)
+        {
+            SDL_StopTextInput(window);
+            app->palette_search_active = 0;
+        }
+        return 1;
+    }
+    AppRect focus = app_controls_focus(app);
+    if (focus.w <= 0 || app->palette_search_active)
+        return 0;
+    if (key == SDLK_ESCAPE)
+    {
+        app->keyboard_focus = -1;
+        return context == APP_UI_BENCH;
+    }
+    if ((key == SDLK_LEFT || key == SDLK_RIGHT) && app->selected >= 0 &&
+        focus.y == app_layout_environment_slider().y)
+    {
+        if (bench_history_record(app->history, &app->bench))
+        {
+            double value = app->bench.parts[app->selected].control + (key == SDLK_RIGHT ? .05 : -.05);
+            bench_set_control(&app->bench, app->selected, fmin(1, fmax(0, value)));
+        }
+        return 1;
+    }
+    if (key != SDLK_RETURN && key != SDLK_KP_ENTER && key != SDLK_SPACE)
+        return 0;
+    if (event->key.repeat)
+        return 1;
+    if (context == APP_UI_CODE && app_rect_contains(app_layout_code_run(), app_rect_center_x(focus), app_rect_center_y(focus)))
+        app_code_apply(app);
+    else if (context == APP_UI_CODE && app_rect_contains(app_layout_code_close(), app_rect_center_x(focus), app_rect_center_y(focus)))
+        app_code_close(app, window);
+    else
+        input_click_controls(app, window, app_rect_center_x(focus), app_rect_center_y(focus));
+    app->dragging_environment = -1;
+    return 1;
+}
+
+static int input_search(AppState *app, SDL_Window *window, const SDL_Event *event)
+{
+    if (app_controls_context(app) != APP_UI_BENCH)
+        return 0;
+    if (event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_F && (event->key.mod & SDL_KMOD_CTRL))
+    {
+        if (SDL_StartTextInput(window))
+        {
+            app->palette_search_active = 1;
+            app->palette_search_select_all = 1;
+        }
+        else
+            app->status = tr(TXT_APP_TEXT_INPUT_FAILED);
+        return 1;
+    }
+    if (!app->palette_search_active)
+        return 0;
+    if (event->type == SDL_EVENT_TEXT_INPUT)
+    {
+        size_t used = app->palette_search_select_all ? 0 : strlen(app->palette_search);
+        if (used + strlen(event->text.text) >= sizeof(app->palette_search))
+        {
+            app->status = tr(TXT_UI_SEARCH_TOO_LONG);
+            return 1;
+        }
+        app->palette_search[used] = 0;
+        int cursor = (int)used;
+        code_insert(app->palette_search, sizeof(app->palette_search), &cursor, event->text.text);
+        app->palette_search_select_all = 0;
+        app->palette_offset = 0;
+        app->placing = -1;
+        return 1;
+    }
+    if (event->type == SDL_EVENT_KEY_DOWN)
+    {
+        if (event->key.key == SDLK_BACKSPACE)
+        {
+            int cursor = (int)strlen(app->palette_search);
+            if (app->palette_search_select_all)
+                app->palette_search[0] = 0;
+            else
+                code_backspace(app->palette_search, &cursor);
+            app->palette_search_select_all = 0;
+            app->palette_offset = 0;
+        }
+        else if (event->key.key == SDLK_A && (event->key.mod & SDL_KMOD_CTRL))
+            app->palette_search_select_all = 1;
+        else if (event->key.key == SDLK_RETURN || event->key.key == SDLK_ESCAPE)
+        {
+            app->palette_search_active = 0;
+            SDL_StopTextInput(window);
+        }
+        return 1;
+    }
+    if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+    {
+        app->palette_search_active = 0;
+        SDL_StopTextInput(window);
+    }
+    return 0;
+}
+
 /* Coalesce hover hit testing to one pass per frame; drag/model events still all execute. */
 static void input_refresh_hover(AppState *app)
 {
@@ -1811,12 +2104,23 @@ void app_input_poll(AppState *app, SDL_Window *window)
     SDL_Event e;
     while (SDL_PollEvent(&e))
     {
+        if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+            app->keyboard_focus = -1;
         /* Finish draining this context before routing to another editor. */
         if (app->editor_open_requested || app->editor_close_requested)
             continue;
         if (e.type == SDL_EVENT_MOUSE_MOTION)
             input_mouse_position(app, window, &e);
-        if (e.type != SDL_EVENT_QUIT && app->editing < 0 && app_code_event(app, window, &e))
+        if (input_keyboard_focus(app, window, &e) || input_search(app, window, &e))
+            continue;
+        if (app->project_overwrite >= 0 && e.type != SDL_EVENT_QUIT && e.type != SDL_EVENT_KEY_DOWN)
+        {
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button == SDL_BUTTON_LEFT)
+                input_click(app, window, &e);
+            continue;
+        }
+        if (e.type != SDL_EVENT_QUIT && app->editing < 0 && !app->settings && !app->projects_open &&
+            !app->examples_open && !app->editor_confirm_close && app_code_event(app, window, &e))
             continue;
         if (e.type == SDL_EVENT_QUIT)
             app->running = 0;
@@ -1832,6 +2136,8 @@ void app_input_poll(AppState *app, SDL_Window *window)
         }
         else if (app->editing >= 0 && (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN || e.type == SDL_EVENT_MOUSE_MOTION))
         {
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button == SDL_BUTTON_LEFT)
+                input_click(app, window, &e);
             continue;
         }
         else if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat)

@@ -1,5 +1,34 @@
 # Histórico de versões
 
+## 0.46.0
+
+- Ao carregar um projeto válido, a bancada ajusta zoom e posição para enquadrar peças, terminais, chips e fios.
+- Projetos passam a crescer além dos nove slots anteriores, com seis cartões por página e navegação por setas ou Page Up/Page Down.
+- A galeria maior mostra miniaturas da bancada enquadrada. Cada imagem é salva ao lado do projeto e gerada para saves antigos quando o cartão aparece.
+- O formato `.elec` e o modelo elétrico continuam na versão anterior.
+
+## 0.45.1
+
+- A bancada ocupa toda a largura da janela maximizada.
+- Seleção de componentes próximos usa dimensões mais fiéis ao desenho e escolhe o corpo mais próximo em áreas sobrepostas; validado no slot 4.
+- Portas lógicas espelhadas desenham os trechos dos terminais do mesmo lado que os pinos do circuito.
+- Capturas leem o quadro antes da troca de buffers e falham se vier totalmente preto. É possível gerar imagens individuais dos 59 componentes em 1×, 3× e 7×.
+- Contornos do LED RGB desligado, do sensor de luz ambiente e do domo PIR ficaram mais visíveis nos temas claro e escuro.
+- Sem alteração do formato de projeto ou do modelo elétrico.
+
+## 0.45.0
+
+- Projetos mostram um resumo de peças/fios. Substituir um slot ocupado exige confirmação; cancelar preserva o arquivo.
+- Barra com Desfazer, Refazer, Um passo, Criar chip, Ao vivo e Curva completa, usando os comandos existentes.
+- Busca de peças por nome/identificador em todo o catálogo, sem distinguir maiúsculas ou acentos portugueses.
+- Tab/Shift+Tab percorrem controles com foco visível; Enter/Espaço ativam. Ctrl+Tab mantém a troca de categorias.
+- No editor de código, Tab continua indentando; Ctrl+Tab acessa os controles.
+- Escala amplia a interface inteira; desenho e cliques preservam proporção em janelas de outros formatos.
+- Configurações separam Simulação de aparência; explicação do gráfico aparece inteira. Medida/terminal ficam junto ao gráfico ao vivo.
+- Biblioteca vazia explica como criar chips; edição de valores tem Confirmar/Cancelar e erros junto ao campo.
+- F2 abre Exemplos como o botão; Ctrl+F2 mantém o avanço direto. Idiomas usam nomes, em vez de bandeiras.
+- Sem alteração do formato de projeto (34), dependências ou modelos elétricos.
+
 ## 0.44.1
 
 - Corrigido: funções recursivas com muitas variáveis locais param antes de exceder a memória do interpretador.

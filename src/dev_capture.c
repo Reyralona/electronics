@@ -1,4 +1,5 @@
 #include "dev_capture.h"
+#include "app_layout.h"
 #include <SDL3/SDL_opengl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +9,8 @@ int dev_capture_requested(const char *argument)
 {
     static const char *modes[] = {
         "--capture-live-rc", "--capture-live-off", "--capture-live-graph", "--capture-wire-panel", "--capture-mirror",
+        "--capture-mirror-gates",
+        "--capture-search", "--capture-overwrite", "--capture-ui-large", "--capture-focus", "--capture-code",
         "--capture-catalog", "--capture-leads", "--capture-environment",
         "--capture-inspector", "--capture-inspector-minimized",
         "--capture-dark",
@@ -63,9 +66,23 @@ int dev_capture_save(const char *path, int width, int height)
         SDL_SetError("Sem memoria para captura.");
         goto cleanup;
     }
-    glReadBuffer(GL_FRONT);
+    glFinish();
+    glReadBuffer(GL_BACK);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    if (glGetError() != GL_NO_ERROR)
+    {
+        SDL_SetError("Falha ao ler o quadro OpenGL.");
+        goto cleanup;
+    }
+    size_t nonzero = 0;
+    for (size_t byte = 0; byte < bytes && !nonzero; ++byte)
+        nonzero = pixels[byte];
+    if (!nonzero)
+    {
+        SDL_SetError("A captura retornou um quadro preto.");
+        goto cleanup;
+    }
     for (int row = 0; row < height; ++row)
     {
         memcpy(flipped + (size_t)row * stride, pixels + (size_t)(height - row - 1) * stride, stride);
@@ -81,6 +98,13 @@ cleanup:
     return saved;
 }
 
+static WirePoint test_point(SDL_Window *window, float x, float y)
+{
+    int width, height;
+    SDL_GetWindowSize(window, &width, &height);
+    return app_layout_from_ui(width, height, x, y);
+}
+
 int dev_test_click_count(SDL_Window *window, float x, float y, int clicks)
 {
     SDL_Event event;
@@ -89,8 +113,9 @@ int dev_test_click_count(SDL_Window *window, float x, float y, int clicks)
     event.button.windowID = SDL_GetWindowID(window);
     event.button.button = SDL_BUTTON_LEFT;
     event.button.clicks = (Uint8)clicks;
-    event.button.x = x;
-    event.button.y = y;
+    WirePoint point = test_point(window, x, y);
+    event.button.x = point.x;
+    event.button.y = point.y;
     return SDL_PushEvent(&event);
 }
 int dev_test_click(SDL_Window *window, float x, float y)
@@ -103,8 +128,9 @@ int dev_test_drag_finish(SDL_Window *window, float x, float y)
     SDL_zero(event);
     event.type = SDL_EVENT_MOUSE_MOTION;
     event.motion.windowID = SDL_GetWindowID(window);
-    event.motion.x = x;
-    event.motion.y = y;
+    WirePoint point = test_point(window, x, y);
+    event.motion.x = point.x;
+    event.motion.y = point.y;
     if (!SDL_PushEvent(&event))
         return 0;
     SDL_zero(event);
@@ -121,6 +147,12 @@ int dev_test_shortcut(SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
     event.key.windowID = SDL_GetWindowID(window);
     event.key.key = key;
     event.key.mod = mod;
+    event.key.scancode = SDL_GetScancodeFromKey(key, NULL);
+    event.key.down = true;
+    if (!SDL_PushEvent(&event))
+        return 0;
+    event.type = SDL_EVENT_KEY_UP;
+    event.key.down = false;
     return SDL_PushEvent(&event);
 }
 int dev_test_key(SDL_Window *window, SDL_Keycode key)
@@ -147,8 +179,9 @@ int dev_test_wheel(SDL_Window *window, float x, float y, float amount)
     event.type = SDL_EVENT_MOUSE_WHEEL;
     event.wheel.windowID = SDL_GetWindowID(window);
     event.wheel.direction = SDL_MOUSEWHEEL_NORMAL;
-    event.wheel.mouse_x = x;
-    event.wheel.mouse_y = y;
+    WirePoint point = test_point(window, x, y);
+    event.wheel.mouse_x = point.x;
+    event.wheel.mouse_y = point.y;
     event.wheel.y = amount;
     return SDL_PushEvent(&event);
 }
@@ -159,15 +192,18 @@ int dev_test_pan(SDL_Window *window)
     event.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
     event.button.windowID = SDL_GetWindowID(window);
     event.button.button = SDL_BUTTON_MIDDLE;
-    event.button.x = 600;
-    event.button.y = 400;
+    WirePoint point = test_point(window, 600, 400);
+    event.button.x = point.x;
+    event.button.y = point.y;
     if (!SDL_PushEvent(&event))
         return 0;
     SDL_zero(event);
     event.type = SDL_EVENT_MOUSE_MOTION;
     event.motion.windowID = SDL_GetWindowID(window);
-    event.motion.xrel = 100;
-    event.motion.yrel = 40;
+    WirePoint origin = test_point(window, 0, 0);
+    point = test_point(window, 100, 40);
+    event.motion.xrel = point.x - origin.x;
+    event.motion.yrel = point.y - origin.y;
     if (!SDL_PushEvent(&event))
         return 0;
     SDL_zero(event);

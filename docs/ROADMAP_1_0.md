@@ -91,7 +91,8 @@ sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
 - Microcontrolador: feito (0.34.0); falta servo por pulso e ultrassônico usando-o.
 
 ### 4.3 Uso e acabamento (`QUALIDADE_DE_USO.md`)
-- [ ] Escala completa da interface (hoje só o tamanho do texto muda).
+- [x] Escala integral de texto e alvos (0.45.0), com viewport proporcional e foco de teclado. Evidências em [REVISAO_INTERFACE.md](REVISAO_INTERFACE.md).
+- [ ] Validar acessibilidade com leitor de tela e diferentes monitores/DPI; foco de teclado não encerra esse requisito.
 - [ ] Inspector que não cubra peças (recolher/mover quando sobrepõe a seleção).
 - [x] Ritmo observado e escolhido visíveis na interface (0.42.0); o ritmo real depende do circuito.
 - [x] Pacotes experimentais com runtime, host, licenças e fontes (0.36.0).

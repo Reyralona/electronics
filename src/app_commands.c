@@ -390,6 +390,7 @@ static void command_edit_value(AppState *app, SDL_Window *window)
         if (SDL_StartTextInput(window))
         {
             app->editing = app->selected;
+            app->edit_error = 0;
             snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", app->bench.parts[app->selected].value);
             app->status = tr(TXT_APP_TYPE_VALUE);
         }
@@ -478,13 +479,46 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
 
 void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Keymod mod)
 {
-    if (app_editor_key(app, window, key, mod))
-        return;
-    if (app->examples_open && key == SDLK_ESCAPE)
+    if (app->project_overwrite >= 0)
     {
-        app->examples_open = 0;
+        if (key == SDLK_ESCAPE)
+            app_projects_confirm(app, 0);
         return;
     }
+    if (app->settings)
+    {
+        if (key == SDLK_ESCAPE || key == SDLK_F1)
+            app->settings = 0;
+        else if (key == SDLK_F2)
+            app_state_toggle_panel(app, APP_PANEL_EXAMPLES);
+        else if (key == SDLK_F3)
+            app_editing_key(app, key, mod);
+        else if ((mod & SDL_KMOD_CTRL) && (key == SDLK_S || key == SDLK_L))
+            app_editing_key(app, key, mod);
+        return;
+    }
+    if (app->projects_open)
+    {
+        if (key == SDLK_F1)
+            command_settings(app);
+        else if (key == SDLK_F2)
+            app_state_toggle_panel(app, APP_PANEL_EXAMPLES);
+        else
+            app_editing_key(app, key, mod);
+        return;
+    }
+    if (app->examples_open)
+    {
+        if (key == SDLK_ESCAPE || key == SDLK_F2)
+            app->examples_open = 0;
+        else if (key == SDLK_F1)
+            command_settings(app);
+        else if (key == SDLK_F3)
+            app_editing_key(app, key, mod);
+        return;
+    }
+    if (app_editor_key(app, window, key, mod))
+        return;
     if (!app->projects_open && app_packing_key(app, key, mod))
         return;
     if (app_editing_key(app, key, mod))
@@ -497,7 +531,10 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
     switch (key)
     {
     case SDLK_F2:
-        command_example(app);
+        if (mod & SDL_KMOD_CTRL)
+            command_example(app);
+        else
+            app_state_toggle_panel(app, APP_PANEL_EXAMPLES);
         return;
     case SDLK_TAB:
         command_palette(app);

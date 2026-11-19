@@ -36,6 +36,9 @@ void app_state_init(AppState *app)
     app->history = calloc(1, sizeof(*app->history));
     app->view = (BenchView){1, 0, 0};
     app->editing = -1;
+    app->project_overwrite = -1;
+    app->project_thumbnail_pending = -1;
+    app->keyboard_focus = -1;
     app->name_target_group = -1;
     app->library_delete_armed = -1;
     app->code_part = -1;
@@ -49,6 +52,9 @@ void app_state_dispose(AppState *app)
 {
     if (!app)
         return;
+    free(app->saved_slots);
+    free(app->project_parts);
+    free(app->project_wires);
     mcu_runtime_destroy(app->mcu);
     app->mcu = NULL;
     spice_job_clear(&app->dc_job);

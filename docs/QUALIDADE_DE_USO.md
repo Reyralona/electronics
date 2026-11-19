@@ -16,6 +16,14 @@ Ainda faltam pontas independentes posicionáveis, medidor dedicado de clock/puls
 completa da semântica das portas e escala integral da interface. Os instrumentos presentes não
 encerram esses critérios. O [roadmap](ROADMAP_1_0.md) reúne as pendências atuais.
 
+## Incremento de usabilidade em 18/11/2026 (0.45.0)
+
+Escala integral de texto/alvos, foco de teclado, barra de ações da bancada, busca no catálogo,
+confirmação de substituição de projeto e controles de medição junto ao gráfico ao vivo foram implementados.
+O estado histórico de 0.36.0 acima permanece como registro. Leitor de tela e diferentes monitores/DPI
+ainda precisam de validação própria. Pontas independentes e os demais critérios de instrumentos continuam pendentes.
+Mapa, capturas e fluxos de verificação: [REVISAO_INTERFACE.md](REVISAO_INTERFACE.md).
+
 ## Principio de interacao
 
 As operacoes principais devem ser descobertas na propria interface, com botoes, rotulos,

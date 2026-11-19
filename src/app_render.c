@@ -1,4 +1,5 @@
 #include "workbench_grid.h"
+#include "app_controls.h"
 #include <windows.h>
 #include "app_render.h"
 #include "app_editor.h"
@@ -17,6 +18,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <SDL3/SDL.h>
 
 /* Transparent ("raio-x") part bodies: every primitive of a part is drawn at XRAY_ALPHA through the
  * constant blend colour, so terminals and wires behind it stay visible. glBlendColor is GL 1.4 and is
@@ -995,9 +998,12 @@ static void draw_sensor(const Part *part)
     }
     else if (part->type == PART_AMBIENT_LIGHT)
     {
-        /* Water-clear dome: the die and its bond wire stay visible, unlike the dark IR photodiode. */
+        /* Water-clear dome: a cool rim keeps the unlit lens legible on the light bench. */
         glColor3f(.66f, .72f, .76f);
         rounded_rect(x - 13, y + 4, 26, 6, 2);
+        glColor3f(.55f, .63f, .68f);
+        ellipse(x, y - 6, 13, 16);
+        rect(x - 13, y - 6, 26, 12);
         glColor3f(.80f, .86f, .90f);
         ellipse(x, y - 6, 12, 15);
         rect(x - 12, y - 6, 24, 12);
@@ -1062,8 +1068,11 @@ static void draw_rgb_led(const Part *p)
         circle(x, y - 6, 22 + 10 * mix);
         glow_blend_end();
     }
-    glColor3f(.70f, .72f, .74f);
+    glColor3f(.53f, .59f, .64f);
     rounded_rect(x - 17, y + 10, 34, 6, 2);
+    glColor3f(.55f, .63f, .68f);
+    ellipse(x, y - 8, 16, 16);
+    rect(x - 16, y - 8, 32, 18);
     glColor3f(.86f + .14f * r, .88f + .12f * g, .90f + .10f * b);
     if (mix > 0)
         glColor3f(.55f + .45f * r, .55f + .45f * g, .55f + .45f * b);
@@ -1360,6 +1369,8 @@ static void draw_sensor_module(const Part *p)
     if (p->type == PART_PIR)
     {
         radial_pcb(x, y + 8, 44, 40, .08f, .40f, .22f);
+        glColor3f(.64f, .68f, .66f);
+        circle(x, y - 6, 19);
         glColor3f(.95f, .95f, .93f);
         circle(x, y - 6, 18);
         glColor3f(.85f, .85f, .83f);
@@ -1698,6 +1709,7 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     {
         Part nominal = *p;
         nominal.rotation = 0;
+        nominal.mirrored = 0;
         nominal.scale = 1;
         for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
         {
@@ -1906,7 +1918,7 @@ static void burnt_draw(GLuint font, const Part *part, Uint64 ticks)
 
 /* ---- Interface widgets: geometry comes from app_layout; colors pass through the theme mapping. ---- */
 #define UI_RADIUS 8.0f
-#define UI_ACCENT .16f, .45f, .82f
+#define UI_ACCENT (dark_interface ? .48f : .12f), (dark_interface ? .70f : .38f), (dark_interface ? .98f : .74f)
 #define UI_ACCENT_SOFT .86f, .92f, .99f
 #define UI_INK .13f, .19f, .24f
 #define UI_MUTED .40f, .46f, .51f
@@ -1971,6 +1983,19 @@ static void ui_panel(AppRect r)
     ui_rounded(r, UI_RADIUS + 2);
     color(UI_SURFACE);
     rounded_rect(r.x + 1, r.y + 1, r.w - 2, r.h - 2, UI_RADIUS + 1);
+}
+
+static void ui_focus_outline(AppRect r)
+{
+    glColor3f(dark_interface ? .50f : .10f, dark_interface ? .74f : .36f, dark_interface ? 1.0f : .72f);
+    glLineWidth(2);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(r.x - 2, r.y - 2);
+    glVertex2f(r.x + r.w + 2, r.y - 2);
+    glVertex2f(r.x + r.w + 2, r.y + r.h + 2);
+    glVertex2f(r.x - 2, r.y + r.h + 2);
+    glEnd();
+    glLineWidth(1);
 }
 
 static float ui_baseline(AppRect r)
@@ -2193,6 +2218,10 @@ static void draw_thumbnail(PartType type, float x, float y)
     const ComponentInfo *info = component_info(type);
     preview.value = info && info->primary ? info->primary->initial : 0;
     float scale = type == PART_BREADBOARD ? .09f : .42f;
+    float half_width, half_height;
+    component_body_extent(type, &half_width, &half_height);
+    scale = fminf(scale, 22 / fmaxf(1, half_width + 8));
+    scale = fminf(scale, 19 / fmaxf(1, half_height + 8));
     drawing_scale = scale;
     glPushMatrix();
     glTranslatef(x, y, 0);
@@ -2338,10 +2367,18 @@ static void draw_palette_scrollbar(int offset, int count)
 
 static void draw_block_library(const AppState *app, GLuint font)
 {
-    int empty_shown = 0;
+    int available = 0;
+    for (int i = 0; i < BLOCK_LIBRARY_SLOTS; ++i)
+        available += app->library_available[i];
+    if (!available)
+    {
+        color(UI_MUTED);
+        ui_wrapped(font, 20, 236, tr(TXT_UI_LIBRARY_GUIDE), 180, 5, 22);
+        return;
+    }
     for (int slot = 0; slot < APP_PALETTE_VISIBLE; ++slot)
     {
-        if (!app->library_available[slot] && empty_shown++)
+        if (!app->library_available[slot])
             continue;
         AppRect r = app_layout_palette_item(slot);
         draw_palette_card(app, r, 0);
@@ -2372,18 +2409,31 @@ static void draw_palette(const AppState *app, GLuint font)
     color(UI_BORDER);
     rect(APP_PALETTE_WIDTH - 1, APP_HEADER_HEIGHT, 1, 720 - APP_HEADER_HEIGHT);
     draw_palette_tabs(app, font);
-    if (app->palette_page == 2)
+    AppRect search = app_layout_search();
+    ui_value_box(font, search, "", 1);
+    if (app->palette_search_active)
+        ui_focus_outline(search);
+    color(app->palette_search[0] ? .13f : .40f, app->palette_search[0] ? .19f : .46f, app->palette_search[0] ? .24f : .51f);
+    name_text(font, search.x + 8, ui_baseline(search), app->palette_search[0] ? app->palette_search : tr(TXT_UI_SEARCH), 144);
+    if (app->palette_search[0])
+        ui_button(app, font, app_layout_search_clear(), "×", UI_BUTTON_NEUTRAL);
+    if (app->palette_page == 2 && !app->palette_search[0])
     {
         draw_block_library(app, font);
         return;
     }
-    int count = palette_count(app->palette_page);
+    int count = palette_filtered_count(app->palette_page, app->palette_search);
+    if (!count)
+    {
+        color(UI_MUTED);
+        ui_wrapped(font, 20, 236, tr(TXT_UI_SEARCH_EMPTY), 180, 4, 22);
+    }
     for (int slot = 0; slot < APP_PALETTE_VISIBLE; ++slot)
     {
         int item = slot + app->palette_offset;
         if (item >= count)
             break;
-        PartType type = palette_part(app->palette_page, item);
+        PartType type = palette_filtered_part(app->palette_page, app->palette_search, item);
         AppRect r = app_layout_palette_item(slot);
         draw_palette_card(app, r, app->placing == (int)type);
         draw_thumbnail(type, r.x + 28, app_rect_center_y(r));
@@ -2393,9 +2443,21 @@ static void draw_palette(const AppState *app, GLuint font)
     draw_palette_scrollbar(app->palette_offset, count);
 }
 
+static void draw_actions(const AppState *app, GLuint font)
+{
+    if (app->code_part >= 0)
+        return;
+    static const TextId labels[APP_ACTION_COUNT] = {
+        TXT_UI_UNDO, TXT_UI_REDO, TXT_UI_STEP, TXT_UI_CREATE_CHIP, TXT_UI_LIVE_GRAPH, TXT_UI_FULL_CURVE};
+    for (int i = 0; i < APP_ACTION_COUNT; ++i)
+        ui_button(app, font, app_layout_action((AppAction)i), tr(labels[i]),
+                  app_controls_action_enabled(app, (AppAction)i) ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
+}
+
 static void draw_chrome(const AppState *app, GLuint font, int width, int height)
 {
-    glViewport(0, 0, width, height);
+    AppRect viewport = app_layout_viewport(width, height);
+    glViewport((int)viewport.x, height - (int)(viewport.y + viewport.h), (int)viewport.w, (int)viewport.h);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0, 1280, 720, 0, -1, 1);
@@ -3144,8 +3206,10 @@ static void draw_selection_area(const AppState *app)
 static void draw_workspace(const AppState *app, GLuint font, int width, int height)
 {
     glEnable(GL_SCISSOR_TEST);
-    glScissor((int)(width * 220.0 / 1280), (int)(height * 60.0 / 720), (int)(width * 1060.0 / 1280),
-              (int)(height * 590.0 / 720));
+    AppRect viewport = app_layout_viewport(width, height);
+    glScissor((int)(viewport.x + viewport.w * 220 / 1280),
+              (int)(height - viewport.y - viewport.h + viewport.h * 60 / 720),
+              (int)(viewport.w * 1060 / 1280), (int)(viewport.h * 590 / 720));
     glPushMatrix();
     glTranslatef(220 + app->view.pan_x, 70 + app->view.pan_y, 0);
     glScalef(app->view.zoom, app->view.zoom, 1);
@@ -3624,13 +3688,30 @@ static void status_hint(const AppState *app, char *hint, size_t capacity)
 
 static void draw_status(const AppState *app, GLuint font)
 {
-    if (app->live_graph.active && !app->settings)
+    int graph = app_controls_graph_visible(app);
+    if (app->live_graph.active && graph)
         live_graph_draw(app, font);
-    else if (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) && app->show_trace && !app->settings)
+    else if (graph)
         trace_draw(font, &app->sim.trace, app->sim.trace_index, app->sim.trace_pin, app->sim.trace_current);
-    if (!app->settings && (app->live_graph.active || (sim_state_has_result(&app->sim, SIM_RESULT_TRACE) &&
-                                                      app->show_trace)))
+    if (graph)
+    {
         ui_close_button(app, app_layout_graph_close());
+        int wire = app->live_graph.active && app->live_graph.probe.kind == SIM_LIVE_PROBE_WIRE_CURRENT;
+        int current = app->live_graph.active ? app->live_graph.probe.kind == SIM_LIVE_PROBE_PART_CURRENT : app->sim.trace_current;
+        TextId measure = TXT_QUANTITY_VOLTAGE;
+        if (wire)
+            measure = TXT_UI_GRAPH_WIRE_MEASURE;
+        else if (current)
+            measure = TXT_QUANTITY_CURRENT;
+        ui_button(app, font, app_layout_graph_measure(), tr(measure), wire ? UI_BUTTON_DISABLED : UI_BUTTON_NEUTRAL);
+        char terminal[48];
+        int pin = app->live_graph.active ? app->live_graph.probe.target.pin : app->sim.trace_pin;
+        if (wire || !app->live_graph.active)
+            snprintf(terminal, sizeof(terminal), "%s", tr(TXT_SETTINGS_TITLE));
+        else
+            snprintf(terminal, sizeof(terminal), tr(TXT_TERMINAL_NUMBER), pin + 1);
+        ui_button(app, font, app_layout_graph_pin(), terminal, UI_BUTTON_NEUTRAL);
+    }
     color(UI_SURFACE);
     rect(APP_PALETTE_WIDTH, 660, 1280 - APP_PALETTE_WIDTH, 60);
     color(UI_BORDER);
@@ -3664,7 +3745,7 @@ static void draw_settings_appearance(const AppState *app, GLuint font)
     char value[32];
     ui_section(font, app_layout_settings_section(0, 0), tr(TXT_SETTINGS_APPEARANCE));
     ui_toggle(app, font, app_layout_setting(APP_SETTING_DARK_THEME), tr(TXT_SETTINGS_DARK_THEME), app->dark_theme);
-    snprintf(value, sizeof(value), "%d px", app->gui_font_size);
+    snprintf(value, sizeof(value), "%d%%", app->gui_font_size * 100 / 15);
     AppRect minus = app_layout_setting(APP_SETTING_FONT_SMALLER), plus = app_layout_setting(APP_SETTING_FONT_LARGER);
     ui_stepper(app, font, (AppRect){app_layout_setting(APP_SETTING_DARK_THEME).x, minus.y, 400, minus.h}, minus, plus,
                tr(TXT_SETTINGS_TEXT_SIZE), value);
@@ -3687,9 +3768,7 @@ static void draw_settings_snapping(const AppState *app, GLuint font)
 
 static void draw_settings_wires(const AppState *app, GLuint font)
 {
-    ui_section(font, app_layout_settings_section(1, 0), tr(TXT_SETTINGS_WIRES));
-    AppRect first_row = app_layout_settings_section(1, 0);
-    ui_note(font, first_row.x, first_row.y + first_row.h + 30, tr(TXT_SETTINGS_WIRE_COLOR_MOVED), 400);
+    ui_section(font, app_layout_settings_section(1, 0), tr(TXT_SETTINGS_SIMULATION));
     AppRect current = app_layout_setting(APP_SETTING_SHOW_CURRENT);
     ui_toggle(app, font, current, tr(TXT_SETTINGS_SHOW_CURRENT), app->show_current);
     AppRect minus = app_layout_setting(APP_SETTING_SIM_SPEED_SLOWER);
@@ -3703,7 +3782,7 @@ static void draw_settings_wires(const AppState *app, GLuint font)
 static void draw_settings_trace(const AppState *app, GLuint font)
 {
     char value[48];
-    ui_section(font, app_layout_settings_section(1, 5), tr(TXT_SETTINGS_GRAPH));
+    ui_section(font, app_layout_settings_section(1, 4), tr(TXT_SETTINGS_GRAPH));
     ui_field(app, font, app_layout_setting(APP_SETTING_PROBE_MEASURE), tr(TXT_SETTINGS_MEASURE),
              app->probe_current ? tr(TXT_QUANTITY_CURRENT) : tr(TXT_QUANTITY_VOLTAGE));
     snprintf(value, sizeof(value), tr(TXT_TERMINAL_NUMBER), app->probe_pin + 1);
@@ -3713,76 +3792,17 @@ static void draw_settings_trace(const AppState *app, GLuint font)
     snprintf(value, sizeof(value), "%.6g s", app->transient_stop);
     ui_field(app, font, app_layout_setting(APP_SETTING_STOP), tr(TXT_SETTINGS_DURATION), value);
     AppRect stop = app_layout_setting(APP_SETTING_STOP);
-    ui_note(font, stop.x, stop.y + stop.h + 22, tr(TXT_SETTINGS_LIVE_FRAME), 400);
-}
-
-/* Flags keep their real colors in both themes, so they use glColor directly instead of color(). */
-#define US_STRIPES 13
-#define US_CANTON_STRIPES 7
-static void flag_us(AppRect r)
-{
-    float stripe = r.h / US_STRIPES;
-    for (int i = 0; i < US_STRIPES; ++i)
-    {
-        if (i % 2)
-            glColor3f(1, 1, 1);
-        else
-            glColor3f(.70f, .13f, .20f);
-        rect(r.x, r.y + i * stripe, r.w, stripe + .5f);
-    }
-    float canton_w = r.w * .4f, canton_h = stripe * US_CANTON_STRIPES;
-    glColor3f(.24f, .23f, .43f);
-    rect(r.x, r.y, canton_w, canton_h);
-    glColor3f(1, 1, 1);
-    for (int row = 0; row < 4; ++row)
-        for (int column = 0; column < 5; ++column)
-            circle(r.x + canton_w * (column + .5f) / 5, r.y + canton_h * (row + .5f) / 4, .9f);
-}
-
-static void flag_br(AppRect r)
-{
-    float cx = app_rect_center_x(r), cy = app_rect_center_y(r), margin = r.h * .12f;
-    glColor3f(0, .61f, .23f);
-    rect(r.x, r.y, r.w, r.h);
-    glColor3f(1, .87f, 0);
-    glBegin(GL_QUADS);
-    glVertex2f(r.x + margin * 1.4f, cy);
-    glVertex2f(cx, r.y + margin);
-    glVertex2f(r.x + r.w - margin * 1.4f, cy);
-    glVertex2f(cx, r.y + r.h - margin);
-    glEnd();
-    float radius = r.h * .27f;
-    glColor3f(0, .15f, .46f);
-    circle(cx, cy, radius);
-    glColor3f(1, 1, 1);
-    glLineWidth(1.5f);
-    line(cx - radius * .95f, cy + radius * .05f, cx + radius * .95f, cy - radius * .35f);
-    glLineWidth(1);
-}
-
-static void draw_language_flags(const AppState *app, GLuint font)
-{
-    static const AppSetting flags[UI_LANG_COUNT] = {APP_SETTING_LANGUAGE_PT_BR, APP_SETTING_LANGUAGE_EN_US};
-    for (int language = 0; language < UI_LANG_COUNT; ++language)
-    {
-        AppRect r = app_layout_setting(flags[language]);
-        if (language == (int)ui_text_language() || ui_hovered(app, r))
-        {
-            if (language == (int)ui_text_language())
-                glColor3f(UI_ACCENT);
-            else
-                color(UI_BORDER);
-            rounded_rect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 5);
-        }
-        if (language == UI_LANG_PT_BR)
-            flag_br(r);
-        else
-            flag_us(r);
-    }
-    AppRect first = app_layout_setting(flags[0]);
-    const char *label = tr(TXT_LANGUAGE);
     color(UI_MUTED);
-    text(font, first.x - 14 - (float)app_text_utf8_width(label, 2048), ui_baseline(first), label);
+    ui_wrapped(font, stop.x, stop.y + stop.h + 22, tr(TXT_SETTINGS_LIVE_FRAME), 400, 3, 21);
+}
+
+static void draw_languages(const AppState *app, GLuint font)
+{
+    static const AppSetting settings[] = {APP_SETTING_LANGUAGE_PT_BR, APP_SETTING_LANGUAGE_EN_US};
+    static const TextId names[] = {TXT_UI_LANGUAGE_PT, TXT_UI_LANGUAGE_EN};
+    for (int language = 0; language < UI_LANG_COUNT; ++language)
+        ui_button(app, font, app_layout_setting(settings[language]), tr(names[language]),
+                  language == (int)ui_text_language() ? UI_BUTTON_ACTIVE : UI_BUTTON_NEUTRAL);
 }
 
 static void draw_settings(const AppState *app, GLuint font)
@@ -3794,7 +3814,7 @@ static void draw_settings(const AppState *app, GLuint font)
     color(UI_INK);
     text(font, panel.x + 30, panel.y + 42, tr(TXT_SETTINGS_TITLE));
     ui_close_button(app, app_layout_setting(APP_SETTING_CLOSE));
-    draw_language_flags(app, font);
+    draw_languages(app, font);
     draw_settings_appearance(app, font);
     draw_settings_snapping(app, font);
     draw_settings_wires(app, font);
@@ -3825,7 +3845,7 @@ static void draw_value_editor(const AppState *app, GLuint font)
 {
     if (app->editing < 0)
         return;
-    AppRect panel = {420, 250, 440, 160};
+    AppRect panel = app_layout_value_panel();
     ui_panel(panel);
     color(UI_INK);
     text(font, panel.x + 24, panel.y + 38, tr(value_editor_title(app->editing)));
@@ -3841,31 +3861,102 @@ static void draw_value_editor(const AppState *app, GLuint font)
     snprintf(reading, sizeof(reading), "%s|", app->edit_text);
     color(UI_INK);
     name_text(font, field.x + 12, ui_baseline(field), reading, (int)field.w - 24);
-    ui_note(font, panel.x + 24, panel.y + 132, tr(TXT_UI_EDIT_KEYS), 380);
+    if (app->edit_error)
+    {
+        color(UI_DANGER);
+        ui_wrapped(font, panel.x + 24, panel.y + 116, app->status, 412, 2, 21);
+    }
+    else
+        ui_note(font, panel.x + 24, panel.y + 132, tr(TXT_UI_EDIT_KEYS), 412);
+    ui_button(app, font, app_layout_value_button(1), tr(TXT_UI_CONFIRM), UI_BUTTON_PRIMARY);
+    ui_button(app, font, app_layout_value_button(0), tr(TXT_UI_CANCEL), UI_BUTTON_NEUTRAL);
+}
+
+static void draw_project_thumbnail(const AppState *app, GLuint font, int index, AppRect card)
+{
+    static GLuint textures[PROJECT_SLOTS_PER_PAGE];
+    static int cached_slots[PROJECT_SLOTS_PER_PAGE] = {-1, -1, -1, -1, -1, -1};
+    static time_t cached_times[PROJECT_SLOTS_PER_PAGE];
+    static unsigned cached_revisions[PROJECT_SLOTS_PER_PAGE];
+    int cell = index % PROJECT_SLOTS_PER_PAGE;
+    char path[128];
+    snprintf(path, sizeof(path), "%s/slot-%d.bmp", app->selftest ? "build/test-slots" : "saves", index + 1);
+    struct _stat metadata;
+    int exists = _stat(path, &metadata) == 0;
+    if (cached_slots[cell] != index || cached_revisions[cell] != app->project_thumbnail_revision ||
+        (exists && cached_times[cell] != metadata.st_mtime) || (!exists && textures[cell]))
+    {
+        if (textures[cell])
+            glDeleteTextures(1, &textures[cell]);
+        textures[cell] = 0;
+        cached_slots[cell] = index;
+        cached_revisions[cell] = app->project_thumbnail_revision;
+        cached_times[cell] = exists ? metadata.st_mtime : 0;
+        SDL_Surface *loaded = exists ? SDL_LoadBMP(path) : NULL;
+        SDL_Surface *rgba = loaded ? SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_RGBA32) : NULL;
+        if (rgba)
+        {
+            glGenTextures(1, &textures[cell]);
+            glBindTexture(GL_TEXTURE_2D, textures[cell]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgba->w, rgba->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba->pixels);
+        }
+        if (rgba)
+            SDL_DestroySurface(rgba);
+        if (loaded)
+            SDL_DestroySurface(loaded);
+    }
+    AppRect preview = {card.x + 12, card.y + 43, card.w - 24, 112};
+    color(.88f, .91f, .93f);
+    ui_rounded(preview, UI_RADIUS);
+    if (!textures[cell])
+    {
+        color(UI_MUTED);
+        text(font, preview.x + preview.w / 2 - 8, preview.y + preview.h / 2 + 5,
+             app->saved_slots[index] ? tr(TXT_UI_SLOT_SAVED) : "+");
+        return;
+    }
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textures[cell]);
+    glColor3f(1, 1, 1);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0); glVertex2f(preview.x, preview.y);
+    glTexCoord2f(1, 0); glVertex2f(preview.x + preview.w, preview.y);
+    glTexCoord2f(1, 1); glVertex2f(preview.x + preview.w, preview.y + preview.h);
+    glTexCoord2f(0, 1); glVertex2f(preview.x, preview.y + preview.h);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
 }
 
 static void draw_project_slot(const AppState *app, GLuint font, int slot)
 {
+    int index = app->project_page * PROJECT_SLOTS_PER_PAGE + slot;
+    if (index >= app->project_slot_count)
+        return;
     AppRect r = app_layout_project_slot(slot);
-    if (slot == app->save_slot)
+    color(ui_hovered(app, r) ? .90f : .94f, ui_hovered(app, r) ? .93f : .955f, ui_hovered(app, r) ? .97f : .97f);
+    ui_rounded(r, UI_RADIUS);
+    if (index == app->save_slot)
     {
         glColor3f(UI_ACCENT);
         ui_outline(r, UI_RADIUS, 2);
     }
-    else
-    {
-        color(ui_hovered(app, r) ? .90f : .94f, ui_hovered(app, r) ? .93f : .955f, ui_hovered(app, r) ? .97f : .97f);
-        ui_rounded(r, UI_RADIUS);
-    }
+    draw_project_thumbnail(app, font, index, r);
     char label[32];
-    snprintf(label, sizeof(label), tr(TXT_UI_SLOT_NUMBER), slot + 1);
+    snprintf(label, sizeof(label), tr(TXT_UI_SLOT_NUMBER), index + 1);
     color(UI_INK);
     text(font, r.x + 16, r.y + 32, label);
-    if (app->saved_slots[slot])
+    if (app->saved_slots[index])
         glColor3f(UI_POSITIVE);
     else
         color(UI_MUTED);
-    text(font, r.x + 16, r.y + 58, app->saved_slots[slot] ? tr(TXT_UI_SLOT_SAVED) : tr(TXT_UI_SLOT_EMPTY));
+    char summary[80];
+    if (app->saved_slots[index] && app->project_parts[index] >= 0)
+        snprintf(summary, sizeof(summary), tr(TXT_UI_PROJECT_SUMMARY), app->project_parts[index], app->project_wires[index]);
+    else
+        snprintf(summary, sizeof(summary), "%s", tr(app->saved_slots[index] ? TXT_UI_SLOT_UNREADABLE : TXT_UI_SLOT_EMPTY));
+    name_text(font, r.x + 16, r.y + r.h - 17, summary, (int)r.w - 32);
 }
 
 static void draw_projects(const AppState *app, GLuint font)
@@ -3876,16 +3967,25 @@ static void draw_projects(const AppState *app, GLuint font)
     ui_panel(panel);
     color(UI_INK);
     text(font, panel.x + 30, panel.y + 42, tr(TXT_UI_PROJECTS));
-    ui_note(font, panel.x + 30, panel.y + 70, tr(TXT_UI_PROJECTS_NOTE), 560);
+    char page_label[32];
+    int pages = (app->project_slot_count + PROJECT_SLOTS_PER_PAGE - 1) / PROJECT_SLOTS_PER_PAGE;
+    snprintf(page_label, sizeof(page_label), "%d / %d", app->project_page + 1, pages > 0 ? pages : 1);
+    color(UI_MUTED);
+    text(font, panel.x + panel.w - 150, panel.y + 42, page_label);
+    ui_note(font, panel.x + 30, panel.y + 70, tr(TXT_UI_PROJECTS_NOTE), 820);
     ui_close_button(app, app_layout_project_close());
     for (int slot = 0; slot < APP_PROJECT_SLOTS; ++slot)
         draw_project_slot(app, font, slot);
     char label[48];
-    snprintf(label, sizeof(label), tr(TXT_UI_SAVE_TO_SLOT), app->save_slot + 1);
+    int occupied = app->saved_slots && app->save_slot < app->project_slot_count && app->saved_slots[app->save_slot];
+    snprintf(label, sizeof(label), tr(occupied ? TXT_UI_REPLACE_SLOT : TXT_UI_SAVE_TO_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_save(), label, UI_BUTTON_PRIMARY);
     snprintf(label, sizeof(label), tr(TXT_UI_LOAD_SLOT), app->save_slot + 1);
     ui_button(app, font, app_layout_project_load(), label,
-              app->saved_slots[app->save_slot] ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
+              occupied ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
+    ui_button(app, font, app_layout_project_previous(), "<", app->project_page > 0 ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
+    ui_button(app, font, app_layout_project_next(), ">",
+              (app->project_page + 1) * PROJECT_SLOTS_PER_PAGE < app->project_slot_count ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
 }
 
 static void draw_pin_help(const AppState *app, GLuint font)
@@ -3918,6 +4018,21 @@ static void draw_pin_help(const AppState *app, GLuint font)
     pin_role_color(info->role);
     text(font, panel.x + 16, panel.y + 54, component_pin_role_label(info->role));
     ui_note(font, panel.x + 16, panel.y + 74, tr(TXT_UI_PIN_HELP_NOTE), 490);
+}
+
+static void draw_project_confirmation(const AppState *app, GLuint font)
+{
+    if (app->project_overwrite < 0)
+        return;
+    AppRect panel = app_layout_confirm_panel();
+    ui_panel(panel);
+    char title[64];
+    snprintf(title, sizeof(title), tr(TXT_UI_REPLACE_SLOT), app->project_overwrite + 1);
+    color(UI_INK);
+    text(font, panel.x + 30, panel.y + 40, title);
+    ui_wrapped(font, panel.x + 30, panel.y + 74, tr(TXT_UI_REPLACE_NOTE), 580, 2, 22);
+    ui_button(app, font, app_layout_confirm_button(0), tr(TXT_UI_REPLACE), UI_BUTTON_DANGER);
+    ui_button(app, font, app_layout_confirm_button(2), tr(TXT_UI_CANCEL), UI_BUTTON_NEUTRAL);
 }
 
 static void draw_editor_confirmation(const AppState *app, GLuint font)
@@ -4213,8 +4328,8 @@ static void draw_code_editor(const AppState *app, GLuint font)
 
 void app_render_draw(const AppState *app, GLuint font, int width, int height)
 {
-    app_text_utf8_set_size(app->gui_font_size);
-    ui_font_pixels = app->gui_font_size;
+    app_text_utf8_set_size(15);
+    ui_font_pixels = 15;
     dark_interface = app->dark_theme;
     drawing_scale = app->view.zoom;
     lead_corner_radius = app->round_wires ? 18 : 0;
@@ -4223,7 +4338,10 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_chrome(app, font, width, height);
     interface_layer = 0;
     draw_workspace(app, font, width, height);
+    if (app->project_thumbnail_render)
+        return;
     interface_layer = 1;
+    draw_actions(app, font);
     draw_inspector(app, font);
     draw_code_editor(app, font);
     draw_status(app, font);
@@ -4233,4 +4351,8 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_examples(app, font);
     draw_value_editor(app, font);
     draw_editor_confirmation(app, font);
+    draw_project_confirmation(app, font);
+    AppRect focus = app_controls_focus(app);
+    if (focus.w > 0)
+        ui_focus_outline(focus);
 }

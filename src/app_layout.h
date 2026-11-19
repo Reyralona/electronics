@@ -11,6 +11,10 @@ typedef struct
 int app_rect_contains(AppRect rect, float x, float y);
 float app_rect_center_x(AppRect rect);
 float app_rect_center_y(AppRect rect);
+/* Centered, proportional viewport in physical pixels; input uses window coordinates. */
+AppRect app_layout_viewport(int width, int height);
+WirePoint app_layout_to_ui(int width, int height, float x, float y);
+WirePoint app_layout_from_ui(int width, int height, float x, float y);
 
 #define APP_HEADER_HEIGHT 68.0f
 #define APP_PALETTE_WIDTH 220.0f
@@ -28,6 +32,24 @@ typedef enum
 AppRect app_layout_header(AppHeaderButton button);
 /* Returns APP_HEADER_COUNT when no button is hit. */
 AppHeaderButton app_layout_header_at(float x, float y);
+
+typedef enum
+{
+    APP_ACTION_UNDO,
+    APP_ACTION_REDO,
+    APP_ACTION_STEP,
+    APP_ACTION_CHIP,
+    APP_ACTION_GRAPH,
+    APP_ACTION_CURVE,
+    APP_ACTION_COUNT
+} AppAction;
+AppRect app_layout_action(AppAction action);
+AppRect app_layout_search(void);
+AppRect app_layout_search_clear(void);
+AppRect app_layout_value_panel(void);
+AppRect app_layout_value_button(int confirm);
+AppRect app_layout_graph_measure(void);
+AppRect app_layout_graph_pin(void);
 
 AppRect app_layout_palette_tab(int tab);
 int app_layout_palette_tab_at(float x, float y);
@@ -84,13 +106,15 @@ AppSetting app_layout_setting_at(float x, float y);
 /* Section heading above a row: column 0 = left, 1 = right. */
 AppRect app_layout_settings_section(int column, int row);
 
-#define APP_PROJECT_SLOTS 9
+#define APP_PROJECT_SLOTS 6
 AppRect app_layout_projects_panel(void);
 AppRect app_layout_project_slot(int slot);
 int app_layout_project_slot_at(float x, float y);
 AppRect app_layout_project_save(void);
 AppRect app_layout_project_load(void);
 AppRect app_layout_project_close(void);
+AppRect app_layout_project_previous(void);
+AppRect app_layout_project_next(void);
 
 AppRect app_layout_inspector(float height);
 /* Header button that collapses the inspector into the small tab below. */
