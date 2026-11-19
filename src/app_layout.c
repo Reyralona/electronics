@@ -379,14 +379,14 @@ int app_layout_confirm_button_at(float x, float y)
     return -1;
 }
 
-#define EXAMPLE_COLUMNS 3
-#define EXAMPLE_CARD_W 296.0f
+#define EXAMPLE_COLUMNS 4
+#define EXAMPLE_CARD_W 284.0f
 #define EXAMPLE_CARD_H 72.0f
 #define EXAMPLE_GAP 8.0f
 
 AppRect app_layout_examples_panel(void)
 {
-    return (AppRect){270, 84, 960, 560};
+    return (AppRect){30, 84, 1220, 560};
 }
 
 AppRect app_layout_example_card(int index)

@@ -87,7 +87,8 @@ sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
 - ~~LCD 16x2 I2C~~ e microcontroladores: feitos na 0.34.0 (subconjunto Arduino, editor lateral).
 - Sensor ultrassônico com trigger/echo (o de distância atual é IR analógico, declarado).
 - DIP de tamanho configurável (hoje 4 vias); servo por largura de pulso real.
-- CIs: inventário verificável do Tinkercad (555, 74HC02/04/14/595, 4511, L293D, LM741...).
+- CIs: inventário verificável do Tinkercad (555, 74HC02/04/14/595, 4511, L293D, LM741...). Feitos na 0.47.0:
+  74HC161, 74HC173, 74HC245, 74HC283 e AT28C16 (só leitura; editor de conteúdo pendente).
 - Microcontrolador: feito (0.34.0); falta servo por pulso e ultrassônico usando-o.
 
 ### 4.3 Uso e acabamento (`QUALIDADE_DE_USO.md`)

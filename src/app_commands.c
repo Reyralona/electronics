@@ -34,7 +34,7 @@ void app_commands_load_example(AppState *app, int choice)
         app->route_count = 0;
         app->placing = -1;
         app->settings = 0;
-        app->view = (BenchView){1, 0, 0};
+        bench_view_open_example(&app->view, &app->bench);
         sim_state_clear_result(&app->sim);
         memset(app->leds, 0, sizeof(app->leds));
         app->probe_pin = choice == 1 || choice == 2 ? 2 : 0;

@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.47.0
+
+- Limites maiores: 1024 peças e 2048 fios por montagem (eram 256 e 512).
+- Cinco CIs novos na aba **Digital**: contador **74HC161**, registrador **74HC173**, transceptor **74HC245**,
+  somador **74HC283** e EEPROM **AT28C16**. A lógica interna de cada um é digital; só os pinos passam pelo
+  circuito analógico, por isso dezenas de CIs simulam perto do tempo real.
+- A EEPROM lê seu conteúdo em hexadecimal (texto da peça). Endereços não gravados leem `FF`; gravar pelo pino WE
+  não é simulado. Por enquanto, o conteúdo só vem dos exemplos e dos arquivos: ainda não há editor na interface.
+- Novo exemplo **Computador de 8 bits**: barramento, registradores, somador/subtrator, microcódigo em duas
+  EEPROMs e programa em outra. Calcula 28 + 14 - 7, mostra 35 nos LEDs e para o clock. São 312 peças e 596 fios.
+- A janela de exemplos tem quatro colunas. Exemplos maiores que a janela abrem enquadrados.
+- Formato de projeto 35, por causa dos tipos novos. Projetos anteriores continuam abrindo.
+
 ## 0.46.0
 
 - Ao carregar um projeto válido, a bancada ajusta zoom e posição para enquadrar peças, terminais, chips e fios.

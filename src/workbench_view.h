@@ -19,4 +19,6 @@ float bench_view_edge_push(float position, float low, float high, float zone);
 /* Zoom and pan so the world rectangle fits the workspace, within the zoom limits. */
 void bench_view_fit(BenchView *view, float min_x, float min_y, float max_x, float max_y);
 void bench_view_fit_workbench(BenchView *view, const Workbench *bench);
+/* 1:1 at the origin, or framed when the bench is larger than the window at 1:1 (the 8-bit computer). */
+void bench_view_open_example(BenchView *view, const Workbench *bench);
 #endif

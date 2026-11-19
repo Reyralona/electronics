@@ -185,6 +185,30 @@ seus próprios terminais. Para remover um terminal escolhido, apague o nome do p
 
 Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga ao exterior. Por exemplo, três AND formando uma AND de 4 entradas viram um chip de 5 terminais. Displays de 7 segmentos e LEDs RGB dentro de um chip aparecem no corpo do chip.
 
+## CIs digitais de média escala
+
+Na aba **Digital** estão o contador **74HC161**, o registrador **74HC173**, o transceptor **74HC245**, o
+somador **74HC283** e a EEPROM **AT28C16**. Os nomes de pino seguem as folhas de dados; `~` marca pino ativo
+em nível baixo (por exemplo `~LOAD`). Cada CI se alimenta pelos próprios pinos VCC e GND, de 2 a 6 V, com os
+limiares e as saídas de 50 Ω dos outros CIs 74HC. Saídas de três estados (173, 245, EEPROM) soltam o pino
+quando desabilitadas.
+
+- **74HC161**: conta na subida do clock com ENP e ENT altos; `~LOAD` baixo carrega A–D na subida;
+  `~CLR` baixo zera na hora. RCO sobe em 15 com ENT alto.
+- **74HC173**: carrega 1D–4D na subida do clock com `~G1` e `~G2` baixos; CLR alto zera. Saídas ligadas
+  com M e N baixos.
+- **74HC245**: com `~OE` baixo, DIR alto leva A para B e DIR baixo leva B para A.
+- **74HC283**: soma A1–A4, B1–B4 e C0; saída S1–S4 e C4.
+- **AT28C16**: lê com `~CE` e `~OE` baixos e `~WE` alto. O conteúdo é texto hexadecimal guardado na peça,
+  por exemplo `00: 1E 2F 3D` (o endereço antes de `:` é opcional). `;` ou `#` começam comentário.
+  Endereços não gravados leem `FF`, como uma memória apagada. Gravar pelo `~WE` não é simulado, e a
+  interface ainda não edita o conteúdo: ele vem dos exemplos e dos arquivos de projeto.
+
+O exemplo **Computador de 8 bits** usa esses CIs num computador no estilo SAP-1: instruções LDA, ADD, SUB,
+OUT e HLT, programa numa EEPROM e microcódigo em outras duas. Ele calcula 28 + 14 - 7 e mostra 35 nos
+oito LEDs (bit 0 à esquerda); depois o clock para. As linhas verticais à esquerda são o barramento, os
+sinais de controle, a alimentação e os clocks.
+
 ## Microcontroladores
 
 - Na aba **Digital** estão **Arduino Uno**, **ESP32** e **ATtiny85**. O ATtiny precisa de VCC e GND externos.
@@ -199,7 +223,7 @@ Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga a
 ## Projetos, exemplos e configurações
 
 - **Projetos** (ou `F3`): slots que crescem conforme os projetos são salvos, em páginas de seis cartões com miniaturas e resumo de peças/fios. Ao carregar, a vista tenta enquadrar o circuito inteiro. Escolha um e use **Salvar**/**Carregar**, ou `Ctrl+S`/`Ctrl+L`. Em slot ocupado, **Substituir** pede confirmação; cancelar conserva o arquivo salvo. Carregar um arquivo inválido não apaga a montagem aberta. Os slots guardam a montagem e as configurações, não o instante da simulação.
-- **Exemplos** (ou `F2`): 18 circuitos prontos, com título e explicação. `Ctrl+F2` avança diretamente para o próximo. `Ctrl+Z` volta à montagem anterior.
+- **Exemplos** (ou `F2`): 19 circuitos prontos, com título e explicação. `Ctrl+F2` avança diretamente para o próximo. `Ctrl+Z` volta à montagem anterior.
 - **Configurações:** tema claro/escuro, escala da interface, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, curvas e alças dos fios, nomes dos terminais, simulação e parâmetros do gráfico. A cor fica no painel do fio. As preferências são salvas automaticamente em `saves/preferences.txt`.
 
 ### Onde ficam os arquivos
@@ -276,7 +300,8 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
   com 5 V passa do limite: use um resistor de 220 a 330 Ω. Sem fonte, um gerador de clock (módulo de 5 V)
   alimenta as portas.
 - Os **CIs 74HC** simulam quatro portas alimentadas pelos próprios pinos VCC e GND, de 2 a 6 V, com os mesmos
-  limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
+  limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. O 74HC161, o 74HC173,
+  o 74HC245, o 74HC283 e a AT28C16 seguem a mesma regra, com lógica interna digital e atraso de 1 ns por porta. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
 - O **tempo simulado** corre bem mais devagar que o real: cerca de 1 ms simulado por segundo na tela. Um RC de 1 kΩ × 1 µF leva de 1 a 3 s para descarregar visivelmente.
 - Adicionar ou remover peças ou ligações, ou mudar a frequência de um clock, reinicia a simulação contínua. O rodapé avisa quando isso acontece.
 - Capacidade: 1024 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 2048 fios, 1024 grupos, slots de projeto conforme o espaço disponível e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.

@@ -784,3 +784,16 @@ a partir da main 0.44.1. Comparação anterior à implementação: [PLANO_INTERF
 Foco de teclado não fornece suporte a leitor de tela. Provedores de UI Automation e validação
 em múltiplos monitores/DPI ficam pendentes; a 1.0 não foi declarada. Mapa, capturas e fluxos estão em
 [REVISAO_INTERFACE.md](REVISAO_INTERFACE.md).
+
+## CIs de média escala e computador de 8 bits (19/11/2026)
+
+Comparação e fontes: [COMPARACAO_COMPUTADOR_8_BITS.md](COMPARACAO_COMPUTADOR_8_BITS.md).
+
+- Limites fixos sobem para 1024 peças e 2048 fios (decisão do responsável). Listas dinâmicas seguem pendentes.
+- Cada CI de média escala gera primitivas digitais do XSPICE; só os pinos cruzam para o analógico.
+  Saída de três estados: as duas chaves de saída abrem juntas. Medido: o computador de exemplo
+  (25 CIs, 312 peças) simula 4 s em 4,8 s com clock de 10 Hz e o passo do modo contínuo.
+- A AT28C16 é só leitura: o conteúdo em texto vira um decodificador de endereços. Gravação e editor na
+  interface ficam pendentes.
+- O desenho DIP passa a valer para qualquer número de pinos, com o passo do 74HC00. A AT28C16 usa o
+  mesmo corpo estreito; o encapsulamento real de 600 mil não é reproduzido.

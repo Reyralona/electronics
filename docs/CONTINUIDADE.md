@@ -5,8 +5,11 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão da branch `feature/interface-usability`: 0.46.0 (sem integração ou release).
-  `main` permanece em 0.44.1. Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
+- Versão da branch `claude/computador-8-bits`: 0.47.0 (sem integração ou release). `main` está em 0.46.0.
+  Formato de projeto 35. Última pré-release publicada: 0.43.0, Windows x64.
+- 0.47.0: limites de 1024 peças e 2048 fios; CIs 74HC161/173/245/283 e EEPROM AT28C16 (`netlist_logic.c`,
+  `rom_image.c`); exemplo de computador de 8 bits (`workbench_computer.c`, teste `test_computer.c`).
+  Pendente: editor do conteúdo da EEPROM na interface e conferência visual das pinagens além do 74HC161.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
 - As cinco correções de `fix/audit-runtime` foram integradas à `main` em 18/11/2026 por pedido
