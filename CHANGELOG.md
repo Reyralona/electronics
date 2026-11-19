@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.45.1
+
+- A bancada ocupa toda a largura da janela maximizada.
+- Seleção de componentes próximos usa dimensões mais fiéis ao desenho e escolhe o corpo mais próximo em áreas sobrepostas; validado no slot 4.
+- Portas lógicas espelhadas desenham os trechos dos terminais do mesmo lado que os pinos do circuito.
+- Capturas leem o quadro antes da troca de buffers e falham se vier totalmente preto. É possível gerar imagens individuais dos 59 componentes em 1×, 3× e 7×.
+- Contornos do LED RGB desligado, do sensor de luz ambiente e do domo PIR ficaram mais visíveis nos temas claro e escuro.
+- Sem alteração do formato de projeto ou do modelo elétrico.
+
 ## 0.45.0
 
 - Projetos mostram um resumo de peças/fios. Substituir um slot ocupado exige confirmação; cancelar preserva o arquivo.

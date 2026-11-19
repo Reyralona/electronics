@@ -9,6 +9,7 @@ int dev_capture_requested(const char *argument)
 {
     static const char *modes[] = {
         "--capture-live-rc", "--capture-live-off", "--capture-live-graph", "--capture-wire-panel", "--capture-mirror",
+        "--capture-mirror-gates",
         "--capture-search", "--capture-overwrite", "--capture-ui-large", "--capture-focus", "--capture-code",
         "--capture-catalog", "--capture-leads", "--capture-environment",
         "--capture-inspector", "--capture-inspector-minimized",
@@ -65,9 +66,23 @@ int dev_capture_save(const char *path, int width, int height)
         SDL_SetError("Sem memoria para captura.");
         goto cleanup;
     }
-    glReadBuffer(GL_FRONT);
+    glFinish();
+    glReadBuffer(GL_BACK);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    if (glGetError() != GL_NO_ERROR)
+    {
+        SDL_SetError("Falha ao ler o quadro OpenGL.");
+        goto cleanup;
+    }
+    size_t nonzero = 0;
+    for (size_t byte = 0; byte < bytes && !nonzero; ++byte)
+        nonzero = pixels[byte];
+    if (!nonzero)
+    {
+        SDL_SetError("A captura retornou um quadro preto.");
+        goto cleanup;
+    }
     for (int row = 0; row < height; ++row)
     {
         memcpy(flipped + (size_t)row * stride, pixels + (size_t)(height - row - 1) * stride, stride);

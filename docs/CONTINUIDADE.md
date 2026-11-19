@@ -5,7 +5,7 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão da branch `feature/interface-usability`: 0.45.0 (sem integração ou release).
+- Versão da branch `feature/interface-usability`: 0.45.1 (sem integração ou release).
   `main` permanece em 0.44.1. Formato de projeto 34. Última pré-release publicada: 0.43.0, Windows x64.
 - O comportamento atual está em [GUIA.md](GUIA.md); visão e critérios da 1.0 estão em
   [VISAO.md](VISAO.md), [META_1_0.md](META_1_0.md) e [ROADMAP_1_0.md](ROADMAP_1_0.md).
@@ -44,6 +44,13 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
   descartáveis e não devem aparecer como dependência de fonte ou fixture.
 
 ## Verificação e próximos passos
+
+- 0.45.1: bancada em largura total; seleção de peças próximas ajustada e validada no slot 4;
+  terminais visuais das portas espelhadas corrigidos. Capturas individuais dos 59 tipos em
+  1×, 3× e 7× estão em `build/component-review/full/`; revisão e comandos em
+  [REVISAO_COMPONENTES.md](REVISAO_COMPONENTES.md). O contorno do LED RGB, do sensor de luz
+  ambiente e do PIR foi refinado sem alterar o modelo elétrico.
+  `./build.ps1 -GuiTests -OutputName final-review` passou após o polimento.
 
 - 0.45.0: `./build.ps1 -GuiTests` passou; CMake/CTest verificaram novamente o fluxo de interface
   e os 235 passos do autoteste gráfico após o ajuste final de autorrepetição. Capturas e limites

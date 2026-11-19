@@ -69,6 +69,20 @@ static void type(AppState *app, SDL_Window *window, const char *text)
     drain(app, window);
 }
 
+static void dense_led_selection_flow(AppState *app, SDL_Window *window)
+{
+    assert(bench_add(&app->bench, PART_LED, 500, 350) == 0);
+    assert(bench_add(&app->bench, PART_LED, 520, 350) == 1);
+    click(app, window, (AppRect){500, 340, 1, 1});
+    assert(app->selected == 0);
+    click(app, window, (AppRect){520, 340, 1, 1});
+    assert(app->selected == 1);
+    assert(app_input_part_at(&app->bench, 565, 340, 1) == -1);
+    bench_snapshot_clear(&app->bench);
+    app->selected = -1;
+    bench_selection_clear(&app->selection);
+}
+
 static void search_flow(AppState *app, SDL_Window *window)
 {
     /* Find a board from Basics, pick it, place it; clearing restores that category. */
@@ -249,6 +263,19 @@ static void values_and_chip_flow(AppState *app, SDL_Window *window)
 
 int main(void)
 {
+    static Workbench dense_leds;
+    assert(bench_add(&dense_leds, PART_LED, 500, 350) == 0);
+    assert(bench_add(&dense_leds, PART_LED, 520, 350) == 1);
+    assert(app_input_part_at(&dense_leds, 500, 340, 1) == 0);
+    assert(app_input_part_at(&dense_leds, 520, 340, 1) == 1);
+    assert(app_input_part_at(&dense_leds, 565, 340, 1) == -1);
+    assert(app_input_part_at(&dense_leds, 500, 340, 7) == 0);
+    static Workbench dense_passives;
+    assert(bench_add(&dense_passives, PART_RESISTOR, 500, 350) == 0);
+    assert(bench_add(&dense_passives, PART_CAPACITOR, 530, 350) == 1);
+    assert(app_input_part_at(&dense_passives, 500, 350, 1) == 0);
+    assert(app_input_part_at(&dense_passives, 530, 350, 1) == 1);
+    assert(app_input_part_at(&dense_passives, 500, 370, 1) == -1);
     assert(SDL_Init(SDL_INIT_VIDEO));
     assert(palette_filtered_count(0, "JUNCAO") == 1);
     assert(palette_filtered_part(0, "JUNÇÃO", 0) == PART_JUNCTION);
@@ -263,6 +290,9 @@ int main(void)
     actions_and_scaling_flow(&app, window);
     values_and_chip_flow(&app, window);
     graph_options_flow(&app, window);
+    bench_snapshot_clear(&app.bench);
+    app.selected = -1;
+    dense_led_selection_flow(&app, window);
     app_state_dispose(&app);
     SDL_DestroyWindow(window);
     SDL_Quit();

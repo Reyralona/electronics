@@ -57,10 +57,7 @@ AppRect app_layout_viewport(int width, int height)
 {
     if (width <= 0 || height <= 0)
         return NO_RECT;
-    float scale = fminf(width / 1280.0f, height / 720.0f);
-    float w = floorf(1280 * scale);
-    float h = floorf(720 * scale);
-    return (AppRect){floorf((width - w) / 2), floorf((height - h) / 2), w, h};
+    return (AppRect){0, 0, (float)width, (float)height};
 }
 
 WirePoint app_layout_to_ui(int width, int height, float x, float y)

@@ -22,6 +22,8 @@ static int component_closeup(AppState *app, const char *argument)
 {
     const char *id = NULL;
     int dark = 0;
+    char id_buffer[64];
+    float requested_zoom = 7;
     if (!strncmp(argument, "--capture-component=", 20))
         id = argument + 20;
     else if (!strncmp(argument, "--capture-component-dark=", 25))
@@ -31,6 +33,17 @@ static int component_closeup(AppState *app, const char *argument)
     }
     if (!id)
         return 0;
+    const char *zoom_option = strchr(id, '@');
+    if (zoom_option)
+    {
+        size_t length = (size_t)(zoom_option - id);
+        if (!length || length >= sizeof(id_buffer) || sscanf(zoom_option + 1, "%f", &requested_zoom) != 1 ||
+            !isfinite(requested_zoom) || requested_zoom < 1 || requested_zoom > 7)
+            return -1;
+        memcpy(id_buffer, id, length);
+        id_buffer[length] = 0;
+        id = id_buffer;
+    }
     const ComponentInfo *info = component_by_id(id);
     if (!info)
     {
@@ -40,7 +53,7 @@ static int component_closeup(AppState *app, const char *argument)
     bench_snapshot_clear(&app->bench);
     if (bench_add(&app->bench, info->type, 750, 365) < 0)
         return -1;
-    float zoom = info->type == PART_BREADBOARD ? 1.8f : 7;
+    float zoom = info->type == PART_BREADBOARD ? fminf(requested_zoom, 1.8f) : requested_zoom;
     Part *part = &app->bench.parts[0];
     float min_y = part->y - 48, max_y = part->y + 45;
     for (int pin = 0; pin < info->pin_count; ++pin)
@@ -294,6 +307,19 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
             for (int i = 0; i < count; ++i)
             {
                 int part = bench_add(&app->bench, types[i], 300 + i * 120.0f, 200 + row * 220.0f);
+                if (part >= 0 && row)
+                    bench_mirror_part(&app->bench, part);
+            }
+        app->selected = -1;
+    }
+    if (app->capture && !strcmp(argv[1], "--capture-mirror-gates"))
+    {
+        static const PartType types[] = {PART_AND, PART_NAND, PART_OR, PART_XOR};
+        bench_snapshot_clear(&app->bench);
+        for (int row = 0; row < 2; ++row)
+            for (int i = 0; i < 4; ++i)
+            {
+                int part = bench_add(&app->bench, types[i], 330 + i * 235.0f, 270 + row * 250.0f);
                 if (part >= 0 && row)
                     bench_mirror_part(&app->bench, part);
             }

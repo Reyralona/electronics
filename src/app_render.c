@@ -996,9 +996,12 @@ static void draw_sensor(const Part *part)
     }
     else if (part->type == PART_AMBIENT_LIGHT)
     {
-        /* Water-clear dome: the die and its bond wire stay visible, unlike the dark IR photodiode. */
+        /* Water-clear dome: a cool rim keeps the unlit lens legible on the light bench. */
         glColor3f(.66f, .72f, .76f);
         rounded_rect(x - 13, y + 4, 26, 6, 2);
+        glColor3f(.55f, .63f, .68f);
+        ellipse(x, y - 6, 13, 16);
+        rect(x - 13, y - 6, 26, 12);
         glColor3f(.80f, .86f, .90f);
         ellipse(x, y - 6, 12, 15);
         rect(x - 12, y - 6, 24, 12);
@@ -1063,8 +1066,11 @@ static void draw_rgb_led(const Part *p)
         circle(x, y - 6, 22 + 10 * mix);
         glow_blend_end();
     }
-    glColor3f(.70f, .72f, .74f);
+    glColor3f(.53f, .59f, .64f);
     rounded_rect(x - 17, y + 10, 34, 6, 2);
+    glColor3f(.55f, .63f, .68f);
+    ellipse(x, y - 8, 16, 16);
+    rect(x - 16, y - 8, 32, 18);
     glColor3f(.86f + .14f * r, .88f + .12f * g, .90f + .10f * b);
     if (mix > 0)
         glColor3f(.55f + .45f * r, .55f + .45f * g, .55f + .45f * b);
@@ -1361,6 +1367,8 @@ static void draw_sensor_module(const Part *p)
     if (p->type == PART_PIR)
     {
         radial_pcb(x, y + 8, 44, 40, .08f, .40f, .22f);
+        glColor3f(.64f, .68f, .66f);
+        circle(x, y - 6, 19);
         glColor3f(.95f, .95f, .93f);
         circle(x, y - 6, 18);
         glColor3f(.85f, .85f, .83f);
@@ -1699,6 +1707,7 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     {
         Part nominal = *p;
         nominal.rotation = 0;
+        nominal.mirrored = 0;
         nominal.scale = 1;
         for (int pin = 0; pin < bench_pin_count(p->type); ++pin)
         {

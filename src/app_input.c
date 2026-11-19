@@ -87,7 +87,7 @@ static void input_insert_knee(AppState *app, float x, float y)
     app->status = tr(TXT_APP_BEND_ADDED);
 }
 
-static int part_at(const Workbench *bench, float x, float y, float zoom)
+int app_input_part_at(const Workbench *bench, float x, float y, float zoom)
 {
     for (int g = WORKBENCH_MAX_COMPONENTS - 1; g >= 0; --g)
         if (bench->groups[g].active && !bench->groups[g].parent)
@@ -100,6 +100,9 @@ static int part_at(const Workbench *bench, float x, float y, float zoom)
 
     int pass, i;
     for (pass = 0; pass < 2; ++pass)
+    {
+        int closest = -1;
+        float closest_distance = INFINITY;
         for (i = bench->part_count - 1; i >= 0; --i)
         {
             const Part *part = &bench->parts[i];
@@ -111,12 +114,26 @@ static int part_at(const Workbench *bench, float x, float y, float zoom)
             WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
             float half_width, half_height;
             component_body_extent(part->type, &half_width, &half_height);
+            if (part->type == PART_LED)
+                local.y += 6;
             float minimum_hit = 6 / (zoom * bench_part_scale(part));
             half_width = fmaxf(half_width, minimum_hit);
             half_height = fmaxf(half_height, minimum_hit);
             if (fabsf(local.x) < half_width && fabsf(local.y) < half_height)
-                return i;
+            {
+                float nx = local.x / half_width;
+                float ny = local.y / half_height;
+                float distance = nx * nx + ny * ny;
+                if (distance < closest_distance)
+                {
+                    closest_distance = distance;
+                    closest = i;
+                }
+            }
         }
+        if (closest >= 0)
+            return closest;
+    }
     return -1;
 }
 
@@ -447,7 +464,7 @@ static void input_rotate(AppState *app, SDL_Window *window, const SDL_Event *eve
     if (x < 220 || y < 70 || y > 660)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
-    hit = part_at(&app->bench, x, y, app->view.zoom);
+    hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
     if (hit >= 0 && app->bench.parts[hit].type != PART_BREADBOARD)
     {
         SDL_Event shortcut = {0};
@@ -1249,7 +1266,7 @@ static int input_toggle_device(AppState *app, int hit, float x, float y)
 static void input_select(AppState *app, float x, float y, int clicks)
 {
     int hit;
-    hit = part_at(&app->bench, x, y, app->view.zoom);
+    hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
     if (hit < 0 || !app->selection.parts[hit])
         bench_selection_clear(&app->selection);
     if (hit >= 0)

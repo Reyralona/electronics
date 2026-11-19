@@ -238,7 +238,6 @@ int main(int argc, char **argv)
         app_settings_autosave(&app);
         SDL_GetWindowSizeInPixels(window, &width, &height);
         app_render_draw(active, font, width, height);
-        SDL_GL_SwapWindow(window);
         if (app.capture)
         {
             const char *destination = "build/bancada-capture.bmp";
@@ -251,6 +250,7 @@ int main(int argc, char **argv)
             }
             app.running = 0;
         }
+        SDL_GL_SwapWindow(window);
     }
     while (active->editor_parent)
         active = app_editor_dispose(active);
