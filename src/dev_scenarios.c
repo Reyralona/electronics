@@ -835,6 +835,7 @@ static int save_test_project(AppState *app, SDL_Window *window)
 }
 
 static int deleted_block = -1;
+static float project_zoom_before_scale;
 
 static WirePoint junction_test_middle(const AppState *app)
 {
@@ -1101,7 +1102,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 85)
         queued = dev_test_key(window, SDLK_F3);
     else if (app->selftest_phase == 86)
-        queued = click_rect(window, app_layout_project_slot(8));
+        queued = click_rect(window, app_layout_project_slot(0));
     else if (app->selftest_phase == 87)
         queued = dev_test_key(window, SDLK_ESCAPE);
     else if (app->selftest_phase == 88)
@@ -1121,7 +1122,10 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 95)
         queued = dev_test_shortcut(window, SDLK_L, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 96)
+    {
+        app->view = (BenchView){1, 0, 0};
         queued = dev_test_click(window, 620, 280);
+    }
     else if (app->selftest_phase == 97)
         queued = dev_test_drag_finish(window, 660, 320);
     else if (app->selftest_phase == 99)
@@ -1270,6 +1274,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 146)
     {
         app->selected = 1;
+        project_zoom_before_scale = app->view.zoom;
         SDL_SetModState(SDL_KMOD_CTRL);
         queued = dev_test_wheel(window, 650, 200, 1);
     }
@@ -1293,6 +1298,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 153)
     {
+        app->view = (BenchView){1, 0, 0};
         SDL_SetModState(SDL_KMOD_ALT);
         queued = dev_test_click(window, 650, 200);
     }
@@ -1781,7 +1787,7 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 85)
         valid = app->projects_open;
     else if (app->selftest_phase == 86)
-        valid = app->save_slot == 8;
+        valid = app->save_slot == 0;
     else if (app->selftest_phase == 87)
         valid = !app->projects_open;
     else if (app->selftest_phase == 88)
@@ -1790,8 +1796,11 @@ void dev_scenario_validate(AppState *app)
         valid = app->bench.groups[0].active && app->library_available[0] && app->palette_page == 2;
     else if (app->selftest_phase == 90)
         valid = app->packed_placing;
-    else if (app->selftest_phase == 91 || app->selftest_phase == 93 || app->selftest_phase == 95)
+    else if (app->selftest_phase == 91 || app->selftest_phase == 93)
         valid = app->bench.part_count == 10 && app->bench.groups[0].active && app->bench.groups[1].active;
+    else if (app->selftest_phase == 95)
+        valid = app->bench.part_count == 10 && app->bench.groups[0].active && app->bench.groups[1].active &&
+                app->view.zoom != 1.0f;
     else if (app->selftest_phase == 92)
         valid = app->bench.groups[0].active && !app->bench.groups[1].active;
     else if (app->selftest_phase == 94)
@@ -1882,7 +1891,8 @@ void dev_scenario_validate(AppState *app)
     else if (app->selftest_phase == 142)
         valid = bench_part_scale(&app->bench.parts[1]) == 1;
     else if (app->selftest_phase == 146)
-        valid = fabsf(bench_part_scale(&app->bench.parts[1]) - .275f) < .00001f && app->view.zoom == 1;
+        valid = fabsf(bench_part_scale(&app->bench.parts[1]) - .275f) < .00001f &&
+                app->view.zoom == project_zoom_before_scale;
     else if (app->selftest_phase == 147)
         valid = bench_part_scale(&app->bench.parts[1]) == .25f;
     else if (app->selftest_phase == 148)
