@@ -102,6 +102,9 @@ if(BUILD_TESTING)
     add_executable(test_rom_image tests/test_rom_image.c src/rom_image.c)
     target_include_directories(test_rom_image PRIVATE src)
     add_test(NAME rom_image COMMAND test_rom_image)
+    add_executable(test_app_layout tests/test_app_layout.c src/app_layout.c src/workbench_view.c)
+    target_include_directories(test_app_layout PRIVATE src)
+    add_test(NAME app_layout COMMAND test_app_layout)
     add_executable(test_spice_session
         tests/test_spice_session.c
         src/spice_session.c

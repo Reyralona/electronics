@@ -366,7 +366,7 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 app->palette_offset = last;
             return;
         }
-        if (x >= 220 && y >= 70 && y < 660 && direction != 0 && (SDL_GetModState() & SDL_KMOD_CTRL))
+        if (x >= BENCH_VIEW_LEFT && y >= BENCH_VIEW_TOP && y < BENCH_VIEW_BOTTOM && direction != 0 && (SDL_GetModState() & SDL_KMOD_CTRL))
         {
             if (app->selected >= 0 && app->bench.parts[app->selected].group)
             {
@@ -422,7 +422,7 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
             bench_snapshot_clear(&before);
             return;
         }
-        if (x >= 220 && y >= 70 && y < 660 && direction != 0 && (SDL_GetModState() & SDL_KMOD_SHIFT) &&
+        if (x >= BENCH_VIEW_LEFT && y >= BENCH_VIEW_TOP && y < BENCH_VIEW_BOTTOM && direction != 0 && (SDL_GetModState() & SDL_KMOD_SHIFT) &&
             app->selected >= 0 && (app->bench.parts[app->selected].type == PART_POTENTIOMETER ||
                                    component_environment(app->bench.parts[app->selected].type)))
         {
@@ -444,7 +444,7 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
             app->status = tr(TXT_APP_CONTROL_HINT);
             return;
         }
-        if (x >= 220 && y >= 70 && y < 660 && direction != 0)
+        if (x >= BENCH_VIEW_LEFT && y >= BENCH_VIEW_TOP && y < BENCH_VIEW_BOTTOM && direction != 0)
             bench_view_zoom_at(&app->view, direction > 0 ? 1.2f : 1.0f / 1.2f, x, y);
     }
 }
@@ -461,7 +461,7 @@ static void input_rotate(AppState *app, SDL_Window *window, const SDL_Event *eve
     WirePoint point = app_layout_to_ui(w, h, event->button.x, event->button.y);
     x = point.x;
     y = point.y;
-    if (x < 220 || y < 70 || y > 660)
+    if (x < BENCH_VIEW_LEFT || y < BENCH_VIEW_TOP || y > BENCH_VIEW_BOTTOM)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
     hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
@@ -482,7 +482,7 @@ static void input_pan_start(AppState *app, SDL_Window *window, const SDL_Event *
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
     WirePoint point = app_layout_to_ui(w, h, event->button.x, event->button.y);
-    if (w > 0 && h > 0 && point.x >= 220 && point.y >= 70 && point.y < 660)
+    if (w > 0 && h > 0 && point.x >= BENCH_VIEW_LEFT && point.y >= BENCH_VIEW_TOP && point.y < BENCH_VIEW_BOTTOM)
         app->panning = 1;
 }
 
@@ -494,8 +494,8 @@ static void input_pan(AppState *app, SDL_Window *window, const SDL_Event *event)
     if (w > 0 && h > 0)
     {
         AppRect viewport = app_layout_viewport(w, h);
-        app->view.pan_x += event->motion.xrel * 1280.0f / viewport.w;
-        app->view.pan_y += event->motion.yrel * 720.0f / viewport.h;
+        app->view.pan_x += event->motion.xrel * app_layout_canvas_width() / viewport.w;
+        app->view.pan_y += event->motion.yrel * app_layout_canvas_height() / viewport.h;
     }
 }
 
@@ -543,10 +543,36 @@ static void choose_language(AppState *app, UiLanguage language)
     app->status = tr(language == UI_LANG_PT_BR ? TXT_LANGUAGE_NAME_PT_BR : TXT_LANGUAGE_NAME_EN_US);
 }
 
+/* Window units per canvas unit at the chosen interface scale (15 = 100%) and the display's own scale. */
+float app_input_window_scale(const AppState *app, SDL_Window *window)
+{
+    float display = SDL_GetWindowDisplayScale(window), density = SDL_GetWindowPixelDensity(window);
+    float content = display > 0 && density > 0 ? display / density : 1;
+    return content * (float)app->gui_font_size / 15;
+}
+
+/* A maximized or full-screen window keeps its size: the canvas grows or shrinks inside it. A normal window
+ * is resized to the design canvas at that scale. A scale whose design canvas does not fit is refused. */
 int app_input_apply_scale(AppState *app, SDL_Window *window)
 {
-    int width = (int)ceil(1280.0 * app->gui_font_size / 15);
-    int height = (int)ceil(720.0 * app->gui_font_size / 15);
+    float scale = app_input_window_scale(app, window);
+    int width = (int)ceil(APP_DESIGN_WIDTH * scale);
+    int height = (int)ceil(APP_DESIGN_HEIGHT * scale);
+    if (SDL_GetWindowFlags(window) & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_FULLSCREEN))
+    {
+        int current_width, current_height;
+        if (!SDL_GetWindowSize(window, &current_width, &current_height))
+        {
+            app->status = tr(TXT_UI_WINDOW_SIZE_FAILED);
+            return 0;
+        }
+        if (width > current_width || height > current_height)
+        {
+            app->status = tr(TXT_UI_SCALE_UNAVAILABLE);
+            return 0;
+        }
+        return 1;
+    }
     SDL_Rect bounds;
     SDL_DisplayID display = SDL_GetDisplayForWindow(window);
     if (!display || !SDL_GetDisplayUsableBounds(display, &bounds))
@@ -559,9 +585,7 @@ int app_input_apply_scale(AppState *app, SDL_Window *window)
         app->status = tr(TXT_UI_SCALE_UNAVAILABLE);
         return 0;
     }
-    if (!SDL_SetWindowMinimumSize(window, 1024, 576) ||
-        ((SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED) && !SDL_RestoreWindow(window)) ||
-        !SDL_SetWindowSize(window, width, height))
+    if (!SDL_SetWindowMinimumSize(window, 1024, 576) || !SDL_SetWindowSize(window, width, height))
     {
         app->status = tr(TXT_UI_WINDOW_SIZE_FAILED);
         return 0;
@@ -885,9 +909,11 @@ static int input_click_trace(AppState *app, float x, float y)
         app_commands_close_graph(app);
         return 1;
     }
-    if (!app->live_graph.active && x >= 918 && x <= 1220 && y >= 431 && y <= 565)
+    WirePoint offset = app_layout_graph_offset(); /* plot area designed at 918..1220 x 431..565 */
+    float plot_x = x - offset.x, plot_y = y - offset.y;
+    if (!app->live_graph.active && plot_x >= 918 && plot_x <= 1220 && plot_y >= 431 && plot_y <= 565)
     {
-        app->sim.trace_index = spice_trace_nearest(&app->sim.trace, (x - 918) / 302.0);
+        app->sim.trace_index = spice_trace_nearest(&app->sim.trace, (plot_x - 918) / 302.0);
         app->sim.sim_running = 0;
         app->status = sim_state_trace_text(&app->sim);
     }
@@ -1584,7 +1610,7 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
     y = point.y;
     if (input_click_controls(app, window, x, y))
         return;
-    if (x < 220 || y < 70 || y > 660)
+    if (x < BENCH_VIEW_LEFT || y < BENCH_VIEW_TOP || y > BENCH_VIEW_BOTTOM)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
     if (SDL_GetModState() & SDL_KMOD_SHIFT)
@@ -2091,7 +2117,7 @@ static void input_refresh_hover(AppState *app)
     app->hovered_pin = (Pin){-1, -1};
     app->hover_revision = app->bench.revision;
     float x = app->mouse_screen.x, y = app->mouse_screen.y;
-    if (x < 220 || y < 70 || y >= 660 || app->settings || app->projects_open || app->examples_open || app->editing >= 0 ||
+    if (x < BENCH_VIEW_LEFT || y < BENCH_VIEW_TOP || y >= BENCH_VIEW_BOTTOM || app->settings || app->projects_open || app->examples_open || app->editing >= 0 ||
         app->selecting_area || app->editor_confirm_close || app->panning || app->dragging >= 0 || app->drag_wire >= 0)
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);

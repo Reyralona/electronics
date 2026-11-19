@@ -29,11 +29,13 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 - `Tab` e `Shift+Tab` percorrem os controles visíveis. O contorno mostra o foco; `Enter` ou `Espaço` ativa.
 - Nos diálogos, o foco permanece nas ações daquele diálogo. `Esc` cancela ou fecha; não confirma substituição de arquivo.
 - No editor de código, `Tab` indenta e `Ctrl+Tab` percorre os controles. Clique no texto para voltar a digitar.
-- **Configurações → Escala da interface** amplia texto e alvos juntos (80% a 133%). A preferência é salva.
-  Ela define o tamanho solicitado para a janela. Ao redimensionar manualmente, a ampliação acompanha a área disponível.
-  A janela mínima tem área cliente de 1024×576. A escala solicitada precisa caber na área útil do monitor;
-  caso contrário, o programa informa o motivo e conserva a preferência anterior.
-- Redimensionar preserva a proporção de desenho e dos cliques, com margens quando necessário.
+- **Configurações → Escala da interface** amplia texto e alvos juntos (80% a 133%), somada à escala do
+  Windows. A preferência é salva. Numa janela normal, ela define o tamanho da janela. Maximizada ou em tela
+  cheia, a janela não muda: uma escala menor deixa painéis e textos menores e dá mais espaço à bancada.
+  A escala precisa caber na janela maximizada ou na área útil do monitor; caso contrário, o programa informa
+  o motivo e conserva a preferência anterior.
+- Janelas maiores aumentam a bancada e o catálogo mostra mais peças; o cabeçalho, o inspetor e os diálogos
+  acompanham as bordas ou o centro. Só uma janela menor que o desenho na escala escolhida ganha margens.
   Isso não oferece suporte automático a leitor de tela; essa integração continua pendente.
 
 ### Peças

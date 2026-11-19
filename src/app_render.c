@@ -130,6 +130,7 @@ static void line(float x, float y, float x2, float y2)
 }
 static void circle(float x, float y, float radius);
 static void rounded_rect(float x, float y, float w, float h, float radius);
+static void ui_shadow(AppRect r, float radius, float depth);
 /* Shared palette (BenchColor): wire insulation and swatch tone, and the lit LED lens. */
 typedef struct
 {
@@ -283,8 +284,10 @@ static void trace_title(char *title, size_t capacity, int pin, int current)
 static void graph_frame(GLuint font, const char *title)
 {
     AppRect panel = app_layout_graph_panel();
-    color(.62f, .68f, .72f);
-    rect(panel.x + 6, panel.y + 6, panel.w, panel.h);
+    WirePoint offset = app_layout_graph_offset(); /* the caller already moved the drawing */
+    panel.x -= offset.x;
+    panel.y -= offset.y;
+    ui_shadow(panel, 2, 8);
     color(.98f, .98f, .99f);
     rect(panel.x, panel.y, panel.w, panel.h);
     color(.14f, .22f, .28f);
@@ -1976,10 +1979,26 @@ static void ui_outline(AppRect r, float radius, float thickness)
                  fmaxf(0, radius - thickness));
 }
 
+#define UI_SHADOW_LAYERS 5
+/* Raised surface shadow: offset down and blurred by translucent layers that widen outward. */
+static void ui_shadow(AppRect r, float radius, float depth)
+{
+    glPushAttrib(GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT | GL_CURRENT_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    float alpha = dark_interface ? .10f : .045f;
+    for (int layer = UI_SHADOW_LAYERS; layer >= 1; --layer)
+    {
+        float grow = depth * (float)layer / UI_SHADOW_LAYERS;
+        glColor4f(.04f, .08f, .12f, alpha);
+        rounded_rect(r.x - grow, r.y - grow + depth * .5f, r.w + 2 * grow, r.h + 2 * grow, radius + grow);
+    }
+    glPopAttrib();
+}
+
 static void ui_panel(AppRect r)
 {
-    color(.55f, .60f, .65f);
-    rounded_rect(r.x + 2, r.y + 5, r.w, r.h, UI_RADIUS + 2);
+    ui_shadow(r, UI_RADIUS + 2, 10);
     color(UI_BORDER);
     ui_rounded(r, UI_RADIUS + 2);
     color(UI_SURFACE);
@@ -2297,9 +2316,9 @@ static void draw_editor_header(const AppState *app, GLuint font)
 static void draw_header(const AppState *app, GLuint font)
 {
     color(UI_SURFACE);
-    rect(0, 0, 1280, APP_HEADER_HEIGHT);
+    rect(0, 0, app_layout_canvas_width(), APP_HEADER_HEIGHT);
     color(UI_BORDER);
-    rect(0, APP_HEADER_HEIGHT - 1, 1280, 1);
+    rect(0, APP_HEADER_HEIGHT - 1, app_layout_canvas_width(), 1);
     if (app->editor_parent)
         draw_editor_header(app, font);
     else
@@ -2406,9 +2425,10 @@ static void draw_block_library(const AppState *app, GLuint font)
 static void draw_palette(const AppState *app, GLuint font)
 {
     color(UI_SURFACE);
-    rect(0, APP_HEADER_HEIGHT, APP_PALETTE_WIDTH, 720 - APP_HEADER_HEIGHT);
+    float height = app_layout_canvas_height() - APP_HEADER_HEIGHT;
+    rect(0, APP_HEADER_HEIGHT, APP_PALETTE_WIDTH, height);
     color(UI_BORDER);
-    rect(APP_PALETTE_WIDTH - 1, APP_HEADER_HEIGHT, 1, 720 - APP_HEADER_HEIGHT);
+    rect(APP_PALETTE_WIDTH - 1, APP_HEADER_HEIGHT, 1, height);
     draw_palette_tabs(app, font);
     AppRect search = app_layout_search();
     ui_value_box(font, search, "", 1);
@@ -2450,6 +2470,13 @@ static void draw_actions(const AppState *app, GLuint font)
         return;
     static const TextId labels[APP_ACTION_COUNT] = {
         TXT_UI_UNDO, TXT_UI_REDO, TXT_UI_STEP, TXT_UI_CREATE_CHIP, TXT_UI_LIVE_GRAPH, TXT_UI_FULL_CURVE};
+    AppRect first = app_layout_action((AppAction)0), last = app_layout_action((AppAction)(APP_ACTION_COUNT - 1));
+    AppRect bar = {first.x - 4, first.y - 4, last.x + last.w - first.x + 8, first.h + 8};
+    ui_shadow(bar, UI_RADIUS + 2, 6);
+    color(UI_BORDER);
+    ui_rounded(bar, UI_RADIUS + 2);
+    color(UI_SURFACE);
+    rounded_rect(bar.x + 1, bar.y + 1, bar.w - 2, bar.h - 2, UI_RADIUS + 1);
     for (int i = 0; i < APP_ACTION_COUNT; ++i)
         ui_button(app, font, app_layout_action((AppAction)i), tr(labels[i]),
                   app_controls_action_enabled(app, (AppAction)i) ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
@@ -2461,7 +2488,8 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     glViewport((int)viewport.x, height - (int)(viewport.y + viewport.h), (int)viewport.w, (int)viewport.h);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, 1280, 720, 0, -1, 1);
+    glOrtho(0, app_layout_canvas_width(), app_layout_canvas_height(), 0, -1, 1);
+    app_text_utf8_set_scale(viewport.w / app_layout_canvas_width());
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     if (app->dark_theme)
@@ -2488,7 +2516,7 @@ static void draw_workspace_grid(const AppState *app)
         grid.spacing = app->grid_spacing;
         float spacing = (float)bench_grid_display_spacing(&grid, app->view.zoom, 10);
         bench_view_to_world(&app->view, 220, 60, &left, &top);
-        bench_view_to_world(&app->view, 1280, 660, &right, &bottom);
+        bench_view_to_world(&app->view, app_layout_canvas_width(), BENCH_VIEW_BOTTOM, &right, &bottom);
         if (spacing <= 0)
             return;
         for (gx = floorf(left / spacing) * spacing; gx <= right; gx += spacing)
@@ -3208,9 +3236,9 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
 {
     glEnable(GL_SCISSOR_TEST);
     AppRect viewport = app_layout_viewport(width, height);
-    glScissor((int)(viewport.x + viewport.w * 220 / 1280),
-              (int)(height - viewport.y - viewport.h + viewport.h * 60 / 720),
-              (int)(viewport.w * 1060 / 1280), (int)(viewport.h * 590 / 720));
+    float scale = viewport.w / app_layout_canvas_width();
+    glScissor((int)(viewport.x + BENCH_VIEW_LEFT * scale), (int)(height - viewport.y - BENCH_VIEW_BOTTOM * scale),
+              (int)(BENCH_VIEW_WIDTH * scale), (int)(BENCH_VIEW_HEIGHT * scale));
     glPushMatrix();
     glTranslatef(220 + app->view.pan_x, 70 + app->view.pan_y, 0);
     glScalef(app->view.zoom, app->view.zoom, 1);
@@ -3690,10 +3718,14 @@ static void status_hint(const AppState *app, char *hint, size_t capacity)
 static void draw_status(const AppState *app, GLuint font)
 {
     int graph = app_controls_graph_visible(app);
+    WirePoint offset = app_layout_graph_offset();
+    glPushMatrix();
+    glTranslatef(offset.x, offset.y, 0);
     if (app->live_graph.active && graph)
         live_graph_draw(app, font);
     else if (graph)
         trace_draw(font, &app->sim.trace, app->sim.trace_index, app->sim.trace_pin, app->sim.trace_current);
+    glPopMatrix();
     if (graph)
     {
         ui_close_button(app, app_layout_graph_close());
@@ -3713,10 +3745,11 @@ static void draw_status(const AppState *app, GLuint font)
             snprintf(terminal, sizeof(terminal), tr(TXT_TERMINAL_NUMBER), pin + 1);
         ui_button(app, font, app_layout_graph_pin(), terminal, UI_BUTTON_NEUTRAL);
     }
+    float right = app_layout_canvas_width(), top = BENCH_VIEW_BOTTOM;
     color(UI_SURFACE);
-    rect(APP_PALETTE_WIDTH, 660, 1280 - APP_PALETTE_WIDTH, 60);
+    rect(APP_PALETTE_WIDTH, top, right - APP_PALETTE_WIDTH, APP_FOOTER_HEIGHT);
     color(UI_BORDER);
-    rect(APP_PALETTE_WIDTH, 660, 1280 - APP_PALETTE_WIDTH, 1);
+    rect(APP_PALETTE_WIDTH, top, right - APP_PALETTE_WIDTH, 1);
     char status[384], hint[320];
     if (app->sim.live_mode && app->sim.live_rate > 0 && app->sim.sim_running)
         snprintf(status, sizeof(status), tr(TXT_UI_LIVE_PACE_STATUS), app->sim.live_time, app->sim.live_rate,
@@ -3726,18 +3759,19 @@ static void draw_status(const AppState *app, GLuint font)
     else
         snprintf(status, sizeof(status), "%s", app->status);
     color(UI_INK);
-    name_text(font, 238, 685, status, 1020);
+    int text_width = (int)(right - APP_PALETTE_WIDTH - 40);
+    name_text(font, 238, top + 25, status, text_width);
     status_hint(app, hint, sizeof(hint));
     color(UI_MUTED);
-    name_text(font, 238, 709, hint, 1020);
+    name_text(font, 238, top + 49, hint, text_width);
     if (app->xray)
     {
         const char *badge = tr(TXT_UI_TRANSPARENCY_BADGE);
         float width = (float)app_text_utf8_width(badge, 2048) + 20;
         color(UI_ACCENT);
-        rounded_rect(1268 - width, 668, width, 24, 12);
+        rounded_rect(right - 12 - width, top + 8, width, 24, 12);
         glColor3f(1, 1, 1);
-        text(font, 1278 - width, 685, badge);
+        text(font, right - 2 - width, top + 25, badge);
     }
 }
 

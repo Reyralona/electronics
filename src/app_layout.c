@@ -1,8 +1,10 @@
 #include "app_layout.h"
+#include "workbench_view.h"
 #include <math.h>
 
 #define PALETTE_ITEM_TOP 210.0f
 #define PALETTE_ITEM_PITCH 59.0f
+#define APP_PALETTE_BOTTOM_MARGIN 8.0f
 #define HEADER_BUTTON_Y 14.0f
 #define HEADER_BUTTON_H 40.0f
 #define SETTINGS_LEFT 280.0f
@@ -14,7 +16,7 @@
 #define STEPPER_W 34.0f
 #define STEPPER_VALUE_W 56.0f
 /* Compact inspector, right-aligned at the same edge as before (x 1260). */
-#define INSPECTOR_RIGHT 1260.0f
+#define INSPECTOR_RIGHT (1260.0f + right_shift())
 #define INSPECTOR_W 320.0f
 #define INSPECTOR_X (INSPECTOR_RIGHT - INSPECTOR_W)
 #define INSPECTOR_TOP 80.0f
@@ -38,6 +40,68 @@
 #define FLAG_GAP 10.0f
 #define NO_RECT ((AppRect){0, 0, 0, 0})
 
+static float canvas_width = APP_DESIGN_WIDTH, canvas_height = APP_DESIGN_HEIGHT;
+
+/* Offsets of the anchors from the design canvas: centered dialogs, right column, bottom row. */
+static float center_shift_x(void)
+{
+    return (canvas_width - APP_DESIGN_WIDTH) / 2;
+}
+
+static float center_shift_y(void)
+{
+    return (canvas_height - APP_DESIGN_HEIGHT) / 2;
+}
+
+static float right_shift(void)
+{
+    return canvas_width - APP_DESIGN_WIDTH;
+}
+
+static float bottom_shift(void)
+{
+    return canvas_height - APP_DESIGN_HEIGHT;
+}
+
+static AppRect shifted(AppRect rect, float dx, float dy)
+{
+    return (AppRect){rect.x + dx, rect.y + dy, rect.w, rect.h};
+}
+
+static AppRect centered(AppRect rect)
+{
+    return shifted(rect, center_shift_x(), center_shift_y());
+}
+
+void app_layout_set_canvas(float window_width, float window_height, float scale)
+{
+    if (!(scale > 0) || !isfinite(window_width) || !isfinite(window_height))
+        return;
+    canvas_width = fmaxf(APP_DESIGN_WIDTH, floorf(window_width / scale));
+    canvas_height = fmaxf(APP_DESIGN_HEIGHT, floorf(window_height / scale));
+    bench_view_set_area(canvas_width - BENCH_VIEW_LEFT, canvas_height - BENCH_VIEW_TOP - APP_FOOTER_HEIGHT);
+}
+
+float app_layout_canvas_width(void)
+{
+    return canvas_width;
+}
+
+float app_layout_canvas_height(void)
+{
+    return canvas_height;
+}
+
+int app_layout_palette_visible(void)
+{
+    return (int)((canvas_height - PALETTE_ITEM_TOP - APP_PALETTE_BOTTOM_MARGIN) / PALETTE_ITEM_PITCH);
+}
+
+WirePoint app_layout_graph_offset(void)
+{
+    return (WirePoint){right_shift(), bottom_shift()};
+}
+
 int app_rect_contains(AppRect rect, float x, float y)
 {
     return rect.w > 0 && rect.h > 0 && x >= rect.x && x < rect.x + rect.w && y >= rect.y && y < rect.y + rect.h;
@@ -57,7 +121,10 @@ AppRect app_layout_viewport(int width, int height)
 {
     if (width <= 0 || height <= 0)
         return NO_RECT;
-    return (AppRect){0, 0, (float)width, (float)height};
+    /* Uniform scale; only a window smaller than the canvas at this scale leaves margins. */
+    float scale = fminf(width / canvas_width, height / canvas_height);
+    float w = canvas_width * scale, h = canvas_height * scale;
+    return (AppRect){(width - w) / 2, (height - h) / 2, w, h};
 }
 
 WirePoint app_layout_to_ui(int width, int height, float x, float y)
@@ -65,13 +132,13 @@ WirePoint app_layout_to_ui(int width, int height, float x, float y)
     AppRect viewport = app_layout_viewport(width, height);
     if (viewport.w <= 0 || viewport.h <= 0)
         return (WirePoint){-1, -1};
-    return (WirePoint){(x - viewport.x) * 1280 / viewport.w, (y - viewport.y) * 720 / viewport.h};
+    return (WirePoint){(x - viewport.x) * canvas_width / viewport.w, (y - viewport.y) * canvas_height / viewport.h};
 }
 
 WirePoint app_layout_from_ui(int width, int height, float x, float y)
 {
     AppRect viewport = app_layout_viewport(width, height);
-    return (WirePoint){viewport.x + x * viewport.w / 1280, viewport.y + y * viewport.h / 720};
+    return (WirePoint){viewport.x + x * viewport.w / canvas_width, viewport.y + y * viewport.h / canvas_height};
 }
 
 AppRect app_layout_header(AppHeaderButton button)
@@ -84,7 +151,9 @@ AppRect app_layout_header(AppHeaderButton button)
     };
     if (button < 0 || button >= APP_HEADER_COUNT)
         return NO_RECT;
-    return buttons[button];
+    /* The navigation stays centered; the simulation switch stays at the right edge. */
+    return button == APP_HEADER_COUNT - 1 ? shifted(buttons[button], right_shift(), 0)
+                                          : shifted(buttons[button], center_shift_x(), 0);
 }
 
 AppHeaderButton app_layout_header_at(float x, float y)
@@ -132,12 +201,12 @@ AppRect app_layout_palette_scrollbar(void)
 
 AppRect app_layout_settings_panel(void)
 {
-    return (AppRect){250, 84, 900, 560};
+    return centered((AppRect){250, 84, 900, 560});
 }
 
 static AppRect settings_row(float column, int row)
 {
-    return (AppRect){column, SETTINGS_FIRST_ROW + row * SETTINGS_ROW_PITCH, SETTINGS_COLUMN, SETTINGS_ROW_H};
+    return centered((AppRect){column, SETTINGS_FIRST_ROW + row * SETTINGS_ROW_PITCH, SETTINGS_COLUMN, SETTINGS_ROW_H});
 }
 
 /* Stepper buttons sit at the right edge of a row: 0 = rightmost (+), 1 = left of the value (-). */
@@ -228,14 +297,14 @@ AppSetting app_layout_setting_at(float x, float y)
 
 AppRect app_layout_projects_panel(void)
 {
-    return (AppRect){175, 64, 930, 592};
+    return centered((AppRect){175, 64, 930, 592});
 }
 
 AppRect app_layout_project_slot(int slot)
 {
     if (slot < 0 || slot >= APP_PROJECT_SLOTS)
         return NO_RECT;
-    return (AppRect){201 + (slot % 3) * 305.0f, 161 + (slot / 3) * 205.0f, 288, 190};
+    return centered((AppRect){201 + (slot % 3) * 305.0f, 161 + (slot / 3) * 205.0f, 288, 190});
 }
 
 int app_layout_project_slot_at(float x, float y)
@@ -248,22 +317,22 @@ int app_layout_project_slot_at(float x, float y)
 
 AppRect app_layout_project_save(void)
 {
-    return (AppRect){201, 584, 314, 44};
+    return centered((AppRect){201, 584, 314, 44});
 }
 
 AppRect app_layout_project_load(void)
 {
-    return (AppRect){527, 584, 314, 44};
+    return centered((AppRect){527, 584, 314, 44});
 }
 
 AppRect app_layout_project_previous(void)
 {
-    return (AppRect){863, 574, 90, 44};
+    return centered((AppRect){863, 574, 90, 44});
 }
 
 AppRect app_layout_project_next(void)
 {
-    return (AppRect){967, 574, 90, 44};
+    return centered((AppRect){967, 574, 90, 44});
 }
 
 AppRect app_layout_project_close(void)
@@ -336,7 +405,7 @@ AppRect app_layout_editor_header(AppEditorButton button)
     };
     if (button < 0 || button >= APP_EDITOR_COUNT)
         return NO_RECT;
-    return buttons[button];
+    return shifted(buttons[button], center_shift_x(), 0);
 }
 
 AppEditorButton app_layout_editor_header_at(float x, float y)
@@ -361,14 +430,14 @@ int app_layout_group_button_at(float x, float y)
 
 AppRect app_layout_confirm_panel(void)
 {
-    return (AppRect){320, 250, 640, 190};
+    return centered((AppRect){320, 250, 640, 190});
 }
 
 AppRect app_layout_confirm_button(int index)
 {
     if (index < 0 || index >= APP_CONFIRM_BUTTONS)
         return NO_RECT;
-    return (AppRect){350 + index * 196.0f, 370, 184, 44};
+    return centered((AppRect){350 + index * 196.0f, 370, 184, 44});
 }
 
 int app_layout_confirm_button_at(float x, float y)
@@ -386,7 +455,7 @@ int app_layout_confirm_button_at(float x, float y)
 
 AppRect app_layout_examples_panel(void)
 {
-    return (AppRect){270, 84, 960, 560};
+    return centered((AppRect){270, 84, 960, 560});
 }
 
 AppRect app_layout_example_card(int index)
@@ -443,7 +512,7 @@ AppRect app_layout_wire_inspector(void)
 
 AppRect app_layout_code_panel(void)
 {
-    return (AppRect){836, 76, 436, 578};
+    return (AppRect){836 + right_shift(), 76, 436, 578 + bottom_shift()};
 }
 
 AppRect app_layout_code_run(void)
@@ -459,7 +528,7 @@ AppRect app_layout_code_close(void)
 
 AppRect app_layout_graph_panel(void)
 {
-    return (AppRect){840, 384, 400, 244};
+    return shifted((AppRect){840, 384, 400, 244}, right_shift(), bottom_shift());
 }
 
 AppRect app_layout_graph_close(void)
@@ -470,13 +539,13 @@ AppRect app_layout_graph_close(void)
 AppRect app_layout_code_text(void)
 {
     AppRect panel = app_layout_code_panel();
-    return (AppRect){panel.x + 12, panel.y + 90, panel.w - 24, 360};
+    return (AppRect){panel.x + 12, panel.y + 90, panel.w - 24, 360 + bottom_shift()};
 }
 
 AppRect app_layout_code_serial(void)
 {
     AppRect panel = app_layout_code_panel();
-    return (AppRect){panel.x + 12, panel.y + 458, panel.w - 24, panel.h - 470};
+    return (AppRect){panel.x + 12, panel.y + 458 + bottom_shift(), panel.w - 24, panel.h - 470 - bottom_shift()};
 }
 
 AppRect app_layout_action(AppAction action)
@@ -498,20 +567,20 @@ AppRect app_layout_search_clear(void)
 
 AppRect app_layout_value_panel(void)
 {
-    return (AppRect){410, 234, 460, 222};
+    return centered((AppRect){410, 234, 460, 222});
 }
 
 AppRect app_layout_value_button(int confirm)
 {
-    return (AppRect){434 + (confirm ? 0 : 218), 392, 194, 40};
+    return centered((AppRect){434 + (confirm ? 0 : 218), 392, 194, 40});
 }
 
 AppRect app_layout_graph_measure(void)
 {
-    return (AppRect){840, 348, 192, 30};
+    return shifted((AppRect){840, 348, 192, 30}, right_shift(), bottom_shift());
 }
 
 AppRect app_layout_graph_pin(void)
 {
-    return (AppRect){1040, 348, 200, 30};
+    return shifted((AppRect){1040, 348, 200, 30}, right_shift(), bottom_shift());
 }

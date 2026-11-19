@@ -11,6 +11,12 @@
 - Um computador de 8 bits no estilo SAP-1 (25 CIs, 312 peças) foi montado e testado com esses CIs durante o
   desenvolvimento, mas não entrou nos exemplos: a montagem ainda precisa de um desenho mais legível.
 - Formato de projeto 35, por causa dos tipos novos. Projetos anteriores continuam abrindo.
+- **Escala da interface** funciona dentro da janela maximizada ou em tela cheia: diminuir a escala reduz a
+  interface e aumenta a bancada, sem tirar a janela do modo maximizado. A escala do Windows é considerada.
+- Textos nítidos: as letras são desenhadas na resolução real da tela, em pixels inteiros, em vez de ampliadas
+  de 15 px. A interface não é mais esticada nem distorcida em janelas de outros formatos.
+- Bordas suavizadas (antisserrilhado 4×) em círculos, cantos e fios; sombras suaves nos painéis; a barra de
+  ações sobre a bancada tem fundo próprio e se destaca da grade.
 
 ## 0.46.0
 

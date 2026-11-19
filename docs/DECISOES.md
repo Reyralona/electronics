@@ -799,3 +799,18 @@ Comparação e fontes: [COMPARACAO_COMPUTADOR_8_BITS.md](COMPARACAO_COMPUTADOR_8
   interface ficam pendentes.
 - O desenho DIP passa a valer para qualquer número de pinos, com o passo do 74HC00. A AT28C16 usa o
   mesmo corpo estreito; o encapsulamento real de 600 mil não é reproduzido.
+
+## Escala real e nitidez da interface (19/11/2026)
+
+Fatos: a interface era desenhada numa tela lógica fixa de 1280×720 esticada para a janela por `glViewport`.
+A "escala" só redimensionava a janela (e tirava a janela do modo maximizado), e o texto, rasterizado a 15 px
+pelo GDI, era ampliado com filtro linear, ficando borrado; janelas fora de 16:9 eram distorcidas. Não havia
+antisserrilhado. Revisão guiada pela skill Impeccable (modo Operate; "reestruturar, não esticar").
+
+- A tela lógica passa a ser a janela dividida pela escala (preferência × escala do Windows), nunca menor que
+  1280×720. Painéis guardam o desenho de 1280×720 e seguem âncoras: centro (diálogos), direita (inspetor,
+  editor, gráfico), borda inferior (rodapé). A bancada e o catálogo crescem. Testes: `tests/test_app_layout.c`.
+- Texto rasterizado em pixels reais e posicionado em pixels inteiros quando não há rotação.
+- MSAA 4× pedido ao criar a janela, com nova tentativa sem ele se o driver recusar.
+- Sombras de deslocamento sólido trocadas por sombra suave em camadas translúcidas.
+- Pendente: leitor de tela; um layout que reorganize os painéis (e não só os ancore) em telas muito largas.

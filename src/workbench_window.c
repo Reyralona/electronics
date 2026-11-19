@@ -29,6 +29,8 @@
 #include "app_layout.h"
 #include "app_simulation.h"
 #include "dev_scenarios.h"
+#define WINDOW_MULTISAMPLES 4
+#define WINDOW_GL_MULTISAMPLE 0x809D /* GL_MULTISAMPLE, OpenGL 1.3 */
 
 static void save_project_thumbnail(AppState *app, GLuint font, int width, int height)
 {
@@ -90,10 +92,9 @@ static void save_project_thumbnail(AppState *app, GLuint font, int width, int he
         if (frame && thumbnail)
         {
             AppRect viewport = app_layout_viewport(width, height);
-            SDL_Rect source = {(int)(viewport.x + viewport.w * BENCH_VIEW_LEFT / 1280),
-                               (int)(viewport.y + viewport.h * BENCH_VIEW_TOP / 720),
-                               (int)(viewport.w * BENCH_VIEW_WIDTH / 1280),
-                               (int)(viewport.h * BENCH_VIEW_HEIGHT / 720)};
+            float scale = viewport.w / app_layout_canvas_width();
+            SDL_Rect source = {(int)(viewport.x + BENCH_VIEW_LEFT * scale), (int)(viewport.y + BENCH_VIEW_TOP * scale),
+                               (int)(BENCH_VIEW_WIDTH * scale), (int)(BENCH_VIEW_HEIGHT * scale)};
             SDL_Rect target = {0, 0, 264, 112};
             if (SDL_BlitSurfaceScaled(frame, &source, thumbnail, &target, SDL_SCALEMODE_LINEAR))
             {
@@ -266,7 +267,16 @@ int main(int argc, char **argv)
     Uint64 window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
     if (app.selftest)
         window_flags |= SDL_WINDOW_HIDDEN;
+    /* 4x multisampling smooths circles, rounded corners and diagonal wires; drivers without it get none. */
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, WINDOW_MULTISAMPLES);
     window = SDL_CreateWindow("Bancada", 1280, 720, window_flags);
+    if (!window)
+    {
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+        window = SDL_CreateWindow("Bancada", 1280, 720, window_flags);
+    }
     if (!window)
     {
         fprintf(stderr, "Janela: %s\n", SDL_GetError());
@@ -276,6 +286,8 @@ int main(int argc, char **argv)
     }
     set_window_icon(window);
     context = SDL_GL_CreateContext(window);
+    if (context)
+        glEnable(WINDOW_GL_MULTISAMPLE);
     if (!context)
     {
         fprintf(stderr, "OpenGL: %s\n", SDL_GetError());
@@ -285,12 +297,9 @@ int main(int argc, char **argv)
         return 1;
     }
     font = app_render_font_create();
-    if (!app_input_apply_scale(&app, window))
-    {
-        app.gui_font_size = APP_FONT_MIN;
-        if (!app_input_apply_scale(&app, window))
-            app.status = tr(TXT_UI_WINDOW_SIZE_FAILED);
-    }
+    /* A saved scale larger than the monitor opens maximized instead of losing the preference. */
+    if (!app_input_apply_scale(&app, window) && !SDL_MaximizeWindow(window))
+        app.status = tr(TXT_UI_WINDOW_SIZE_FAILED);
     int window_scale = app.gui_font_size;
     SDL_GL_SetSwapInterval(1);
     if (dev_scenario_analyze(&app, argv))
@@ -323,6 +332,8 @@ int main(int argc, char **argv)
         app_simulation_update(active);
         app_settings_autosave(&app);
         SDL_GetWindowSizeInPixels(window, &width, &height);
+        app_layout_set_canvas((float)width, (float)height,
+                              app_input_window_scale(active, window) * SDL_GetWindowPixelDensity(window));
         save_project_thumbnail(active, font, width, height);
         app_render_draw(active, font, width, height);
         if (app.capture)

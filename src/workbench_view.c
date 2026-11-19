@@ -1,5 +1,25 @@
 #include "workbench_view.h"
 #include <math.h>
+
+#define DESIGN_VIEW_WIDTH 1060.0f
+#define DESIGN_VIEW_HEIGHT 590.0f
+static float area_width = DESIGN_VIEW_WIDTH, area_height = DESIGN_VIEW_HEIGHT;
+
+float bench_view_width(void)
+{
+    return area_width;
+}
+
+float bench_view_height(void)
+{
+    return area_height;
+}
+
+void bench_view_set_area(float width, float height)
+{
+    area_width = isfinite(width) && width >= DESIGN_VIEW_WIDTH ? width : DESIGN_VIEW_WIDTH;
+    area_height = isfinite(height) && height >= DESIGN_VIEW_HEIGHT ? height : DESIGN_VIEW_HEIGHT;
+}
 void bench_view_to_world(const BenchView *v,float sx,float sy,float *x,float *y)
 {
     *x=220+(sx-220-v->pan_x)/v->zoom;

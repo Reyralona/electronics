@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <SDL3/SDL_opengl.h>
 #include "app_text_utf8.h"
+#include <math.h>
 #include <stdint.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -19,6 +20,9 @@ static TextImage cache[TEXT_CACHE_ENTRIES];
 static uint64_t sequence;
 static int font_pixels = 15;
 static int monospace; /* Code editor face (Consolas) instead of the interface face. */
+/* Device pixels per canvas unit: glyphs are rasterized at this resolution and drawn on whole pixels,
+ * never stretched from a smaller bitmap. */
+static float pixel_scale = 1;
 
 static void release_image(TextImage *image)
 {
@@ -40,6 +44,15 @@ void app_text_utf8_set_size(int pixels)
     {
         app_text_utf8_clear();
         font_pixels = pixels;
+    }
+}
+
+void app_text_utf8_set_scale(float scale)
+{
+    if (isfinite(scale) && scale > 0 && fabsf(scale - pixel_scale) > .001f)
+    {
+        app_text_utf8_clear();
+        pixel_scale = scale;
     }
 }
 
@@ -154,14 +167,16 @@ static int create_image(TextImage *image, const char *text, int maximum_width)
 {
     WCHAR *wide = wide_text(text);
     HDC dc = CreateCompatibleDC(NULL);
-    HFONT font = CreateFontW(-font_pixels, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, ANTIALIASED_QUALITY,
+    int device_pixels = (int)lroundf((float)font_pixels * pixel_scale);
+    HFONT font = CreateFontW(-device_pixels, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, ANTIALIASED_QUALITY,
                              monospace ? FIXED_PITCH : DEFAULT_PITCH, monospace ? L"Consolas" : L"Segoe UI");
     int ok = 0;
     if (wide && dc && font)
     {
         HGDIOBJ previous = SelectObject(dc, font);
         SIZE size;
-        if (previous && previous != HGDI_ERROR && fit_text(dc, wide, maximum_width, &size))
+        int device_width = (int)fminf((float)INT_MAX / 2, floorf((float)maximum_width * pixel_scale));
+        if (previous && previous != HGDI_ERROR && fit_text(dc, wide, device_width, &size))
             ok = upload_text(image, dc, wide, &size);
         if (previous && previous != HGDI_ERROR)
             SelectObject(dc, previous);
@@ -212,7 +227,7 @@ static TextImage *cached_image(const char *text, int maximum_width)
 int app_text_utf8_width(const char *text, int maximum_width)
 {
     TextImage *image = cached_image(text, maximum_width);
-    return image ? image->width : 0;
+    return image ? (int)ceilf((float)image->width / pixel_scale) : 0;
 }
 
 int app_text_utf8(float x, float baseline, const char *text, int maximum_width)
@@ -220,8 +235,22 @@ int app_text_utf8(float x, float baseline, const char *text, int maximum_width)
     TextImage *image = cached_image(text, maximum_width);
     if (!image)
         return 0;
-    float top = baseline - image->ascent;
+    float top = baseline - (float)image->ascent / pixel_scale;
+    float width = (float)image->width / pixel_scale, height = (float)image->height / pixel_scale;
     float u = (float)image->width / image->texture_width, v = (float)image->height / image->texture_height;
+    /* Place the bitmap on whole device pixels, one texel per pixel, when the transform has no rotation. */
+    GLfloat m[16];
+    glGetFloatv(GL_MODELVIEW_MATRIX, m);
+    int aligned = m[1] == 0 && m[4] == 0 && m[0] > 0 && m[5] > 0;
+    if (aligned)
+    {
+        x = roundf((m[0] * x + m[12]) * pixel_scale) / pixel_scale;
+        top = roundf((m[5] * top + m[13]) * pixel_scale) / pixel_scale;
+        width *= m[0];
+        height *= m[5];
+        glPushMatrix();
+        glLoadIdentity();
+    }
     glPushAttrib(GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_TEXTURE_BIT);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
@@ -232,12 +261,14 @@ int app_text_utf8(float x, float baseline, const char *text, int maximum_width)
     glTexCoord2f(0, 0);
     glVertex2f(x, top);
     glTexCoord2f(u, 0);
-    glVertex2f(x + image->width, top);
+    glVertex2f(x + width, top);
     glTexCoord2f(u, v);
-    glVertex2f(x + image->width, top + image->height);
+    glVertex2f(x + width, top + height);
     glTexCoord2f(0, v);
-    glVertex2f(x, top + image->height);
+    glVertex2f(x, top + height);
     glEnd();
+    if (aligned)
+        glPopMatrix();
     glPopAttrib();
     return 1;
 }
