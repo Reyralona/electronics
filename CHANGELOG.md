@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 0.52.0
+
+- Fonte de bancada CV/CC: botões V (0–30 V, `Shift`+roda, passos de 0,1 V) e A (limite 0–3 A, passos de 10 mA, também no inspetor). Acima do limite a tensão cai e a corrente fica fixa, com lâmpada CC. Curto na fonte de bancada não a queima mais; baterias e clocks continuam queimando.
+- Proteção pelos máximos absolutos dos datasheets: saídas 74HC (portas soltas, CIs de portas e CIs médios) avisam acima de 25 mA e queimam a partir de 1,8× (curto ou disputa de barramento); alimentação acima de 6 V avisa e acima de 7 V queima (AT28C16: 6,25 V). Anel âmbar no pino, linha no inspetor e uma mensagem no rodapé quando o conjunto de avisos muda.
+- Segmentos de display e cores do LED RGB queimam acima do limite do LED. Placas: 40 mA por pino (aviso, queima a 1,8×), pinos fora da alimentação queimam (ESP32 não aceita 5 V), ATtiny85 queima acima de 6 V.
+- Aviso de entrada solta, calculado só a partir das ligações: portas soltas sempre, CIs de portas apenas nas portas usadas, CIs médios alimentados e pinos de placa ligados a botão sem pull-up/pull-down.
+- Ficha de cada CI (botão Ficha no inspetor ou `I`): chip isolado e ampliado, pinos numerados e nomeados, o que cada pino faz, alimentação e máximos absolutos.
+- Catálogo com abas Portas, Lógica, Memória e Lineares. Novos CIs: 74HC04, 74HC74, NE555, LM358, LM393, LM7805 (TO-220), ULN2003A e L293D, com modelos ideais dos datasheets e testes de bancada. Formato de arquivo 38.
+- Desempenho: respostas do simulador lidas em blocos e leitura de vários valores numa só ida e volta; a verificação de proteção não acrescenta equações ao solver. Circuito do slot 2 (com resistores nos segmentos): cerca de 0,6× sem instrumentos e 0,34× com instrumentos.
+- Pesquisa de datasheets com fontes oficiais e data de consulta em `docs/datasheets/`.
+
 ## 0.51.2
 
 - Corrige os oito erros reproduzidos na auditoria: estouro inteiro, numeros cientificos, tipos float, assinaturas de funcoes, rascunhos na troca de projeto, reinicio das placas, conexoes da protoboard larga ao criar chips e persistencia de terminais de sonda acima de 13.

@@ -814,3 +814,38 @@ antisserrilhado. Revisão guiada pela skill Impeccable (modo Operate; "reestrutu
 - MSAA 4× pedido ao criar a janela, com nova tentativa sem ele se o driver recusar.
 - Sombras de deslocamento sólido trocadas por sombra suave em camadas translúcidas.
 - Pendente: leitor de tela; um layout que reorganize os painéis (e não só os ancore) em telas muito largas.
+
+## Proteção pelos datasheets, fonte CV/CC e coleção de CIs (20/11/2026, 0.52.0)
+
+Fontes oficiais e datas: `docs/datasheets/LOGICA_74HC.md` e `docs/datasheets/ANALOGICOS_E_LIMITES.md`
+(TI, Microchip, Espressif, Vishay, onsemi, Nichicon, Rigol; consultadas em 20/11/2026). Valores marcados
+"(reconstr.)" vieram de tabelas mal extraídas e não viraram constantes, exceto onde indicado.
+
+- **Política de queima (decisão do responsável, 20/11):** acima do máximo absoluto de corrente, aviso; a partir de
+  1,8× o máximo, queima. 1,8 e não 2 porque duas saídas 74HC opostas a 5 V passam exatamente 2× (5 V em 100 Ω)
+  e devem queimar. Tensão de alimentação acima do máximo absoluto queima na hora; acima do recomendado, aviso.
+  A peça queimada abre as saídas (fonte `alive` do CI ou resistor `Rgout` da porta solta) até a ligação mudar,
+  como o LED.
+- **Verificação fora do solver:** uma árvore de `max()` em fontes B dentro do ngspice custou 6× no circuito do
+  slot 2 (0,10× contra 0,58×) e foi descartada. A sessão lê os nós em lote (pedido `M` do host), até 21 saídas
+  por passo em rodízio, e todas as alimentações a cada passo. A detecção tem atraso de alguns passos e nenhum
+  custo de equações. Ler as respostas do host em blocos, em vez de byte a byte, acelerou todas as leituras.
+- **Chave contada como ligada** só acima de 0,6 do controle (Vt + Vh do modelo SW): estado lógico indefinido
+  leva os dois controles a 0,5 e não pode contar como meio curto.
+- **Fonte de bancada CV/CC:** fonte B em série com queda `-G·suave(I - Ilim)` controlada por I(Vsource), G = 10⁴ V/A
+  (curto a 30 V passa 3 mA do limite). A forma controlada pela própria tensão (`Ilim·tanh(V/…)`) é plana no início
+  `uic` da sessão e falhou o primeiro passo. Consequência aceita: a corrente do diodo em série no teste DC
+  difere da do resistor em 3e-4, dentro do reltol de 1e-3.
+- **Placas:** ATmega328P/ATtiny85 40 mA por pino, pinos até VCC + 0,5 V, ATtiny85 VCC máximo 6 V; ESP32 até
+  3,6 V nos pinos e cerca de 40 mA (valor típico; a Espressif não publica máximo absoluto por pino).
+- **Entrada solta:** análise só das ligações, recalculada quando a montagem ou um controle muda. Avisa apenas
+  entradas em uso (portas soltas; portas de CI com saída ligada; CIs médios alimentados; pino de placa ligado a
+  botão), para não inundar de avisos as portas não usadas.
+- **CIs lineares** (`netlist_linear.c`): modelos ideais sem banda, slew rate nem temperatura. O LM358 tem um polo
+  de 1 µs só para quebrar o laço algébrico de ganho 10⁵ no início da sessão (sem ele não convergia). O LM7805 usa a
+  mesma queda controlada por corrente da fonte de bancada, bloqueando também a corrente reversa. Nesses CIs só a
+  alimentação é verificada; corrente de saída não (pendente).
+- **Formato 38:** novos tipos entram no fim do enum e de `legacy_types` (código do arquivo = índice).
+- **Pendentes conhecidos:** estado de registradores ao ligar continua 0 (real: indefinido); corrente de entrada
+  acima de VCC (diodos de grampo, ±20 mA) não é verificada; fusível do multímetro e capacitor eletrolítico
+  invertido não são modelados.

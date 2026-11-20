@@ -5,7 +5,7 @@ Este guia descreve o programa como ele está na versão 0.45.0. Para instalar, v
 ## A tela
 
 - **Topo:** **Projetos** (slots de salvamento), **Exemplos**, **Configurações** e o botão **Simulando/Pausado** da simulação.
-- **Esquerda:** o catálogo de peças, em nove abas: **Básicos** (passivos e chaves), **Digital** (portas e CIs), **Salvos** (seus chips), **Sensores**, **Saídas**, **Medição**, **Fontes**, **Placas** (microcontroladores) e **Bancada** (protoboards, junções e notas). `Ctrl+Tab` alterna entre as abas, e a roda do mouse rola a lista.
+- **Esquerda:** o catálogo de peças, em doze abas: **Básicos** (passivos e chaves), **Portas** (portas soltas e CIs de portas), **Salvos** (seus chips), **Sensores**, **Saídas**, **Medição**, **Fontes**, **Placas** (microcontroladores), **Bancada** (protoboards, junções e notas), **Lógica** (flip-flops, contadores, registradores, decodificadores, barramento), **Memória** e **Lineares** (555, amp-op, comparador, regulador e drivers). `Ctrl+Tab` alterna entre as abas, e a roda do mouse rola a lista.
 - **Busca:** clique em **Buscar peças** ou use `Ctrl+F`. A busca procura nomes e identificadores do catálogo padrão. Aceita maiúsculas e nomes sem acentos. **×** limpa a busca e volta à categoria escolhida.
 - **Barra da bancada:** **Desfazer**, **Refazer**, **Um passo**, **Criar chip**, **Ao vivo** e **Curva completa**. Ações indisponíveis ficam desabilitadas.
 - **Centro:** a bancada.
@@ -291,6 +291,29 @@ Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canai
 
 No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
 
+## Fonte de bancada, proteção e fichas dos CIs
+
+- **Fonte de bancada (CV/CC):** dois botões, como numa fonte de laboratório. Com `Shift`+roda sobre o botão
+  **V**, a tensão muda em 0,1 V (0 a 30 V); sobre o botão **A**, o limite de corrente muda em 10 mA (0 a 3 A).
+  O controle deslizante do inspetor também ajusta o limite. Abaixo do limite a fonte mantém a tensão (lâmpada
+  **CV** verde). Se o circuito pedir mais, a tensão cai e a corrente fica no limite (lâmpada **CC** vermelha).
+  Um curto na fonte de bancada não a queima: ela entra em CC. Baterias e clocks não têm limite e ainda queimam.
+  Hábito seguro: comece com o limite baixo e aumente só o necessário.
+- **Limites dos datasheets:** CIs, portas soltas, displays e placas seguem os máximos absolutos das folhas de
+  dados. Acima do máximo a peça mostra um anel âmbar no pino, uma linha vermelha no inspetor e uma mensagem
+  no rodapé. Acima de 1,8 vez o máximo de corrente, como num curto ou em duas saídas brigando no mesmo fio,
+  ou acima da tensão máxima absoluta, a peça queima e para de funcionar até a ligação mudar. Valores:
+  74HC até 25 mA por saída (35 mA em alguns), alimentação recomendada até 6 V e queima acima de 7 V;
+  AT28C16 até 6,25 V; Arduino Uno e ATtiny85 com 40 mA por pino e pinos até VCC + 0,5 V; ESP32 não aceita
+  5 V nos pinos (máximo 3,6 V); segmentos de display e cores do LED RGB com o limite do LED (30 mA).
+- **Entrada solta:** uma entrada de CI que nada define (nem fonte, nem resistor, nem saída) recebe um aviso, com
+  as chaves no estado atual. O caso clássico é um botão ligado ao VCC sem resistor de pull-down: solto, a entrada
+  fica no ar. A simulação lê 0, mas um CI real lê ao acaso. Portas não usadas de um CI não geram aviso.
+- **Ficha do CI:** selecione um CI e clique em **Ficha** no inspetor, ou pressione `I`. Ela mostra o chip
+  sozinho e ampliado, com os pinos numerados e nomeados, o que cada pino faz, a faixa de alimentação e os
+  máximos absolutos. Passe o mouse num pino, no desenho ou na lista, para ler a explicação completa. `Esc`
+  fecha.
+
 ## Limites do modelo elétrico
 
 - As peças usam parâmetros genéricos: o LED tem 2 Ω em série, e transistores, sensores e baterias seguem curvas típicas. Detalhes de cada modelo em [DECISOES.md](DECISOES.md).
@@ -305,6 +328,13 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
 - Os **CIs 74HC** simulam quatro portas alimentadas pelos próprios pinos VCC e GND, de 2 a 6 V, com os mesmos
   limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. O 74HC161, o 74HC173,
   o 74HC245, o 74HC283 e a AT28C16 seguem a mesma regra, com lógica interna digital e atraso de 1 ns por porta. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
+- Os **CIs lineares** são modelos ideais dos datasheets da TI, sem banda, slew rate nem aquecimento:
+  **NE555** (limiares em 2/3 e 1/3 de VCC ou no pino CONT; saída alta 1,7 V abaixo de VCC; astável com
+  f = 1,44/((RA + 2RB)·C)); **LM358** (ganho 10⁵, saída de 0 V a V+ − 1,5 V); **LM393** (saída em coletor
+  aberto, use pull-up); **LM7805** (5 V com pelo menos 7 V na entrada, até 2,1 A, não absorve corrente);
+  **ULN2003A** (chaves Darlington com cerca de 1 V de saturação e diodos para COM); **L293D** (meias-pontes
+  com quedas de 1,4 V e 1,2 V, desligadas com EN baixo). Nesses CIs só a alimentação é protegida; a corrente
+  das saídas não é verificada.
 - O **tempo simulado** corre bem mais devagar que o real: cerca de 1 ms simulado por segundo na tela. Um RC de 1 kΩ × 1 µF leva de 1 a 3 s para descarregar visivelmente.
 - Adicionar ou remover peças ou ligações, ou mudar a frequência de um clock, reinicia a simulação contínua. O rodapé avisa quando isso acontece.
 - Capacidade: 1024 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 2048 fios, 1024 grupos, slots de projeto conforme o espaço disponível e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.

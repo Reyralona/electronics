@@ -1,6 +1,6 @@
 # Caminho para a 1.0.0 - revisao em 20/11/2026
 
-Base publicada: 0.51.1. Trabalho atual: 0.51.2, branch `fix/audit-and-slot2-performance`, criada da main.
+Base publicada: 0.51.1. Trabalho atual: 0.52.0, branch `feature/protecao-arsenal-cis`, criada de `fix/audit-and-slot2-performance`.
 A 1.0 ainda nao foi atingida. Este documento diferencia recursos entregues, erros reproduzidos e criterios de aceite pendentes; aumentar a versao nao substitui esses criterios.
 
 ## 1. Histórico desde 14/11/2026
@@ -28,7 +28,8 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 | 16/11 | 0.37.0 | Rotação de chips por R e contatos diretos entre terminais, breadboards e portas de chips. Formato 29. |
 
 | 20/11 | 0.48-0.51.1 | EEPROM gravavel, protoboard larga, selecao conjunta, notas e catalogo reorganizado. Pre-release 0.51.1 publicada. |
-| 20/11, branch atual | 0.51.2 | Oito correcoes da auditoria, regressoes e otimizacao do circuito contador/adder/decoders. Ainda nao publicada. |
+| 20/11, branch atual | 0.52.0 | Fonte CV/CC, proteção pelos datasheets (CIs, displays, placas, entradas soltas), ficha dos CIs, abas Lógica/Memória/Lineares e coleção de CIs. Ainda nao publicada. |
+| 20/11 | 0.51.2 | Oito correcoes da auditoria, regressoes e otimizacao do circuito contador/adder/decoders. Ainda nao publicada. |
 
 ## 2. Estado atual
 
