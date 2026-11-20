@@ -246,9 +246,9 @@ static int write_logic_supply(FILE *out, int rail_node, int clock_reference)
 }
 
 /* Input seen by the digital core: the real input voltage rescaled from VCC to the 5 V bridge domain. */
-static int write_gate_scaled_input(FILE *out, int gate, int input, int node)
+static int write_gate_scaled_input(FILE *out, int node)
 {
-    return fprintf(out, "Bgin%d_%d gin%d_%d 0 V=V(%d)*%g/max(V(logic_vcc),%g)\n", gate, input, gate, input, node,
+    return fprintf(out, "Bgin%d gin%d 0 V=V(%d)*%g/max(V(logic_vcc),%g)\n", node, node, node,
                    LOGIC_BRIDGE_VOLTS, LOGIC_SUPPLY_FLOOR) >= 0;
 }
 
@@ -258,9 +258,10 @@ static int write_gate_output(FILE *out, int gate, int node)
 {
     return fprintf(out,
                    "Adac%d [dout%d] [gdo%d] gate_dac\n"
-                   "Bghi%d ghi%d 0 V=V(logic_ok)*V(gdo%d)\nBglo%d glo%d 0 V=V(logic_ok)*(1-V(gdo%d))\n"
-                   "Sghi%d logic_rail %d ghi%d 0 chip_switch\nSglo%d %d 0 glo%d 0 chip_switch\n",
-                   gate, gate, gate, gate, gate, gate, gate, gate, gate, gate, node, gate, gate, node, gate) >= 0;
+                   "Bghi%d ghi%d 0 V=V(logic_ok)*V(gdo%d)\n"
+                   /* low = logic_ok - high; no extra behavioral voltage source is needed. */
+                   "Sghi%d logic_rail %d ghi%d 0 chip_switch\nSglo%d %d 0 logic_ok ghi%d chip_switch\n",
+                   gate, gate, gate, gate, gate, gate, gate, node, gate, gate, node, gate) >= 0;
 }
 
 static void quad_gate_drive(PartType type, int chip, int gate, char *high, char *low, size_t capacity)
@@ -562,6 +563,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
     if (gate_count &&
         !write_logic_supply(out, positive == ground ? 0 : positive + 1, b->parts[source].type == PART_CLOCK))
         return NETLIST_IO_ERROR;
+    unsigned char scaled_inputs[PIN_TOTAL + 1] = {0};
     for (i = 0; i < b->part_count; ++i)
         if (component_has_flag(b->parts[i].type, COMPONENT_GATE_SYMBOL))
         {
@@ -578,26 +580,30 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             const int inputs[2] = {a == ground ? 0 : a + 1, c == ground ? 0 : c + 1};
             const int input_count = type == PART_NOT ? 1 : 2;
             for (int input = 0; input < input_count; ++input)
-                if (!write_gate_scaled_input(out, i, input, inputs[input]))
-                    return NETLIST_IO_ERROR;
+                if (!scaled_inputs[inputs[input]])
+                {
+                    if (!write_gate_scaled_input(out, inputs[input]))
+                        return NETLIST_IO_ERROR;
+                    scaled_inputs[inputs[input]] = 1;
+                }
             if (type == PART_NOT)
             {
-                if (fprintf(out, "Aadc%d [gin%d_0] [din%d_0] gate_adc\nAgate%d din%d_0 dout%d %s\n", i, i, i, i, i,
+                if (fprintf(out, "Aadc%d [gin%d] [din%d_0] gate_adc\nAgate%d din%d_0 dout%d %s\n", i, inputs[0], i, i, i,
                             i, model) < 0)
                     return NETLIST_IO_ERROR;
             }
             else if (type == PART_DFF)
             {
                 if (fprintf(out,
-                            "Aadc%d [gin%d_0 gin%d_1] [din%d_0 din%d_1] gate_adc\nAgate%d din%d_0 din%d_1 null null dout%d "
+                            "Aadc%d [gin%d gin%d] [din%d_0 din%d_1] gate_adc\nAgate%d din%d_0 din%d_1 null null dout%d "
                             "null gate_dff\n",
-                            i, i, i, i, i, i, i, i, i) < 0)
+                            i, inputs[0], inputs[1], i, i, i, i, i, i) < 0)
                     return NETLIST_IO_ERROR;
             }
             else
             {
-                if (fprintf(out, "Aadc%d [gin%d_0 gin%d_1] [din%d_0 din%d_1] gate_adc\nAgate%d [din%d_0 din%d_1] dout%d %s\n",
-                            i, i, i, i, i, i, i, i, i, model) < 0)
+                if (fprintf(out, "Aadc%d [gin%d gin%d] [din%d_0 din%d_1] gate_adc\nAgate%d [din%d_0 din%d_1] dout%d %s\n",
+                            i, inputs[0], inputs[1], i, i, i, i, i, i, model) < 0)
                     return NETLIST_IO_ERROR;
             }
             if (!write_gate_output(out, i, output_node == ground ? 0 : output_node + 1))

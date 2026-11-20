@@ -29,3 +29,12 @@ Hipotese: esses custos de orquestracao explicam parte importante da lentidao; va
 4. Atualizar roadmap, registrar limites e executar a suite completa e testes graficos.
 
 Nao alterar o circuito pessoal para mascara de desempenho. Backup anterior em saves/backup, fora do controle de versao.
+
+## Decisoes apos o perfil (20/11/2026)
+
+- O circuito foi congelado em tests/fixtures/counter-adder-seven-segment.elec para comparar a mesma montagem de 50 Hz; o arquivo pessoal continuou editavel. Sao 235 pecas, 333 fios e tres blocos internos de decoder (um fora da montagem visivel). Nenhuma peca pessoal foi removida.
+- Cache de curto por revisao elimina reconstrucao repetida. Fontes comportamentais de entrada identicas passam a ser compartilhadas por no; a saida baixa usa a identidade low=logic_ok-high. Limiares, impedancia e alimentacao continuam iguais.
+- Leituras em lote e aumento de passo foram experimentados, mas nao trouxeram ganho suficiente; descartados. O passo e a cadencia de amostragem permanecem iguais.
+- No mesmo arquivo a 50 Hz, 20 lotes de 20,5 ms: 69,55 ms/lote antes (0,295x), 28,90 ms depois (0,709x), cerca de 2,4 vezes mais rapido. As 21 leituras dos dois displays foram identicas. Isto verifica equivalencia; nao certifica a tabela-verdade dos decoders personalizados.
+- Build normal passa a usar -O2, sem fast-math. A documentacao GCC distingue otimizar codigo de relaxar regras numericas: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html (consulta em 20/11/2026). O ngspice distribuido ja e otimizado; isso melhora o codigo do aplicativo, nao substitui a medicao do solver.
+- O benchmark e impresso por test_counter_decoder, sem limite temporal rigido dependente da maquina. Testar tambem com correntes nos fios e invalidacao do cache apos fechar/abrir curto.

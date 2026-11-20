@@ -24,6 +24,9 @@ struct SpiceLive
     double probe_interval;
     int probe_armed, probe_valid;
     unsigned char burnt[WORKBENCH_MAX_COMPONENTS], reason[WORKBENCH_MAX_COMPONENTS];
+    unsigned char shorted[WORKBENCH_MAX_COMPONENTS];
+    uint64_t shorted_revision;
+    int shorted_valid;
     double stress[WORKBENCH_MAX_COMPONENTS];
 };
 
@@ -458,10 +461,14 @@ static int controls_changed(const Workbench *previous, const Workbench *bench)
 
 static int protect_sources(SpiceLive *live, const Workbench *bench, char *message, size_t capacity)
 {
-    unsigned char shorted[WORKBENCH_MAX_COMPONENTS];
-    netlist_shorted_sources(bench, shorted);
+    if (!live->shorted_valid || live->shorted_revision != bench->revision)
+    {
+        netlist_shorted_sources(bench, live->shorted);
+        live->shorted_revision = bench->revision;
+        live->shorted_valid = 1;
+    }
     for (int i = 0; i < bench->part_count; ++i)
-        if (shorted[i] && bench->parts[i].on && !live->burnt[i])
+        if (live->shorted[i] && bench->parts[i].on && !live->burnt[i])
         {
             char name[48];
             snprintf(name, sizeof(name), "Rpower%d", i);

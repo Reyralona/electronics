@@ -267,12 +267,38 @@ static void check_live_probe(void)
     bench_snapshot_clear(&clock);
 }
 
+static void shorts_follow_connection_changes(void)
+{
+    static Workbench bench;
+    bench_add(&bench, PART_SOURCE, 100, 100);
+    bench_add(&bench, PART_SWITCH, 400, 100);
+    bench_add(&bench, PART_RESISTOR, 700, 100);
+    bench_set_on(&bench, 1, 0);
+    wire(&bench, 0, 0, 1, 0);
+    wire(&bench, 0, 1, 1, 1);
+    wire(&bench, 0, 0, 2, 0);
+    wire(&bench, 0, 1, 2, 1);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench, .001);
+    assert(!result.burnt[0]);
+    bench_set_on(&bench, 1, 1);
+    step(live, &bench, .001);
+    assert(result.burnt[0]);
+    bench_set_on(&bench, 1, 0);
+    step(live, &bench, .001);
+    assert(!result.burnt[0] && fabs(result.currents[2]) > .001);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     executable = argv[1];
     check_live_history_policy();
     options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
+    shorts_follow_connection_changes();
     check_recovers_after_timeout();
     check_live_probe();
     check_four_input_and();
