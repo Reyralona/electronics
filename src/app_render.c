@@ -2732,15 +2732,9 @@ static void draw_workspace_route(const AppState *app)
         }
 }
 
-/* Below 100% zoom, terminal marks shrink with the parts instead of keeping their screen size. */
-#define TERMINAL_MIN_SCREEN_RADIUS 1.5f
-/* Bitmap labels keep their pixel size; below this zoom they would cover the parts, so they are hidden. */
+/* Terminal discs follow the breadboard hole in world units; picking keeps its own screen tolerance. */
+#define TERMINAL_WORLD_RADIUS 3.0f
 #define LABEL_MIN_ZOOM 0.6f
-
-static float terminal_world_radius(float zoom, float screen_radius)
-{
-    return fmaxf(3, fminf(5, screen_radius)) / zoom;
-}
 
 static int labels_visible(const AppState *app)
 {
@@ -2751,7 +2745,7 @@ static int labels_visible(const AppState *app)
 static void draw_junction(const AppState *app, int index)
 {
     const Part *part = &app->bench.parts[index];
-    float radius = terminal_world_radius(app->view.zoom, 4.5f);
+    float radius = 4.5f;
     if (app->selected == index || app->selection.parts[index])
     {
         glColor3f(.12f, .49f, .84f);
@@ -2768,7 +2762,7 @@ static void draw_workspace_parts(const AppState *app)
     for (i = 0; i < app->bench.part_count; ++i)
         if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_JUNCTION)
             draw_junction(app, i);
-        else if (!app->bench.parts[i].group && !bench_is_board(app->bench.parts[i].type))
+        else if (!app->bench.parts[i].group && !bench_is_board(app->bench.parts[i].type) && app->bench.parts[i].type != PART_NOTE)
         {
             int p;
             set_device_frame(app, i);
@@ -2789,17 +2783,8 @@ static void draw_workspace_parts(const AppState *app)
                 float x, y;
                 Pin contact;
                 int snapped = bench_find_contact(&app->bench, i, p, &contact);
-                float outer_radius = snapped ? 5.0f : 8.0f;
-                float inner_radius = snapped ? 3.0f : 5.0f;
-                if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_DIP))
-                {
-                    outer_radius = 4.0f;
-                    inner_radius = 2.5f;
-                }
-                float terminal_scale = fminf(1, bench_part_scale(&app->bench.parts[i]));
-                float inner_ratio = inner_radius / outer_radius;
-                outer_radius = terminal_world_radius(app->view.zoom, fmaxf(3, outer_radius * terminal_scale));
-                inner_radius = outer_radius * inner_ratio;
+                float outer_radius = TERMINAL_WORLD_RADIUS;
+                float inner_radius = outer_radius * .7f;
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
                 color(.18f, .22f, .24f);
                 circle(x, y, outer_radius);
@@ -3305,13 +3290,50 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
         if (part->type != PART_NOTE || part->group)
             continue;
         float scale = bench_part_scale(part);
+        float w = 240 * scale, h = 110 * scale;
+        float x = part->x - w / 2, y = part->y - h / 2;
+        float curl = fminf(18, h * .2f);
         const float *bg = palette_tone(((part->states & 255) + BENCH_COLOR_YELLOW) % BENCH_COLOR_COUNT)->wire;
         const float *fg = palette_tone(((part->states >> 8) + BENCH_COLOR_BLACK) % BENCH_COLOR_COUNT)->wire;
+        ui_shadow((AppRect){x + 2, y + 3, w, h}, 2, 5);
+        glBegin(GL_POLYGON);
+        glColor3f(fminf(1, bg[0] * .92f + .08f), fminf(1, bg[1] * .92f + .08f), fminf(1, bg[2] * .92f + .08f));
+        glVertex2f(x, y);
+        glVertex2f(x + w, y);
         glColor3fv(bg);
-        rect(part->x - 120 * scale, part->y - 55 * scale, 240 * scale, 110 * scale);
+        glVertex2f(x + w, y + h - curl);
+        glVertex2f(x + w - curl, y + h);
+        glVertex2f(x + w * .45f, y + h + 2);
+        glVertex2f(x, y + h);
+        glEnd();
+        glColor3f(bg[0] * .72f, bg[1] * .72f, bg[2] * .72f);
+        glBegin(GL_TRIANGLES);
+        glVertex2f(x + w - curl, y + h);
+        glColor3f(fminf(1, bg[0] + .2f), fminf(1, bg[1] + .2f), fminf(1, bg[2] + .2f));
+        glVertex2f(x + w - curl, y + h - curl);
+        glVertex2f(x + w, y + h - curl);
+        glEnd();
+        glColor4f(.92f, .85f, .65f, .72f);
+        glBegin(GL_QUADS);
+        glVertex2f(part->x - 25, y - 7);
+        glVertex2f(part->x + 26, y - 10);
+        glVertex2f(part->x + 24, y + 11);
+        glVertex2f(part->x - 26, y + 14);
+        glEnd();
         glColor3fv(fg);
-        ui_wrapped(font, part->x - 110 * scale, part->y - 34 * scale,
-                   part->code ? part->code : tr(TXT_UI_NOTE_HINT), (int)(220 * scale), 4, 22 * scale);
+        ui_wrapped(font, x + 10, y + 23, part->code ? part->code : tr(TXT_UI_NOTE_HINT),
+                   (int)fmaxf(1, w - 20), (int)fmaxf(1, (h - 30) / 22 + 1), 22);
+        if (app->selected == i || app->selection.parts[i])
+        {
+            glColor3f(.12f, .49f, .84f);
+            glBegin(GL_LINE_LOOP);
+            glVertex2f(x, y);
+            glVertex2f(x + w, y);
+            glVertex2f(x + w, y + h);
+            glVertex2f(x, y + h);
+            glEnd();
+            rect(x + w - 10, y + h - 10, 8, 8);
+        }
     }
     draw_groups(app, font);
     draw_workspace_labels(app, font);

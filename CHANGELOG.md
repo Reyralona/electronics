@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.50.0 - 20/11/2026
+
+- Post-its com fita, sombra e canto levantado; alça no canto inferior direito para redimensionar proporcionalmente, mantendo o canto oposto fixo e permitindo desfazer.
+- Terminais com raio uniforme, independente da escala do componente, acompanhando o zoom e preenchendo o furo da protoboard. Área de clique preservada.
+
 ## 0.49.1 - 20/11/2026
 
 - Corrige erro de cálculo ao simular circuitos com notas. Testes verificam que as notas preservam o circuito elétrico e o fluxo de gravação da EEPROM.

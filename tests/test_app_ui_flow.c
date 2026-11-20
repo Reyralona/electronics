@@ -5,6 +5,7 @@
 #include "app_packing.h"
 #include "ui_text.h"
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -366,6 +367,42 @@ int main(void)
     assert(app.bench.parts[0].states >> 8);
     key(&app, window, SDLK_Z, SDL_KMOD_CTRL);
     assert(app.bench.parts[0].states == background);
+    /* Person drags the note corner; the opposite corner stays put, undo restores the size. */
+    float left = app.bench.parts[0].x - 120;
+    float top = app.bench.parts[0].y - 55;
+    SDL_Event resize;
+    SDL_zero(resize);
+    resize.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    resize.button.button = SDL_BUTTON_LEFT;
+    resize.button.clicks = 2;
+    resize.button.windowID = SDL_GetWindowID(window);
+    WirePoint corner;
+    int window_width, window_height;
+    assert(SDL_GetWindowSize(window, &window_width, &window_height));
+    bench_view_to_screen(&app.view, left + 234, top + 104, &corner.x, &corner.y);
+    corner = app_layout_from_ui(window_width, window_height, corner.x, corner.y);
+    resize.button.x = corner.x;
+    resize.button.y = corner.y;
+    assert(SDL_PushEvent(&resize));
+    drain(&app, window);
+    resize.type = SDL_EVENT_MOUSE_MOTION;
+    resize.motion.windowID = SDL_GetWindowID(window);
+    bench_view_to_screen(&app.view, left + 354, top + 159, &corner.x, &corner.y);
+    corner = app_layout_from_ui(window_width, window_height, corner.x, corner.y);
+    resize.motion.x = corner.x;
+    resize.motion.y = corner.y;
+    assert(SDL_PushEvent(&resize));
+    drain(&app, window);
+    resize.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    resize.button.button = SDL_BUTTON_LEFT;
+    assert(SDL_PushEvent(&resize));
+    drain(&app, window);
+    assert(fabsf(bench_part_scale(&app.bench.parts[0]) - 1.5f) < .01f);
+    assert(fabsf(app.bench.parts[0].x - 120 * 1.5f - left) < .01f);
+    assert(fabsf(app.bench.parts[0].y - 55 * 1.5f - top) < .01f);
+    key(&app, window, SDLK_Z, SDL_KMOD_CTRL);
+    assert(bench_part_scale(&app.bench.parts[0]) == 1);
+
     app_state_dispose(&app);
     SDL_DestroyWindow(window);
     SDL_Quit();

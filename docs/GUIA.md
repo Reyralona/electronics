@@ -317,4 +317,6 @@ O catálogo Básicos inclui Protoboard larga (60 colunas), com o mesmo passo de 
 
 ### Notas flutuantes — 0.49.0
 
-Em Básicos, escolha **Nota** e coloque na bancada. Clique duplo ou use **Texto** no painel para escrever até 127 bytes (acentos ocupam mais de um byte); Enter confirma e Esc cancela. O texto quebra automaticamente em até quatro linhas. No painel, **Fundo** e **Texto** têm paletas independentes. Arraste para mover, ajuste Tamanho para ampliar e use Delete para remover. Notas não têm pinos nem participam eletricamente do circuito. São salvas no projeto e acompanham copiar/colar e desfazer.
+Em Básicos, escolha **Nota** e coloque na bancada. Clique duplo ou use **Texto** no painel para escrever até 127 bytes (acentos ocupam mais de um byte); Enter confirma e Esc cancela. O texto quebra automaticamente conforme o espaço do papel. No painel, **Fundo** e **Texto** têm paletas independentes. Arraste para mover, ajuste Tamanho para ampliar e use Delete para remover. Notas não têm pinos nem participam eletricamente do circuito. São salvas no projeto e acompanham copiar/colar e desfazer.
+
+Na 0.50.0, selecione a nota e arraste a alça azul no canto inferior direito para ampliar ou reduzir proporcionalmente (mínimo de 50% pelo arraste). O canto superior esquerdo fica fixo. Também pode digitar Tamanho no painel. Ctrl+Z desfaz o redimensionamento. A fita, a sombra e o canto levantado são apenas visuais.

@@ -97,3 +97,8 @@ Na mesma branch, versão 0.49.0 e formato 37: componente Nota em Básicos, ediç
 ### Correcao 0.49.1
 
 Notas agora sao aceitas como elementos sem efeito eletrico no gerador de netlist. Regressao em test_netlist falhou antes da correcao e passou depois (DC e sessao continua, circuito identico com/sem nota). test_eeprom_programmer_flow passou com nota, incluindo gravacao e persistencia. Slot 1 pessoal, 76 pecas, simulado por 10 ms sem erro. build/build.exe recompilado; suite completa nao repetida nesta correcao localizada.
+
+
+### Post-its e terminais - 0.50.0
+
+Notas com fita, sombra e canto levantado; alca no canto inferior direito altera a escala proporcionalmente, ancora o canto oposto e registra uma unica acao para desfazer. Teste test_app_ui_flow falha com app_input anterior e passa com a implementacao, incluindo clique duplo na alca; autoteste --self-test-history passou. Capturas de zoom com roda real no build/build.exe em build/human-review/captures/notes-{normal,zoom-out,zoom-in}.png; revisao do papel em build/postits-paper.bmp. Terminais usam raio de 3 unidades da bancada, independente da escala do componente; picking mantido. Sem mudanca de formato (37). Suite completa nao repetida neste ajuste.

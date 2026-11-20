@@ -825,6 +825,14 @@ static int input_click_environment(AppState *app, float x, float y)
     return 1;
 }
 
+static int note_resize_hit(const Part *part, float x, float y, float zoom)
+{
+    float scale = bench_part_scale(part);
+    return part->type == PART_NOTE &&
+        fabsf(x - (part->x + 120 * scale - 6)) < 10 / zoom &&
+        fabsf(y - (part->y + 55 * scale - 6)) < 10 / zoom;
+}
+
 static void start_note_edit(AppState *app, SDL_Window *window)
 {
     if (!window)
@@ -1393,7 +1401,8 @@ static void input_select(AppState *app, float x, float y, int clicks)
             app->status = tr(TXT_APP_BUTTON_PRESSED);
             return;
         }
-        if (clicks >= 2 && app->bench.parts[hit].type == PART_NOTE)
+        if (clicks >= 2 && app->bench.parts[hit].type == PART_NOTE &&
+            !note_resize_hit(&app->bench.parts[hit], x, y, app->view.zoom))
         {
             app->selected = hit;
             start_note_edit(app, NULL);
@@ -1422,6 +1431,14 @@ static void input_select(AppState *app, float x, float y, int clicks)
             app->drag_snap_mode = 0;
             app->offset_x = x - app->bench.parts[hit].x;
             app->offset_y = y - app->bench.parts[hit].y;
+            const Part *part = &app->bench.parts[hit];
+            float scale = bench_part_scale(part);
+            app->resizing_note = note_resize_hit(part, x, y, app->view.zoom);
+            if (app->resizing_note)
+            {
+                app->offset_x = part->x - 120 * scale;
+                app->offset_y = part->y - 55 * scale;
+            }
             app->status = tr(TXT_APP_DRAG_PART);
         }
     }
@@ -1818,6 +1835,7 @@ static void input_release(AppState *app, SDL_Window *window, const SDL_Event *ev
         bench_snap_to_breadboard(&app->bench, app->dragging))
         app->status = tr(TXT_APP_PART_SNAPPED);
     app->dragging = -1;
+    app->resizing_note = 0;
     app->drag_snap_mode = 0;
     app->drag_wire = -1;
     app->dragging_selection_knee = 0;
@@ -1971,6 +1989,23 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
         float x = point.x;
         float y = point.y;
         bench_view_to_world(&app->view, x, y, &x, &y);
+        if (app->resizing_note)
+        {
+            float scale = fmaxf((x + 6 - app->offset_x) / 240, (y + 6 - app->offset_y) / 110);
+            scale = fminf(PART_SCALE_MAX, fmaxf(.5f, scale));
+            if (!app->move_recorded)
+            {
+                if (!bench_history_record(app->history, &app->bench))
+                {
+                    app->status = tr(TXT_APP_HISTORY_FAILED);
+                    return;
+                }
+                app->move_recorded = 1;
+            }
+            bench_set_scale(&app->bench, app->dragging, scale);
+            bench_move_part(&app->bench, app->dragging, app->offset_x + 120 * scale, app->offset_y + 55 * scale);
+            return;
+        }
         x -= app->offset_x;
         y -= app->offset_y;
         const Part *dragged = &app->bench.parts[app->dragging];

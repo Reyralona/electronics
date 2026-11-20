@@ -68,6 +68,7 @@ typedef struct AppState
     int xray; /* X: transparent part bodies; covered terminals become reachable. */
     int inspector_minimized; /* Inspector shown as a small name tab; kept across selections. */
     BenchHistory *history;
+    int resizing_note;
     int move_recorded;
     int drag_snap_mode; /* 0 automatic, 1 grid only, 2 free. */
     uint64_t live_last_scheduled;
