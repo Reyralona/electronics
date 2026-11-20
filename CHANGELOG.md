@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.47.1
+
+- O build interrompe antes de compilar quando o ngspice está ausente ou incompleto e indica como prepará-lo.
+- A referência DC e o teste de sessão contínua verificam o solver com PATH mínimo, sem depender do MSYS2.
+- Teste de regressão cobre instalação ausente, DLL principal ausente, modelo digital ausente e executável inválido.
+
 ## 0.47.0
 
 - Limites maiores: 1024 peças e 2048 fios por montagem (eram 256 e 512).

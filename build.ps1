@@ -1,5 +1,7 @@
 param([switch]$GuiTests, [ValidatePattern('^[A-Za-z0-9_-]+$')][string]$OutputName = 'build')
 $ErrorActionPreference = 'Stop'
+& (Join-Path $PSScriptRoot 'tests/test_ngspice_runtime.ps1')
+& (Join-Path $PSScriptRoot 'tools/test-ngspice.ps1')
 . (Join-Path $PSScriptRoot 'tools/msys2-path.ps1')
 Add-Msys2ToPath
 $compiler = Get-Command gcc.exe -ErrorAction Stop
@@ -40,8 +42,16 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_cockcroft_slot.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/ui_text.c -o build/test_cockcroft_slot.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path "$ngspiceBin/ngspice_con.exe") {
-    & ./build/test_spice_session.exe "$ngspiceBin/ngspice_con.exe"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $normalPath = $env:Path
+    try {
+        $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
+        & ./build/test_spice_session.exe "$ngspiceBin/ngspice_con.exe"
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Falha no carregamento do ngspice sem MSYS2. Mova build/spice-local para backup e execute ./tools/setup-ngspice.ps1.'
+        }
+    } finally {
+        $env:Path = $normalPath
+    }
     & ./build/test_spice_live.exe "$ngspiceBin/ngspice_con.exe"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     & ./build/test_cockcroft_slot.exe tests/fixtures/cockcroft-walton.elec "$ngspiceBin/ngspice_con.exe"
