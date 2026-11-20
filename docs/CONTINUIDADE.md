@@ -7,7 +7,8 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 - Versão integrada na `main`: 0.47.1, incluindo os recursos da 0.47.0, a validação do runtime ngspice
   no build e a auditoria consolidada. Pacotes da pré-release validados em 19/11/2026.
-  Formato de projeto 35. Pré-release anterior: 0.46.0, Windows x64.
+  Formato de projeto 35. Última pré-release publicada: 0.47.1, Windows x64.
+  Tag `v0.47.1`, com instalador, ZIP portátil, fontes e hashes conferidos no GitHub.
 - 0.47.0: limites de 1024 peças e 2048 fios; CIs 74HC161/173/245/283 e EEPROM AT28C16 (`netlist_logic.c`,
   `rom_image.c`). O exemplo do computador de 8 bits foi retirado (commit 3ca0d8e guarda o gerador).
   Pendente: editor do conteúdo da EEPROM na interface e conferência visual das pinagens além do 74HC161.
