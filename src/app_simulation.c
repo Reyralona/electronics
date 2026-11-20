@@ -104,10 +104,16 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
             continue;
         double absolute, recommended, output;
         netlist_logic_ratings(bench->parts[i].type, &absolute, &recommended, &output);
-        if (reason[i] == BURN_OVERVOLTAGE)
+        if (reason[i] == BURN_PIN_VOLTAGE)
+            snprintf(buffer, capacity, tr(TXT_APP_BURN_PIN_VOLTAGE), component_info(bench->parts[i].type)->display_name,
+                     value[i]);
+        else if (reason[i] == BURN_OVERVOLTAGE)
             snprintf(buffer, capacity, tr(TXT_APP_BURN_CHIP_VOLTAGE), component_info(bench->parts[i].type)->display_name, value[i],
                      absolute);
-        else if (reason[i] == BURN_OVERCURRENT && bench->parts[i].type != PART_LED)
+        else if (reason[i] == BURN_OVERCURRENT && bench->parts[i].type != PART_LED && burn_is_led(bench->parts[i].type))
+            snprintf(buffer, capacity, tr(TXT_APP_BURN_DISPLAY), component_info(bench->parts[i].type)->display_name,
+                     value[i] * 1000.0, burn_limits_default().led_max_current * 1000.0);
+        else if (reason[i] == BURN_OVERCURRENT && !burn_is_led(bench->parts[i].type))
             snprintf(buffer, capacity, tr(TXT_APP_BURN_CHIP_CURRENT), component_info(bench->parts[i].type)->display_name,
                      value[i] * 1000.0, output * 1000.0);
         else if (reason[i] == BURN_SHORT)
@@ -125,7 +131,7 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
 
 /* Footer text for the first chip warning; NULL when no part is stressed. */
 static const char *alert_message(char *buffer, size_t capacity, const Workbench *bench, const unsigned char alert[],
-                                 const double value[])
+                                 const unsigned char pin[], const double value[])
 {
     for (int i = 0; i < bench->part_count; ++i)
     {
@@ -141,6 +147,14 @@ static const char *alert_message(char *buffer, size_t capacity, const Workbench 
                      recommended);
         return buffer;
     }
+    for (int i = 0; i < bench->part_count; ++i)
+        if (alert[i] == PART_ALERT_FLOATING_INPUT)
+        {
+            const ComponentPinInfo *info = component_pin_info(bench->parts[i].type, pin[i]);
+            snprintf(buffer, capacity, tr(TXT_APP_ALERT_FLOATING_INPUT), component_info(bench->parts[i].type)->display_name,
+                     info && info->name ? info->name : "");
+            return buffer;
+        }
     return NULL;
 }
 
@@ -227,7 +241,8 @@ static void accept_automatic_result(AppState *app)
         burn_text = burn_message(app->sim.auto_status, sizeof(app->sim.auto_status), &app->bench, app->sim.burnt,
                                  app->sim.burn_reason, app->sim.burn_value);
         const char *alert_text = new_alert ? alert_message(app->sim.auto_status, sizeof(app->sim.auto_status),
-                                                           &app->bench, app->sim.alert, app->sim.alert_value)
+                                                           &app->bench, app->sim.alert, app->sim.alert_pin,
+                                                           app->sim.alert_value)
                                            : NULL;
         if (burn_text)
             app->status = burn_text;

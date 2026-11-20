@@ -15,12 +15,17 @@ BurnLimits burn_limits_default(void)
     return limits;
 }
 
+int burn_is_led(PartType type)
+{
+    return type == PART_LED || type == PART_SEVEN_SEGMENT || type == PART_RGB_LED;
+}
+
 double burn_stress(const Part *part, double current, const BurnLimits *limits, BurnReason *reason, double *measured)
 {
     *reason = BURN_NONE;
     *measured = 0;
     if (!isfinite(current)) return 0;
-    if (part->type == PART_LED) {
+    if (burn_is_led(part->type)) {
         *reason = BURN_OVERCURRENT;
         *measured = current;
         return current / limits->led_max_current;

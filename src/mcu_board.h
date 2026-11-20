@@ -28,6 +28,16 @@ const McuBoard *mcu_board(PartType type);
 int mcu_board_io(const McuBoard *board, int arduino_pin);
 /* Program of a new board: comment in the interface language, then the code. Same text for the same language. */
 const char *mcu_board_default_code(const McuBoard *board);
+/* Datasheet limits of a board's chip (consulted 20/11/2026): ATmega328P and ATtiny85 40 mA per pin,
+ * pins VCC+0.5 V, ATtiny85 VCC 6 V max / 5.5 V recommended; ESP32 not 5 V tolerant (VDD+0.3 = 3.6 V) and
+ * about 40 mA per pin (typical value, no absolute maximum is published). */
+typedef struct
+{
+    double pin_amps;        /* absolute maximum DC current per I/O pin */
+    double pin_over_supply; /* a pin may go this far above the supply */
+    double supply_absolute_max, supply_recommended_max; /* only for boards fed through VCC */
+} McuRatings;
+const McuRatings *mcu_board_ratings(PartType type);
 #define MCU_OUTPUT_OHMS 25.0
 #define MCU_PULLUP_OHMS 30000.0
 #endif

@@ -10,9 +10,10 @@
    A burnt part is treated as an open circuit. Burns are derived from the current assembly only, so
    fixing the circuit makes the part work again without replacing it. */
 
-typedef enum { BURN_NONE, BURN_OVERCURRENT, BURN_OVERPOWER, BURN_SHORT, BURN_OVERVOLTAGE } BurnReason;
+typedef enum { BURN_NONE, BURN_OVERCURRENT, BURN_OVERPOWER, BURN_SHORT, BURN_OVERVOLTAGE, BURN_PIN_VOLTAGE } BurnReason;
 /* Feedback below burning: the part still works, but a real one would be stressed or out of spec. */
-typedef enum { PART_ALERT_NONE, PART_ALERT_CURRENT_LIMIT, PART_ALERT_OVERCURRENT, PART_ALERT_OVERVOLTAGE } PartAlert;
+typedef enum { PART_ALERT_NONE, PART_ALERT_CURRENT_LIMIT, PART_ALERT_OVERCURRENT, PART_ALERT_OVERVOLTAGE,
+               PART_ALERT_FLOATING_INPUT } PartAlert;
 
 typedef struct {
     double led_max_current;     /* A, forward current */
@@ -20,6 +21,8 @@ typedef struct {
 } BurnLimits;
 
 BurnLimits burn_limits_default(void);
+/* LEDs, display segments and RGB colors share the indicator LED current limit. */
+int burn_is_led(PartType type);
 
 /* Returns how far a part is beyond its limit (> 1 means it burns) and why. 0 for parts without a limit. */
 double burn_stress(const Part *part, double current, const BurnLimits *limits, BurnReason *reason, double *measured);

@@ -56,6 +56,10 @@ NetlistResult netlist_write_transient_wire(FILE *out, const Workbench *bench, in
 /* Marks sources and clocks whose terminals are joined by wires, closed switches, breadboard groups or
    inductors (a short at DC). Returns how many were marked. */
 int netlist_shorted_sources(const Workbench *bench, unsigned char shorted[WORKBENCH_MAX_COMPONENTS]);
+/* For each part, the first logic input in use whose net nothing drives or pulls (with switches as they
+ * are now), or -1. Real CMOS inputs left like this read at random; here they read 0. Returns how many
+ * parts have one, or -1 when out of memory. */
+int netlist_floating_inputs(const Workbench *bench, signed char first_pin[WORKBENCH_MAX_COMPONENTS]);
 /* Series resistance of the generic LED model, in ohms. */
 #define NETLIST_LED_SERIES_OHMS 2.0
 NetlistResult netlist_write_transient_instrumented(FILE *out, const Workbench *bench, int mode, Pin probe, double step_seconds, double stop_seconds);

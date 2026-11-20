@@ -126,7 +126,24 @@ static int write_seven_segment(FILE *out, int i, const int *n)
     static const int segment_pins[COMPONENT_SEGMENTS] = {0, 1, 2, 3, 5, 6, 7, 8};
     const int common = 4;
     for (int segment = 0; segment < COMPONENT_SEGMENTS; ++segment)
-        if (fprintf(out, "D%d_s%d %d %d LED_RED\n", i, segment, n[segment_pins[segment]], n[common]) < 0)
+        if (fprintf(out, "D%d_s%d %d sg%d_%d LED_RED\nRguard%d_s%d sg%d_%d %d %.17g\n", i, segment,
+                    n[segment_pins[segment]], i, segment, i, segment, i, segment, n[common],
+                    NETLIST_LIVE_CLOSED_OHMS) < 0)
+            return 0;
+    return 1;
+}
+
+/* Each color behind its own guard resistor, which a burn opens (like the single LED's Rguard). */
+static int write_rgb(FILE *out, int i, const int *n)
+{
+    static const char colors[] = "rgb";
+    static const char *const models[] = {"LED_RED", "LED_GREEN", "LED_BLUE"};
+    static const int anodes[] = {0, 2, 3};
+    const int common = 1;
+    for (int color = 0; color < 3; ++color)
+        if (fprintf(out, "D%d_%c %d rg%d_%c %s\nRguard%d_%c rg%d_%c %d %.17g\n", i, colors[color], n[anodes[color]], i,
+                    colors[color], models[color], i, colors[color], i, colors[color], n[common],
+                    NETLIST_LIVE_CLOSED_OHMS) < 0)
             return 0;
     return 1;
 }
@@ -158,6 +175,9 @@ static int write_board(FILE *out, const Part *part, int i, const int *n)
     const McuBoard *board = mcu_board(part->type);
     int ground = n[board->ground_terminal], supply = n[board->supply_terminal];
     if (board->supply_volts > 0 && !write_regulator(out, i, "reg", supply, ground, board->supply_volts))
+        return 0;
+    /* Sense of the supply a VCC-fed chip receives, read by the datasheet check. */
+    if (board->supply_volts <= 0 && fprintf(out, "Bmcu%d_vcc mcu%d_vcc 0 V=V(%d,%d)\n", i, i, supply, ground) < 0)
         return 0;
     if (board->auxiliary_terminal >= 0 &&
         !write_regulator(out, i, "aux", n[board->auxiliary_terminal], ground, board->auxiliary_volts))
@@ -191,8 +211,7 @@ int netlist_device_write(FILE *out, const Part *part, int i, const int *n)
     switch (part->type)
     {
     case PART_RGB_LED:
-        return fprintf(out, "D%d_r %d %d LED_RED\nD%d_g %d %d LED_GREEN\nD%d_b %d %d LED_BLUE\n", i, n[0], n[1], i, n[2],
-                       n[1], i, n[3], n[1]) >= 0;
+        return write_rgb(out, i, n);
     case PART_SEVEN_SEGMENT:
         return write_seven_segment(out, i, n);
     case PART_DIP_SWITCH:

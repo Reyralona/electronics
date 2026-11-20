@@ -1,6 +1,7 @@
 #include "spice_live.h"
 #include "netlist.h"
 #include "component_registry.h"
+#include "mcu_board.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -117,6 +118,126 @@ static void loose_gate_short(void)
     bench_snapshot_clear(&bench);
 }
 
+/* Segment a of a common-cathode display fed from 5 V: straight it burns, through 330 ohm it lights. */
+static void display_segment(double ohms, int burns)
+{
+    static Workbench bench;
+    assert(bench_add(&bench, PART_SOURCE, 100, 100) == 0);
+    assert(bench_add(&bench, PART_SEVEN_SEGMENT, 600, 300) == 1);
+    assert(bench_set_control(&bench, 0, 1));
+    wire(&bench, 1, 4, 0, 1);
+    if (ohms > 0)
+    {
+        assert(bench_add(&bench, PART_RESISTOR, 300, 500) == 2);
+        assert(bench_set_value(&bench, 2, ohms));
+        wire(&bench, 0, 0, 2, 0);
+        wire(&bench, 2, 1, 1, 0);
+    }
+    else
+        wire(&bench, 0, 0, 1, 0);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench);
+    assert(result.burnt[1] == burns);
+    assert(burns ? result.burn_reason[1] == BURN_OVERCURRENT : result.elements[1][0] > .005);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
+
+/* Uno D13 driven HIGH: an LED with 220 ohm is fine; 10 ohm to GND (~140 mA, the resistor itself within
+ * 1/4 W) burns the board. A bare LED would burn first, being the weaker part. */
+static void uno_pin_load(double ohms, int led, int burns)
+{
+    static Workbench bench;
+    const int d13 = 13, gnd = 22;
+    assert(bench_add(&bench, PART_ARDUINO_UNO, 300, 300) == 0);
+    assert(bench_add(&bench, PART_RESISTOR, 700, 600) == 1);
+    assert(bench_set_value(&bench, 1, ohms));
+    bench.parts[0].io_mode[d13] = MCU_OUTPUT;
+    bench.parts[0].io_level[d13] = 1;
+    wire(&bench, 0, d13, 1, 0);
+    if (led)
+    {
+        assert(bench_add(&bench, PART_LED, 900, 300) == 2);
+        wire(&bench, 1, 1, 2, 0);
+        wire(&bench, 2, 1, 0, gnd);
+    }
+    else
+        wire(&bench, 1, 1, 0, gnd);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench);
+    assert(result.burnt[0] == burns && !result.burnt[1]);
+    assert(burns ? result.burn_reason[0] == BURN_OVERCURRENT : fabs(result.currents[1]) > .005);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
+
+/* A 5 V signal on an ESP32 input burns it (not 5 V tolerant); 3.3 V is fine. */
+static void esp32_input(double volts, int burns)
+{
+    static Workbench bench;
+    const int gpio2 = 0, gnd = 21;
+    assert(bench_add(&bench, PART_ESP32, 300, 300) == 0);
+    assert(bench_add(&bench, PART_SOURCE, 900, 300) == 1);
+    assert(bench_set_value(&bench, 1, volts));
+    wire(&bench, 1, 0, 0, gpio2);
+    wire(&bench, 1, 1, 0, gnd);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench);
+    assert(result.burnt[0] == burns);
+    if (burns)
+        assert(result.burn_reason[0] == BURN_PIN_VOLTAGE);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
+
+/* Button to +5 V on input A of an AND, no resistor: released, A floats (warning on pin A). Pressed, A is
+ * driven. With a 10 kOhm pull-down the released button is fine too. */
+static void button_without_pulldown(void)
+{
+    static Workbench bench;
+    assert(bench_add(&bench, PART_SOURCE, 100, 100) == 0);
+    assert(bench_add(&bench, PART_BUTTON, 400, 100) == 1);
+    assert(bench_add(&bench, PART_AND, 700, 300) == 2);
+    wire(&bench, 0, 0, 1, 0);
+    wire(&bench, 1, 1, 2, 0);
+    wire(&bench, 0, 0, 2, 1);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench);
+    assert(result.alert[2] == PART_ALERT_FLOATING_INPUT && result.alert_pin[2] == 0);
+    assert(bench_set_on(&bench, 1, 1));
+    step(live, &bench);
+    assert(result.alert[2] == PART_ALERT_NONE);
+    assert(bench_set_on(&bench, 1, 0));
+    assert(bench_add(&bench, PART_RESISTOR, 700, 600) == 3);
+    assert(bench_set_value(&bench, 3, 10000));
+    wire(&bench, 2, 0, 3, 0);
+    wire(&bench, 3, 1, 0, 1);
+    step(live, &bench);
+    assert(result.alert[2] == PART_ALERT_NONE);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
+
+/* A 74HC08 using only gate 1: the three unused gates stay silent (no warning flood). */
+static void unused_quad_gates_silent(void)
+{
+    static Workbench bench;
+    build_and_chip(&bench, 5);
+    assert(bench_add(&bench, PART_RESISTOR, 800, 300) == 2);
+    wire(&bench, 1, 2, 2, 0);
+    wire(&bench, 2, 1, 0, 1);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench);
+    assert(result.alert[1] == PART_ALERT_NONE);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -130,6 +251,14 @@ int main(int argc, char **argv)
     supply_voltage(6.5, PART_ALERT_OVERVOLTAGE, 0);
     supply_voltage(8, PART_ALERT_NONE, 1);
     loose_gate_short();
-    puts("Chip protection: 330 ohm silent, 120 ohm warns, short and bus contention burn, 6.5 V warns, 8 V burns.");
+    display_segment(330, 0);
+    display_segment(0, 1);
+    uno_pin_load(220, 1, 0);
+    uno_pin_load(10, 0, 1);
+    esp32_input(3.3, 0);
+    esp32_input(5, 1);
+    button_without_pulldown();
+    unused_quad_gates_silent();
+    puts("Chip protection: 330 ohm silent, 120 ohm warns, short and bus contention burn, 6.5 V warns, 8 V burns, bare segment burns, Uno pin and ESP32 5 V input burn, floating input warns.");
     return 0;
 }

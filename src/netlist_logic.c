@@ -1,6 +1,7 @@
 #include "netlist_logic.h"
 #include "netlist.h"
 #include "rom_image.h"
+#include "mcu_board.h"
 #include <stdarg.h>
 #include <string.h>
 
@@ -372,6 +373,14 @@ int netlist_logic_models(FILE *out)
 void netlist_logic_ratings(PartType type, double *supply_absolute_max, double *supply_recommended_max,
                            double *output_limit_amps)
 {
+    const McuRatings *board = mcu_board_ratings(type);
+    if (board)
+    {
+        *supply_absolute_max = board->supply_absolute_max;
+        *supply_recommended_max = board->supply_recommended_max;
+        *output_limit_amps = board->pin_amps;
+        return;
+    }
     const LogicChip *chip = logic_chip(type);
     *supply_absolute_max = chip ? chip->supply_absolute_max : HC_SUPPLY_ABSOLUTE_MAX;
     *supply_recommended_max = chip ? chip->supply_recommended_max : HC_SUPPLY_RECOMMENDED_MAX;

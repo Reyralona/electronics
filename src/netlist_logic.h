@@ -14,7 +14,8 @@ int netlist_logic_valid(const Part *part);
 /* protection (may be NULL) receives the datasheet stress terms of the chip's outputs and supply. */
 int netlist_logic_write(FILE *out, const Part *part, int index, const int *nodes, NetlistProtection *protection);
 int netlist_logic_models(FILE *out);
-/* Datasheet ratings of any logic part (loose gate symbols and quad chips use the 74HC family). */
+/* Datasheet ratings of any logic part (loose gate symbols and quad chips use the 74HC family);
+ * boards report their chip's pin current and, when fed through VCC, its supply limits. */
 void netlist_logic_ratings(PartType type, double *supply_absolute_max, double *supply_recommended_max,
                            double *output_limit_amps);
 int netlist_eeprom_core(FILE *out, const Workbench *bench);

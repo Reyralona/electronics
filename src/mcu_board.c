@@ -65,3 +65,11 @@ const char *mcu_board_default_code(const McuBoard *board)
         snprintf(code, DEFAULT_CODE_BYTES, "// %s\n%s", tr(board->default_comment), board->default_body);
     return code;
 }
+
+const McuRatings *mcu_board_ratings(PartType type)
+{
+    static const McuRatings avr = {.040, .5, 6.0, 5.5}, esp32 = {.040, .3, 3.6, 3.6};
+    if (!mcu_board(type))
+        return NULL;
+    return type == PART_ESP32 ? &esp32 : &avr;
+}

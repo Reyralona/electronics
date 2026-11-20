@@ -159,6 +159,12 @@ UI_TEXT(APP_BURN_CHIP_CURRENT, "%s queimado: saída com %.0f mA (máximo %.0f mA
         "%s burned: output at %.0f mA (maximum %.0f mA). Use a series resistor and one output per wire.")
 UI_TEXT(APP_BURN_CHIP_VOLTAGE, "%s queimado: alimentação de %.2f V (máximo %.3g V). Ajuste a fonte.",
         "%s burned: supply at %.2f V (maximum %.3g V). Adjust the supply.")
+UI_TEXT(APP_BURN_DISPLAY, "%s queimado: %.3g mA num segmento (limite %.3g mA). Use um resistor em cada segmento.",
+        "%s burned: %.3g mA in one segment (limit %.3g mA). Use one resistor per segment.")
+UI_TEXT(APP_BURN_PIN_VOLTAGE, "%s queimado: pino com %.2f V, fora da faixa da alimentação. Use um divisor ou um conversor de nível.",
+        "%s burned: pin at %.2f V, outside the supply range. Use a divider or a level shifter.")
+UI_TEXT(APP_ALERT_FLOATING_INPUT, "%s: entrada %s solta. Num CI real ela lê ao acaso; ligue um resistor de pull-up ou pull-down.",
+        "%s: input %s is floating. A real chip reads it at random; add a pull-up or pull-down resistor.")
 UI_TEXT(APP_ALERT_CHIP_CURRENT, "%s: saída com %.0f mA, acima do máximo de %.0f mA. Aumente o resistor.",
         "%s: output at %.0f mA, above the %.0f mA maximum. Use a larger resistor.")
 UI_TEXT(APP_ALERT_CHIP_VOLTAGE, "%s: %.2f V, acima dos %.3g V recomendados. Baixe a fonte.",

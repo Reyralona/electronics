@@ -31,13 +31,17 @@ struct SpiceLive
     double stress[WORKBENCH_MAX_COMPONENTS];
     NetlistProtection protection;
     int protection_cursor; /* next output term to read */
+    signed char floating[WORKBENCH_MAX_COMPONENTS]; /* first floating input per part, -1 none */
     unsigned char alert[WORKBENCH_MAX_COMPONENTS], alert_pin[WORKBENCH_MAX_COMPONENTS];
     double alert_value[WORKBENCH_MAX_COMPONENTS];
 };
 
 SpiceLive *spice_live_create(void)
 {
-    return calloc(1, sizeof(SpiceLive));
+    SpiceLive *live = calloc(1, sizeof(SpiceLive));
+    if (live)
+        memset(live->floating, -1, sizeof(live->floating));
+    return live;
 }
 
 void spice_live_destroy(SpiceLive *live)
@@ -252,6 +256,12 @@ static int primary_source(const Workbench *bench)
     return -1;
 }
 
+/* A burnt board drives nothing: level 0, output and pull-up resistors open (controls come in threes). */
+static double burnt_board_control(int control)
+{
+    return control % 3 ? NETLIST_LIVE_OPEN_OHMS : 0;
+}
+
 static int apply_controls(SpiceLive *live, const Workbench *bench, char *message, size_t capacity)
 {
     int primary = primary_source(bench);
@@ -315,8 +325,11 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
         for (int control = 0; control < netlist_device_control_count(part); ++control)
         {
             double value;
-            if (netlist_device_control(part, i, control, name, sizeof(name), &value) &&
-                !alter(live, name, value, message, capacity))
+            if (!netlist_device_control(part, i, control, name, sizeof(name), &value))
+                continue;
+            if (live->burnt[i] && mcu_board(part->type))
+                value = burnt_board_control(control);
+            if (!alter(live, name, value, message, capacity))
                 return 0;
         }
         if (part->type == PART_LED)
@@ -493,6 +506,39 @@ static int protect_sources(SpiceLive *live, const Workbench *bench, char *messag
     return 1;
 }
 
+/* Current that decides a burn: the part's own, or the largest segment/color of a multi-LED device. */
+static double burn_current(const Workbench *bench, int part, const SimAutoResult *result)
+{
+    PartType type = bench->parts[part].type;
+    if (type != PART_SEVEN_SEGMENT && type != PART_RGB_LED)
+        return result->currents[part];
+    double largest = 0;
+    for (int element = 0; element < COMPONENT_MAX_ELEMENTS; ++element)
+        largest = fmax(largest, fabs(result->elements[part][element]));
+    return largest;
+}
+
+/* Opens what carries a burnt part's current: LED and segment guards, or the resistor itself. */
+static int open_burnt_part(SpiceLive *live, const Workbench *bench, int part, SimAutoResult *result)
+{
+    static const char colors[] = "rgb";
+    PartType type = bench->parts[part].type;
+    int guards = type == PART_SEVEN_SEGMENT ? COMPONENT_SEGMENTS : type == PART_RGB_LED ? 3 : 1;
+    for (int guard = 0; guard < guards; ++guard)
+    {
+        char name[48];
+        if (type == PART_SEVEN_SEGMENT)
+            snprintf(name, sizeof(name), "Rguard%d_s%d", part, guard);
+        else if (type == PART_RGB_LED)
+            snprintf(name, sizeof(name), "Rguard%d_%c", part, colors[guard]);
+        else
+            snprintf(name, sizeof(name), type == PART_LED ? "Rguard%d" : "R%d", part);
+        if (!alter(live, name, NETLIST_LIVE_OPEN_OHMS, result->message, sizeof(result->message)))
+            return 0;
+    }
+    return 1;
+}
+
 static int protect_parts(SpiceLive *live, const Workbench *bench, const SimAutoOptions *options, SimAutoResult *result)
 {
     for (int pass = 0; pass < bench->part_count; ++pass)
@@ -503,7 +549,8 @@ static int protect_parts(SpiceLive *live, const Workbench *bench, const SimAutoO
         {
             BurnReason reason;
             double measured;
-            double stress = burn_stress(&bench->parts[i], result->currents[i], &options->limits, &reason, &measured);
+            double stress = burn_stress(&bench->parts[i], burn_current(bench, i, result), &options->limits, &reason,
+                                        &measured);
             if (!live->burnt[i] && stress > highest)
             {
                 highest = stress;
@@ -514,9 +561,7 @@ static int protect_parts(SpiceLive *live, const Workbench *bench, const SimAutoO
         }
         if (worst < 0)
             return 1;
-        char name[48];
-        snprintf(name, sizeof(name), bench->parts[worst].type == PART_LED ? "Rguard%d" : "R%d", worst);
-        if (!alter(live, name, NETLIST_LIVE_OPEN_OHMS, result->message, sizeof(result->message)))
+        if (!open_burnt_part(live, bench, worst, result))
             return 0;
         live->burnt[worst] = 1;
         if (!advance(live, options->step, options->step, result->message, sizeof(result->message)) ||
@@ -658,6 +703,70 @@ static int judge_supply(SpiceLive *live, const Workbench *bench, const Protectio
     return 1;
 }
 
+static int kill_board(SpiceLive *live, const Workbench *bench, int part, BurnReason reason, double value,
+                      SimAutoResult *result)
+{
+    if (live->burnt[part])
+        return 1;
+    live->burnt[part] = 1;
+    live->reason[part] = (unsigned char)reason;
+    live->stress[part] = value;
+    for (int control = 0; control < netlist_device_control_count(&bench->parts[part]); ++control)
+    {
+        char name[48];
+        double value_now;
+        if (netlist_device_control(&bench->parts[part], part, control, name, sizeof(name), &value_now) &&
+            !alter(live, name, burnt_board_control(control), result->message, sizeof(result->message)))
+            return 0;
+    }
+    return 1;
+}
+
+/* Board pins against their chip's datasheet: output current, pin voltage and (VCC-fed chips) supply. */
+static int protect_board(SpiceLive *live, const Workbench *bench, int part, SimAutoResult *result)
+{
+    const Part *board_part = &bench->parts[part];
+    const McuBoard *board = mcu_board(board_part->type);
+    const McuRatings *ratings = mcu_board_ratings(board_part->type);
+    char names[2 * WORKBENCH_MAX_IO + 1][32];
+    const char *list[2 * WORKBENCH_MAX_IO + 1];
+    double values[2 * WORKBENCH_MAX_IO + 1];
+    int count = 0;
+    for (int k = 0; k < board->io_count; ++k)
+    {
+        snprintf(names[count], sizeof(names[count]), "mcu%d_in%d", part, k);
+        list[count] = names[count];
+        ++count;
+        snprintf(names[count], sizeof(names[count]), "@rmcu%d_o%d[i]", part, k);
+        list[count] = names[count];
+        ++count;
+    }
+    if (board->supply_volts <= 0)
+    {
+        snprintf(names[count], sizeof(names[count]), "mcu%d_vcc", part);
+        list[count] = names[count];
+        ++count;
+    }
+    if (!spice_session_values(live->session, list, count, values, result->message, sizeof(result->message)))
+        return 0;
+    double supply = board->supply_volts > 0 ? board->supply_volts : values[count - 1];
+    if (board->supply_volts <= 0 && supply > ratings->supply_absolute_max)
+        return kill_board(live, bench, part, BURN_OVERVOLTAGE, supply, result);
+    if (board->supply_volts <= 0 && supply > ratings->supply_recommended_max)
+        note_alert(live, part, PART_ALERT_OVERVOLTAGE, board->supply_terminal, supply);
+    for (int k = 0; k < board->io_count; ++k)
+    {
+        double volts = values[2 * k], amps = fabs(values[2 * k + 1]);
+        if (volts > fmax(supply, 0) + ratings->pin_over_supply || volts < -ratings->pin_over_supply)
+            return kill_board(live, bench, part, BURN_PIN_VOLTAGE, volts, result);
+        if (amps >= ratings->pin_amps * PROTECTION_BURN_CURRENT_RATIO)
+            return kill_board(live, bench, part, BURN_OVERCURRENT, amps, result);
+        if (amps > ratings->pin_amps)
+            note_alert(live, part, PART_ALERT_OVERCURRENT, board->io_terminal[k], amps);
+    }
+    return 1;
+}
+
 /* Datasheet check of logic parts: every supply each step, outputs in round robin; alerts come from the
  * latest reading of every term, burns happen as soon as a reading crosses the burn level. */
 static int protect_logic(SpiceLive *live, const Workbench *bench, SimAutoResult *result)
@@ -683,6 +792,12 @@ static int protect_logic(SpiceLive *live, const Workbench *bench, SimAutoResult 
         }
         note_alert(live, t->part, PART_ALERT_OVERCURRENT, t->pin, t->measured_amps);
     }
+    for (int part = 0; part < bench->part_count; ++part)
+        if (mcu_board(bench->parts[part].type) && !live->burnt[part] && !protect_board(live, bench, part, result))
+            return 0;
+    for (int part = 0; part < bench->part_count; ++part)
+        if (live->floating[part] >= 0 && !live->alert[part] && !live->burnt[part])
+            note_alert(live, part, PART_ALERT_FLOATING_INPUT, live->floating[part], 0);
     memcpy(result->alert, live->alert, sizeof(result->alert));
     memcpy(result->alert_pin, live->alert_pin, sizeof(result->alert_pin));
     memcpy(result->alert_value, live->alert_value, sizeof(result->alert_value));
@@ -727,6 +842,8 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         }
         free(live->topology);
         live->topology = key;
+        if (netlist_floating_inputs(bench, live->floating) < 0)
+            memset(live->floating, -1, sizeof(live->floating));
         if (!bench_snapshot_clone(&live->previous, bench))
         {
             snprintf(result->message, sizeof(result->message), "%s", tr(TXT_ENG_NO_MEMORY));

@@ -2,6 +2,7 @@
 #include "netlist_devices.h"
 #include "netlist_logic.h"
 #include "mcu_board.h"
+#include "mcu_lang.h"
 #include "component_devices.h"
 #include "component_registry.h"
 #include "ui_text.h"
@@ -932,4 +933,129 @@ int netlist_same_net(const Workbench *bench, Pin a, Pin b)
     int same = find_root(parents, pin_index(a)) == find_root(parents, pin_index(b));
     free(parents);
     return same;
+}
+
+/* ---- Floating logic inputs (static check, no solver work) ---- */
+
+/* DIP and DPST contacts conduct when closed; the net builder only knows plain switches. */
+static void unite_closed_contacts(const Workbench *b, int *parents)
+{
+    for (int i = 0; i < b->part_count; ++i)
+    {
+        const Part *part = &b->parts[i];
+        int base = i * WORKBENCH_MAX_PINS;
+        if (part->type == PART_DIP_SWITCH)
+            for (int contact = 0; contact < 4; ++contact)
+                if (part->states >> contact & 1u)
+                    unite(parents, base + contact, base + contact + 4);
+        if (part->type == PART_DPST && part->on)
+        {
+            unite(parents, base, base + 1);
+            unite(parents, base + 2, base + 3);
+        }
+    }
+}
+
+static int is_contact_part(PartType type)
+{
+    return component_electrical_type(type) == PART_SWITCH || type == PART_BUTTON || type == PART_DIP_SWITCH ||
+           type == PART_DPST;
+}
+
+/* A terminal that cannot set a level by itself: logic inputs, open contacts, strips, junctions and
+ * microcontroller pins configured as plain inputs. Everything else (sources, resistors, outputs...) can. */
+static int passive_terminal(const Part *part, int pin)
+{
+    PartType type = part->type;
+    if (bench_is_board(type) || type == PART_JUNCTION || is_contact_part(type))
+        return 1;
+    const McuBoard *board = mcu_board(type);
+    if (board)
+    {
+        for (int k = 0; k < board->io_count; ++k)
+            if (board->io_terminal[k] == pin)
+                return part->io_mode[k] == MCU_INPUT;
+        return 0;
+    }
+    const ComponentPinInfo *info = component_pin_info(type, pin);
+    int logic = component_has_flag(type, COMPONENT_GATE_SYMBOL) || component_has_flag(type, COMPONENT_QUAD_GATE) ||
+                netlist_logic_supported(type);
+    return logic && info && (info->role == PIN_INPUT || info->role == PIN_CLOCK_INPUT);
+}
+
+typedef struct
+{
+    int anchored, contacts, used;
+} NetFacts;
+
+/* Facts of every net: something sets its level; it reaches a switch-like contact; it reaches a part
+ * other than strips and junctions (a used output). */
+static void collect_net_facts(const Workbench *b, const int *parents, NetFacts *facts)
+{
+    for (int i = 0; i < b->part_count; ++i)
+        for (int pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
+        {
+            NetFacts *net = &facts[find_root((int *)parents, i * WORKBENCH_MAX_PINS + pin)];
+            PartType type = b->parts[i].type;
+            net->anchored |= !passive_terminal(&b->parts[i], pin);
+            net->contacts |= is_contact_part(type);
+            net->used += !bench_is_board(type) && type != PART_JUNCTION;
+        }
+}
+
+/* Whether input `pin` of part i is in use: loose gates always; quad gates when their output reaches a part;
+ * medium-scale chips when powered; board pins when they reach a switch-like contact. */
+static int input_in_use(const Workbench *b, const int *parents, const NetFacts *facts, int i, int pin)
+{
+    static const int quad[4][3] = {{0, 1, 2}, {3, 4, 5}, {8, 9, 7}, {11, 12, 10}};
+    PartType type = b->parts[i].type;
+    int base = i * WORKBENCH_MAX_PINS;
+    if (component_has_flag(type, COMPONENT_GATE_SYMBOL))
+        return 1;
+    if (component_has_flag(type, COMPONENT_QUAD_GATE))
+    {
+        for (int g = 0; g < 4; ++g)
+            if (pin == quad[g][0] || pin == quad[g][1])
+                return facts[find_root((int *)parents, base + quad[g][2])].used > 1;
+        return 0;
+    }
+    if (mcu_board(type))
+        return facts[find_root((int *)parents, base + pin)].contacts;
+    const int vcc_pin = bench_pin_count(type) - 1; /* DIP chips: VCC is the last pin */
+    return facts[find_root((int *)parents, base + vcc_pin)].anchored;
+}
+
+int netlist_floating_inputs(const Workbench *b, signed char first_pin[WORKBENCH_MAX_COMPONENTS])
+{
+    int *parents = malloc(sizeof(int) * PIN_TOTAL);
+    NetFacts *facts = calloc(PIN_TOTAL, sizeof(NetFacts));
+    int count = 0;
+    if (!parents || !facts)
+    {
+        free(parents);
+        free(facts);
+        return -1;
+    }
+    build_nets(b, parents, 1, 0, 1);
+    unite_closed_contacts(b, parents);
+    collect_net_facts(b, parents, facts);
+    for (int i = 0; i < b->part_count; ++i)
+    {
+        first_pin[i] = -1;
+        for (int pin = 0; pin < bench_pin_count(b->parts[i].type) && first_pin[i] < 0; ++pin)
+        {
+            const NetFacts *net = &facts[find_root(parents, i * WORKBENCH_MAX_PINS + pin)];
+            if (!mcu_board(b->parts[i].type) && bench_is_board(b->parts[i].type))
+                break;
+            if (passive_terminal(&b->parts[i], pin) && !is_contact_part(b->parts[i].type) &&
+                b->parts[i].type != PART_JUNCTION && !net->anchored && input_in_use(b, parents, facts, i, pin))
+            {
+                first_pin[i] = (signed char)pin;
+                ++count;
+            }
+        }
+    }
+    free(parents);
+    free(facts);
+    return count;
 }

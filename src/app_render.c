@@ -3170,7 +3170,7 @@ static void alert_draw(const AppState *app, int index)
 {
     const Part *part = &app->bench.parts[index];
     float x = part->x, y = part->y;
-    if (app->sim.alert[index] == PART_ALERT_OVERCURRENT)
+    if (app->sim.alert[index] == PART_ALERT_OVERCURRENT || app->sim.alert[index] == PART_ALERT_FLOATING_INPUT)
         bench_pin_position(part, app->sim.alert_pin[index], &x, &y);
     float pulse = .5f + .5f * sinf((float)SDL_GetTicks() * .006f);
     glLineWidth(2.5f);
@@ -3185,7 +3185,8 @@ static void draw_workspace_burns(const AppState *app, GLuint font)
     for (i = 0; i < app->bench.part_count; ++i)
         if (app->sim.burnt[i] && !app->bench.parts[i].group)
             burnt_draw(font, &app->bench.parts[i], SDL_GetTicks());
-        else if ((app->sim.alert[i] == PART_ALERT_OVERCURRENT || app->sim.alert[i] == PART_ALERT_OVERVOLTAGE) &&
+        else if ((app->sim.alert[i] == PART_ALERT_OVERCURRENT || app->sim.alert[i] == PART_ALERT_OVERVOLTAGE ||
+                  app->sim.alert[i] == PART_ALERT_FLOATING_INPUT) &&
                  !app->bench.parts[i].group && sim_state_has_result(&app->sim, SIM_RESULT_DC))
             alert_draw(app, i);
 }
@@ -3552,6 +3553,11 @@ static int part_alert_reading(const AppState *app, const Part *part, char *readi
     }
     else if (app->sim.alert[index] == PART_ALERT_OVERVOLTAGE)
         snprintf(reading, capacity, tr(TXT_UI_ALERT_VOLTAGE), value, recommended);
+    else if (app->sim.alert[index] == PART_ALERT_FLOATING_INPUT)
+    {
+        const ComponentPinInfo *pin = component_pin_info(part->type, app->sim.alert_pin[index]);
+        snprintf(reading, capacity, tr(TXT_UI_ALERT_FLOATING), pin && pin->name ? pin->name : "");
+    }
     else if (app->sim.alert[index] == PART_ALERT_CURRENT_LIMIT)
         snprintf(reading, capacity, tr(TXT_UI_ALERT_LIMITING), value * 1000.0);
     else
@@ -3569,9 +3575,11 @@ static void inspector_reading(const AppState *app, const Part *part, char *readi
         netlist_logic_ratings(part->type, &absolute, &recommended, &output);
         if (app->sim.burn_reason[index] == BURN_SHORT)
             snprintf(reading, capacity, "%s", tr(TXT_UI_BURNED_SHORT));
+        else if (app->sim.burn_reason[index] == BURN_PIN_VOLTAGE)
+            snprintf(reading, capacity, tr(TXT_UI_BURNED_PIN_VOLTAGE), app->sim.burn_value[index]);
         else if (app->sim.burn_reason[index] == BURN_OVERVOLTAGE)
             snprintf(reading, capacity, tr(TXT_UI_BURNED_VOLTAGE), app->sim.burn_value[index], absolute);
-        else if (app->sim.burn_reason[index] == BURN_OVERCURRENT && part->type != PART_LED)
+        else if (app->sim.burn_reason[index] == BURN_OVERCURRENT && !burn_is_led(part->type))
             snprintf(reading, capacity, tr(TXT_UI_BURNED_CURRENT), app->sim.burn_value[index] * 1000.0,
                      output * 1000.0);
         else if (app->sim.burn_reason[index] == BURN_OVERPOWER)
@@ -3801,7 +3809,8 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     snprintf(value, sizeof(value), "%.5g %%", bench_part_scale(part) * 100);
     draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), value, app_selection_same_type(app));
     if (app->sim.burnt[app->selected] || app->sim.alert[app->selected] == PART_ALERT_OVERCURRENT ||
-        app->sim.alert[app->selected] == PART_ALERT_OVERVOLTAGE)
+        app->sim.alert[app->selected] == PART_ALERT_OVERVOLTAGE ||
+        app->sim.alert[app->selected] == PART_ALERT_FLOATING_INPUT)
         color(UI_DANGER);
     else
         color(UI_INK);
