@@ -14,7 +14,7 @@ Versão em desenvolvimento: 0.48.0, branch `feature/eeprom-workbench-usability`.
 
 ## Comandos
 
-- `./build.ps1 -GuiTests`
+- `./build.ps1 -GuiTests`: compilação e bateria completa aprovadas, incluindo autoteste gráfico com PATH mínimo.
 - `cmake --build build/cmake-release --target bancada-eeprom test_eeprom test_logic_chips test_eeprom_programmer_flow -j 4`
 - `ctest --test-dir build/cmake-release -R '^(eeprom|eeprom_programmer_flow)$' --output-on-failure`: 2/2 aprovados.
 
