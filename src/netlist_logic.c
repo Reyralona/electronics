@@ -85,8 +85,8 @@ static void primitive(LogicWriter *w, const char *model, const char *format, ...
     emit(w, " lic_%s\n", model);
 }
 
-/* Logic input: 1e8 ohm load, rescaled from the chip supply to the 5 V bridge domain, digital node d<pin>. */
-static void input(LogicWriter *w, int pin)
+/* Input load of 1e8 ohm and the pin voltage rescaled from the chip supply to the 5 V bridge domain: vin<pin>. */
+static void input_scaled(LogicWriter *w, int pin)
 {
     int node = w->nodes[pin];
     const char *p = w->prefix;
@@ -94,7 +94,13 @@ static void input(LogicWriter *w, int pin)
         emit(w, "R%sr%d %d %d %.17g\n", p, pin, node, w->gnd, NETLIST_GATE_INPUT_OHMS);
     emit(w, "B%svin%d %svin%d 0 V=V(%d,%d)*%g/max(V(%ssup),%g)\n", p, pin, p, pin, node, w->gnd, LOGIC_BRIDGE_VOLTS,
          p, LOGIC_SUPPLY_FLOOR);
-    emit(w, "A%si%d [%svin%d] [%sd%d] lic_adc\n", p, pin, p, pin, p, pin);
+}
+
+/* Logic input: digital node d<pin>. */
+static void input(LogicWriter *w, int pin)
+{
+    input_scaled(w, pin);
+    emit(w, "A%si%d [%svin%d] [%sd%d] lic_adc\n", w->prefix, pin, w->prefix, pin, w->prefix, pin);
 }
 
 static void inputs(LogicWriter *w, const int *pins, int count)
