@@ -86,8 +86,8 @@ static void primitive(LogicWriter *w, const char *model, const char *format, ...
     emit(w, " lic_%s\n", model);
 }
 
-/* Logic input: 1e8 ohm load, rescaled from the chip supply to the 5 V bridge domain, digital node d<pin>. */
-static void input(LogicWriter *w, int pin)
+/* Input load of 1e8 ohm and the pin voltage rescaled from the chip supply to the 5 V bridge domain: vin<pin>. */
+static void input_scaled(LogicWriter *w, int pin)
 {
     int node = w->nodes[pin];
     const char *p = w->prefix;
@@ -95,7 +95,13 @@ static void input(LogicWriter *w, int pin)
         emit(w, "R%sr%d %d %d %.17g\n", p, pin, node, w->gnd, NETLIST_GATE_INPUT_OHMS);
     emit(w, "B%svin%d %svin%d 0 V=V(%d,%d)*%g/max(V(%ssup),%g)\n", p, pin, p, pin, node, w->gnd, LOGIC_BRIDGE_VOLTS,
          p, LOGIC_SUPPLY_FLOOR);
-    emit(w, "A%si%d [%svin%d] [%sd%d] lic_adc\n", p, pin, p, pin, p, pin);
+}
+
+/* Logic input: digital node d<pin>. */
+static void input(LogicWriter *w, int pin)
+{
+    input_scaled(w, pin);
+    emit(w, "A%si%d [%svin%d] [%sd%d] lic_adc\n", w->prefix, pin, w->prefix, pin, w->prefix, pin);
 }
 
 static void inputs(LogicWriter *w, const int *pins, int count)
@@ -143,13 +149,15 @@ static void supply(LogicWriter *w)
          LOGIC_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, LOGIC_SUPPLY_MAX + QUAD_EDGE_VOLTS, p, QUAD_EDGE_VOLTS);
 }
 
-/* SN74HC161 (TI SCLS297D): synchronous load and count on the rising CLK edge, asynchronous clear. */
-static void counter_161(LogicWriter *w)
+/* SN74HC161 and SN74HC163 share everything but the clear: asynchronous on the 161, on the clock edge on the 163
+ * (where it beats LOAD). */
+static void binary_counter(LogicWriter *w, int clear_on_edge)
 {
     static const int pins[] = {0, 1, 2, 3, 4, 5, 6, 8, 9};
     static const int data_pins[] = {2, 3, 4, 5}, q_pins[] = {13, 12, 11, 10};
     inputs(w, pins, (int)(sizeof(pins) / sizeof(pins[0])));
-    primitive(w, "inv", "d0 clr");
+    if (!clear_on_edge)
+        primitive(w, "inv", "d0 clr");
     primitive(w, "and", "[d6 d9] t0");
     for (int bit = 0; bit < 4; ++bit)
     {
@@ -159,14 +167,64 @@ static void counter_161(LogicWriter *w)
         primitive(w, "xor", "[q%d t%d] inc%d", bit, bit, bit);
         primitive(w, "and", "[~d8 d%d] ld%d", data_pins[bit], bit);
         primitive(w, "and", "[d8 inc%d] kp%d", bit, bit);
-        primitive(w, "or", "[ld%d kp%d] n%d", bit, bit, bit);
-        primitive(w, "dff", "n%d d1 null clr q%d null", bit, bit);
+        primitive(w, "or", "[ld%d kp%d] %s%d", bit, bit, clear_on_edge ? "nx" : "n", bit);
+        if (clear_on_edge)
+            primitive(w, "and", "[d0 nx%d] n%d", bit, bit);
+        primitive(w, "dff", "n%d d1 null %s q%d null", bit, clear_on_edge ? "null" : "clr", bit);
         char q[LOGIC_IC_TOKEN_CAPACITY];
         snprintf(q, sizeof(q), "q%d", bit);
         output(w, q_pins[bit], q, NULL);
     }
     primitive(w, "and", "[d9 q0 q1 q2 q3] rco");
     output(w, 14, "rco", NULL);
+}
+
+/* SN74HC161 (TI SCLS297D): synchronous load and count on the rising CLK edge, asynchronous clear. */
+static void counter_161(LogicWriter *w)
+{
+    binary_counter(w, 0);
+}
+
+/* SN74HC163 (TI SCLS298D): clear, load and count all on the rising CLK edge. */
+static void counter_163(LogicWriter *w)
+{
+    binary_counter(w, 1);
+}
+
+/* SN74HC193 (TI SCLS122D): counts up on the rising edge of UP with DOWN high, down on that of DOWN with UP
+ * high. CLR (high) and ~LOAD (low) act at once through the flip-flop set and reset; CLR wins. A flip-flop
+ * set by UP low and reset by DOWN low remembers which clock went low last, so the edge that brings both
+ * high knows its direction. */
+static void up_down_counter_193(LogicWriter *w)
+{
+    static const int pins[] = {0, 3, 4, 8, 9, 10, 13, 14};
+    static const int data_pins[] = {14, 0, 9, 8}, q_pins[] = {2, 1, 5, 6};
+    inputs(w, pins, (int)(sizeof(pins) / sizeof(pins[0])));
+    primitive(w, "one", "t0");
+    primitive(w, "and", "[d4 d3] ck");
+    primitive(w, "dff", "t0 t0 ~d4 ~d3 up dn");
+    primitive(w, "and", "[~d10 ~d13] ld");
+    for (int bit = 0; bit < 4; ++bit)
+    {
+        /* Up: a bit toggles when every lower bit is 1. Down: when every lower bit is 0. */
+        if (bit)
+            primitive(w, "xor", "[q%d dn] x%d", bit - 1, bit - 1);
+        if (bit)
+            primitive(w, "and", "[t%d x%d] t%d", bit - 1, bit - 1, bit);
+        primitive(w, "xor", "[q%d t%d] n%d", bit, bit, bit);
+        primitive(w, "and", "[ld ~d%d] lr%d", data_pins[bit], bit);
+        primitive(w, "or", "[d13 lr%d] r%d", bit, bit);
+        /* Set waits for reset to drop: both active and released together would leave the flip-flop unknown. */
+        primitive(w, "and", "[ld d%d ~r%d] s%d", data_pins[bit], bit, bit);
+        primitive(w, "dff", "n%d ck s%d r%d q%d null", bit, bit, bit, bit);
+        char q[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(q, sizeof(q), "q%d", bit);
+        output(w, q_pins[bit], q, NULL);
+    }
+    primitive(w, "nand", "[~d4 q0 q1 q2 q3] co");
+    primitive(w, "nand", "[~d3 ~q0 ~q1 ~q2 ~q3] bo");
+    output(w, 11, "co", NULL);
+    output(w, 12, "bo", NULL);
 }
 
 /* SN74HC173: loads D on the rising CLK edge when G1 and G2 are low, CLR high clears, outputs enabled
@@ -269,6 +327,103 @@ static void dual_dff_74(LogicWriter *w)
     }
 }
 
+/* `count` gates of `model` with `width` inputs each: gate g reads in_pins[g * width ...] and drives y_pins[g]. */
+static void gate_array(LogicWriter *w, const char *model, const int *in_pins, int width, const int *y_pins, int count)
+{
+    inputs(w, in_pins, width * count);
+    for (int gate = 0; gate < count; ++gate)
+    {
+        char list[LOGIC_IC_PORTS_CAPACITY] = "", y[LOGIC_IC_TOKEN_CAPACITY];
+        for (int i = 0; i < width; ++i)
+        {
+            size_t used = strlen(list);
+            snprintf(list + used, sizeof(list) - used, " d%d", in_pins[gate * width + i]);
+        }
+        snprintf(y, sizeof(y), "y%d", gate);
+        primitive(w, model, "[%s] %s", list + 1, y);
+        output(w, y_pins[gate], y, NULL);
+    }
+}
+
+/* SN74HC02: four 2-input NOR gates; outputs 1Y and 2Y come before their inputs. */
+static void quad_nor_02(LogicWriter *w)
+{
+    static const int in_pins[] = {1, 2, 4, 5, 7, 8, 10, 11}, y_pins[] = {0, 3, 9, 12};
+    gate_array(w, "nor", in_pins, 2, y_pins, 4);
+}
+
+/* SN74HC10 and SN74HC11 share a pinout: gate 1 takes pins 1, 2 and 13 and drives pin 12. */
+static const int triple_in_pins[] = {0, 1, 12, 2, 3, 4, 8, 9, 10}, triple_y_pins[] = {11, 5, 7};
+
+static void triple_nand_10(LogicWriter *w)
+{
+    gate_array(w, "nand", triple_in_pins, 3, triple_y_pins, 3);
+}
+
+static void triple_and_11(LogicWriter *w)
+{
+    gate_array(w, "and", triple_in_pins, 3, triple_y_pins, 3);
+}
+
+/* SN74HC14: Y = NOT A with hysteresis. Two bridges at VT+ and VT- (lic_vtp, lic_vtn) set and reset a
+ * latch; between them the latch holds, so Y keeps its level. */
+static void hex_schmitt_14(LogicWriter *w)
+{
+    static const int a_pins[] = {0, 2, 4, 8, 10, 12}, y_pins[] = {1, 3, 5, 7, 9, 11};
+    const char *p = w->prefix;
+    primitive(w, "one", "one");
+    for (int gate = 0; gate < 6; ++gate)
+    {
+        int pin = a_pins[gate];
+        input_scaled(w, pin);
+        emit(w, "A%sup%d [%svin%d] [%sup%d] lic_vtp\n", p, pin, p, pin, p, pin);
+        emit(w, "A%sdn%d [%svin%d] [%sdn%d] lic_vtn\n", p, pin, p, pin, p, pin);
+        primitive(w, "srlatch", "up%d ~dn%d one null null s%d y%d", pin, pin, gate, gate);
+        char y[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(y, sizeof(y), "y%d", gate);
+        output(w, y_pins[gate], y, NULL);
+    }
+}
+
+/* 74HC273/373/374 pinout: pin 1 (~CLR or ~OE), pin 11 (CLK or LE), nD to nQ. */
+static const int octal_d_pins[] = {2, 3, 6, 7, 12, 13, 16, 17}, octal_q_pins[] = {1, 4, 5, 8, 11, 14, 15, 18};
+
+/* Eight cells of `model` (dff or dlatch) taking nD under pin 11; `reset` and `enable` may be NULL. */
+static void octal_cells(LogicWriter *w, const char *model, const char *reset, const char *enable)
+{
+    static const int controls[] = {0, 10};
+    inputs(w, controls, 2);
+    inputs(w, octal_d_pins, 8);
+    for (int bit = 0; bit < 8; ++bit)
+    {
+        char q[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(q, sizeof(q), "q%d", bit);
+        primitive(w, model, "d%d d10 null %s %s null", octal_d_pins[bit], reset ? reset : "null", q);
+        output(w, octal_q_pins[bit], q, enable);
+    }
+}
+
+/* SN74HC273: rising-edge D flip-flops with an asynchronous, active-low clear. */
+static void octal_dff_273(LogicWriter *w)
+{
+    primitive(w, "inv", "d0 clr");
+    octal_cells(w, "dff", "clr", NULL);
+}
+
+/* SN74HC373: LE high makes Q follow D, LE low holds; ~OE high releases the outputs and keeps the latches. */
+static void octal_latch_373(LogicWriter *w)
+{
+    primitive(w, "inv", "d0 en");
+    octal_cells(w, "dlatch", NULL, "en");
+}
+
+/* SN74HC374: rising-edge D flip-flops; ~OE high releases the outputs and keeps the stored bits. */
+static void octal_dff_374(LogicWriter *w)
+{
+    primitive(w, "inv", "d0 en");
+    octal_cells(w, "dff", NULL, "en");
+}
+
 /* EEPROM pins cross the same analog bridges as other CIs; its state runs in d_cosim. */
 static void eeprom_28c16(LogicWriter *w)
 {
@@ -341,6 +496,7 @@ typedef struct
 #define AT28C16_ABSOLUTE_MAX 6.25
 #define AT28C16_RECOMMENDED_MAX 5.5
 #define HC_RATINGS HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX, HC_OUTPUT_ABSOLUTE_MAX_AMPS
+#define HC_RATINGS_35 HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX, HC35_OUTPUT_ABSOLUTE_MAX_AMPS
 static const LogicChip chips[] = {
     {PART_74HC161, 15, 7, HC_RATINGS, counter_161},
     {PART_74HC173, 15, 7, HC_RATINGS, register_173},
@@ -349,6 +505,15 @@ static const LogicChip chips[] = {
     {PART_AT28C16, 23, 11, AT28C16_ABSOLUTE_MAX, AT28C16_RECOMMENDED_MAX, 0, eeprom_28c16},
     {PART_74HC04, 13, 6, HC_RATINGS, hex_inverter_04},
     {PART_74HC74, 13, 6, HC_RATINGS, dual_dff_74},
+    {PART_74HC02, 13, 6, HC_RATINGS, quad_nor_02},
+    {PART_74HC10, 13, 6, HC_RATINGS, triple_nand_10},
+    {PART_74HC11, 13, 6, HC_RATINGS, triple_and_11},
+    {PART_74HC14, 13, 6, HC_RATINGS, hex_schmitt_14},
+    {PART_74HC273, 19, 9, HC_RATINGS, octal_dff_273},
+    {PART_74HC373, 19, 9, HC_RATINGS_35, octal_latch_373},
+    {PART_74HC374, 19, 9, HC_RATINGS_35, octal_dff_374},
+    {PART_74HC163, 15, 7, HC_RATINGS, counter_163},
+    {PART_74HC193, 15, 7, HC_RATINGS, up_down_counter_193},
 };
 
 static const LogicChip *logic_chip(PartType type)
@@ -401,7 +566,15 @@ int netlist_logic_models(FILE *out)
                    ".model lic_xor d_xor(rise_delay=1n fall_delay=1n)\n"
                    ".model lic_inv d_inverter(rise_delay=1n fall_delay=1n)\n"
                    ".model lic_dff d_dff(ic=0 clk_delay=1n set_delay=1n reset_delay=1n rise_delay=1n fall_delay=1n)\n"
-                   ".model lic_one d_pullup\n") >= 0;
+                   ".model lic_one d_pullup\n"
+                   ".model lic_nand d_nand(rise_delay=1n fall_delay=1n)\n"
+                   ".model lic_dlatch d_dlatch(ic=0 data_delay=1n enable_delay=1n set_delay=1n reset_delay=1n "
+                   "rise_delay=1n fall_delay=1n)\n"
+                   ".model lic_srlatch d_srlatch(ic=0 sr_delay=1n enable_delay=1n set_delay=1n reset_delay=1n "
+                   "rise_delay=1n fall_delay=1n)\n"
+                   /* 74HC14 thresholds VT+ = .55 VCC and VT- = .35 VCC (TI SCLS085L typical, 4.5 and 6 V). */
+                   ".model lic_vtp adc_bridge(in_low=2.75 in_high=2.75)\n"
+                   ".model lic_vtn adc_bridge(in_low=1.75 in_high=1.75)\n") >= 0;
 }
 
 void netlist_logic_ratings(PartType type, double *supply_absolute_max, double *supply_recommended_max,

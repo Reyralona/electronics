@@ -43,6 +43,21 @@ UI_TEXT(PIN_INV5_A, "Entrada do inversor 5.", "Input of inverter 5.")
 UI_TEXT(PIN_INV5_Y, "Saída do inversor 5.", "Output of inverter 5.")
 UI_TEXT(PIN_INV6_A, "Entrada do inversor 6.", "Input of inverter 6.")
 UI_TEXT(PIN_INV6_Y, "Saída do inversor 6.", "Output of inverter 6.")
+/* 74HC02 */
+UI_TEXT(DOC_74HC02, "Quatro portas NOR de 2 entradas. Y = NÃO (A OU B).", "Four 2-input NOR gates. Y = NOT (A OR B).")
+/* 74HC10/11: three 3-input gates, same pinout */
+UI_TEXT(DOC_74HC10, "Três portas NAND de 3 entradas. Y = NÃO (A E B E C).",
+        "Three 3-input NAND gates. Y = NOT (A AND B AND C).")
+UI_TEXT(DOC_74HC11, "Três portas AND de 3 entradas. Y = A E B E C.", "Three 3-input AND gates. Y = A AND B AND C.")
+UI_TEXT(PIN_GATE1_C, "Entrada C da porta 1.", "Input C of gate 1.")
+UI_TEXT(PIN_GATE2_C, "Entrada C da porta 2.", "Input C of gate 2.")
+UI_TEXT(PIN_GATE3_C, "Entrada C da porta 3.", "Input C of gate 3.")
+/* 74HC14 */
+UI_TEXT(DOC_74HC14,
+        "Seis inversores Schmitt, Y = NÃO A. Y vai a 0 com A acima de 0,55 VCC e a 1 abaixo de 0,35 VCC. "
+        "Entre os dois, Y fica como estava.",
+        "Six Schmitt inverters, Y = NOT A. Y goes low with A above 0.55 VCC and high below 0.35 VCC. "
+        "In between, Y stays as it was.")
 /* 74HC74 */
 UI_TEXT(DOC_74HC74,
         "Dois flip-flops D. Na borda de subida do clock, Q copia D. ~PRE e ~CLR agem na hora, em nível baixo.",
@@ -199,3 +214,48 @@ UI_TEXT(PIN_293_Y, "Saída de potência do canal, para o motor.", "Channel power
 UI_TEXT(PIN_293_GND, "Terra (GND) e dissipação de calor.", "Ground (GND) and heat sink.")
 UI_TEXT(PIN_293_VCC2, "Alimentação dos motores, até 36 V.", "Motor supply, up to 36 V.")
 UI_TEXT(PIN_293_VCC1, "Alimentação da lógica, 5 V.", "Logic supply, 5 V.")
+/* 74HC273/373/374: eight data bits, same pinout; nD goes to nQ */
+UI_TEXT(DOC_74HC273, "Oito flip-flops D. Na borda de subida do clock, cada Q copia seu D. ~CLR em 0 zera tudo na hora.",
+        "Eight D flip-flops. On the rising clock edge, each Q copies its D. ~CLR low clears all at once.")
+UI_TEXT(DOC_74HC373,
+        "Oito latches D com saídas de três estados. Com LE em 1, Q segue D; com LE em 0, Q guarda o valor.",
+        "Eight D latches with three-state outputs. With LE high, Q follows D; with LE low, Q holds its value.")
+UI_TEXT(DOC_74HC374,
+        "Oito flip-flops D com saídas de três estados. Na borda de subida do clock, cada Q copia seu D.",
+        "Eight D flip-flops with three-state outputs. On the rising clock edge, each Q copies its D.")
+UI_TEXT(PIN_OCT_D, "Dado: vai para a saída Q de mesmo número.", "Data: goes to the Q output with the same number.")
+UI_TEXT(PIN_OCT_CLK, "Clock: carrega os 8 dados na borda de subida.", "Clock: loads the 8 data bits on the rising edge.")
+UI_TEXT(PIN_OCT_OE, "Habilita as saídas: em 0 ligadas, em 1 alta impedância. O valor guardado não muda.",
+        "Output enable: low drives the outputs, high leaves them in high impedance. The stored value stays.")
+UI_TEXT(PIN_273_CLR, "Clear: em 0 zera as 8 saídas na hora, sem esperar o clock.",
+        "Clear: low resets the 8 outputs at once, without the clock.")
+UI_TEXT(PIN_273_Q, "Saída do flip-flop de mesmo número.", "Output of the flip-flop with the same number.")
+UI_TEXT(PIN_373_LE, "Latch: em 1 as saídas seguem D; em 0 guardam o último valor.",
+        "Latch enable: high makes the outputs follow D; low holds the last value.")
+UI_TEXT(PIN_373_Q, "Saída do latch de mesmo número, com três estados.", "Three-state output of the latch with the same number.")
+UI_TEXT(PIN_374_Q, "Saída do flip-flop de mesmo número, com três estados.",
+        "Three-state output of the flip-flop with the same number.")
+/* 74HC163: 74HC161 pinout, clear on the clock edge */
+UI_TEXT(DOC_74HC163,
+        "Contador binário de 4 bits. Conta na borda de subida do clock com ENP e ENT em 1. ~CLR zera na próxima borda.",
+        "4-bit binary counter. Counts on the rising clock edge with ENP and ENT high. ~CLR clears on the next edge.")
+UI_TEXT(PIN_163_CLR, "Clear: em 0, a próxima borda do clock zera as saídas. Vence o load.",
+        "Clear: when low, the next clock edge resets the outputs. It beats load.")
+/* 74HC193 */
+UI_TEXT(DOC_74HC193,
+        "Contador crescente e decrescente de 4 bits. Sobe na borda de subida de UP e desce na de DOWN. "
+        "CLR em 1 zera e ~LOAD em 0 carrega A-D na hora.",
+        "4-bit up/down counter. Counts up on the rising edge of UP and down on that of DOWN. "
+        "CLR high clears and ~LOAD low loads A-D at once.")
+UI_TEXT(PIN_193_UP, "Clock de subida: soma 1 na borda de subida, com DOWN em 1.",
+        "Count-up clock: adds 1 on the rising edge, with DOWN high.")
+UI_TEXT(PIN_193_DOWN, "Clock de descida: subtrai 1 na borda de subida, com UP em 1.",
+        "Count-down clock: subtracts 1 on the rising edge, with UP high.")
+UI_TEXT(PIN_193_LOAD, "Load: em 0 copia A-D para as saídas na hora, sem clock.",
+        "Load: low copies A-D to the outputs at once, without a clock.")
+UI_TEXT(PIN_193_CLR, "Clear: em 1 zera as saídas na hora. Vence o load e a contagem.",
+        "Clear: high resets the outputs at once. It beats load and counting.")
+UI_TEXT(PIN_193_CO, "Vai-um: em 0 enquanto a contagem é 15 e UP está em 0. Ligue no UP do próximo contador.",
+        "Carry: low while the count is 15 and UP is low. Connect it to UP of the next counter.")
+UI_TEXT(PIN_193_BO, "Empresta-um: em 0 enquanto a contagem é 0 e DOWN está em 0. Ligue no DOWN do próximo contador.",
+        "Borrow: low while the count is 0 and DOWN is low. Connect it to DOWN of the next counter.")

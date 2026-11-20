@@ -5,7 +5,7 @@
 /* Geometry, measurements and modes of multi-element devices (RGB LED, displays, motors, relays,
  * instruments and powered sensor modules). Pure data: no SDL/OpenGL, no netlist text. */
 #define COMPONENT_MAX_ELEMENTS 24
-#define COMPONENT_MAX_DEVICE_PINS 24
+#define COMPONENT_MAX_DEVICE_PINS 28 /* the 62256 SRAM, DIP-28 */
 #define COMPONENT_METER_OHMS_TEST_AMPS 5e-4
 
 typedef struct
