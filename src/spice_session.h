@@ -16,6 +16,9 @@ SpiceSession *spice_session_open(const char *executable, char *message, size_t c
 int spice_session_load(SpiceSession *session, const char *path, char *message, size_t capacity);
 int spice_session_command(SpiceSession *session, const char *command, char *message, size_t capacity);
 int spice_session_value(SpiceSession *session, const char *vector, double *value, char *message, size_t capacity);
+/* Last value of `count` vectors with as few round trips as the request size allows. */
+int spice_session_values(SpiceSession *session, const char *const *vectors, int count, double *values,
+                         char *message, size_t capacity);
 /* Samples `vector` every `interval` simulated seconds; NULL or "" stops sampling. */
 int spice_session_probe(SpiceSession *session, const char *vector, double interval, char *message, size_t capacity);
 int spice_session_samples(SpiceSession *session, SpiceSampleBlock *block, char *message, size_t capacity);

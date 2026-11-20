@@ -296,6 +296,28 @@ static void respond(int failed)
     fflush(stdout);
 }
 
+/* "M a b c": last value of each vector on one line, so a caller pays one round trip for many readings. */
+static void send_values(VectorInfo vector_info, char *names)
+{
+    static double values[SPICE_HOST_VALUES_MAX];
+    int count = 0;
+    for (char *name = strtok(names, " "); name; name = strtok(NULL, " "))
+    {
+        SharedVector *vector = vector_info(name);
+        if (count >= SPICE_HOST_VALUES_MAX || !vector || !vector->real || vector->length < 1)
+        {
+            respond(1);
+            return;
+        }
+        values[count++] = vector->real[vector->length - 1];
+    }
+    fputs("OK", stdout);
+    for (int i = 0; i < count; ++i)
+        printf(" %.17g", values[i]);
+    puts("");
+    fflush(stdout);
+}
+
 static void send_eeprom(void)
 {
     HMODULE module = GetModuleHandleA("bancada-eeprom.dll");
@@ -379,6 +401,8 @@ int main(int argc, char **argv)
                 fflush(stdout);
             }
         }
+        else if (!strncmp(input, "M ", 2))
+            send_values(vector_info, input + 2);
         else if (!strncmp(input, "P ", 2))
             respond(set_probe(input + 2));
         else if (!strcmp(input, "S"))

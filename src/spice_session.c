@@ -80,28 +80,34 @@ static int response(SpiceSession *session, char *text, size_t capacity, char *me
             Sleep(GetTickCount64() - started < 5 ? 0 : 1);
             continue;
         }
-        char c;
-        if (!ReadFile(session->output, &c, 1, &received, NULL) || !received)
+        /* Each request gets exactly one reply line, so reading what is available never takes the next one. */
+        char chunk[SPICE_SESSION_READ_CHUNK];
+        DWORD wanted = available < sizeof(chunk) ? available : (DWORD)sizeof(chunk);
+        if (!ReadFile(session->output, chunk, wanted, &received, NULL) || !received)
             break;
-        if (c == '\n')
+        for (DWORD i = 0; i < received; ++i)
         {
-            text[count] = 0;
-            if (!strncmp(text, "OK", 2))
-                return 1;
-            session->keep_log = 1;
-            if (!strncmp(text, "ERR ", 4))
-                host_error(text + 4, message, message_capacity);
-            else
+            char c = chunk[i];
+            if (c == '\n')
+            {
+                text[count] = 0;
+                if (!strncmp(text, "OK", 2))
+                    return 1;
+                session->keep_log = 1;
+                if (!strncmp(text, "ERR ", 4))
+                    host_error(text + 4, message, message_capacity);
+                else
+                    snprintf(message, message_capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
+                return 0;
+            }
+            if (count + 1 >= capacity)
+            {
                 snprintf(message, message_capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
-            return 0;
+                return 0;
+            }
+            if (c != '\r')
+                text[count++] = c;
         }
-        if (count + 1 >= capacity)
-        {
-            snprintf(message, message_capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
-            return 0;
-        }
-        if (c != '\r')
-            text[count++] = c;
     }
     session->keep_log = 1;
     snprintf(message, message_capacity, tr(TXT_ENG_CALCULATION_TIMEOUT_LOG),
@@ -338,6 +344,50 @@ int spice_session_command(SpiceSession *session, const char *text, char *message
     if (snprintf(command, sizeof(command), "C %s", text) >= (int)sizeof(command))
         return 0;
     return request(session, command, reply, sizeof(reply), message, capacity);
+}
+
+/* One "M" request for vectors [first, first+count); the caller keeps the line within the command capacity. */
+static int values_request(SpiceSession *session, const char *const *vectors, int count, double *values,
+                          char *message, size_t capacity)
+{
+    char command[SPICE_SESSION_COMMAND_CAPACITY];
+    char reply[SPICE_SESSION_VALUES_REPLY_CAPACITY];
+    size_t used = (size_t)snprintf(command, sizeof(command), "M");
+    for (int i = 0; i < count; ++i)
+        used += (size_t)snprintf(command + used, sizeof(command) - used, " %s", vectors[i]);
+    if (!request(session, command, reply, sizeof(reply), message, capacity))
+        return 0;
+    char *cursor = reply + 2;
+    for (int i = 0; i < count; ++i)
+    {
+        char *end;
+        values[i] = strtod(cursor, &end);
+        if (end == cursor || !isfinite(values[i]))
+        {
+            snprintf(message, capacity, "%s", tr(TXT_ENG_RESULT_INVALID));
+            return 0;
+        }
+        cursor = end;
+    }
+    return 1;
+}
+
+int spice_session_values(SpiceSession *session, const char *const *vectors, int count, double *values,
+                         char *message, size_t capacity)
+{
+    int first = 0;
+    while (first < count)
+    {
+        size_t length = 1;
+        int batch = 0;
+        while (first + batch < count && batch < SPICE_HOST_VALUES_MAX &&
+               length + strlen(vectors[first + batch]) + 3 < SPICE_SESSION_COMMAND_CAPACITY)
+            length += strlen(vectors[first + batch++]) + 1;
+        if (!batch || !values_request(session, vectors + first, batch, values + first, message, capacity))
+            return 0;
+        first += batch;
+    }
+    return 1;
 }
 
 int spice_session_value(SpiceSession *session, const char *vector, double *value, char *message, size_t capacity)
