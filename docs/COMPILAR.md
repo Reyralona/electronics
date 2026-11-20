@@ -36,8 +36,19 @@ cd electronics
 
 O script de preparação baixa e verifica as dependências do ngspice.
 Ele preserva um destino existente. Não precisa executá-lo em todo build.
+O build exige o runtime: verifica os arquivos essenciais e a referência DC antes de compilar.
+A referência DC e o teste da sessão contínua rodam com PATH mínimo, sem depender do MSYS2.
+Se faltar um arquivo ou uma DLL não carregar, o build para com instruções de recuperação.
+Para refazer uma instalação incompleta, mova `build/spice-local` para backup e execute
+`./tools/setup-ngspice.ps1` novamente; o script não sobrescreve uma instalação existente.
 O build compila com `-Wall -Wextra -Werror` e roda a suíte de testes.
 `-GuiTests` inclui o autoteste da interface. Testes do solver usam o runtime preparado.
+
+Para verificar apenas os diagnósticos de instalação, execute `./tests/test_ngspice_runtime.ps1`.
+Esse teste usa arquivos temporários, sem modificar o runtime instalado. Foi confirmado em
+19/11/2026 que ele falha antes da correção da 0.47.1 e passa depois dela; verifica também
+que uma falha ao iniciar o solver restaura o PATH da sessão.
+Validação da 0.47.1: `./build.ps1 -GuiTests` passou em 19/11/2026, incluindo solver e autoteste gráfico.
 
 Se o PowerShell bloquear um script, execute apenas aquela chamada com:
 

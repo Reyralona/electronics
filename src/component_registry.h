@@ -24,7 +24,8 @@ typedef enum
     PIN_CONTACT,
     PIN_COLLECTOR,
     PIN_BASE,
-    PIN_EMITTER
+    PIN_EMITTER,
+    PIN_BIDIRECTIONAL /* bus terminal that can be input or output */
 } ComponentPinRole;
 
 typedef struct
@@ -39,7 +40,8 @@ enum
     COMPONENT_STARTS_ON = 2,
     COMPONENT_GATE_SYMBOL = 4,
     COMPONENT_CONNECTIVITY = 8,
-    COMPONENT_QUAD_GATE = 16
+    COMPONENT_QUAD_GATE = 16,
+    COMPONENT_DIP = 32 /* dual in-line IC: N/2 pins per side at the 74HC pitch */
 };
 
 typedef struct

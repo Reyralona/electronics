@@ -118,13 +118,21 @@ static void test_boundary_capacity(void)
     int selected;
     char message[256];
     assert(workbench_example_create(0, &bench, &selected));
-    /* Fill the wire table from both source terminals to free breadboard holes. */
+    /* Fill the wire table from both source terminals to free breadboard holes, then to resistors placed far
+     * apart once the holes run out. */
     for (int pin = 100; bench.wire_count < WORKBENCH_MAX_WIRES; ++pin)
     {
-        assert(pin < BREADBOARD_PINS);
-        assert(bench_toggle_wire(&bench, (Pin){0, 0}, (Pin){1, pin}) == 1);
+        Pin target = {1, pin};
+        if (pin >= BREADBOARD_PINS)
+        {
+            int extra = pin - BREADBOARD_PINS;
+            target.component = bench_add(&bench, PART_RESISTOR, 3000.0f + (float)(extra % 30) * 200, 3000.0f + (float)(extra / 30) * 200);
+            target.pin = 0;
+            assert(target.component >= 0);
+        }
+        assert(bench_toggle_wire(&bench, (Pin){0, 0}, target) == 1);
         if (bench.wire_count < WORKBENCH_MAX_WIRES)
-            assert(bench_toggle_wire(&bench, (Pin){0, 1}, (Pin){1, pin}) == 1);
+            assert(bench_toggle_wire(&bench, (Pin){0, 1}, target) == 1);
     }
     selection.parts[2] = 1;
     static Workbench before;

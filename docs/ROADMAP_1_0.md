@@ -64,7 +64,7 @@ Dívidas encontradas, em ordem de impacto:
    migrar para uma tabela de fases `{ação, verificação}`; hoje inserir uma fase no meio exige renumerar.
 4. ~~Uma corrente por peça~~: resolvido na 0.32.0 (`component_devices`, até 8 medições e `states`).
    Falta proteção de queima por elemento (hoje RGB/7 segmentos não "queimam").
-5. **Limites fixos**: 256 peças, 512 fios, 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
+5. **Limites fixos**: 1024 peças e 2048 fios desde a 0.47.0 (eram 256/512), 16 joelhos por fio, 8 blocos, 9 slots. A meta 1.0 exige
    capacidades dinâmicas.
 6. **Tipos persistidos como códigos numéricos** (formato 32); a migração para IDs textuais já foi
    decidida e deve usar um número de formato novo, mantendo leitura das versões anteriores.
@@ -87,7 +87,8 @@ sensores PIR/gás/IR/distância e os três instrumentos. Ainda falta:
 - ~~LCD 16x2 I2C~~ e microcontroladores: feitos na 0.34.0 (subconjunto Arduino, editor lateral).
 - Sensor ultrassônico com trigger/echo (o de distância atual é IR analógico, declarado).
 - DIP de tamanho configurável (hoje 4 vias); servo por largura de pulso real.
-- CIs: inventário verificável do Tinkercad (555, 74HC02/04/14/595, 4511, L293D, LM741...).
+- CIs: inventário verificável do Tinkercad (555, 74HC02/04/14/595, 4511, L293D, LM741...). Feitos na 0.47.0:
+  74HC161, 74HC173, 74HC245, 74HC283 e AT28C16 (só leitura; editor de conteúdo pendente).
 - Microcontrolador: feito (0.34.0); falta servo por pulso e ultrassônico usando-o.
 
 ### 4.3 Uso e acabamento (`QUALIDADE_DE_USO.md`)

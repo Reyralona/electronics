@@ -4,12 +4,14 @@
 #include "spice_live.h"
 #include "component_devices.h"
 #include "spice_trace.h"
+#include "workbench_file.h"
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
 #define AUTO_DEBOUNCE_MS 120
 #define LIVE_FRAME_INTERVAL_MS 16
 #define LIVE_MAX_BATCH_SECONDS .02
+#define LIVE_MIN_BATCH_SECONDS 1e-7
 #define LIVE_MAX_BATCH_STEPS 2000.0
 #define LIVE_TARGET_BATCH_WALL_SECONDS .1
 /* The live graph shows the last "duration" seconds; this many samples span that window. */
@@ -18,13 +20,16 @@
 double app_simulation_live_span(uint64_t previous_ms, uint64_t now_ms, double step, double speed,
                                 double observed_rate)
 {
-    if (!isfinite(step) || step <= 0 || !isfinite(speed) || speed < .05 || speed > 1.0)
+    if (!isfinite(step) || step <= 0 || !isfinite(speed) || speed < WORKBENCH_SPEED_MIN || speed > WORKBENCH_SPEED_MAX)
         return 0;
     double elapsed = previous_ms && now_ms >= previous_ms ? (now_ms - previous_ms) * .001 : .016;
     double maximum = fmin(LIVE_MAX_BATCH_SECONDS, step * LIVE_MAX_BATCH_STEPS);
     if (isfinite(observed_rate) && observed_rate > 0)
         maximum = fmin(maximum, observed_rate * LIVE_TARGET_BATCH_WALL_SECONDS);
-    return fmax(step, fmin(elapsed * speed, maximum));
+    /* A slow circuit still advances one step per batch; a slow requested pace may ask for less, because the
+     * session stops exactly at the requested time (checked with ngspice 45.2 on 19/11/2026). */
+    maximum = fmax(step, maximum);
+    return fmax(LIVE_MIN_BATCH_SECONDS, fmin(elapsed * speed, maximum));
 }
 
 /* Wire endpoints and coincident terminals define connectivity, including breadboards.

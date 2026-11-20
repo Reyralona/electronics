@@ -24,7 +24,7 @@ int workbench_settings_valid(const WorkbenchSettings *s)
            (s->snap_grid == 0 || s->snap_grid == 1) && (s->snap_board == 0 || s->snap_board == 1) &&
            (s->show_pin_labels == 0 || s->show_pin_labels == 1) && s->language >= 0 && s->language < UI_LANG_COUNT &&
            s->transient_step <= s->transient_stop && s->transient_stop / s->transient_step <= 500.0 * (1.0 + 1e-12) &&
-           isfinite(s->simulation_speed) && s->simulation_speed >= .05 && s->simulation_speed <= 1.0;
+           isfinite(s->simulation_speed) && s->simulation_speed >= WORKBENCH_SPEED_MIN && s->simulation_speed <= WORKBENCH_SPEED_MAX;
 }
 
 static int write_leads(FILE *file, const Workbench *bench)
@@ -337,7 +337,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !workbench_settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 34\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 35\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -384,7 +384,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 34) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 35) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)

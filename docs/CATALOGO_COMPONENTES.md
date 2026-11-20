@@ -92,7 +92,8 @@ um e varios displays externos antes de marcar este criterio como concluido.
 
 Pedido: TODOS os circuitos integrados disponiveis no Tinkercad. A cobertura completa ainda nao
 foi verificada numa fonte oficial enumeravel. Nao substituir esse pedido por uma lista presumida
-de quatro portas. Ja presentes: 74HC00/08/32/86, alem dos blocos logicos didaticos.
+de quatro portas. Ja presentes: 74HC00/08/32/86, 74HC161/173/245/283 e EEPROM AT28C16 (0.47.0,
+so leitura), alem dos blocos logicos didaticos.
 Inventariar nome exato, fabricante/modelo de referencia, pinagem, alimentacao, verdade/estado,
 limites e teste de cada CI. Catalogo do produto pode mudar: registrar data e evidencia consultada.
 

@@ -29,11 +29,13 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 - `Tab` e `Shift+Tab` percorrem os controles visíveis. O contorno mostra o foco; `Enter` ou `Espaço` ativa.
 - Nos diálogos, o foco permanece nas ações daquele diálogo. `Esc` cancela ou fecha; não confirma substituição de arquivo.
 - No editor de código, `Tab` indenta e `Ctrl+Tab` percorre os controles. Clique no texto para voltar a digitar.
-- **Configurações → Escala da interface** amplia texto e alvos juntos (80% a 133%). A preferência é salva.
-  Ela define o tamanho solicitado para a janela. Ao redimensionar manualmente, a ampliação acompanha a área disponível.
-  A janela mínima tem área cliente de 1024×576. A escala solicitada precisa caber na área útil do monitor;
-  caso contrário, o programa informa o motivo e conserva a preferência anterior.
-- Redimensionar preserva a proporção de desenho e dos cliques, com margens quando necessário.
+- **Configurações → Escala da interface** amplia texto e alvos juntos (80% a 133%), somada à escala do
+  Windows. A preferência é salva. Numa janela normal, ela define o tamanho da janela. Maximizada ou em tela
+  cheia, a janela não muda: uma escala menor deixa painéis e textos menores e dá mais espaço à bancada.
+  A escala precisa caber na janela maximizada ou na área útil do monitor; caso contrário, o programa informa
+  o motivo e conserva a preferência anterior.
+- Janelas maiores aumentam a bancada e o catálogo mostra mais peças; o cabeçalho, o inspetor e os diálogos
+  acompanham as bordas ou o centro. Só uma janela menor que o desenho na escala escolhida ganha margens.
   Isso não oferece suporte automático a leitor de tela; essa integração continua pendente.
 
 ### Peças
@@ -120,8 +122,9 @@ O que aparece na tela:
 
 - **LEDs e lâmpadas** brilham conforme a corrente calculada. O LED apagado fica escuro, bem diferente do aceso. Cinza significa que não há resultado válido.
 - **Corrente nos fios** (ligue em **Configurações**): bolinhas amarelas andam no sentido convencional da corrente, e a velocidade indica a faixa de intensidade.
-- Durante a sessão contínua, a barra inferior mostra o tempo simulado e a velocidade observada (`1,00x` significa 1 segundo simulado por segundo real). O valor depende do circuito e do computador.
-- Em **Configurações → Ritmo da simulação**, use **−/+** para escolher 0,05×, 0,1×, 0,25×, 0,5× ou 1×.
+- Durante a sessão contínua, a barra inferior mostra o tempo simulado e a velocidade observada (`1x` significa 1 segundo simulado por segundo real). O valor depende do circuito e do computador.
+- Em **Configurações → Ritmo da simulação**, use **−/+** para escolher de 0,001× (câmera lenta: 1 ms do
+  circuito por segundo) a 1×: 0,001×, 0,002×, 0,005×, 0,01×, 0,02×, 0,05×, 0,1×, 0,25×, 0,5× ou 1×.
   É a razão solicitada entre tempo simulado e tempo real na sessão contínua; não muda a frequência
   dos componentes nem o passo elétrico. A barra mostra o ritmo escolhido e o observado. Se o computador
   não acompanhar, o observado pode ficar abaixo do escolhido. A preferência é salva automaticamente.
@@ -184,6 +187,25 @@ seus próprios terminais. Para remover um terminal escolhido, apague o nome do p
 7. O **×** no cartão da aba Chips remove o chip da biblioteca (pede confirmação). O arquivo vai para `blocks/lixeira`, e as cópias na bancada continuam.
 
 Um chip mostra só um terminal por nó elétrico que fica livre ou que se liga ao exterior. Por exemplo, três AND formando uma AND de 4 entradas viram um chip de 5 terminais. Displays de 7 segmentos e LEDs RGB dentro de um chip aparecem no corpo do chip.
+
+## CIs digitais de média escala
+
+Na aba **Digital** estão o contador **74HC161**, o registrador **74HC173**, o transceptor **74HC245**, o
+somador **74HC283** e a EEPROM **AT28C16**. Os nomes de pino seguem as folhas de dados; `~` marca pino ativo
+em nível baixo (por exemplo `~LOAD`). Cada CI se alimenta pelos próprios pinos VCC e GND, de 2 a 6 V, com os
+limiares e as saídas de 50 Ω dos outros CIs 74HC. Saídas de três estados (173, 245, EEPROM) soltam o pino
+quando desabilitadas.
+
+- **74HC161**: conta na subida do clock com ENP e ENT altos; `~LOAD` baixo carrega A–D na subida;
+  `~CLR` baixo zera na hora. RCO sobe em 15 com ENT alto.
+- **74HC173**: carrega 1D–4D na subida do clock com `~G1` e `~G2` baixos; CLR alto zera. Saídas ligadas
+  com M e N baixos.
+- **74HC245**: com `~OE` baixo, DIR alto leva A para B e DIR baixo leva B para A.
+- **74HC283**: soma A1–A4, B1–B4 e C0; saída S1–S4 e C4.
+- **AT28C16**: lê com `~CE` e `~OE` baixos e `~WE` alto. O conteúdo é texto hexadecimal guardado na peça,
+  por exemplo `00: 1E 2F 3D` (o endereço antes de `:` é opcional). `;` ou `#` começam comentário.
+  Endereços não gravados leem `FF`, como uma memória apagada. Gravar pelo `~WE` não é simulado, e a
+  interface ainda não edita o conteúdo: ele vem do arquivo de projeto.
 
 ## Microcontroladores
 
@@ -276,7 +298,8 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
   com 5 V passa do limite: use um resistor de 220 a 330 Ω. Sem fonte, um gerador de clock (módulo de 5 V)
   alimenta as portas.
 - Os **CIs 74HC** simulam quatro portas alimentadas pelos próprios pinos VCC e GND, de 2 a 6 V, com os mesmos
-  limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
+  limiares proporcionais e saídas de 50 Ω. Sem alimentação, as saídas ficam desligadas. O 74HC161, o 74HC173,
+  o 74HC245, o 74HC283 e a AT28C16 seguem a mesma regra, com lógica interna digital e atraso de 1 ns por porta. Pinagem do 74HC00: 1A=1, 1B=2, 1Y=3, 2A=4, 2B=5, 2Y=6, GND=7, 3Y=8, 3A=9, 3B=10, 4Y=11, 4A=12, 4B=13, VCC=14 (segundo a [folha de dados da TI](https://www.ti.com/lit/ds/symlink/sn74hc00.pdf)).
 - O **tempo simulado** corre bem mais devagar que o real: cerca de 1 ms simulado por segundo na tela. Um RC de 1 kΩ × 1 µF leva de 1 a 3 s para descarregar visivelmente.
 - Adicionar ou remover peças ou ligações, ou mudar a frequência de um clock, reinicia a simulação contínua. O rodapé avisa quando isso acontece.
-- Capacidade: 256 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 512 fios, 256 grupos, slots de projeto conforme o espaço disponível e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.
+- Capacidade: 1024 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 2048 fios, 1024 grupos, slots de projeto conforme o espaço disponível e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.

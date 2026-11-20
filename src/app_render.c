@@ -130,6 +130,7 @@ static void line(float x, float y, float x2, float y2)
 }
 static void circle(float x, float y, float radius);
 static void rounded_rect(float x, float y, float w, float h, float radius);
+static void ui_shadow(AppRect r, float radius, float depth);
 /* Shared palette (BenchColor): wire insulation and swatch tone, and the lit LED lens. */
 typedef struct
 {
@@ -149,6 +150,8 @@ static const PaletteTone *palette_tone(int color)
     return &palette_tones[color >= 0 && color < BENCH_COLOR_COUNT ? color : BENCH_DEFAULT_WIRE_COLOR];
 }
 
+#define WIRE_TIP_INSULATION 14.0f /* colored end drawn over the hole, along the wire */
+#define WIRE_TIP_METAL 6.0f       /* bare lead entering the hole */
 static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
 {
     float dx = next.x - hole.x, dy = next.y - hole.y, length = hypotf(dx, dy);
@@ -156,13 +159,19 @@ static void wire_contact_tip(WirePoint hole, WirePoint next, int wire_color)
         return;
     dx /= length;
     dy /= length;
+    /* Never past the first knee: a knee next to the hole would otherwise leave a spur beyond the bend. */
+    float insulation = fminf(WIRE_TIP_INSULATION, length), metal = fminf(WIRE_TIP_METAL, length);
     const float *tone = palette_tone(wire_color)->wire;
-    color(tone[0], tone[1], tone[2]);
-    glLineWidth(5);
-    line(hole.x + dx * 14, hole.y + dy * 14, hole.x + dx * 5, hole.y + dy * 5);
+    if (insulation > WIRE_TIP_METAL - 1)
+    {
+        color(tone[0], tone[1], tone[2]);
+        glLineWidth(5);
+        line(hole.x + dx * insulation, hole.y + dy * insulation, hole.x + dx * (WIRE_TIP_METAL - 1),
+             hole.y + dy * (WIRE_TIP_METAL - 1));
+    }
     color(.75f, .52f, .22f);
     glLineWidth(3);
-    line(hole.x + dx * 6, hole.y + dy * 6, hole.x, hole.y);
+    line(hole.x + dx * metal, hole.y + dy * metal, hole.x, hole.y);
     color(.98f, .8f, .43f);
     circle(hole.x, hole.y, 2.5f);
     glLineWidth(1);
@@ -283,8 +292,10 @@ static void trace_title(char *title, size_t capacity, int pin, int current)
 static void graph_frame(GLuint font, const char *title)
 {
     AppRect panel = app_layout_graph_panel();
-    color(.62f, .68f, .72f);
-    rect(panel.x + 6, panel.y + 6, panel.w, panel.h);
+    WirePoint offset = app_layout_graph_offset(); /* the caller already moved the drawing */
+    panel.x -= offset.x;
+    panel.y -= offset.y;
+    ui_shadow(panel, 2, 8);
     color(.98f, .98f, .99f);
     rect(panel.x, panel.y, panel.w, panel.h);
     color(.14f, .22f, .28f);
@@ -621,19 +632,20 @@ static void draw_part_clock(const Part *p)
 static void draw_part_chip(const Part *p)
 {
     float x = p->x, y = p->y;
-    int leg;
+    int side = bench_pin_count(p->type) / 2;
+    float half = (float)((side - 1) * BENCH_DIP_PITCH / 2), body = half + 7;
     color(.72f, .74f, .76f);
-    for (leg = 0; leg < 7; ++leg)
+    for (int leg = 0; leg < side; ++leg)
     {
-        rect(x - 44 + leg * 14, y - 17, 4, 9);
-        rect(x - 44 + leg * 14, y + 8, 4, 9);
+        rect(x - half - 2 + (float)(leg * BENCH_DIP_PITCH), y - 17, 4, 9);
+        rect(x - half - 2 + (float)(leg * BENCH_DIP_PITCH), y + 8, 4, 9);
     }
     color(.14f, .16f, .18f);
-    rect(x - 49, y - 13, 98, 28);
+    rect(x - body, y - 13, 2 * body, 28);
     color(.24f, .27f, .30f);
-    rect(x - 49, y - 16, 98, 26);
+    rect(x - body, y - 16, 2 * body, 26);
     color(.72f, .76f, .78f);
-    circle(x - 40, y - 8, 3);
+    circle(x - body + 9, y - 8, 3);
 }
 
 static void draw_part_gate(const Part *p)
@@ -1770,7 +1782,7 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     {
         draw_part_clock(p);
     }
-    else if (component_has_flag(p->type, COMPONENT_QUAD_GATE))
+    else if (component_has_flag(p->type, COMPONENT_DIP))
     {
         draw_part_chip(p);
     }
@@ -1975,10 +1987,26 @@ static void ui_outline(AppRect r, float radius, float thickness)
                  fmaxf(0, radius - thickness));
 }
 
+#define UI_SHADOW_LAYERS 5
+/* Raised surface shadow: offset down and blurred by translucent layers that widen outward. */
+static void ui_shadow(AppRect r, float radius, float depth)
+{
+    glPushAttrib(GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT | GL_CURRENT_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    float alpha = dark_interface ? .10f : .045f;
+    for (int layer = UI_SHADOW_LAYERS; layer >= 1; --layer)
+    {
+        float grow = depth * (float)layer / UI_SHADOW_LAYERS;
+        glColor4f(.04f, .08f, .12f, alpha);
+        rounded_rect(r.x - grow, r.y - grow + depth * .5f, r.w + 2 * grow, r.h + 2 * grow, radius + grow);
+    }
+    glPopAttrib();
+}
+
 static void ui_panel(AppRect r)
 {
-    color(.55f, .60f, .65f);
-    rounded_rect(r.x + 2, r.y + 5, r.w, r.h, UI_RADIUS + 2);
+    ui_shadow(r, UI_RADIUS + 2, 10);
     color(UI_BORDER);
     ui_rounded(r, UI_RADIUS + 2);
     color(UI_SURFACE);
@@ -2296,9 +2324,9 @@ static void draw_editor_header(const AppState *app, GLuint font)
 static void draw_header(const AppState *app, GLuint font)
 {
     color(UI_SURFACE);
-    rect(0, 0, 1280, APP_HEADER_HEIGHT);
+    rect(0, 0, app_layout_canvas_width(), APP_HEADER_HEIGHT);
     color(UI_BORDER);
-    rect(0, APP_HEADER_HEIGHT - 1, 1280, 1);
+    rect(0, APP_HEADER_HEIGHT - 1, app_layout_canvas_width(), 1);
     if (app->editor_parent)
         draw_editor_header(app, font);
     else
@@ -2405,9 +2433,10 @@ static void draw_block_library(const AppState *app, GLuint font)
 static void draw_palette(const AppState *app, GLuint font)
 {
     color(UI_SURFACE);
-    rect(0, APP_HEADER_HEIGHT, APP_PALETTE_WIDTH, 720 - APP_HEADER_HEIGHT);
+    float height = app_layout_canvas_height() - APP_HEADER_HEIGHT;
+    rect(0, APP_HEADER_HEIGHT, APP_PALETTE_WIDTH, height);
     color(UI_BORDER);
-    rect(APP_PALETTE_WIDTH - 1, APP_HEADER_HEIGHT, 1, 720 - APP_HEADER_HEIGHT);
+    rect(APP_PALETTE_WIDTH - 1, APP_HEADER_HEIGHT, 1, height);
     draw_palette_tabs(app, font);
     AppRect search = app_layout_search();
     ui_value_box(font, search, "", 1);
@@ -2449,6 +2478,13 @@ static void draw_actions(const AppState *app, GLuint font)
         return;
     static const TextId labels[APP_ACTION_COUNT] = {
         TXT_UI_UNDO, TXT_UI_REDO, TXT_UI_STEP, TXT_UI_CREATE_CHIP, TXT_UI_LIVE_GRAPH, TXT_UI_FULL_CURVE};
+    AppRect first = app_layout_action((AppAction)0), last = app_layout_action((AppAction)(APP_ACTION_COUNT - 1));
+    AppRect bar = {first.x - 4, first.y - 4, last.x + last.w - first.x + 8, first.h + 8};
+    ui_shadow(bar, UI_RADIUS + 2, 6);
+    color(UI_BORDER);
+    ui_rounded(bar, UI_RADIUS + 2);
+    color(UI_SURFACE);
+    rounded_rect(bar.x + 1, bar.y + 1, bar.w - 2, bar.h - 2, UI_RADIUS + 1);
     for (int i = 0; i < APP_ACTION_COUNT; ++i)
         ui_button(app, font, app_layout_action((AppAction)i), tr(labels[i]),
                   app_controls_action_enabled(app, (AppAction)i) ? UI_BUTTON_NEUTRAL : UI_BUTTON_DISABLED);
@@ -2460,7 +2496,8 @@ static void draw_chrome(const AppState *app, GLuint font, int width, int height)
     glViewport((int)viewport.x, height - (int)(viewport.y + viewport.h), (int)viewport.w, (int)viewport.h);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, 1280, 720, 0, -1, 1);
+    glOrtho(0, app_layout_canvas_width(), app_layout_canvas_height(), 0, -1, 1);
+    app_text_utf8_set_scale(viewport.w / app_layout_canvas_width());
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     if (app->dark_theme)
@@ -2487,7 +2524,7 @@ static void draw_workspace_grid(const AppState *app)
         grid.spacing = app->grid_spacing;
         float spacing = (float)bench_grid_display_spacing(&grid, app->view.zoom, 10);
         bench_view_to_world(&app->view, 220, 60, &left, &top);
-        bench_view_to_world(&app->view, 1280, 660, &right, &bottom);
+        bench_view_to_world(&app->view, app_layout_canvas_width(), BENCH_VIEW_BOTTOM, &right, &bottom);
         if (spacing <= 0)
             return;
         for (gx = floorf(left / spacing) * spacing; gx <= right; gx += spacing)
@@ -2568,60 +2605,90 @@ static void draw_wire_dc_current(const AppState *app, int i, const WirePoint *pa
         wire_direction_marker(path, count, app->sim.dc_wire_currents[i] < 0, level);
 }
 
+/* Wire widths in screen units, so a wire looks the same at every zoom. */
+#define WIRE_BODY_WIDTH 5.0f
+#define WIRE_SHINE_WIDTH 2.0f
+#define WIRE_SELECTED_WIDTH 10.0f
+#define WIRE_SHADOW_WIDTH 7.0f
+#define WIRE_SHADOW_DROP 1.0f
+#define WIRE_SHADOW_ALPHA .16f
+
+/* Polyline of a given width with round joins: no notch or spur at a knee, whatever its angle. */
+static void thick_path(const WirePoint *path, int count, float width, float dx, float dy)
+{
+    float half = width / 2;
+    for (int k = 0; k + 1 < count; ++k)
+    {
+        float ax = path[k].x + dx, ay = path[k].y + dy, bx = path[k + 1].x + dx, by = path[k + 1].y + dy;
+        float length = hypotf(bx - ax, by - ay);
+        if (length <= 0)
+            continue;
+        float nx = -(by - ay) / length * half, ny = (bx - ax) / length * half;
+        glBegin(GL_QUADS);
+        glVertex2f(ax + nx, ay + ny);
+        glVertex2f(bx + nx, by + ny);
+        glVertex2f(bx - nx, by - ny);
+        glVertex2f(ax - nx, ay - ny);
+        glEnd();
+    }
+    for (int k = 0; k < count; ++k)
+        circle(path[k].x + dx, path[k].y + dy, half);
+}
+
+static int visible_wire_path(const AppState *app, int wire, WirePoint *path)
+{
+    const Wire *w = &app->bench.wires[wire];
+    if (bench_group_wire_internal(&app->bench, w))
+        return 0;
+    WirePoint start, end;
+    bench_terminal_position(&app->bench, w->a, &start.x, &start.y);
+    bench_terminal_position(&app->bench, w->b, &end.x, &end.y);
+    return wire_path(w, start, end, app->round_wires ? 18.0f : 0.0f, path);
+}
+
+/* Every shadow goes down before any wire, so wires laid side by side never shade each other's color. */
+static void draw_wire_shadows(const AppState *app, float unit)
+{
+    if (app->dark_theme)
+        return;
+    glPushAttrib(GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT | GL_CURRENT_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(.10f, .14f, .18f, WIRE_SHADOW_ALPHA);
+    for (int i = 0; i < app->bench.wire_count; ++i)
+    {
+        WirePoint path[WIRE_PATH_CAPACITY];
+        int count = visible_wire_path(app, i, path);
+        if (count)
+            thick_path(path, count, WIRE_SHADOW_WIDTH * unit, 0, WIRE_SHADOW_DROP * unit);
+    }
+    glPopAttrib();
+}
+
 static void draw_workspace_wires(const AppState *app)
 {
-    int i;
-    color(.25f, .45f, .57f);
-    glLineWidth(3);
-    for (i = 0; i < app->bench.wire_count; ++i)
+    float unit = 1 / app->view.zoom;
+    draw_wire_shadows(app, unit);
+    for (int i = 0; i < app->bench.wire_count; ++i)
     {
-        WirePoint start, end, path[WIRE_PATH_CAPACITY];
-        int k, count, pass;
-        const Wire *w = &app->bench.wires[i];
-        if (bench_group_wire_internal(&app->bench, w))
+        WirePoint path[WIRE_PATH_CAPACITY];
+        int count = visible_wire_path(app, i, path);
+        if (!count)
             continue;
-        bench_terminal_position(&app->bench, w->a, &start.x, &start.y);
-        bench_terminal_position(&app->bench, w->b, &end.x, &end.y);
-        count = wire_path(w, start, end, app->round_wires ? 18.0f : 0.0f, path);
+        const float *tone = palette_tone(app->bench.wires[i].color)->wire;
         if (i == app->selected_wire)
         {
             color(.15f, .49f, .9f);
-            glLineWidth(10);
-            glBegin(GL_LINE_STRIP);
-            for (k = 0; k < count; ++k)
-                glVertex2f(path[k].x, path[k].y);
-            glEnd();
+            thick_path(path, count, WIRE_SELECTED_WIDTH * unit, 0, 0);
         }
-        for (pass = 0; pass < 3; ++pass)
-        {
-            if (pass == 0 && app->dark_theme)
-                continue;
-            float offset = pass == 0 ? 3.0f : 0.0f;
-            if (pass == 0)
-            {
-                color(.72f, .76f, .78f);
-                glLineWidth(6);
-            }
-            else if (pass == 1)
-            {
-                const float *tone = palette_tone(w->color)->wire;
-                color(tone[0], tone[1], tone[2]);
-                glLineWidth(5);
-            }
-            else
-            {
-                const float *tone = palette_tone(w->color)->wire;
-                color(tone[0] * .65f + .25f, tone[1] * .65f + .25f, tone[2] * .65f + .25f);
-                glLineWidth(2);
-            }
-            glBegin(GL_LINE_STRIP);
-            for (k = 0; k < count; ++k)
-                glVertex2f(path[k].x + offset, path[k].y + offset);
-            glEnd();
-        }
+        color(tone[0], tone[1], tone[2]);
+        thick_path(path, count, WIRE_BODY_WIDTH * unit, 0, 0);
+        color(tone[0] * .65f + .25f, tone[1] * .65f + .25f, tone[2] * .65f + .25f);
+        thick_path(path, count, WIRE_SHINE_WIDTH * unit, 0, 0);
         draw_wire_trace_current(app, i, path, count);
         draw_wire_dc_current(app, i, path, count);
     }
+    glLineWidth(2); /* the route preview drawn next keeps its former width */
 }
 
 static void draw_workspace_route(const AppState *app)
@@ -2723,7 +2790,7 @@ static void draw_workspace_parts(const AppState *app)
                 int snapped = bench_find_contact(&app->bench, i, p, &contact);
                 float outer_radius = snapped ? 5.0f : 8.0f;
                 float inner_radius = snapped ? 3.0f : 5.0f;
-                if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
+                if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_DIP))
                 {
                     outer_radius = 4.0f;
                     inner_radius = 2.5f;
@@ -2814,7 +2881,7 @@ static void pin_role_color(ComponentPinRole role)
 
 static char pin_role_symbol(ComponentPinRole role)
 {
-    static const char symbols[] = {'B', 'I', 'C', 'O', '+', '-', 'G', 'A', 'K', '.', 'C', 'B', 'E'};
+    static const char symbols[] = {'B', 'I', 'C', 'O', '+', '-', 'G', 'A', 'K', '.', 'C', 'B', 'E', 'D'};
     return (unsigned)role < sizeof(symbols) / sizeof(symbols[0]) ? symbols[role] : '?';
 }
 
@@ -2970,7 +3037,7 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
     const Part *part = &app->bench.parts[app->selected];
     if (part->group || part->type == PART_BREADBOARD)
         return;
-    if (!component_has_flag(part->type, COMPONENT_QUAD_GATE))
+    if (!component_has_flag(part->type, COMPONENT_DIP))
     {
         draw_pin_name_labels(app, font, part, -1);
         return;
@@ -2999,7 +3066,7 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
         return;
     }
     for (i = 0; i < app->bench.part_count; ++i)
-        if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_QUAD_GATE))
+        if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_DIP))
         {
             color(.85f, .88f, .9f);
             text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_symbol(app->bench.parts[i].type));
@@ -3207,9 +3274,9 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
 {
     glEnable(GL_SCISSOR_TEST);
     AppRect viewport = app_layout_viewport(width, height);
-    glScissor((int)(viewport.x + viewport.w * 220 / 1280),
-              (int)(height - viewport.y - viewport.h + viewport.h * 60 / 720),
-              (int)(viewport.w * 1060 / 1280), (int)(viewport.h * 590 / 720));
+    float scale = viewport.w / app_layout_canvas_width();
+    glScissor((int)(viewport.x + BENCH_VIEW_LEFT * scale), (int)(height - viewport.y - BENCH_VIEW_BOTTOM * scale),
+              (int)(BENCH_VIEW_WIDTH * scale), (int)(BENCH_VIEW_HEIGHT * scale));
     glPushMatrix();
     glTranslatef(220 + app->view.pan_x, 70 + app->view.pan_y, 0);
     glScalef(app->view.zoom, app->view.zoom, 1);
@@ -3689,10 +3756,14 @@ static void status_hint(const AppState *app, char *hint, size_t capacity)
 static void draw_status(const AppState *app, GLuint font)
 {
     int graph = app_controls_graph_visible(app);
+    WirePoint offset = app_layout_graph_offset();
+    glPushMatrix();
+    glTranslatef(offset.x, offset.y, 0);
     if (app->live_graph.active && graph)
         live_graph_draw(app, font);
     else if (graph)
         trace_draw(font, &app->sim.trace, app->sim.trace_index, app->sim.trace_pin, app->sim.trace_current);
+    glPopMatrix();
     if (graph)
     {
         ui_close_button(app, app_layout_graph_close());
@@ -3712,10 +3783,11 @@ static void draw_status(const AppState *app, GLuint font)
             snprintf(terminal, sizeof(terminal), tr(TXT_TERMINAL_NUMBER), pin + 1);
         ui_button(app, font, app_layout_graph_pin(), terminal, UI_BUTTON_NEUTRAL);
     }
+    float right = app_layout_canvas_width(), top = BENCH_VIEW_BOTTOM;
     color(UI_SURFACE);
-    rect(APP_PALETTE_WIDTH, 660, 1280 - APP_PALETTE_WIDTH, 60);
+    rect(APP_PALETTE_WIDTH, top, right - APP_PALETTE_WIDTH, APP_FOOTER_HEIGHT);
     color(UI_BORDER);
-    rect(APP_PALETTE_WIDTH, 660, 1280 - APP_PALETTE_WIDTH, 1);
+    rect(APP_PALETTE_WIDTH, top, right - APP_PALETTE_WIDTH, 1);
     char status[384], hint[320];
     if (app->sim.live_mode && app->sim.live_rate > 0 && app->sim.sim_running)
         snprintf(status, sizeof(status), tr(TXT_UI_LIVE_PACE_STATUS), app->sim.live_time, app->sim.live_rate,
@@ -3725,18 +3797,19 @@ static void draw_status(const AppState *app, GLuint font)
     else
         snprintf(status, sizeof(status), "%s", app->status);
     color(UI_INK);
-    name_text(font, 238, 685, status, 1020);
+    int text_width = (int)(right - APP_PALETTE_WIDTH - 40);
+    name_text(font, 238, top + 25, status, text_width);
     status_hint(app, hint, sizeof(hint));
     color(UI_MUTED);
-    name_text(font, 238, 709, hint, 1020);
+    name_text(font, 238, top + 49, hint, text_width);
     if (app->xray)
     {
         const char *badge = tr(TXT_UI_TRANSPARENCY_BADGE);
         float width = (float)app_text_utf8_width(badge, 2048) + 20;
         color(UI_ACCENT);
-        rounded_rect(1268 - width, 668, width, 24, 12);
+        rounded_rect(right - 12 - width, top + 8, width, 24, 12);
         glColor3f(1, 1, 1);
-        text(font, 1278 - width, 685, badge);
+        text(font, right - 2 - width, top + 25, badge);
     }
 }
 

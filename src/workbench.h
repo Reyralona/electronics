@@ -3,10 +3,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define WORKBENCH_MAX_COMPONENTS 256
-#define WORKBENCH_MAX_WIRES 512
+#define WORKBENCH_MAX_COMPONENTS 1024
+#define WORKBENCH_MAX_WIRES 2048
 #define WORKBENCH_MAX_PINS 420
 #define WORKBENCH_MAX_IO 24
+#define BENCH_DIP_PITCH 14 /* distance between neighboring IC pins */
 #define BREADBOARD_PINS 420
 #define PART_SCALE_MIN 0.01f
 #define PART_SCALE_MAX 100.0f
@@ -72,7 +73,13 @@ typedef enum
     PART_ESP32,
     PART_ATTINY85,
     PART_LCD_I2C,
-    PART_JUNCTION /* wire-to-wire connection point: one pin, no body; saved from format 31 */
+    PART_JUNCTION, /* wire-to-wire connection point: one pin, no body; saved from format 31 */
+    /* Medium-scale logic ICs, saved from format 35 (see netlist_logic.h). */
+    PART_74HC161,
+    PART_74HC173,
+    PART_74HC245,
+    PART_74HC283,
+    PART_AT28C16
 } PartType;
 typedef struct BenchPartLayer
 {

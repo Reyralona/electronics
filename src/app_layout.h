@@ -16,10 +16,17 @@ AppRect app_layout_viewport(int width, int height);
 WirePoint app_layout_to_ui(int width, int height, float x, float y);
 WirePoint app_layout_from_ui(int width, int height, float x, float y);
 
+/* Panels are designed on a 1280 x 720 canvas. The real canvas is the window divided by the interface
+ * scale, never smaller: extra width and height go to the workspace, and panels follow their anchor. */
+#define APP_DESIGN_WIDTH 1280.0f
+#define APP_DESIGN_HEIGHT 720.0f
+#define APP_FOOTER_HEIGHT 60.0f
 #define APP_HEADER_HEIGHT 68.0f
 #define APP_PALETTE_WIDTH 220.0f
 #define APP_PALETTE_TABS 6
-#define APP_PALETTE_VISIBLE 8
+/* Catalog cards that fit the canvas height (8 on the design canvas). */
+int app_layout_palette_visible(void);
+#define APP_PALETTE_VISIBLE app_layout_palette_visible()
 
 typedef enum
 {
@@ -153,4 +160,10 @@ AppRect app_layout_examples_panel(void);
 AppRect app_layout_example_card(int index);
 int app_layout_example_card_at(float x, float y);
 AppRect app_layout_examples_close(void);
+/* Recomputes the canvas for a window of this size (any unit) and scale (device units per canvas unit). */
+void app_layout_set_canvas(float window_width, float window_height, float scale);
+float app_layout_canvas_width(void);
+float app_layout_canvas_height(void);
+/* How far the graph panel moved from its design position (right and bottom anchored). */
+WirePoint app_layout_graph_offset(void);
 #endif

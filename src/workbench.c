@@ -653,10 +653,12 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
         *x = 0;
         *y = 0;
     }
-    else if (component_has_flag(p->type, COMPONENT_QUAD_GATE))
+    else if (component_has_flag(p->type, COMPONENT_DIP))
     {
-        *x = (float)((pin < 7 ? pin : 13 - pin) * 14 - 42);
-        *y = pin < 7 ? -15.0f : 15.0f;
+        /* Pin 1 at the left of the top row, counted around the package like a real DIP. */
+        int count = bench_pin_count(p->type), side = count / 2;
+        *x = (float)((pin < side ? pin : count - 1 - pin) * BENCH_DIP_PITCH - (side - 1) * BENCH_DIP_PITCH / 2);
+        *y = pin < side ? -15.0f : 15.0f;
     }
     else if ((p->type >= PART_AND && p->type <= PART_XOR) || p->type == PART_DFF ||
              p->type == PART_NOR || p->type == PART_XNOR)
@@ -685,7 +687,7 @@ static int rigid_device(PartType type)
 static int lead_editable(const Part *part, int pin)
 {
     return part && pin >= 0 && pin < bench_pin_count(part->type) && part->type != PART_BREADBOARD &&
-           !component_has_flag(part->type, COMPONENT_QUAD_GATE) &&
+           !component_has_flag(part->type, COMPONENT_DIP) &&
            !component_has_flag(part->type, COMPONENT_GATE_SYMBOL) && !rigid_device(part->type);
 }
 

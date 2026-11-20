@@ -1,6 +1,9 @@
 #ifndef WORKBENCH_FILE_H
 #define WORKBENCH_FILE_H
 #include <stdio.h>
+/* Requested simulated seconds per real second, from slow motion (1 ms per second) to real time. */
+#define WORKBENCH_SPEED_MIN .001
+#define WORKBENCH_SPEED_MAX 1.0
 #include "workbench.h"
 
 typedef struct {

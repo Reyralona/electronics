@@ -1,5 +1,34 @@
 # Histórico de versões
 
+## 0.47.1
+
+- O build interrompe antes de compilar quando o ngspice está ausente ou incompleto e indica como prepará-lo.
+- A referência DC e o teste de sessão contínua verificam o solver com PATH mínimo, sem depender do MSYS2.
+- Teste de regressão cobre instalação ausente, DLL principal ausente, modelo digital ausente e executável inválido.
+
+## 0.47.0
+
+- Limites maiores: 1024 peças e 2048 fios por montagem (eram 256 e 512).
+- Cinco CIs novos na aba **Digital**: contador **74HC161**, registrador **74HC173**, transceptor **74HC245**,
+  somador **74HC283** e EEPROM **AT28C16**. A lógica interna de cada um é digital; só os pinos passam pelo
+  circuito analógico, por isso dezenas de CIs simulam perto do tempo real.
+- A EEPROM lê seu conteúdo em hexadecimal (texto da peça). Endereços não gravados leem `FF`; gravar pelo pino WE
+  não é simulado. Por enquanto, o conteúdo só vem do arquivo de projeto: ainda não há editor na interface.
+- Um computador de 8 bits no estilo SAP-1 (25 CIs, 312 peças) foi montado e testado com esses CIs durante o
+  desenvolvimento, mas não entrou nos exemplos: a montagem ainda precisa de um desenho mais legível.
+- Formato de projeto 35, por causa dos tipos novos. Projetos anteriores continuam abrindo.
+- Fios lado a lado na breadboard: as sombras são desenhadas antes de todos os fios e não cobrem mais os vizinhos;
+  a sombra é uma faixa translúcida de contato, sem deslocamento sólido. Dobras têm junção arredondada, sem degrau.
+- A ponta do fio no furo para no primeiro joelho; com uma dobra perto do furo, não sobra mais um toco para fora.
+- Ritmos mais lentos da simulação: 0,001×, 0,002×, 0,005×, 0,01× e 0,02×, além dos anteriores. Em 0,001×,
+  um clock de 1 kHz pisca uma vez por segundo. O passo elétrico e o estado do circuito não mudam ao trocar o ritmo.
+- **Escala da interface** funciona dentro da janela maximizada ou em tela cheia: diminuir a escala reduz a
+  interface e aumenta a bancada, sem tirar a janela do modo maximizado. A escala do Windows é considerada.
+- Textos nítidos: as letras são desenhadas na resolução real da tela, em pixels inteiros, em vez de ampliadas
+  de 15 px. A interface não é mais esticada nem distorcida em janelas de outros formatos.
+- Bordas suavizadas (antisserrilhado 4×) em círculos, cantos e fios; sombras suaves nos painéis; a barra de
+  ações sobre a bancada tem fundo próprio e se destaca da grade.
+
 ## 0.46.0
 
 - Ao carregar um projeto válido, a bancada ajusta zoom e posição para enquadrar peças, terminais, chips e fios.

@@ -784,3 +784,33 @@ a partir da main 0.44.1. Comparação anterior à implementação: [PLANO_INTERF
 Foco de teclado não fornece suporte a leitor de tela. Provedores de UI Automation e validação
 em múltiplos monitores/DPI ficam pendentes; a 1.0 não foi declarada. Mapa, capturas e fluxos estão em
 [REVISAO_INTERFACE.md](REVISAO_INTERFACE.md).
+
+## CIs de média escala e computador de 8 bits (19/11/2026)
+
+Comparação e fontes: [COMPARACAO_COMPUTADOR_8_BITS.md](COMPARACAO_COMPUTADOR_8_BITS.md).
+
+- Limites fixos sobem para 1024 peças e 2048 fios (decisão do responsável). Listas dinâmicas seguem pendentes.
+- Cada CI de média escala gera primitivas digitais do XSPICE; só os pinos cruzam para o analógico.
+  Saída de três estados: as duas chaves de saída abrem juntas. Medido: um computador SAP-1 de teste
+  (25 CIs, 312 peças) simulou 4 s em 4,8 s com clock de 10 Hz e o passo do modo contínuo.
+- O exemplo do computador foi retirado a pedido do responsável (19/11/2026): a montagem gerada ficou
+  densa demais para leitura. Os CIs permanecem.
+- A AT28C16 é só leitura: o conteúdo em texto vira um decodificador de endereços. Gravação e editor na
+  interface ficam pendentes.
+- O desenho DIP passa a valer para qualquer número de pinos, com o passo do 74HC00. A AT28C16 usa o
+  mesmo corpo estreito; o encapsulamento real de 600 mil não é reproduzido.
+
+## Escala real e nitidez da interface (19/11/2026)
+
+Fatos: a interface era desenhada numa tela lógica fixa de 1280×720 esticada para a janela por `glViewport`.
+A "escala" só redimensionava a janela (e tirava a janela do modo maximizado), e o texto, rasterizado a 15 px
+pelo GDI, era ampliado com filtro linear, ficando borrado; janelas fora de 16:9 eram distorcidas. Não havia
+antisserrilhado. Revisão guiada pela skill Impeccable (modo Operate; "reestruturar, não esticar").
+
+- A tela lógica passa a ser a janela dividida pela escala (preferência × escala do Windows), nunca menor que
+  1280×720. Painéis guardam o desenho de 1280×720 e seguem âncoras: centro (diálogos), direita (inspetor,
+  editor, gráfico), borda inferior (rodapé). A bancada e o catálogo crescem. Testes: `tests/test_app_layout.c`.
+- Texto rasterizado em pixels reais e posicionado em pixels inteiros quando não há rotação.
+- MSAA 4× pedido ao criar a janela, com nova tentativa sem ele se o driver recusar.
+- Sombras de deslocamento sólido trocadas por sombra suave em camadas translúcidas.
+- Pendente: leitor de tela; um layout que reorganize os painéis (e não só os ancore) em telas muito largas.

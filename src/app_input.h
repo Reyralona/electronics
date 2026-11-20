@@ -3,5 +3,6 @@
 #include "app_state.h"
 void app_input_poll(AppState *app, SDL_Window *window);
 int app_input_apply_scale(AppState *app, SDL_Window *window);
+float app_input_window_scale(const AppState *app, SDL_Window *window);
 int app_input_part_at(const Workbench *bench, float x, float y, float zoom);
 #endif

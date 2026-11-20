@@ -24,9 +24,36 @@ static void legacy_wire_colors(void)
     bench_snapshot_clear(&loaded);
 }
 
+/* A computer-sized assembly: more parts and wires than the former 256/512 ceilings survive a save and reopen,
+ * and the bench refuses the part past its capacity. */
+static void large_bench(void)
+{
+    static Workbench source, loaded;
+    int i;
+    for (i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
+        assert(bench_add(&source, PART_RESISTOR, (float)(i % 40) * 120, (float)(i / 40) * 60) == i);
+    assert(bench_add(&source, PART_RESISTOR, 0, 0) < 0);
+    for (i = 0; i + 1 < WORKBENCH_MAX_COMPONENTS; ++i)
+    {
+        assert(bench_toggle_wire(&source, (Pin){i, 1}, (Pin){i + 1, 0}) >= 0);
+        assert(bench_toggle_wire(&source, (Pin){i, 0}, (Pin){i + 1, 1}) >= 0);
+    }
+    assert(source.part_count == 1024 && source.wire_count == 2046);
+    FILE *file = tmpfile();
+    assert(file && workbench_write(file, &source));
+    rewind(file);
+    assert(workbench_read(file, &loaded));
+    fclose(file);
+    assert(loaded.part_count == 1024 && loaded.wire_count == 2046);
+    assert(loaded.wires[2045].a.component == 1022 && loaded.wires[2045].b.pin == 1);
+    bench_snapshot_clear(&source);
+    bench_snapshot_clear(&loaded);
+}
+
 int main(void)
 {
     legacy_wire_colors();
+    large_bench();
     Workbench source={0}, loaded={0}; FILE *file;
     assert(bench_add(&source,PART_SOURCE,10,20)==0);
     assert(bench_add(&source,PART_BREADBOARD,100,200)==1);
