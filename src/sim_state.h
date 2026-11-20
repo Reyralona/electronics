@@ -46,6 +46,8 @@ typedef struct
     uint64_t bench_changed_at;
     unsigned char burnt[WORKBENCH_MAX_COMPONENTS], burn_reason[WORKBENCH_MAX_COMPONENTS];
     double burn_value[WORKBENCH_MAX_COMPONENTS];
+    unsigned char alert[WORKBENCH_MAX_COMPONENTS], alert_pin[WORKBENCH_MAX_COMPONENTS];
+    double alert_value[WORKBENCH_MAX_COMPONENTS];
     int burnt_count, trace_periodic, trace_automatic;
     char auto_status[200];
 } SimState;

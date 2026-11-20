@@ -264,6 +264,9 @@ static int apply_controls(SpiceLive *live, const Workbench *bench, char *message
                     snprintf(name, sizeof(name), "Vsource%d", i);
                 if (!alter(live, name, part->value, message, capacity))
                     return 0;
+                snprintf(name, sizeof(name), "Vilim%d", i);
+                if (part->type == PART_SOURCE && !alter(live, name, component_source_limit(part), message, capacity))
+                    return 0;
             }
         }
         if (component_electrical_type(part->type) == PART_SWITCH || part->type == PART_BUTTON)
@@ -468,7 +471,8 @@ static int protect_sources(SpiceLive *live, const Workbench *bench, char *messag
         live->shorted_valid = 1;
     }
     for (int i = 0; i < bench->part_count; ++i)
-        if (live->shorted[i] && bench->parts[i].on && !live->burnt[i])
+        /* The bench supply limits its current (CV/CC); batteries and clocks have no such protection. */
+        if (live->shorted[i] && bench->parts[i].on && !live->burnt[i] && bench->parts[i].type != PART_SOURCE)
         {
             char name[48];
             snprintf(name, sizeof(name), "Rpower%d", i);
@@ -510,6 +514,29 @@ static int protect_parts(SpiceLive *live, const Workbench *bench, const SimAutoO
         if (!advance(live, options->step, options->step, result->message, sizeof(result->message)) ||
             !read_currents(live, bench, result))
             return 0;
+    }
+    return 1;
+}
+
+/* A bench supply delivering its limit is in constant current (CC); the front panel shows it. */
+static int mark_limited_supplies(SpiceLive *live, const Workbench *bench, SimAutoResult *result)
+{
+    int primary = primary_source(bench);
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        const Part *part = &bench->parts[i];
+        if (part->type != PART_SOURCE || !part->on || live->burnt[i])
+            continue;
+        double current = result->source_current;
+        char vector[48];
+        snprintf(vector, sizeof(vector), "vsource%d#branch", i);
+        if (i != primary &&
+            !spice_session_value(live->session, vector, &current, result->message, sizeof(result->message)))
+            return 0;
+        if (-current < component_source_limit(part) * SOURCE_LIMIT_SHOWN_RATIO || -current < SOURCE_LIMIT_SHOWN_MIN_AMPS)
+            continue;
+        result->alert[i] = PART_ALERT_CURRENT_LIMIT;
+        result->alert_value[i] = -current;
     }
     return 1;
 }
@@ -562,6 +589,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         !protect_sources(live, bench, result->message, sizeof(result->message)) ||
         !advance(live, options->step, span, result->message, sizeof(result->message)) ||
         !read_currents(live, bench, result) || !protect_parts(live, bench, options, result) ||
+        !mark_limited_supplies(live, bench, result) ||
         !read_samples(live, result))
         return discard_session(live);
     memcpy(result->burnt, live->burnt, sizeof(result->burnt));

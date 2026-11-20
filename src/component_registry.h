@@ -81,6 +81,21 @@ double component_photocurrent(const Part *part);
 const ComponentEnvironment *component_environment(PartType type);
 double component_environment_value(const Part *part);
 double component_source_resistance(PartType type);
+/* Bench supply ranges (common single-channel lab supply): voltage knob and current-limit knob. */
+#define SOURCE_VOLTAGE_MAX 30.0
+#define SOURCE_CURRENT_LIMIT_MAX 3.0
+/* CC lamp: delivered current at 99% of the limit (the limiter holds it within a few mA). */
+/* Front panel of the bench supply in the part frame: voltage knob, current-limit knob. */
+#define SOURCE_VOLTAGE_KNOB_X 17.0f
+#define SOURCE_CURRENT_KNOB_X 31.0f
+#define SOURCE_KNOB_Y -10.0f
+#define SOURCE_KNOB_RADIUS 5.5f
+#define SOURCE_VOLTAGE_STEP .1
+#define SOURCE_CURRENT_STEP .01
+#define SOURCE_LIMIT_SHOWN_RATIO .99
+#define SOURCE_LIMIT_SHOWN_MIN_AMPS 1e-4 /* a 0 A limit with no load is still CV */
+/* Current limit of a bench supply in amperes (its control knob); 0 for other parts. */
+double component_source_limit(const Part *part);
 int component_radial_pins(PartType type);
 void component_body_extent(PartType type, float *half_width, float *half_height);
 size_t component_registry_count(void);

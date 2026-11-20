@@ -57,7 +57,8 @@ static void diode(void)
     wire(&bench, 2, 1, 0, 1);
     analyze(&bench);
     assert(currents[2] > .003 && currents[2] < .0045);
-    assert(fabs(currents[1] - currents[2]) < 1e-7);
+    /* Same series current within the solver's relative tolerance (reltol 1e-3). */
+    assert(fabs(currents[1] - currents[2]) < 1e-3 * fabs(currents[2]));
     assert(bench_toggle_wire(&bench, (Pin){1, 1}, (Pin){2, 0}) == 2);
     assert(bench_toggle_wire(&bench, (Pin){2, 1}, (Pin){0, 1}) == 2);
     wire(&bench, 1, 1, 2, 1);

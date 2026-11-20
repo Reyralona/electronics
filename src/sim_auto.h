@@ -11,6 +11,8 @@
    fixing the circuit makes the part work again without replacing it. */
 
 typedef enum { BURN_NONE, BURN_OVERCURRENT, BURN_OVERPOWER, BURN_SHORT } BurnReason;
+/* Feedback below burning: the part still works, but a real one would be stressed or out of spec. */
+typedef enum { PART_ALERT_NONE, PART_ALERT_CURRENT_LIMIT } PartAlert;
 
 typedef struct {
     double led_max_current;     /* A, forward current */
@@ -73,6 +75,9 @@ typedef struct {
     unsigned char burn_reason[WORKBENCH_MAX_COMPONENTS];
     double burn_value[WORKBENCH_MAX_COMPONENTS];   /* current in A, or power in W, that exceeded the limit */
     int burnt_count;
+    unsigned char alert[WORKBENCH_MAX_COMPONENTS];     /* PartAlert */
+    unsigned char alert_pin[WORKBENCH_MAX_COMPONENTS]; /* terminal the alert refers to */
+    double alert_value[WORKBENCH_MAX_COMPONENTS];      /* measured current (A) or voltage (V) */
     int powered;
     int has_dc;
     double source_current;

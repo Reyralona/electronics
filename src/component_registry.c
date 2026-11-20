@@ -283,6 +283,8 @@ static const EnvironmentText environment_texts[] = {
     {PART_GAS, TXT_CAT_ENV_GAS, "ppm", 0, 1000, 100, TXT_CAT_ENV_GAS_NOTE},
     {PART_IR_OBSTACLE, TXT_CAT_ENV_OBSTACLE, "cm", 0, 30, 20, TXT_CAT_ENV_OBSTACLE_NOTE},
     {PART_DISTANCE, TXT_CAT_ENV_DISTANCE, "cm", 10, 80, 30, TXT_CAT_ENV_DISTANCE_NOTE},
+    /* Bench supply knob, not a stimulus: 0..3 A like a common 30 V / 3 A lab supply channel. */
+    {PART_SOURCE, TXT_CAT_ENV_CURRENT_LIMIT, "A", 0, SOURCE_CURRENT_LIMIT_MAX, .5, TXT_CAT_ENV_CURRENT_LIMIT_NOTE},
 };
 
 enum
@@ -559,9 +561,14 @@ double component_source_resistance(PartType type)
     return 1e-3;
 }
 
+double component_source_limit(const Part *part)
+{
+    return part->type == PART_SOURCE ? component_environment_value(part) : 0;
+}
+
 int component_radial_pins(PartType type)
 {
-    return component_environment(type) != NULL || type == PART_NPN || type == PART_PNP;
+    return (component_environment(type) != NULL && type != PART_SOURCE) || type == PART_NPN || type == PART_PNP;
 }
 
 

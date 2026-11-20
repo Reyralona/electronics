@@ -32,6 +32,12 @@ typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERRO
 #define QUAD_SUPPLY_MIN LOGIC_SUPPLY_MIN
 #define QUAD_SUPPLY_MAX LOGIC_SUPPLY_MAX
 #define QUAD_EDGE_VOLTS .1
+/* Bench supply CV/CC: above the limit a series drop of GAIN volts per ampere of excess holds the current
+ * (30 V into a short overshoots by 3 mA); SMOOTH rounds the corner so Newton steps stay continuous.
+ * A drop controlled by its own voltage (I = Ilim*tanh(V/...)) is flat when the live session starts from
+ * zero (uic) and failed the first timestep; this current-controlled form starts stiff. */
+#define NETLIST_SOURCE_LIMIT_GAIN 1e4
+#define NETLIST_SOURCE_LIMIT_SMOOTH 1e-6
 NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires);
 /* Terminals joined by wires, breadboard strips or direct contact (switch states ignored). */
 int netlist_same_net(const Workbench *bench, Pin a, Pin b);

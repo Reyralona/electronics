@@ -1,4 +1,5 @@
 #include "spice_live.h"
+#include "component_registry.h"
 #include "netlist.h"
 #include <windows.h>
 #include <assert.h>
@@ -267,10 +268,12 @@ static void check_live_probe(void)
     bench_snapshot_clear(&clock);
 }
 
-static void shorts_follow_connection_changes(void)
+/* A person shorts the outputs through a switch: the bench supply holds its current limit (CC), a 9 V
+ * battery has no limit and burns; opening the switch again feeds the resistor normally. */
+static void check_short(PartType supply)
 {
     static Workbench bench;
-    bench_add(&bench, PART_SOURCE, 100, 100);
+    bench_add(&bench, supply, 100, 100);
     bench_add(&bench, PART_SWITCH, 400, 100);
     bench_add(&bench, PART_RESISTOR, 700, 100);
     bench_set_on(&bench, 1, 0);
@@ -278,18 +281,51 @@ static void shorts_follow_connection_changes(void)
     wire(&bench, 0, 1, 1, 1);
     wire(&bench, 0, 0, 2, 0);
     wire(&bench, 0, 1, 2, 1);
+    const double limit = .2;
+    if (supply == PART_SOURCE)
+        assert(bench_set_control(&bench, 0, limit / SOURCE_CURRENT_LIMIT_MAX));
     SpiceLive *live = spice_live_create();
     assert(live);
     step(live, &bench, .001);
     assert(!result.burnt[0]);
     bench_set_on(&bench, 1, 1);
     step(live, &bench, .001);
-    assert(result.burnt[0]);
+    if (supply == PART_SOURCE)
+        assert(!result.burnt[0] && fabs(-result.source_current - limit) < .005);
+    else
+        assert(result.burnt[0]);
     bench_set_on(&bench, 1, 0);
     step(live, &bench, .001);
     assert(!result.burnt[0] && fabs(result.currents[2]) > .001);
     spice_live_destroy(live);
     bench_snapshot_clear(&bench);
+}
+
+/* 5 V into 100 ohm asks 50 mA: with 100 mA the supply stays at 5 V (CV); lowering the knob to 20 mA
+ * holds 20 mA and the output drops to 2 V (CC); raising it back restores 5 V. */
+static void check_constant_current(void)
+{
+    static Workbench bench;
+    bench_add(&bench, PART_SOURCE, 100, 100);
+    bench_add(&bench, PART_RESISTOR, 400, 100);
+    assert(bench_set_value(&bench, 1, 100));
+    wire(&bench, 0, 0, 1, 0);
+    wire(&bench, 0, 1, 1, 1);
+    assert(bench_set_control(&bench, 0, .1 / SOURCE_CURRENT_LIMIT_MAX));
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    step(live, &bench, .001);
+    assert(fabs(fabs(result.currents[1]) - .05) < 1e-3);
+    assert(bench_set_control(&bench, 0, .02 / SOURCE_CURRENT_LIMIT_MAX));
+    step(live, &bench, .001);
+    assert(fabs(fabs(result.currents[1]) - .02) < 1e-3);
+    assert(fabs(voltage(live, &bench, 1, 0) - voltage(live, &bench, 1, 1)) < 2.1);
+    assert(bench_set_control(&bench, 0, .1 / SOURCE_CURRENT_LIMIT_MAX));
+    step(live, &bench, .001);
+    assert(fabs(fabs(result.currents[1]) - .05) < 1e-3);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&bench);
+    puts("Bench supply CV/CC: 50 mA at 5 V, limited to 20 mA, short held at the limit.");
 }
 
 int main(int argc, char **argv)
@@ -298,7 +334,9 @@ int main(int argc, char **argv)
     executable = argv[1];
     check_live_history_policy();
     options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
-    shorts_follow_connection_changes();
+    check_short(PART_SOURCE);
+    check_short(PART_BATTERY_9V);
+    check_constant_current();
     check_recovers_after_timeout();
     check_live_probe();
     check_four_input_and();

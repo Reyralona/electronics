@@ -364,6 +364,38 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
     }
 }
 
+/* Shift+wheel over a bench supply turns the knob under the cursor: voltage in 0.1 V steps,
+ * current limit in 10 mA steps. Returns 0 when the cursor is not on a supply. */
+static int input_turn_supply_knob(AppState *app, float x, float y, float direction)
+{
+    int hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
+    if (hit < 0 || app->bench.parts[hit].type != PART_SOURCE || app->bench.parts[hit].group)
+        return 0;
+    const Part *part = &app->bench.parts[hit];
+    WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
+    int current = local.x >= (SOURCE_VOLTAGE_KNOB_X + SOURCE_CURRENT_KNOB_X) / 2;
+    double sign = direction > 0 ? 1 : -1;
+    if (!bench_history_record(app->history, &app->bench))
+    {
+        app->status = tr(TXT_APP_HISTORY_FAILED);
+        return 1;
+    }
+    app->selected = hit;
+    if (current)
+    {
+        double amps = component_source_limit(part) + sign * SOURCE_CURRENT_STEP;
+        bench_set_control(&app->bench, hit, fmin(1, fmax(0, amps / SOURCE_CURRENT_LIMIT_MAX)));
+    }
+    else
+    {
+        /* The voltage parameter excludes exactly 0; the smallest value still reads 0.0 V. */
+        double volts = fmin(SOURCE_VOLTAGE_MAX, fmax(1e-12, part->value + sign * SOURCE_VOLTAGE_STEP));
+        bench_set_value(&app->bench, hit, volts);
+    }
+    app->status = tr(TXT_APP_VALUE_CHANGED);
+    return 1;
+}
+
 static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event)
 {
 
@@ -443,6 +475,9 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
             bench_snapshot_clear(&before);
             return;
         }
+        if (x >= BENCH_VIEW_LEFT && y >= BENCH_VIEW_TOP && y < BENCH_VIEW_BOTTOM && direction != 0 &&
+            (SDL_GetModState() & SDL_KMOD_SHIFT) && input_turn_supply_knob(app, x, y, direction))
+            return;
         if (x >= BENCH_VIEW_LEFT && y >= BENCH_VIEW_TOP && y < BENCH_VIEW_BOTTOM && direction != 0 && (SDL_GetModState() & SDL_KMOD_SHIFT) &&
             app->selected >= 0 && (app->bench.parts[app->selected].type == PART_POTENTIOMETER ||
                                    component_environment(app->bench.parts[app->selected].type)))

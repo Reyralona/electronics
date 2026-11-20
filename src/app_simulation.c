@@ -147,6 +147,9 @@ static void accept_automatic_result(AppState *app)
     memcpy(app->sim.burn_reason, r->burn_reason, sizeof(app->sim.burn_reason));
     memcpy(app->sim.burn_value, r->burn_value, sizeof(app->sim.burn_value));
     app->sim.burnt_count = r->burnt_count;
+    memcpy(app->sim.alert, r->alert, sizeof(app->sim.alert));
+    memcpy(app->sim.alert_pin, r->alert_pin, sizeof(app->sim.alert_pin));
+    memcpy(app->sim.alert_value, r->alert_value, sizeof(app->sim.alert_value));
     app->sim.auto_failed = !app->dc_job.success;
     if (app->sim.auto_failed)
     {

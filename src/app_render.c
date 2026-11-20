@@ -557,7 +557,20 @@ static void binding_post(float x, float y, float r, float g, float b)
 }
 
 /* Bench supply: display shows the set voltage only while the output is on. */
-static void draw_part_source(const Part *p)
+/* Front-panel knob; the pointer turns 270 degrees from minimum to maximum. */
+static void source_knob(float x, float y, double fraction)
+{
+    glColor3f(.16f, .17f, .19f);
+    circle(x, y, SOURCE_KNOB_RADIUS + 1.5f);
+    glColor3f(.58f, .60f, .62f);
+    circle(x, y, SOURCE_KNOB_RADIUS);
+    const double half_turn = 3.14159265358979;
+    float angle = (float)(half_turn * 1.25 - fmin(1, fmax(0, fraction)) * half_turn * 1.5);
+    glColor3f(.20f, .21f, .23f);
+    line(x, y, x + cosf(angle) * SOURCE_KNOB_RADIUS, y - sinf(angle) * SOURCE_KNOB_RADIUS);
+}
+
+static void draw_part_source(const Part *p, int current_limited)
 {
     float x = p->x, y = p->y;
     glColor3f(.10f, .11f, .13f);
@@ -577,16 +590,16 @@ static void draw_part_source(const Part *p)
     rect(x - 12.5f, y - 5.5f, 1.6f, 1.6f);
     seven_segment_digit(x - 9, y - 17, 13, tenths % 10, p->on);
     readable_end();
-    glColor3f(.16f, .17f, .19f);
-    circle(x + 24, y - 10, 8);
-    glColor3f(.58f, .60f, .62f);
-    circle(x + 24, y - 10, 6.5f);
-    glColor3f(.20f, .21f, .23f);
-    rect(x + 23.3f, y - 16, 1.4f, 6);
+    source_knob(x + SOURCE_VOLTAGE_KNOB_X, y + SOURCE_KNOB_Y, p->value / SOURCE_VOLTAGE_MAX);
+    source_knob(x + SOURCE_CURRENT_KNOB_X, y + SOURCE_KNOB_Y, p->control);
     binding_post(x - 21, y + 10, .82f, .12f, .10f);
     binding_post(x - 3, y + 10, .10f, .10f, .11f);
-    glColor3f(p->on ? .30f : .30f, p->on ? .92f : .33f, p->on ? .40f : .34f);
-    circle(x + 24, y + 10, 2.6f);
+    /* CV lamp under the voltage knob, CC lamp under the current knob, as on a lab supply. */
+    int limited = p->on && current_limited;
+    glColor3f(.30f, p->on && !limited ? .92f : .33f, p->on && !limited ? .40f : .34f);
+    circle(x + SOURCE_VOLTAGE_KNOB_X, y + 10, 2.6f);
+    glColor3f(limited ? .95f : .33f, limited ? .22f : .33f, limited ? .16f : .34f);
+    circle(x + SOURCE_CURRENT_KNOB_X, y + 10, 2.6f);
 }
 
 /* Slide switch: metal frame over a black housing; the actuator travels to the closed side. */
@@ -1046,6 +1059,7 @@ typedef struct
     int scope_count;
     double motor_angle;
     const LcdScreen *lcd;
+    int current_limited; /* bench supply in CC */
 } DeviceFrame;
 static DeviceFrame device_frame;
 
@@ -1792,11 +1806,11 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
         draw_diode(p);
     else if (p->type == PART_NPN || p->type == PART_PNP || p->type == PART_TEMPERATURE)
         draw_transistor(p);
-    else if (component_environment(p->type))
+    else if (component_environment(p->type) && p->type != PART_SOURCE)
         draw_sensor(p);
     else if (p->type == PART_SOURCE)
     {
-        draw_part_source(p);
+        draw_part_source(p, device_frame.current_limited);
     }
     else if (p->type == PART_BUTTON)
     {
@@ -2604,6 +2618,7 @@ static void set_device_frame(const AppState *app, int part)
     device_frame.scope = app->sim.scope_history[part];
     device_frame.scope_count = app->sim.scope_count[part];
     device_frame.motor_angle = app->sim.motor_angle[part];
+    device_frame.current_limited = measured && app->sim.alert[part] == PART_ALERT_CURRENT_LIMIT;
     device_frame.lcd = app->mcu ? &app->mcu->lcd[part] : NULL;
 }
 

@@ -96,6 +96,17 @@ int netlist_shorted_sources(const Workbench *b, unsigned char shorted[WORKBENCH_
     return count;
 }
 
+/* CV/CC: drive<i> follows src<i> until the delivered current passes V(ilim<i>), then drops to hold it.
+ * V(ilim<i>) holds the limit so a live `alter` turns the knob without rebuilding the circuit. */
+static int write_current_limit(FILE *out, const char *source, int index, double limit)
+{
+    return fprintf(out,
+                   "Vilim%d ilim%d 0 %.17g\n"
+                   "Bcc%d drive%d src%d V=-%g*0.5*((-I(%s)-V(ilim%d))+sqrt((-I(%s)-V(ilim%d))^2+%g))\n",
+                   index, index, limit, index, index, index, NETLIST_SOURCE_LIMIT_GAIN, source, index, source,
+                   index, NETLIST_SOURCE_LIMIT_SMOOTH * NETLIST_SOURCE_LIMIT_SMOOTH) >= 0;
+}
+
 static int write_live_contacts(FILE *out, const Workbench *bench, int *parents, int ground)
 {
     int primary = -1;
@@ -141,6 +152,12 @@ static int write_live_contacts(FILE *out, const Workbench *bench, int *parents, 
                         period * .001, period * .001, period * .499, period) < 0)
                 return 0;
         }
+        else if (part->type == PART_SOURCE)
+        {
+            if (fprintf(out, "%s src%d %d %.17g\n", name, i, b, part->value) < 0 ||
+                !write_current_limit(out, name, i, component_source_limit(part)))
+                return 0;
+        }
         else if (fprintf(out, "%s drive%d %d %.17g\n", name, i, b, part->value) < 0)
             return 0;
         resistance = part->on ? component_source_resistance(part->type) : NETLIST_LIVE_OPEN_OHMS;
@@ -161,6 +178,10 @@ static int write_supply(FILE *out, const Part *part, int index, int primary, int
         return fprintf(out, "%s battery%d %d %.17g\nRpower%d battery%d %d %.17g\n", name,
                        index, b, part->value, index, index, a,
                        part->on ? component_source_resistance(part->type) : NETLIST_LIVE_OPEN_OHMS) >= 0;
+    if (part->type == PART_SOURCE)
+        return fprintf(out, "%s src%d %d %.17g\nRpower%d drive%d %d %.17g\n", name, index, b,
+                       part->on ? part->value : 0.0, index, index, a, NETLIST_LIVE_CLOSED_OHMS) >= 0 &&
+               write_current_limit(out, name, index, component_source_limit(part));
     return fprintf(out, "%s %d %d %.17g\n", name, a, b, part->on ? part->value : 0.0) >= 0;
 }
 

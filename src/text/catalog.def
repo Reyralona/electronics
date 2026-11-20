@@ -117,6 +117,9 @@ UI_TEXT(CAT_ENV_OBSTACLE_NOTE, "IR de reflexão: saída baixa abaixo de 10 cm.",
 UI_TEXT(CAT_ENV_DISTANCE, "Distância", "Distance")
 UI_TEXT(CAT_ENV_DISTANCE_NOTE, "IR analógico GP2Y0A21: V ≈ 27/d a 5 V. Não é ultrassônico.",
         "Analog IR GP2Y0A21: V ≈ 27/d at 5 V. Not ultrasonic.")
+UI_TEXT(CAT_ENV_CURRENT_LIMIT, "Limite de corrente", "Current limit")
+UI_TEXT(CAT_ENV_CURRENT_LIMIT_NOTE, "Acima do limite, a tensão cai e a corrente fica fixa (CC). Ajuste baixo protege o circuito.",
+        "Above the limit, voltage drops and current stays fixed (CC). A low limit protects the circuit.")
 /* Device modes (double click) and measured quantities. */
 UI_TEXT(CAT_WAVE_SINE, "Senoidal", "Sine")
 UI_TEXT(CAT_WAVE_SQUARE, "Quadrada", "Square")
