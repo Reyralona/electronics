@@ -115,3 +115,8 @@ Papel usa malha sombreada com borda inferior arqueada, fita fora da area de text
 ## Publicacao 0.51.1 - 20/11/2026
 
 Trabalho de EEPROM, notas e catalogo integrado na main; tag v0.51.1 publicada como pre-release com instalador, ZIP portatil, fontes completas e hashes. ./build.ps1 -GuiTests e ./tools/package-windows.ps1 passaram, incluindo 9 testes CTest, PATH minimo, pacote movido e instalacao/desinstalacao. Corrigida omissao do codigo do aplicativo no ZIP de fontes: bsdtar com verificacao de erro e inclusao obrigatoria de Bancada-source.zip. Logs em build/release-0.51.1-*.log. Continua sem assinatura digital e sem validacao em VM limpa. Branch docs/audit-consolidation ja era ancestral da main e permanece referenciada pelo outro worktree, que nao foi alterado.
+
+
+## Integracao 0.52.0 - 20/11/2026
+
+Integrados os commits de claude/cis-digitais e, por pedido do responsavel, suas alteracoes preparadas sem commit (74HC138/139/151/157/4511), preservando o worktree original. A ordem numerica existente dos componentes lineares foi conservada; novos digitais foram acrescentados ao final. Registro completo: 88 tipos, 12 categorias, formato 38. Nomes dos CIs passam a respeitar o encapsulamento projetado, escala e rotacao. Capturas de todos os DIPs em build/chip-name-review/. Validacao da release registrada apos os testes.

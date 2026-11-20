@@ -26,7 +26,6 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 | 16/11 | 0.35.0 | Interface em português e inglês; catálogo de textos e revisão de nomes. |
 | 16/11 | 0.36.0 | CMake, ZIP portátil e instalador NSIS por usuário; dependências fixadas, fontes e hashes. Pré-release publicada no GitHub. |
 | 16/11 | 0.37.0 | Rotação de chips por R e contatos diretos entre terminais, breadboards e portas de chips. Formato 29. |
-
 | 20/11 | 0.48-0.51.1 | EEPROM gravavel, protoboard larga, selecao conjunta, notas e catalogo reorganizado. Pre-release 0.51.1 publicada. |
 | 20/11, branch atual | 0.52.0 | Fonte CV/CC, proteção pelos datasheets (CIs, displays, placas, entradas soltas), ficha dos CIs, abas Lógica/Memória/Lineares e coleção de CIs. Ainda nao publicada. |
 | 20/11 | 0.51.2 | Oito correcoes da auditoria, regressoes e otimizacao do circuito contador/adder/decoders. Ainda nao publicada. |
@@ -34,11 +33,11 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 ## 2. Estado atual
 
 - Editor: fios e pernas ajustaveis, protoboards de 30/60 colunas, contato direto, rotacao, espelho, selecao por area ou Ctrl+clique, valores em conjunto e chips personalizados com interior isolado.
-- Notas: texto e cores configuraveis, redimensionamento proporcional, copia, historico e persistencia. Nove categorias no catalogo, sem duplicar ou omitir os 66 tipos registrados (incluindo Nota).
+- Notas: texto e cores configuraveis, redimensionamento proporcional, copia, historico e persistencia. Doze categorias no catalogo, sem duplicar ou omitir os 88 tipos registrados (incluindo Nota).
 - Simulacao: ngspice/XSPICE em host isolado, sessao continua, controles ao vivo, ritmo escolhido/observado e graficos. Movimento sem alterar conexoes preserva o estado; mudancas de topologia/frequencia ainda podem reiniciar a sessao.
 - CIs: portas didaticas, 74HC00/08/32/86/161/173/245/283 e AT28C16. A EEPROM **le e grava pelo barramento**, com bytes persistidos no projeto; ja nao e somente leitura. Limites em [MODELO_EEPROM.md](MODELO_EEPROM.md).
 - Placas: Uno, ESP32 e ATtiny85, com um subconjunto documentado da linguagem Arduino; LCD I2C e instrumentos ja existem. Isso nao equivale a executar firmware arbitrario ou a reproduzir todos os detalhes do hardware.
-- Arquivos: formato 37, leitura de versoes antigas, gravacao por arquivo temporario e substituicao. Tipos ainda usam codigos numericos.
+- Arquivos: formato 38, leitura de versoes antigas, gravacao por arquivo temporario e substituicao. Tipos ainda usam codigos numericos.
 - Distribuicao: instalador e ZIP com runtime, fontes completas, licencas e hashes. [Pre-release 0.51.1](https://github.com/Reyralona/electronics/releases/tag/v0.51.1), sem assinatura digital.
 
 ## 3. Oito correcoes desta rodada

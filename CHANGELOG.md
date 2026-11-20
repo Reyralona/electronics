@@ -2,6 +2,9 @@
 
 ## 0.52.0
 
+- Integra a coleção digital: 74HC02/10/11/14, 74HC273/373/374, 74HC163/193, 74HC138/139/151/157 e 74HC4511, com fichas e testes funcionais.
+- Nomes dos CIs centralizados e ajustados ao encapsulamento, tamanho e rotação; corrige o texto do NE555 saindo do corpo. Preserva os códigos dos componentes existentes ao integrar as branches.
+
 - Fonte de bancada CV/CC: botões V (0–30 V, `Shift`+roda, passos de 0,1 V) e A (limite 0–3 A, passos de 10 mA, também no inspetor). Acima do limite a tensão cai e a corrente fica fixa, com lâmpada CC. Curto na fonte de bancada não a queima mais; baterias e clocks continuam queimando.
 - Proteção pelos máximos absolutos dos datasheets: saídas 74HC (portas soltas, CIs de portas e CIs médios) avisam acima de 25 mA e queimam a partir de 1,8× (curto ou disputa de barramento); alimentação acima de 6 V avisa e acima de 7 V queima (AT28C16: 6,25 V). Anel âmbar no pino, linha no inspetor e uma mensagem no rodapé quando o conjunto de avisos muda.
 - Segmentos de display e cores do LED RGB queimam acima do limite do LED. Placas: 40 mA por pino (aviso, queima a 1,8×), pinos fora da alimentação queimam (ESP32 não aceita 5 V), ATtiny85 queima acima de 6 V.
