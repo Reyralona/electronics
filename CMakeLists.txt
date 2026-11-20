@@ -52,6 +52,7 @@ add_executable(bancada WIN32
     src/workbench_history.c
     src/netlist.c
     src/netlist_protection.c
+    src/netlist_linear.c
     src/netlist_devices.c
     src/netlist_logic.c
     src/rom_image.c
@@ -95,6 +96,7 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_protection.c
+        src/netlist_linear.c
         src/netlist_devices.c
         src/netlist_logic.c
         src/rom_image.c
@@ -137,6 +139,7 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_protection.c
+        src/netlist_linear.c
         src/netlist_devices.c
         src/netlist_logic.c
         src/rom_image.c
@@ -162,6 +165,7 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_protection.c
+        src/netlist_linear.c
         src/netlist_devices.c
         src/netlist_logic.c
         src/rom_image.c
@@ -192,6 +196,7 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_protection.c
+        src/netlist_linear.c
         src/netlist_devices.c
         src/netlist_logic.c
         src/rom_image.c
@@ -210,6 +215,7 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_protection.c
+        src/netlist_linear.c
         src/netlist_devices.c
         src/netlist_logic.c
         src/rom_image.c
@@ -233,6 +239,7 @@ if(BUILD_TESTING)
         src/spice_process.c
         src/netlist.c
         src/netlist_protection.c
+        src/netlist_linear.c
         src/netlist_devices.c
         src/netlist_logic.c
         src/rom_image.c

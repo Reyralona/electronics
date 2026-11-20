@@ -2,6 +2,7 @@
 #include "netlist.h"
 #include "rom_image.h"
 #include "mcu_board.h"
+#include "netlist_linear.h"
 #include <stdarg.h>
 #include <string.h>
 
@@ -406,6 +407,11 @@ int netlist_logic_models(FILE *out)
 void netlist_logic_ratings(PartType type, double *supply_absolute_max, double *supply_recommended_max,
                            double *output_limit_amps)
 {
+    if (netlist_linear_ratings(type, supply_absolute_max, supply_recommended_max))
+    {
+        *output_limit_amps = 0;
+        return;
+    }
     const McuRatings *board = mcu_board_ratings(type);
     if (board)
     {

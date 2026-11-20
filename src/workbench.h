@@ -86,6 +86,13 @@ typedef enum
     /* Logic IC collection, saved from format 38. Append new types at the end: the index is the file code. */
     PART_74HC04,
     PART_74HC74,
+    /* Linear ICs (netlist_linear.h), saved from format 38. */
+    PART_NE555,
+    PART_LM358,
+    PART_LM393,
+    PART_LM7805,
+    PART_ULN2003,
+    PART_L293D,
     PART_TYPE_COUNT
 } PartType;
 static inline int bench_is_board(PartType type)

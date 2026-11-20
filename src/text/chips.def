@@ -135,3 +135,67 @@ UI_TEXT(PIN_EE_IO, "Linha de dados: entrada na gravação, saída na leitura.", 
 UI_TEXT(PIN_EE_CE, "Seleciona o chip: em 0 ele responde.", "Chip enable: low makes it respond.")
 UI_TEXT(PIN_EE_OE, "Habilita a leitura: em 0 os dados saem.", "Output enable: low drives the data out.")
 UI_TEXT(PIN_EE_WE, "Grava: um pulso em 0 grava o dado no endereço.", "Write enable: a low pulse writes the data at the address.")
+/* NE555 */
+UI_TEXT(DOC_NE555,
+        "Temporizador. TRIG abaixo de 1/3 de VCC liga a saída; THRES acima de 2/3 a desliga e liga a descarga. RESET vence os dois.",
+        "Timer. TRIG below 1/3 VCC turns the output on; THRES above 2/3 turns it off and starts discharge. RESET overrides both.")
+UI_TEXT(PIN_555_TRIG, "Disparo: abaixo de 1/3 de VCC liga a saída.", "Trigger: below 1/3 VCC turns the output on.")
+UI_TEXT(PIN_555_OUT, "Saída: alta cerca de 1,7 V abaixo de VCC, baixa perto de 0 V. Até 200 mA.",
+        "Output: high about 1.7 V under VCC, low near 0 V. Up to 200 mA.")
+UI_TEXT(PIN_555_RESET, "Reset: abaixo de 0,7 V desliga a saída. Ligue em VCC se não usar.",
+        "Reset: below 0.7 V turns the output off. Tie it to VCC when unused.")
+UI_TEXT(PIN_555_CONT, "Controle: muda os limiares (2/3 e 1/3 de VCC). Use um capacitor de 10 nF ao GND.",
+        "Control: moves the thresholds (2/3 and 1/3 VCC). Use a 10 nF capacitor to GND.")
+UI_TEXT(PIN_555_THRES, "Limiar: acima de 2/3 de VCC desliga a saída.", "Threshold: above 2/3 VCC turns the output off.")
+UI_TEXT(PIN_555_DISCH, "Descarga: liga ao GND enquanto a saída está baixa. Descarrega o capacitor.",
+        "Discharge: connects to GND while the output is low. Empties the capacitor.")
+/* LM358 */
+UI_TEXT(DOC_LM358,
+        "Dois amplificadores operacionais para fonte simples. A saída vai de 0 V até 1,5 V abaixo de V+.",
+        "Two op-amps for a single supply. The output swings from 0 V to 1.5 V under V+.")
+UI_TEXT(PIN_358_OUT1, "Saída do amplificador 1.", "Output of amplifier 1.")
+UI_TEXT(PIN_358_INM1, "Entrada inversora (-) do amplificador 1.", "Inverting input (-) of amplifier 1.")
+UI_TEXT(PIN_358_INP1, "Entrada não inversora (+) do amplificador 1.", "Non-inverting input (+) of amplifier 1.")
+UI_TEXT(PIN_358_VM, "Alimentação negativa; em fonte simples, o GND.", "Negative supply; GND with a single supply.")
+UI_TEXT(PIN_358_INP2, "Entrada não inversora (+) do amplificador 2.", "Non-inverting input (+) of amplifier 2.")
+UI_TEXT(PIN_358_INM2, "Entrada inversora (-) do amplificador 2.", "Inverting input (-) of amplifier 2.")
+UI_TEXT(PIN_358_OUT2, "Saída do amplificador 2.", "Output of amplifier 2.")
+UI_TEXT(PIN_358_VP, "Alimentação positiva, de 3 a 30 V.", "Positive supply, 3 to 30 V.")
+/* LM393 */
+UI_TEXT(DOC_LM393,
+        "Dois comparadores com saída em coletor aberto. Com IN+ menor que IN-, a saída vai ao GND. Use um resistor de pull-up.",
+        "Two comparators with open-collector outputs. With IN+ below IN-, the output goes to GND. Use a pull-up resistor.")
+UI_TEXT(PIN_393_OUT1, "Saída do comparador 1 (coletor aberto).", "Output of comparator 1 (open collector).")
+UI_TEXT(PIN_393_INM1, "Entrada inversora (-) do comparador 1.", "Inverting input (-) of comparator 1.")
+UI_TEXT(PIN_393_INP1, "Entrada não inversora (+) do comparador 1.", "Non-inverting input (+) of comparator 1.")
+UI_TEXT(PIN_393_INP2, "Entrada não inversora (+) do comparador 2.", "Non-inverting input (+) of comparator 2.")
+UI_TEXT(PIN_393_INM2, "Entrada inversora (-) do comparador 2.", "Inverting input (-) of comparator 2.")
+UI_TEXT(PIN_393_OUT2, "Saída do comparador 2 (coletor aberto).", "Output of comparator 2 (open collector).")
+/* LM7805 */
+UI_TEXT(DOC_LM7805,
+        "Regulador de 5 V. Precisa de pelo menos 7 V na entrada. Fornece até cerca de 2 A, mas não absorve corrente.",
+        "5 V regulator. Needs at least 7 V at the input. Supplies up to about 2 A but does not sink current.")
+UI_TEXT(PIN_7805_IN, "Entrada não regulada, de 7 a 35 V.", "Unregulated input, 7 to 35 V.")
+UI_TEXT(PIN_7805_GND, "Terra (GND) comum à entrada e à saída.", "Ground (GND) shared by input and output.")
+UI_TEXT(PIN_7805_OUT, "Saída regulada de 5 V.", "Regulated 5 V output.")
+/* ULN2003A */
+UI_TEXT(DOC_ULN2003,
+        "Sete chaves Darlington. Uma entrada em nível alto liga o coletor ao E. Para relés e motores, ligue COM na fonte da carga.",
+        "Seven Darlington switches. A high input connects the collector to E. For relays and motors, tie COM to the load supply.")
+UI_TEXT(PIN_ULN_B, "Entrada do canal: nível alto (acima de 2,4 V) liga o canal.", "Channel input: high (above 2.4 V) turns the channel on.")
+UI_TEXT(PIN_ULN_E, "Emissor comum: ligue no GND.", "Common emitter: connect to GND.")
+UI_TEXT(PIN_ULN_COM, "Catodo comum dos diodos de proteção: ligue na fonte da carga indutiva.",
+        "Common cathode of the protection diodes: tie to the inductive load supply.")
+UI_TEXT(PIN_ULN_C, "Coletor do canal: vai ao GND quando a entrada está alta. Até 500 mA.",
+        "Channel collector: goes to GND when the input is high. Up to 500 mA.")
+/* L293D */
+UI_TEXT(DOC_L293D,
+        "Quatro meias-pontes para motores. Com EN alto, Y segue A; com EN baixo, Y fica desligado. Até 600 mA por canal.",
+        "Four half-H drivers for motors. With EN high, Y follows A; with EN low, Y is off. Up to 600 mA per channel.")
+UI_TEXT(PIN_293_EN12, "Habilita os canais 1 e 2 (nível alto liga).", "Enables channels 1 and 2 (high turns them on).")
+UI_TEXT(PIN_293_EN34, "Habilita os canais 3 e 4 (nível alto liga).", "Enables channels 3 and 4 (high turns them on).")
+UI_TEXT(PIN_293_A, "Entrada lógica do canal.", "Channel logic input.")
+UI_TEXT(PIN_293_Y, "Saída de potência do canal, para o motor.", "Channel power output, to the motor.")
+UI_TEXT(PIN_293_GND, "Terra (GND) e dissipação de calor.", "Ground (GND) and heat sink.")
+UI_TEXT(PIN_293_VCC2, "Alimentação dos motores, até 36 V.", "Motor supply, up to 36 V.")
+UI_TEXT(PIN_293_VCC1, "Alimentação da lógica, 5 V.", "Logic supply, 5 V.")

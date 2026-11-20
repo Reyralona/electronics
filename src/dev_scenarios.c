@@ -209,7 +209,9 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     {
         /* IC sheet with the pointer on the list row of pin 9 (~LOAD). */
         AppRect list = app_layout_doc_pin_list();
-        app->doc_type = PART_74HC161;
+        const char *chosen = argc > 2 ? argv[2] : "74hc161";
+        const ComponentInfo *info = component_by_id(chosen);
+        app->doc_type = info ? (int)info->type : PART_74HC161;
         app->mouse_screen = (WirePoint){list.x + 40, list.y + 8.5f * 19.0f};
         app->mouse_position_valid = 1;
     }

@@ -58,6 +58,26 @@ static const ComponentPinInfo pins_74hc74[] = {
     {"~1CLR", PIN_INPUT}, {"1D", PIN_INPUT},   {"1CLK", PIN_CLOCK_INPUT}, {"~1PRE", PIN_INPUT}, {"1Q", PIN_OUTPUT},
     {"~1Q", PIN_OUTPUT},  {"GND", PIN_GROUND}, {"~2Q", PIN_OUTPUT},       {"2Q", PIN_OUTPUT},   {"~2PRE", PIN_INPUT},
     {"2CLK", PIN_CLOCK_INPUT}, {"2D", PIN_INPUT}, {"~2CLR", PIN_INPUT},    {"VCC", PIN_SUPPLY_POSITIVE}};
+/* Linear ICs, TI datasheets consulted 20/11/2026 (docs/datasheets/ANALOGICOS_E_LIMITES.md). */
+static const ComponentPinInfo pins_ne555[] = {
+    {"GND", PIN_GROUND}, {"~TRIG", PIN_INPUT}, {"OUT", PIN_OUTPUT}, {"~RESET", PIN_INPUT},
+    {"CONT", PIN_INPUT}, {"THRES", PIN_INPUT}, {"DISCH", PIN_OUTPUT}, {"VCC", PIN_SUPPLY_POSITIVE}};
+static const ComponentPinInfo pins_lm358[] = {
+    {"OUT1", PIN_OUTPUT}, {"IN1-", PIN_INPUT}, {"IN1+", PIN_INPUT}, {"V-", PIN_GROUND},
+    {"IN2+", PIN_INPUT},  {"IN2-", PIN_INPUT}, {"OUT2", PIN_OUTPUT}, {"V+", PIN_SUPPLY_POSITIVE}};
+static const ComponentPinInfo pins_lm393[] = {
+    {"1OUT", PIN_OUTPUT}, {"1IN-", PIN_INPUT}, {"1IN+", PIN_INPUT}, {"GND", PIN_GROUND},
+    {"2IN+", PIN_INPUT},  {"2IN-", PIN_INPUT}, {"2OUT", PIN_OUTPUT}, {"VCC", PIN_SUPPLY_POSITIVE}};
+static const ComponentPinInfo pins_lm7805[] = {{"IN", PIN_SUPPLY_POSITIVE}, {"GND", PIN_GROUND}, {"OUT", PIN_OUTPUT}};
+static const ComponentPinInfo pins_uln2003[] = {
+    {"1B", PIN_INPUT},  {"2B", PIN_INPUT},  {"3B", PIN_INPUT},  {"4B", PIN_INPUT},  {"5B", PIN_INPUT},  {"6B", PIN_INPUT},
+    {"7B", PIN_INPUT},  {"E", PIN_GROUND},  {"COM", PIN_PASSIVE}, {"7C", PIN_OUTPUT}, {"6C", PIN_OUTPUT}, {"5C", PIN_OUTPUT},
+    {"4C", PIN_OUTPUT}, {"3C", PIN_OUTPUT}, {"2C", PIN_OUTPUT}, {"1C", PIN_OUTPUT}};
+static const ComponentPinInfo pins_l293d[] = {
+    {"1,2EN", PIN_INPUT}, {"1A", PIN_INPUT},  {"1Y", PIN_OUTPUT}, {"GND", PIN_GROUND}, {"GND", PIN_GROUND},
+    {"2Y", PIN_OUTPUT},   {"2A", PIN_INPUT},  {"VCC2", PIN_SUPPLY_POSITIVE}, {"3,4EN", PIN_INPUT}, {"3A", PIN_INPUT},
+    {"3Y", PIN_OUTPUT},   {"GND", PIN_GROUND}, {"GND", PIN_GROUND}, {"4Y", PIN_OUTPUT}, {"4A", PIN_INPUT},
+    {"VCC1", PIN_SUPPLY_POSITIVE}};
 /* AT28C16 shares each data terminal between programming and three-state readout. */
 static const ComponentPinInfo pins_at28c16[] = {
     {"A7", PIN_INPUT},   {"A6", PIN_INPUT},   {"A5", PIN_INPUT},   {"A4", PIN_INPUT},   {"A3", PIN_INPUT},
@@ -184,6 +204,12 @@ static const ComponentInfo components[] = {
     [PART_BREADBOARD_WIDE] = {PART_BREADBOARD_WIDE, "breadboard-wide", NULL, BREADBOARD_WIDE_PINS, COMPONENT_CONNECTIVITY, 36, NULL, NULL},
     [PART_74HC04] = {PART_74HC04, "74hc04", NULL, 14, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_74hc04},
     [PART_74HC74] = {PART_74HC74, "74hc74", NULL, 14, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_74hc74},
+    [PART_NE555] = {PART_NE555, "ne555", NULL, 8, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_ne555},
+    [PART_LM358] = {PART_LM358, "lm358", NULL, 8, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_lm358},
+    [PART_LM393] = {PART_LM393, "lm393", NULL, 8, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_lm393},
+    [PART_LM7805] = {PART_LM7805, "lm7805", NULL, 3, COMPONENT_ROTATES, 38, NULL, pins_lm7805},
+    [PART_ULN2003] = {PART_ULN2003, "uln2003a", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_uln2003},
+    [PART_L293D] = {PART_L293D, "l293d", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_l293d},
 };
 
 /* Display names; component_info() returns them in the current language. */
@@ -213,6 +239,12 @@ static const TextId display_texts[] = {
     [PART_74HC161] = TXT_CAT_74HC161,
     [PART_74HC04] = TXT_CAT_74HC04,
     [PART_74HC74] = TXT_CAT_74HC74,
+    [PART_NE555] = TXT_CAT_NE555,
+    [PART_LM358] = TXT_CAT_LM358,
+    [PART_LM393] = TXT_CAT_LM393,
+    [PART_LM7805] = TXT_CAT_LM7805,
+    [PART_ULN2003] = TXT_CAT_ULN2003,
+    [PART_L293D] = TXT_CAT_L293D,
     [PART_74HC173] = TXT_CAT_74HC173,
     [PART_74HC245] = TXT_CAT_74HC245,
     [PART_74HC283] = TXT_CAT_74HC283,
@@ -379,7 +411,7 @@ static const LocalizedCatalog *localized_catalog(void)
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION, PART_74HC161, PART_74HC173, PART_74HC245, PART_74HC283, PART_AT28C16, PART_BREADBOARD_WIDE, PART_NOTE, PART_74HC04, PART_74HC74};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION, PART_74HC161, PART_74HC173, PART_74HC245, PART_74HC283, PART_AT28C16, PART_BREADBOARD_WIDE, PART_NOTE, PART_74HC04, PART_74HC74, PART_NE555, PART_LM358, PART_LM393, PART_LM7805, PART_ULN2003, PART_L293D};
 _Static_assert(sizeof(legacy_types) / sizeof(legacy_types[0]) == PART_TYPE_COUNT, "every type needs its file code");
 
 size_t component_registry_count(void)
@@ -469,7 +501,9 @@ const char *component_symbol(PartType type)
         {PART_NOT, "NOT"},       {PART_NOR, "NOR"},       {PART_XNOR, "XNOR"},     {PART_DFF, "DFF"},
         {PART_74HC08, "74HC08"}, {PART_74HC32, "74HC32"}, {PART_74HC86, "74HC86"}, {PART_74HC00, "74HC00"},
         {PART_74HC161, "74HC161"}, {PART_74HC173, "74HC173"}, {PART_74HC245, "74HC245"}, {PART_74HC283, "74HC283"},
-        {PART_AT28C16, "AT28C16"}, {PART_74HC04, "74HC04"}, {PART_74HC74, "74HC74"}};
+        {PART_AT28C16, "AT28C16"}, {PART_74HC04, "74HC04"}, {PART_74HC74, "74HC74"},
+        {PART_NE555, "NE555"}, {PART_LM358, "LM358"}, {PART_LM393, "LM393"}, {PART_LM7805, "LM7805"},
+        {PART_ULN2003, "ULN2003A"}, {PART_L293D, "L293D"}};
     for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); ++i)
         if (symbols[i].type == type)
             return symbols[i].symbol;
@@ -582,7 +616,8 @@ double component_source_limit(const Part *part)
 
 int component_radial_pins(PartType type)
 {
-    return (component_environment(type) != NULL && type != PART_SOURCE) || type == PART_NPN || type == PART_PNP;
+    return (component_environment(type) != NULL && type != PART_SOURCE) || type == PART_NPN || type == PART_PNP ||
+           type == PART_LM7805;
 }
 
 

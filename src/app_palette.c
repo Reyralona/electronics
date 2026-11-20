@@ -12,7 +12,7 @@ static const PartType digital[] = {PART_AND, PART_NAND, PART_OR, PART_XOR, PART_
 /* Logic ICs by function: flip-flops, counters, registers, arithmetic, bus. */
 static const PartType logic[] = {PART_74HC74, PART_74HC161, PART_74HC173, PART_74HC283, PART_74HC245};
 static const PartType memory[] = {PART_AT28C16};
-static const PartType linear[] = {PART_NOTE};
+static const PartType linear[] = {PART_NE555, PART_LM358, PART_LM393, PART_LM7805, PART_ULN2003, PART_L293D};
 static const PartType sensors[] = {PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_PHOTODIODE,
     PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE};
 static const PartType outputs[] = {PART_LED, PART_RGB_LED, PART_LAMP, PART_SEVEN_SEGMENT, PART_LCD_I2C,
@@ -33,7 +33,7 @@ int palette_count(int page)
 {
     static const int counts[] = {COUNT(basic),  COUNT(digital), 8,           COUNT(sensors),
                                  COUNT(outputs), COUNT(instruments), COUNT(power), COUNT(boards),
-                                 COUNT(workbench), COUNT(logic), COUNT(memory), 0};
+                                 COUNT(workbench), COUNT(logic), COUNT(memory), COUNT(linear)};
     return page >= 0 && page < PALETTE_PAGES ? counts[page] : 0;
 }
 

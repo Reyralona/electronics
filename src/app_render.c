@@ -971,6 +971,21 @@ static void draw_transistor(const Part *part)
     }
 }
 
+/* TO-220: black body with three legs below, metal tab with its mounting hole above. */
+static void draw_regulator(const Part *part)
+{
+    float x = part->x, y = part->y;
+    gradient_rect(x - 20, y - 36, 40, 18, (SurfaceColor){.80f, .82f, .84f}, (SurfaceColor){.55f, .58f, .60f});
+    color(.30f, .32f, .34f);
+    circle(x, y - 27, 4.5f);
+    color(.08f, .09f, .10f);
+    rect(x - 20, y - 18, 40, 30);
+    gradient_rect(x - 19, y - 17, 38, 27, (SurfaceColor){.24f, .26f, .28f}, (SurfaceColor){.09f, .10f, .11f});
+    color(.55f, .58f, .60f);
+    rect(x - 12, y - 8, 24, 1);
+    rect(x - 12, y - 3, 16, 1);
+}
+
 static void draw_sensor(const Part *part)
 {
     float x = part->x, y = part->y;
@@ -1820,6 +1835,8 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
         draw_diode(p);
     else if (p->type == PART_NPN || p->type == PART_PNP || p->type == PART_TEMPERATURE)
         draw_transistor(p);
+    else if (p->type == PART_LM7805)
+        draw_regulator(p);
     else if (component_environment(p->type) && p->type != PART_SOURCE)
         draw_sensor(p);
     else if (p->type == PART_SOURCE)
@@ -4382,12 +4399,23 @@ typedef struct
     float cx, cy, scale;
 } DocView;
 
+/* Scale that fits the body and every pin (with room for the labels) in the package area. */
 static DocView doc_view(PartType type)
 {
     AppRect area = app_layout_doc_package();
-    int side = bench_pin_count(type) / 2;
-    float span = (float)((side + 1) * BENCH_DIP_PITCH);
-    return (DocView){app_rect_center_x(area), app_rect_center_y(area), fminf(DOC_PACKAGE_MAX_SCALE, area.w / span)};
+    Part nominal = {.type = type, .scale = 1};
+    float half_w, half_h;
+    component_body_extent(type, &half_w, &half_h);
+    for (int pin = 0; pin < bench_pin_count(type); ++pin)
+    {
+        float x, y;
+        bench_pin_position(&nominal, pin, &x, &y);
+        half_w = fmaxf(half_w, fabsf(x));
+        half_h = fmaxf(half_h, fabsf(y));
+    }
+    const float label_room = 70;
+    float scale = fminf(area.w / (2 * half_w + 20), (area.h - label_room) / (2 * half_h));
+    return (DocView){app_rect_center_x(area), app_rect_center_y(area), fminf(DOC_PACKAGE_MAX_SCALE, scale)};
 }
 
 static void doc_pin_screen(PartType type, const DocView *view, int pin, float *x, float *y)
@@ -4426,6 +4454,8 @@ static void doc_draw_package(GLuint font, PartType type, const DocView *view, in
     glPushMatrix();
     glTranslatef(view->cx, view->cy, 0);
     glScalef(view->scale, view->scale, 1);
+    if (!component_has_flag(type, COMPONENT_DIP))
+        draw_part_leads(&nominal);
     part_draw(&nominal, 0, 0, 0);
     glPopMatrix();
     color(.85f, .88f, .9f);
@@ -4512,12 +4542,12 @@ static void draw_doc_window(const AppState *app, GLuint font)
     {
         char heading[64];
         snprintf(heading, sizeof(heading), "%d  %s", hovered + 1, component_pin_info(type, hovered)->name);
-        text(font, package.x, package.y + package.h + 40, heading);
-        ui_wrapped(font, package.x, package.y + package.h + 64, tr(doc->pins[hovered]), (int)package.w, 3,
+        text(font, package.x, package.y + package.h + 60, heading);
+        ui_wrapped(font, package.x, package.y + package.h + 84, tr(doc->pins[hovered]), (int)package.w, 3,
                    (float)ui_font_pixels + 3);
     }
     else
-        ui_note(font, package.x, package.y + package.h + 40, tr(TXT_DOC_PIN_HINT), (int)package.w);
+        ui_note(font, package.x, package.y + package.h + 60, tr(TXT_DOC_PIN_HINT), (int)package.w);
     ui_note(font, panel.x + 30, panel.y + panel.h - 18, tr(TXT_DOC_CLOSE_HINT), 300);
 }
 

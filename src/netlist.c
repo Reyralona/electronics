@@ -1,6 +1,7 @@
 #include "netlist.h"
 #include "netlist_devices.h"
 #include "netlist_logic.h"
+#include "netlist_linear.h"
 #include "mcu_board.h"
 #include "mcu_lang.h"
 #include "component_devices.h"
@@ -330,7 +331,8 @@ static void quad_gate_drive(PartType type, int chip, int gate, char *high, char 
 static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient, int measure_wires, Pin probe,
                                    double step, double stop, int session, NetlistProtection *protection)
 {
-    int parents[PIN_TOTAL], i, source = -1, ground, positive, gate_count = 0, chip_count = 0, logic_count = 0;
+    int parents[PIN_TOTAL], i, source = -1, ground, positive, gate_count = 0, chip_count = 0, logic_count = 0,
+        linear_count = 0;
     if (!out || !b || b->part_count < 0 || b->part_count > WORKBENCH_MAX_COMPONENTS || b->wire_count < 0 ||
         b->wire_count > WORKBENCH_MAX_WIRES)
         return NETLIST_INVALID;
@@ -402,6 +404,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                     return NETLIST_INVALID;
                 ++logic_count;
             }
+            else if (netlist_linear_supported(b->parts[i].type))
+                ++linear_count;
             else if (!netlist_device_supported(component_electrical_type(b->parts[i].type)))
                 return NETLIST_UNSUPPORTED;
             break;
@@ -552,7 +556,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
-        if (netlist_logic_supported(b->parts[i].type))
+        if (netlist_logic_supported(b->parts[i].type) || netlist_linear_supported(b->parts[i].type))
         {
             int nodes[COMPONENT_MAX_DEVICE_PINS] = {0};
             for (int pin = 0; pin < bench_pin_count(b->parts[i].type); ++pin)
@@ -560,7 +564,10 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 int root = find_root(parents, i * WORKBENCH_MAX_PINS + pin);
                 nodes[pin] = root == ground ? 0 : root + 1;
             }
-            if (!netlist_logic_write(out, &b->parts[i], i, nodes, protection))
+            int written = netlist_linear_supported(b->parts[i].type)
+                              ? netlist_linear_write(out, &b->parts[i], i, nodes, protection)
+                              : netlist_logic_write(out, &b->parts[i], i, nodes, protection);
+            if (!written)
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
@@ -719,6 +726,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         return NETLIST_IO_ERROR;
     /* RS: series resistance so an LED wired straight to a source gives a finite current in this didactic model.
        rshunt: 1 TOhm from every node to ground so unfinished circuits (floating nodes) still solve. */
+    if (linear_count && !netlist_linear_models(out))
+        return NETLIST_IO_ERROR;
     if (logic_count && (!netlist_logic_models(out) || !netlist_eeprom_core(out, b)))
         return NETLIST_IO_ERROR;
     if (!netlist_device_models(out))
