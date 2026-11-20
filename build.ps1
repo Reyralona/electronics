@@ -239,6 +239,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_logic_chips.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_protection.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/chip_docs.c src/component_devices.c src/ui_text.c -o build/test_logic_chips.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_logic_chips.exe "$ngspiceBin/ngspice_con.exe" }
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_chip_protection.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_protection.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/chip_docs.c src/component_devices.c src/ui_text.c -o build/test_chip_protection.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path "$ngspiceBin/ngspice_con.exe") { & ./build/test_chip_protection.exe "$ngspiceBin/ngspice_con.exe" }
