@@ -122,3 +122,14 @@ Trabalho de EEPROM, notas e catalogo integrado na main; tag v0.51.1 publicada co
 Integrados os commits de claude/cis-digitais e, por pedido do responsavel, suas alteracoes preparadas sem commit (74HC138/139/151/157/4511), preservando o worktree original. A ordem numerica existente dos componentes lineares foi conservada; novos digitais foram acrescentados ao final. Registro completo: 88 tipos, 12 categorias, formato 38. Nomes dos CIs passam a respeitar o encapsulamento projetado, escala e rotacao. Capturas de todos os DIPs em build/chip-name-review/. Validacao da release registrada apos os testes.
 
 Validacao 0.52.0: ./build.ps1 -GuiTests e ./tools/package-windows.ps1 passaram; 10 CTest, pacote movido com PATH minimo, instalacao/desinstalacao e captura revisada. Teste recursivo no CMake corrigido para achar a fixture na raiz. Suites de interface compartilham build/test-blocks: nao executar build.ps1 e CTest ao mesmo tempo. Logs build/release-0.52.0-{tests-final,package}.log. Binarios continuam sem assinatura e sem teste em VM limpa. Worktrees de outros agentes foram preservados.
+
+## Pendente: coleção de CIs digitais (anotado em 20/11/2026)
+
+Um agente adicionava 20 CIs 74HC e a SRAM 62256 numa branch `claude/cis-digitais`; parou no limite de gasto
+e a branch/worktree não existe mais. Refazer, seguindo o padrão do commit `0fde12f` (74HC04/74HC74):
+74HC02, 10, 11, 14 (Schmitt: VT+ 0,55·VCC, VT- 0,35·VCC), 273, 373, 374, 163 (clear/load síncronos),
+193 (clear alto e load assíncronos), 138, 139, 151, 157, 4511 (10-15 apagado; LT > BI > latch), 595, 165,
+164, 85, 244, 125 e 62256. Dados e fontes: `docs/datasheets/LOGICA_74HC.md` e `ANALOGICOS_E_LIMITES.md`.
+Cuidados: 125/151/157/244/373/374/595 têm 35 mA por saída; `COMPONENT_MAX_DEVICE_PINS` é 24 e a 62256 tem
+28 pinos (aumentar antes); "buffer" é palavra proibida na interface; novos tipos no fim do enum e de
+`legacy_types`; ficha em `src/text/chips.def` e `src/chip_docs.c`; teste em `tests/test_logic_chips.c`.
