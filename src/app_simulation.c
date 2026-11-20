@@ -5,6 +5,7 @@
 #include "component_devices.h"
 #include "spice_trace.h"
 #include "workbench_file.h"
+#include "netlist_logic.h"
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
@@ -101,7 +102,15 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
     {
         if (!burnt[i])
             continue;
-        if (reason[i] == BURN_SHORT)
+        double absolute, recommended, output;
+        netlist_logic_ratings(bench->parts[i].type, &absolute, &recommended, &output);
+        if (reason[i] == BURN_OVERVOLTAGE)
+            snprintf(buffer, capacity, tr(TXT_APP_BURN_CHIP_VOLTAGE), component_info(bench->parts[i].type)->display_name, value[i],
+                     absolute);
+        else if (reason[i] == BURN_OVERCURRENT && bench->parts[i].type != PART_LED)
+            snprintf(buffer, capacity, tr(TXT_APP_BURN_CHIP_CURRENT), component_info(bench->parts[i].type)->display_name,
+                     value[i] * 1000.0, output * 1000.0);
+        else if (reason[i] == BURN_SHORT)
             snprintf(buffer, capacity, "%s",
                      tr(bench->parts[i].type == PART_CLOCK ? TXT_APP_BURN_CLOCK_SHORT : TXT_APP_BURN_SOURCE_SHORT));
         else if (reason[i] == BURN_OVERPOWER)
@@ -109,6 +118,27 @@ static const char *burn_message(char *buffer, size_t capacity, const Workbench *
         else
             snprintf(buffer, capacity, tr(TXT_APP_BURN_LED), value[i] * 1000.0,
                      burn_limits_default().led_max_current * 1000.0);
+        return buffer;
+    }
+    return NULL;
+}
+
+/* Footer text for the first chip warning; NULL when no part is stressed. */
+static const char *alert_message(char *buffer, size_t capacity, const Workbench *bench, const unsigned char alert[],
+                                 const double value[])
+{
+    for (int i = 0; i < bench->part_count; ++i)
+    {
+        if (alert[i] != PART_ALERT_OVERCURRENT && alert[i] != PART_ALERT_OVERVOLTAGE)
+            continue;
+        double absolute, recommended, output;
+        netlist_logic_ratings(bench->parts[i].type, &absolute, &recommended, &output);
+        if (alert[i] == PART_ALERT_OVERCURRENT)
+            snprintf(buffer, capacity, tr(TXT_APP_ALERT_CHIP_CURRENT), component_info(bench->parts[i].type)->display_name,
+                     value[i] * 1000.0, output * 1000.0);
+        else
+            snprintf(buffer, capacity, tr(TXT_APP_ALERT_CHIP_VOLTAGE), component_info(bench->parts[i].type)->display_name, value[i],
+                     recommended);
         return buffer;
     }
     return NULL;
@@ -147,6 +177,8 @@ static void accept_automatic_result(AppState *app)
     memcpy(app->sim.burn_reason, r->burn_reason, sizeof(app->sim.burn_reason));
     memcpy(app->sim.burn_value, r->burn_value, sizeof(app->sim.burn_value));
     app->sim.burnt_count = r->burnt_count;
+    /* Warnings reach the footer once, when the set of stressed parts changes; the part keeps its marker. */
+    int new_alert = memcmp(app->sim.alert, r->alert, sizeof(app->sim.alert)) != 0;
     memcpy(app->sim.alert, r->alert, sizeof(app->sim.alert));
     memcpy(app->sim.alert_pin, r->alert_pin, sizeof(app->sim.alert_pin));
     memcpy(app->sim.alert_value, r->alert_value, sizeof(app->sim.alert_value));
@@ -194,8 +226,13 @@ static void accept_automatic_result(AppState *app)
         }
         burn_text = burn_message(app->sim.auto_status, sizeof(app->sim.auto_status), &app->bench, app->sim.burnt,
                                  app->sim.burn_reason, app->sim.burn_value);
+        const char *alert_text = new_alert ? alert_message(app->sim.auto_status, sizeof(app->sim.auto_status),
+                                                           &app->bench, app->sim.alert, app->sim.alert_value)
+                                           : NULL;
         if (burn_text)
             app->status = burn_text;
+        else if (alert_text)
+            app->status = alert_text;
         else
         {
             if (!app->dc_job.continuous)

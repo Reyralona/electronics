@@ -275,15 +275,29 @@ static int write_gate_scaled_input(FILE *out, int node)
 }
 
 /* CMOS output stage: one switch to the supply rail, one to ground, each ~50 ohm when on (chip_switch).
- * The current really comes from the reference source, and an unpowered gate leaves its output open. */
-static int write_gate_output(FILE *out, int gate, int node)
+ * The current really comes from the reference source, and an unpowered gate leaves its output open.
+ * Rgout<gate> joins the stage to the pin; a burnt gate opens it. */
+static int write_gate_output(FILE *out, int gate, int node, NetlistProtection *protection)
 {
+    if (protection)
+    {
+        ProtectionCurrent term = {.part = gate, .pin = -1, .limit_amps = HC_OUTPUT_ABSOLUTE_MAX_AMPS};
+        snprintf(term.vcc, sizeof(term.vcc), "logic_rail");
+        snprintf(term.gnd, sizeof(term.gnd), "0");
+        snprintf(term.node, sizeof(term.node), "gj%d", gate);
+        snprintf(term.high, sizeof(term.high), "ghi%d", gate);
+        snprintf(term.low_plus, sizeof(term.low_plus), "logic_ok");
+        snprintf(term.low_minus, sizeof(term.low_minus), "ghi%d", gate);
+        netlist_protection_add_current(protection, term);
+    }
     return fprintf(out,
                    "Adac%d [dout%d] [gdo%d] gate_dac\n"
                    "Bghi%d ghi%d 0 V=V(logic_ok)*V(gdo%d)\n"
                    /* low = logic_ok - high; no extra behavioral voltage source is needed. */
-                   "Sghi%d logic_rail %d ghi%d 0 chip_switch\nSglo%d %d 0 logic_ok ghi%d chip_switch\n",
-                   gate, gate, gate, gate, gate, gate, gate, node, gate, gate, node, gate) >= 0;
+                   "Sghi%d logic_rail gj%d ghi%d 0 chip_switch\nSglo%d gj%d 0 logic_ok ghi%d chip_switch\n"
+                   "Rgout%d gj%d %d %.17g\n",
+                   gate, gate, gate, gate, gate, gate, gate, gate, gate, gate, gate, gate, gate, gate, node,
+                   NETLIST_LIVE_CLOSED_OHMS) >= 0;
 }
 
 static void quad_gate_drive(PartType type, int chip, int gate, char *high, char *low, size_t capacity)
@@ -313,7 +327,7 @@ static void quad_gate_drive(PartType type, int chip, int gate, char *high, char 
 }
 
 static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient, int measure_wires, Pin probe,
-                                   double step, double stop, int session)
+                                   double step, double stop, int session, NetlistProtection *protection)
 {
     int parents[PIN_TOTAL], i, source = -1, ground, positive, gate_count = 0, chip_count = 0, logic_count = 0;
     if (!out || !b || b->part_count < 0 || b->part_count > WORKBENCH_MAX_COMPONENTS || b->wire_count < 0 ||
@@ -548,7 +562,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 int root = find_root(parents, i * WORKBENCH_MAX_PINS + pin);
                 nodes[pin] = root == ground ? 0 : root + 1;
             }
-            if (!netlist_logic_write(out, &b->parts[i], i, nodes))
+            if (!netlist_logic_write(out, &b->parts[i], i, nodes, protection))
                 return NETLIST_IO_ERROR;
         }
     for (i = 0; i < b->part_count; ++i)
@@ -585,6 +599,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
     if (gate_count &&
         !write_logic_supply(out, positive == ground ? 0 : positive + 1, b->parts[source].type == PART_CLOCK))
         return NETLIST_IO_ERROR;
+    if (gate_count)
+        netlist_protection_supply(protection, -1, "logic_vcc", HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX);
     unsigned char scaled_inputs[PIN_TOTAL + 1] = {0};
     for (i = 0; i < b->part_count; ++i)
         if (component_has_flag(b->parts[i].type, COMPONENT_GATE_SYMBOL))
@@ -628,7 +644,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                             i, inputs[0], inputs[1], i, i, i, i, i, i, model) < 0)
                     return NETLIST_IO_ERROR;
             }
-            if (!write_gate_output(out, i, output_node == ground ? 0 : output_node + 1))
+            if (!write_gate_output(out, i, output_node == ground ? 0 : output_node + 1, protection))
                 return NETLIST_IO_ERROR;
             for (int input = 0; input < input_count; ++input)
                 if (!write_gate_input(out, "g", i, input, inputs[input], 0))
@@ -645,10 +661,15 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
             if (fprintf(out, "Rchip%d_supply %d %d %.17g\nBchip%d_sup chip%d_sup 0 V=V(%d,%d)\n",
                         i, rail, ref, NETLIST_LOGIC_SUPPLY_OHMS, i, i, rail, ref) < 0 ||
                 fprintf(out,
-                        "Bchip%d_ok chip%d_ok 0 V=min(max((V(chip%d_sup)-%g)/%g,0),1)*min(max((%g-V(chip%d_sup))/%g,0),1)\n",
-                        i, i, i, QUAD_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, QUAD_SUPPLY_MAX + QUAD_EDGE_VOLTS, i,
-                        QUAD_EDGE_VOLTS) < 0)
+                        "Vchip%d_alive chip%d_alive 0 1\n"
+                        "Bchip%d_ok chip%d_ok 0 V=V(chip%d_alive)*min(max((V(chip%d_sup)-%g)/%g,0),1)*"
+                        "min(max((%g-V(chip%d_sup))/%g,0),1)\n",
+                        i, i, i, i, i, i, QUAD_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS,
+                        QUAD_SUPPLY_MAX + QUAD_EDGE_VOLTS, i, QUAD_EDGE_VOLTS) < 0)
                 return NETLIST_IO_ERROR;
+            char supply[PROTECTION_NAME_CAPACITY];
+            snprintf(supply, sizeof(supply), "chip%d_sup", i);
+            netlist_protection_supply(protection, i, supply, HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX);
             for (g = 0; g < 4; ++g)
             {
                 int a = find_root(parents, i * WORKBENCH_MAX_PINS + pins[g][0]),
@@ -673,6 +694,11 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                         "Schip%d_hi%d %d %d chip%d_hi%d 0 chip_switch\nSchip%d_lo%d %d %d chip%d_lo%d 0 chip_switch\n",
                         i, g, rail, y, i, g, i, g, y, ref, i, g) < 0)
                     return NETLIST_IO_ERROR;
+                char high_control[PROTECTION_NAME_CAPACITY], low_control[PROTECTION_NAME_CAPACITY];
+                snprintf(high_control, sizeof(high_control), "chip%d_hi%d", i, g);
+                snprintf(low_control, sizeof(low_control), "chip%d_lo%d", i, g);
+                netlist_protection_output(protection, i, pins[g][2], rail, ref, y, high_control, low_control, "0",
+                                          HC_OUTPUT_ABSOLUTE_MAX_AMPS);
             }
         }
     if ((chip_count || gate_count) && fprintf(out, ".model chip_switch SW(Ron=50 Roff=1e12 Vt=.5 Vh=.1)\n") < 0)
@@ -820,25 +846,25 @@ const char *netlist_result_message(NetlistResult result)
 
 NetlistResult netlist_write_dc(FILE *out, const Workbench *b)
 {
-    return write_netlist(out, b, 0, 0, (Pin){0, 0}, 0, 0, 0);
+    return write_netlist(out, b, 0, 0, (Pin){0, 0}, 0, 0, 0, NULL);
 }
 NetlistResult netlist_write_dc_instrumented(FILE *out, const Workbench *b)
 {
-    return write_netlist(out, b, 0, 1, (Pin){0, 0}, 0, 0, 0);
+    return write_netlist(out, b, 0, 1, (Pin){0, 0}, 0, 0, 0, NULL);
 }
 NetlistResult netlist_write_transient(FILE *out, const Workbench *b, Pin probe, double step, double stop)
 {
-    return write_netlist(out, b, 1, 0, probe, step, stop, 0);
+    return write_netlist(out, b, 1, 0, probe, step, stop, 0, NULL);
 }
 
 NetlistResult netlist_write_transient_current(FILE *out, const Workbench *b, int component, double step, double stop)
 {
-    return write_netlist(out, b, 2, 0, (Pin){component, 0}, step, stop, 0);
+    return write_netlist(out, b, 2, 0, (Pin){component, 0}, step, stop, 0, NULL);
 }
 
 NetlistResult netlist_write_transient_wire(FILE *out, const Workbench *b, int wire, double step, double stop)
 {
-    return write_netlist(out, b, 3, 1, (Pin){wire, 0}, step, stop, 0);
+    return write_netlist(out, b, 3, 1, (Pin){wire, 0}, step, stop, 0, NULL);
 }
 
 NetlistResult netlist_write_transient_instrumented(FILE *out, const Workbench *b, int mode, Pin probe, double step,
@@ -846,12 +872,19 @@ NetlistResult netlist_write_transient_instrumented(FILE *out, const Workbench *b
 {
     if (mode < 1 || mode > 3)
         return NETLIST_INVALID;
-    return write_netlist(out, b, mode, 1, probe, step, stop, 0);
+    return write_netlist(out, b, mode, 1, probe, step, stop, 0, NULL);
 }
 
 NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires)
 {
-    return write_netlist(out, bench, 0, measure_wires, (Pin){0, 0}, 0, 0, 1);
+    return write_netlist(out, bench, 0, measure_wires, (Pin){0, 0}, 0, 0, 1, NULL);
+}
+
+NetlistResult netlist_write_live_protected(FILE *out, const Workbench *bench, int measure_wires,
+                                           NetlistProtection *protection)
+{
+    netlist_protection_reset(protection);
+    return write_netlist(out, bench, 0, measure_wires, (Pin){0, 0}, 0, 0, 1, protection);
 }
 
 int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin)

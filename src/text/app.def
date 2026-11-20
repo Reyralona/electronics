@@ -155,6 +155,14 @@ UI_TEXT(APP_BURN_RESISTOR, "Resistor queimado: %.3g W (limite %.3g W). Corrija o
         "Resistor burned: %.3g W (limit %.3g W). Correct the circuit to make it work again.")
 UI_TEXT(APP_BURN_LED, "LED queimado: %.3g mA (limite %.3g mA). Use um resistor em série.",
         "LED burned: %.3g mA (limit %.3g mA). Use a series resistor.")
+UI_TEXT(APP_BURN_CHIP_CURRENT, "%s queimado: saída com %.0f mA (máximo %.0f mA). Use um resistor em série e uma saída por fio.",
+        "%s burned: output at %.0f mA (maximum %.0f mA). Use a series resistor and one output per wire.")
+UI_TEXT(APP_BURN_CHIP_VOLTAGE, "%s queimado: alimentação de %.2f V (máximo %.3g V). Ajuste a fonte.",
+        "%s burned: supply at %.2f V (maximum %.3g V). Adjust the supply.")
+UI_TEXT(APP_ALERT_CHIP_CURRENT, "%s: saída com %.0f mA, acima do máximo de %.0f mA. Aumente o resistor.",
+        "%s: output at %.0f mA, above the %.0f mA maximum. Use a larger resistor.")
+UI_TEXT(APP_ALERT_CHIP_VOLTAGE, "%s: %.2f V, acima dos %.3g V recomendados. Baixe a fonte.",
+        "%s: %.2f V, above the recommended %.3g V. Lower the supply.")
 UI_TEXT(APP_CALCULATION_FAILED, "Não foi possível calcular: %s", "Cannot calculate: %s")
 UI_TEXT(APP_LIVE_RESTARTED, "Ligações ou frequência mudaram. Estado elétrico reiniciado.",
         "Connections or frequency changed. Electrical state reset.")

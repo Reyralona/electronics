@@ -16,6 +16,7 @@
 #include "code_text.h"
 #include "app_code_editor.h"
 #include "ui_text.h"
+#include "netlist_logic.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -221,6 +222,17 @@ static void circle(float x, float y, float radius)
     }
     glEnd();
 }
+static void circle_outline(float x, float y, float radius)
+{
+    glBegin(GL_LINE_LOOP);
+    for (int i = 0; i < 32; ++i)
+    {
+        float a = (float)i * 6.2831853f / 32;
+        glVertex2f(x + cosf(a) * radius, y + sinf(a) * radius);
+    }
+    glEnd();
+}
+
 GLuint app_render_font_create(void)
 {
     HDC dc = wglGetCurrentDC();
@@ -3153,12 +3165,29 @@ static void draw_workspace_probe(const AppState *app, GLuint font)
     }
 }
 
+/* Warning marker: an amber ring on the stressed terminal (or the part centre for a supply warning). */
+static void alert_draw(const AppState *app, int index)
+{
+    const Part *part = &app->bench.parts[index];
+    float x = part->x, y = part->y;
+    if (app->sim.alert[index] == PART_ALERT_OVERCURRENT)
+        bench_pin_position(part, app->sim.alert_pin[index], &x, &y);
+    float pulse = .5f + .5f * sinf((float)SDL_GetTicks() * .006f);
+    glLineWidth(2.5f);
+    glColor3f(.98f, .62f + .15f * pulse, .10f);
+    circle_outline(x, y, 10 + 3 * pulse);
+    glLineWidth(1);
+}
+
 static void draw_workspace_burns(const AppState *app, GLuint font)
 {
     int i;
     for (i = 0; i < app->bench.part_count; ++i)
         if (app->sim.burnt[i] && !app->bench.parts[i].group)
             burnt_draw(font, &app->bench.parts[i], SDL_GetTicks());
+        else if ((app->sim.alert[i] == PART_ALERT_OVERCURRENT || app->sim.alert[i] == PART_ALERT_OVERVOLTAGE) &&
+                 !app->bench.parts[i].group && sim_state_has_result(&app->sim, SIM_RESULT_DC))
+            alert_draw(app, i);
 }
 
 /* Displays inside a packed block are mirrored on its compact body, right-aligned, with live data. */
@@ -3507,14 +3536,44 @@ static void draw_group_inspector(const AppState *app, GLuint font)
     ui_note(font, inspector_text_x(), button.y + button.h + 20, dimensions, inspector_text_w());
 }
 
+/* Datasheet warning of the selected part, shown in place of its current reading. */
+static int part_alert_reading(const AppState *app, const Part *part, char *reading, size_t capacity)
+{
+    int index = app->selected;
+    double absolute, recommended, output, value = app->sim.alert_value[index];
+    netlist_logic_ratings(part->type, &absolute, &recommended, &output);
+    if (!sim_state_has_result(&app->sim, SIM_RESULT_DC))
+        return 0;
+    if (app->sim.alert[index] == PART_ALERT_OVERCURRENT)
+    {
+        const ComponentPinInfo *pin = component_pin_info(part->type, app->sim.alert_pin[index]);
+        snprintf(reading, capacity, tr(TXT_UI_ALERT_CURRENT), pin && pin->name ? pin->name : "",
+                 value * 1000.0, output * 1000.0);
+    }
+    else if (app->sim.alert[index] == PART_ALERT_OVERVOLTAGE)
+        snprintf(reading, capacity, tr(TXT_UI_ALERT_VOLTAGE), value, recommended);
+    else if (app->sim.alert[index] == PART_ALERT_CURRENT_LIMIT)
+        snprintf(reading, capacity, tr(TXT_UI_ALERT_LIMITING), value * 1000.0);
+    else
+        return 0;
+    return 1;
+}
+
 static void inspector_reading(const AppState *app, const Part *part, char *reading, size_t capacity)
 {
     const BurnLimits limits = burn_limits_default();
     int index = app->selected;
     if (app->sim.burnt[index])
     {
+        double absolute, recommended, output;
+        netlist_logic_ratings(part->type, &absolute, &recommended, &output);
         if (app->sim.burn_reason[index] == BURN_SHORT)
             snprintf(reading, capacity, "%s", tr(TXT_UI_BURNED_SHORT));
+        else if (app->sim.burn_reason[index] == BURN_OVERVOLTAGE)
+            snprintf(reading, capacity, tr(TXT_UI_BURNED_VOLTAGE), app->sim.burn_value[index], absolute);
+        else if (app->sim.burn_reason[index] == BURN_OVERCURRENT && part->type != PART_LED)
+            snprintf(reading, capacity, tr(TXT_UI_BURNED_CURRENT), app->sim.burn_value[index] * 1000.0,
+                     output * 1000.0);
         else if (app->sim.burn_reason[index] == BURN_OVERPOWER)
             snprintf(reading, capacity, tr(TXT_UI_BURNED_POWER), app->sim.burn_value[index],
                      limits.resistor_max_power);
@@ -3523,6 +3582,8 @@ static void inspector_reading(const AppState *app, const Part *part, char *readi
                      limits.led_max_current * 1000.0);
         return;
     }
+    if (part_alert_reading(app, part, reading, capacity))
+        return;
     char vector[64];
     if (!sim_state_has_result(&app->sim, SIM_RESULT_DC) ||
         !component_current_vector(part->type, index, vector, sizeof(vector)))
@@ -3739,7 +3800,8 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     }
     snprintf(value, sizeof(value), "%.5g %%", bench_part_scale(part) * 100);
     draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), value, app_selection_same_type(app));
-    if (app->sim.burnt[app->selected])
+    if (app->sim.burnt[app->selected] || app->sim.alert[app->selected] == PART_ALERT_OVERCURRENT ||
+        app->sim.alert[app->selected] == PART_ALERT_OVERVOLTAGE)
         color(UI_DANGER);
     else
         color(UI_INK);

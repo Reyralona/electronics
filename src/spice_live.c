@@ -1,5 +1,6 @@
 #include "spice_live.h"
 #include "spice_session.h"
+#include "spice_session_protocol.h"
 #include "netlist.h"
 #include "netlist_devices.h"
 #include "mcu_board.h"
@@ -28,6 +29,10 @@ struct SpiceLive
     uint64_t shorted_revision;
     int shorted_valid;
     double stress[WORKBENCH_MAX_COMPONENTS];
+    NetlistProtection protection;
+    int protection_cursor; /* next output term to read */
+    unsigned char alert[WORKBENCH_MAX_COMPONENTS], alert_pin[WORKBENCH_MAX_COMPONENTS];
+    double alert_value[WORKBENCH_MAX_COMPONENTS];
 };
 
 SpiceLive *spice_live_create(void)
@@ -42,6 +47,7 @@ void spice_live_destroy(SpiceLive *live)
     spice_session_close(live->session);
     bench_snapshot_clear(&live->previous);
     free(live->topology);
+    netlist_protection_free(&live->protection);
     free(live);
 }
 
@@ -204,7 +210,7 @@ static int load_session(SpiceLive *live, const Workbench *bench, const char *exe
         snprintf(message, capacity, "%s", tr(TXT_ENG_TEMP_FILE_FAILED));
         return 0;
     }
-    NetlistResult netlist = netlist_write_live(file, bench, live->measures_wires);
+    NetlistResult netlist = netlist_write_live_protected(file, bench, live->measures_wires, &live->protection);
     int failed = fclose(file);
     if (netlist != NETLIST_OK || failed)
     {
@@ -223,6 +229,8 @@ static int load_session(SpiceLive *live, const Workbench *bench, const char *exe
     live->requested_time = 0;
     live->probe_armed = 0;
     memset(live->burnt, 0, sizeof(live->burnt));
+    memset(live->alert, 0, sizeof(live->alert));
+    live->protection_cursor = 0;
     return success;
 }
 
@@ -541,6 +549,146 @@ static int mark_limited_supplies(SpiceLive *live, const Workbench *bench, SimAut
     return 1;
 }
 
+/* A burnt logic part opens its outputs: packaged chips lose `alive`, loose gates their output resistor. */
+static int kill_logic_part(SpiceLive *live, const Workbench *bench, int part, BurnReason reason, double value,
+                           SimAutoResult *result)
+{
+    if (live->burnt[part])
+        return 1;
+    char name[48];
+    PartType type = bench->parts[part].type;
+    double open = 0;
+    if (component_has_flag(type, COMPONENT_GATE_SYMBOL))
+    {
+        snprintf(name, sizeof(name), "Rgout%d", part);
+        open = NETLIST_LIVE_OPEN_OHMS;
+    }
+    else
+        snprintf(name, sizeof(name), component_has_flag(type, COMPONENT_QUAD_GATE) ? "Vchip%d_alive" : "Vl%d_alive",
+                 part);
+    if (!alter(live, name, open, result->message, sizeof(result->message)))
+        return 0;
+    live->burnt[part] = 1;
+    live->reason[part] = (unsigned char)reason;
+    live->stress[part] = value;
+    return 1;
+}
+
+static void note_alert(SpiceLive *live, int part, PartAlert alert, int pin, double value)
+{
+    if (live->alert[part] && fabs(live->alert_value[part]) >= fabs(value))
+        return;
+    live->alert[part] = (unsigned char)alert;
+    live->alert_pin[part] = (unsigned char)(pin < 0 ? 0 : pin);
+    live->alert_value[part] = value;
+}
+
+/* Node names of one output term in reading order; "0" (ground) is never requested. */
+enum { OUTPUT_READINGS = 6, PROTECTION_OUTPUTS_PER_STEP = SPICE_HOST_VALUES_MAX / OUTPUT_READINGS };
+static const char *output_node(const ProtectionCurrent *t, int reading)
+{
+    const char *names[OUTPUT_READINGS] = {t->high, t->vcc, t->node, t->low_plus, t->low_minus, t->gnd};
+    return names[reading];
+}
+
+/* Reads the next PROTECTION_OUTPUTS_PER_STEP outputs (round robin) in one request and stores their currents. */
+static int measure_outputs(SpiceLive *live, SimAutoResult *result)
+{
+    NetlistProtection *p = &live->protection;
+    const char *names[SPICE_HOST_VALUES_MAX];
+    double values[SPICE_HOST_VALUES_MAX];
+    int terms[PROTECTION_OUTPUTS_PER_STEP], count = 0, wanted = 0;
+    for (; count < PROTECTION_OUTPUTS_PER_STEP && count < p->current_count; ++count)
+    {
+        terms[count] = live->protection_cursor;
+        live->protection_cursor = (live->protection_cursor + 1) % p->current_count;
+        for (int r = 0; r < OUTPUT_READINGS; ++r)
+            if (strcmp(output_node(&p->current[terms[count]], r), "0"))
+                names[wanted++] = output_node(&p->current[terms[count]], r);
+    }
+    if (wanted && !spice_session_values(live->session, names, wanted, values, result->message,
+                                        sizeof(result->message)))
+        return 0;
+    for (int k = 0, used = 0; k < count; ++k)
+    {
+        double v[OUTPUT_READINGS];
+        ProtectionCurrent *t = &p->current[terms[k]];
+        for (int r = 0; r < OUTPUT_READINGS; ++r)
+            v[r] = strcmp(output_node(t, r), "0") ? values[used++] : 0;
+        t->measured_amps = ((v[0] > LOGIC_SWITCH_ON_CONTROL ? fabs(v[1] - v[2]) : 0) +
+                            (v[3] - v[4] > LOGIC_SWITCH_ON_CONTROL ? fabs(v[2] - v[5]) : 0)) / LOGIC_OUTPUT_OHMS;
+    }
+    return 1;
+}
+
+static int measure_supplies(SpiceLive *live, SimAutoResult *result)
+{
+    NetlistProtection *p = &live->protection;
+    for (int first = 0; first < p->voltage_count; first += SPICE_HOST_VALUES_MAX)
+    {
+        const char *names[SPICE_HOST_VALUES_MAX];
+        double values[SPICE_HOST_VALUES_MAX];
+        int count = p->voltage_count - first < SPICE_HOST_VALUES_MAX ? p->voltage_count - first : SPICE_HOST_VALUES_MAX;
+        for (int i = 0; i < count; ++i)
+            names[i] = p->voltage[first + i].supply;
+        if (!spice_session_values(live->session, names, count, values, result->message, sizeof(result->message)))
+            return 0;
+        for (int i = 0; i < count; ++i)
+            p->voltage[first + i].measured_volts = values[i];
+    }
+    return 1;
+}
+
+/* Supply terms; part -1 is the hidden supply shared by every loose gate symbol. */
+static int judge_supply(SpiceLive *live, const Workbench *bench, const ProtectionVoltage *t, SimAutoResult *result)
+{
+    double volts = t->measured_volts;
+    int burns = volts > t->absolute_max || -volts > LOGIC_REVERSE_ABSOLUTE_MAX;
+    if (!burns && volts <= t->recommended_max)
+        return 1;
+    for (int part = 0; part < bench->part_count; ++part)
+    {
+        if (t->part >= 0 ? part != t->part : !component_has_flag(bench->parts[part].type, COMPONENT_GATE_SYMBOL))
+            continue;
+        if (burns && !kill_logic_part(live, bench, part, BURN_OVERVOLTAGE, volts, result))
+            return 0;
+        if (!live->burnt[part])
+            note_alert(live, part, PART_ALERT_OVERVOLTAGE, -1, volts);
+    }
+    return 1;
+}
+
+/* Datasheet check of logic parts: every supply each step, outputs in round robin; alerts come from the
+ * latest reading of every term, burns happen as soon as a reading crosses the burn level. */
+static int protect_logic(SpiceLive *live, const Workbench *bench, SimAutoResult *result)
+{
+    NetlistProtection *p = &live->protection;
+    if (!measure_outputs(live, result) || !measure_supplies(live, result))
+        return 0;
+    memset(live->alert, 0, sizeof(live->alert));
+    for (int i = 0; i < p->voltage_count; ++i)
+        if (!judge_supply(live, bench, &p->voltage[i], result))
+            return 0;
+    for (int i = 0; i < p->current_count; ++i)
+    {
+        const ProtectionCurrent *t = &p->current[i];
+        double stress = t->measured_amps / t->limit_amps;
+        if (stress < 1 || live->burnt[t->part])
+            continue;
+        if (stress >= PROTECTION_BURN_CURRENT_RATIO)
+        {
+            if (!kill_logic_part(live, bench, t->part, BURN_OVERCURRENT, t->measured_amps, result))
+                return 0;
+            continue;
+        }
+        note_alert(live, t->part, PART_ALERT_OVERCURRENT, t->pin, t->measured_amps);
+    }
+    memcpy(result->alert, live->alert, sizeof(result->alert));
+    memcpy(result->alert_pin, live->alert_pin, sizeof(result->alert_pin));
+    memcpy(result->alert_value, live->alert_value, sizeof(result->alert_value));
+    return 1;
+}
+
 int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executable,
                     const SimAutoOptions *options, double span, SimAutoResult *result)
 {
@@ -589,7 +737,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         !protect_sources(live, bench, result->message, sizeof(result->message)) ||
         !advance(live, options->step, span, result->message, sizeof(result->message)) ||
         !read_currents(live, bench, result) || !protect_parts(live, bench, options, result) ||
-        !mark_limited_supplies(live, bench, result) ||
+        !protect_logic(live, bench, result) || !mark_limited_supplies(live, bench, result) ||
         !read_samples(live, result))
         return discard_session(live);
     memcpy(result->burnt, live->burnt, sizeof(result->burnt));

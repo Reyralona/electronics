@@ -19,6 +19,9 @@ typedef struct
     int vcc, gnd; /* SPICE nodes of the chip's supply pins */
     int ok;
     char prefix[LOGIC_IC_PREFIX_CAPACITY]; /* unique per chip: "l<index>_" */
+    NetlistProtection *protection;
+    int part;
+    double output_limit_amps; /* 0: the datasheet gives no output rating, no current term */
 } LogicWriter;
 
 static void emit(LogicWriter *w, const char *format, ...)
@@ -118,6 +121,13 @@ static void output(LogicWriter *w, int pin, const char *value, const char *enabl
     emit(w, "B%slo%d %slo%d 0 V=V(%sok)*%s*(1-V(%sa%d))\n", p, pin, p, pin, p, gate, p, pin);
     emit(w, "S%ssh%d %d %d %shi%d 0 lic_switch\n", p, pin, w->vcc, node, p, pin);
     emit(w, "S%ssl%d %d %d %slo%d 0 lic_switch\n", p, pin, node, w->gnd, p, pin);
+    if (!w->output_limit_amps)
+        return;
+    char high[PROTECTION_NAME_CAPACITY], low[PROTECTION_NAME_CAPACITY];
+    snprintf(high, sizeof(high), "%shi%d", p, pin);
+    snprintf(low, sizeof(low), "%slo%d", p, pin);
+    netlist_protection_output(w->protection, w->part, pin, w->vcc, w->gnd, node, high, low, "0",
+                              w->output_limit_amps);
 }
 
 static void supply(LogicWriter *w)
@@ -125,7 +135,9 @@ static void supply(LogicWriter *w)
     const char *p = w->prefix;
     emit(w, "R%ssupply %d %d %.17g\n", p, w->vcc, w->gnd, NETLIST_LOGIC_SUPPLY_OHMS);
     emit(w, "B%ssup %ssup 0 V=V(%d,%d)\n", p, p, w->vcc, w->gnd);
-    emit(w, "B%sok %sok 0 V=min(max((V(%ssup)-%g)/%g,0),1)*min(max((%g-V(%ssup))/%g,0),1)\n", p, p, p,
+    /* V<prefix>alive drops to 0 when the chip burns: every output opens. */
+    emit(w, "V%salive %salive 0 1\n", p, p);
+    emit(w, "B%sok %sok 0 V=V(%salive)*min(max((V(%ssup)-%g)/%g,0),1)*min(max((%g-V(%ssup))/%g,0),1)\n", p, p, p, p,
          LOGIC_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, LOGIC_SUPPLY_MAX + QUAD_EDGE_VOLTS, p, QUAD_EDGE_VOLTS);
 }
 
@@ -282,10 +294,16 @@ typedef struct
 {
     PartType type;
     int vcc, gnd;
+    double supply_absolute_max, supply_recommended_max, output_limit_amps;
 } LogicChip;
 
+/* AT28C16 (Microchip, consulted 20/11/2026): pins -0.6..+6.25 V, VCC 5 V +-10%; no output current rating. */
+#define AT28C16_ABSOLUTE_MAX 6.25
+#define AT28C16_RECOMMENDED_MAX 5.5
+#define HC_RATINGS HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX, HC_OUTPUT_ABSOLUTE_MAX_AMPS
 static const LogicChip chips[] = {
-    {PART_74HC161, 15, 7}, {PART_74HC173, 15, 7}, {PART_74HC283, 15, 7}, {PART_74HC245, 19, 9}, {PART_AT28C16, 23, 11}};
+    {PART_74HC161, 15, 7, HC_RATINGS}, {PART_74HC173, 15, 7, HC_RATINGS}, {PART_74HC283, 15, 7, HC_RATINGS},
+    {PART_74HC245, 19, 9, HC_RATINGS}, {PART_AT28C16, 23, 11, AT28C16_ABSOLUTE_MAX, AT28C16_RECOMMENDED_MAX, 0}};
 
 static const LogicChip *logic_chip(PartType type)
 {
@@ -305,13 +323,18 @@ int netlist_logic_valid(const Part *part)
     return part && (part->type != PART_AT28C16 || rom_image_parse(part->code, NULL, NULL));
 }
 
-int netlist_logic_write(FILE *out, const Part *part, int index, const int *nodes)
+int netlist_logic_write(FILE *out, const Part *part, int index, const int *nodes, NetlistProtection *protection)
 {
     const LogicChip *chip = part ? logic_chip(part->type) : NULL;
     if (!out || !chip || !nodes)
         return 0;
-    LogicWriter w = {out, nodes, nodes[chip->vcc], nodes[chip->gnd], 1, {0}};
+    LogicWriter w = {out, nodes, nodes[chip->vcc], nodes[chip->gnd], 1, {0}, protection, index,
+                     chip->output_limit_amps};
     snprintf(w.prefix, sizeof(w.prefix), "l%d_", index);
+    char supply_node[PROTECTION_NAME_CAPACITY];
+    snprintf(supply_node, sizeof(supply_node), "%ssup", w.prefix);
+    netlist_protection_supply(protection, index, supply_node, chip->supply_absolute_max,
+                              chip->supply_recommended_max);
     supply(&w);
     if (part->type == PART_74HC161)
         counter_161(&w);
@@ -344,4 +367,13 @@ int netlist_logic_models(FILE *out)
                    ".model lic_inv d_inverter(rise_delay=1n fall_delay=1n)\n"
                    ".model lic_dff d_dff(ic=0 clk_delay=1n set_delay=1n reset_delay=1n rise_delay=1n fall_delay=1n)\n"
                    ".model lic_one d_pullup\n") >= 0;
+}
+
+void netlist_logic_ratings(PartType type, double *supply_absolute_max, double *supply_recommended_max,
+                           double *output_limit_amps)
+{
+    const LogicChip *chip = logic_chip(type);
+    *supply_absolute_max = chip ? chip->supply_absolute_max : HC_SUPPLY_ABSOLUTE_MAX;
+    *supply_recommended_max = chip ? chip->supply_recommended_max : HC_SUPPLY_RECOMMENDED_MAX;
+    *output_limit_amps = chip ? chip->output_limit_amps : HC_OUTPUT_ABSOLUTE_MAX_AMPS;
 }

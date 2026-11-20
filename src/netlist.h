@@ -2,6 +2,7 @@
 #define NETLIST_H
 #include <stdio.h>
 #include "workbench.h"
+#include "netlist_protection.h"
 /* Experimental DC: one 5 V source, 1 kOhm resistors, generic diode LEDs, switches and breadboards. */
 typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERROR, NETLIST_AMBIGUOUS_WIRES } NetlistResult;
 /* Finite contact impedances keep topology stable across live on/off changes.
@@ -39,6 +40,9 @@ typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERRO
 #define NETLIST_SOURCE_LIMIT_GAIN 1e4
 #define NETLIST_SOURCE_LIMIT_SMOOTH 1e-6
 NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_wires);
+/* Same circuit plus the datasheet stress trees; `protection` receives their terms (see netlist_protection.h). */
+NetlistResult netlist_write_live_protected(FILE *out, const Workbench *bench, int measure_wires,
+                                           NetlistProtection *protection);
 /* Terminals joined by wires, breadboard strips or direct contact (switch states ignored). */
 int netlist_same_net(const Workbench *bench, Pin a, Pin b);
 int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin);

@@ -91,11 +91,38 @@ static void check_copied_decoder(const char *solver)
     puts("Copied/mirrored/rotated decoder: same outputs for all 16 inputs, high impedance when unpowered.");
 }
 
+/* The slot drives each segment straight from a 74HC gate (~58 mA, above the 25 mA absolute maximum),
+ * which now burns the gate as on a real bench. Fix the copy as a person would: 330 ohm in series. */
+static void add_segment_resistors(Workbench *rig)
+{
+    const double ohms = 330;
+    for (int wire = rig->wire_count - 1; wire >= 0; --wire)
+    {
+        Pin a = rig->wires[wire].a, b = rig->wires[wire].b;
+        if (rig->parts[b.component].type == PART_SEVEN_SEGMENT)
+        {
+            Pin swap = a;
+            a = b;
+            b = swap;
+        }
+        const int common_pin = 4;
+        if (rig->parts[a.component].type != PART_SEVEN_SEGMENT || a.pin == common_pin)
+            continue;
+        assert(bench_toggle_wire(rig, a, b) == 2);
+        /* Apart from everything else: touching terminals would join the outputs. */
+        int resistor = bench_add(rig, PART_RESISTOR, 4000 + wire * 150.0f, 4000);
+        assert(resistor >= 0 && bench_set_value(rig, resistor, ohms));
+        assert(bench_toggle_wire(rig, b, (Pin){resistor, 0}) == 1);
+        assert(bench_toggle_wire(rig, (Pin){resistor, 1}, a) == 1);
+    }
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 3);
     WorkbenchSettings settings;
     assert(workbench_load_project(argv[1], &bench, &settings));
+    add_segment_resistors(&bench);
     int displays[2], count = 0, clock = -1;
     for (int i = 0; i < bench.part_count; ++i)
     {
