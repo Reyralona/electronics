@@ -9,6 +9,7 @@ Esta distribuicao reune as mudancas desde a pre-release 0.47.1.
 - Protoboard larga de 60 colunas, melhor encaixe de pecas reduzidas e terminais padronizados que acompanham o zoom.
 - Notas com texto e cores configuraveis, redimensionamento proporcional, fita e canto suavemente levantado. Notas nao alteram a simulacao.
 - Catalogo reorganizado em nove categorias, com icones proprios para notas e juncoes, busca global e todos os componentes preservados.
+- Empacotamento verifica que o ZIP de fontes inclui o codigo do aplicativo e interrompe a geracao se o arquivador falhar.
 - Formato 37, com leitura de projetos anteriores. Modelos eletricos continuam didaticos; a distribuicao permanece experimental.
 
 ## 0.51.0 - 20/11/2026

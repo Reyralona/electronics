@@ -142,7 +142,13 @@ try {
     if ((git status --porcelain --untracked-files=normal)) {
         throw 'Commit the reviewed source before producing distributable artifacts.'
     }
-    Compress-Archive -Path "$sourceDir/*" -DestinationPath (Join-Path $output "Bancada-$version-sources.zip") -Force
+    $sourceBundle = Join-Path $output "Bancada-$version-sources.zip"
+    & $tar -a -cf $sourceBundle -C $sourceDir .
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot create complete source bundle' }
+    $sourceEntries = & $tar -tf $sourceBundle
+    if ($LASTEXITCODE -ne 0 -or './Bancada-source.zip' -notin $sourceEntries) {
+        throw 'Source bundle is missing the application source'
+    }
     & cmake --install $cmakeBuild --prefix $stage
     if ($LASTEXITCODE -ne 0) { throw 'Source staging failed' }
     # Delete only listed shipped files during uninstall; preserve unknown files and all saved projects.
