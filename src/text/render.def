@@ -174,3 +174,6 @@ UI_TEXT(UI_PIN_HELP_NOTE, "Função do terminal. Não é uma medição de tensã
 /* Examples. */
 UI_TEXT(UI_EXAMPLES_NOTE, "Escolha um exemplo. Ele substitui o circuito da bancada. Ctrl+Z: desfazer.",
         "Select an example. It replaces the circuit on the bench. Ctrl+Z: undo.")
+UI_TEXT(UI_SELECTED_PARTS, "%d × %s", "%d × %s")
+UI_TEXT(UI_SELECTED_MIXED, "%d peças selecionadas", "%d parts selected")
+UI_TEXT(UI_MIXED_VALUES, "Valores diferentes", "Different values")

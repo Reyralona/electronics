@@ -86,7 +86,7 @@ static void pack_nets(const Workbench *bench, const BenchSelection *selection, i
     }
     for (int i = 0; i < bench->part_count; ++i)
     {
-        int board = bench->parts[i].type == PART_BREADBOARD;
+        int board = bench_is_board(bench->parts[i].type);
         if (inner_only && !selection->parts[i])
             continue;
         for (int p = 0; board && p < BREADBOARD_PINS; ++p)
@@ -132,7 +132,7 @@ static int port_plan_alloc(PortPlan *plan)
 
 static int member_pin(const Workbench *bench, const BenchSelection *selection, int component)
 {
-    return selection->parts[component] && bench->parts[component].type != PART_BREADBOARD;
+    return selection->parts[component] && !bench_is_board(bench->parts[component].type);
 }
 
 static int candidate_pin(const Part *part, int pin)
@@ -168,7 +168,7 @@ static void port_plan_classify(const Workbench *bench, const BenchSelection *sel
                     plan->representative[net] = slot;
                 plan->members[net] = plan->members[net] < 2 ? plan->members[net] + 1 : 2;
             }
-            else if (!selection->parts[i] && bench->parts[i].type != PART_BREADBOARD)
+            else if (!selection->parts[i] && !bench_is_board(bench->parts[i].type))
                 plan->external[net] = 1;
         }
     if (manual)
@@ -221,7 +221,7 @@ static int wire_duplicate(const Workbench *bench, int skip, Pin a, Pin b)
 static int reroute_end(const Workbench *bench, const BenchSelection *selection, PortPlan *plan, Pin *end, Pin other)
 {
     if (!selection->parts[end->component] || selection->parts[other.component] ||
-        (bench->parts[end->component].type != PART_BREADBOARD && bench_pin_exposed(&bench->parts[end->component], end->pin)))
+        (!bench_is_board(bench->parts[end->component].type) && bench_pin_exposed(&bench->parts[end->component], end->pin)))
         return 1;
     int representative = plan->representative[pack_root(plan->full, pin_slot(*end))];
     if (representative < 0 || !bench_pin_exposed(&bench->parts[representative / WORKBENCH_MAX_PINS],

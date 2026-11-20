@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 struct SpiceSession
 {
@@ -294,6 +295,33 @@ void spice_session_set_timeout(SpiceSession *session, unsigned milliseconds)
     if (!session)
         return;
     session->timeout_ms = milliseconds ? milliseconds : SPICE_SESSION_TIMEOUT_MS;
+}
+
+int spice_session_eeprom(SpiceSession *session, int *part, RomImage *image, char *message, size_t capacity)
+{
+    char reply[ROM_IMAGE_BYTES * 2 + 40];
+    int consumed = 0;
+    if (!part || !image || !request(session, "E", reply, sizeof(reply), message, capacity))
+        return 0;
+    if (sscanf(reply, "OK %d%n", part, &consumed) != 1 || *part < -1)
+        goto invalid;
+    if (*part == -1 && !reply[consumed])
+        return 1;
+    if (reply[consumed] != ' ' || strlen(reply + consumed + 1) != ROM_IMAGE_BYTES * 2)
+        goto invalid;
+    for (int address = 0; address < ROM_IMAGE_BYTES; ++address)
+    {
+        unsigned byte;
+        const char *pair = reply + consumed + 1 + address * 2;
+        if (!isxdigit((unsigned char)pair[0]) || !isxdigit((unsigned char)pair[1]) ||
+            sscanf(pair, "%2x", &byte) != 1)
+            goto invalid;
+        image->data[address] = (unsigned char)byte;
+    }
+    return 1;
+invalid:
+    snprintf(message, capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
+    return 0;
 }
 
 int spice_session_load(SpiceSession *session, const char *path, char *message, size_t capacity)

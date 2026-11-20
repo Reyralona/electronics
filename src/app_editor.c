@@ -17,8 +17,8 @@ static void fit_draft(AppState *app)
     for (int i = 0; i < app->bench.part_count; ++i)
     {
         const Part *part = &app->bench.parts[i];
-        float width = part->type == PART_BREADBOARD ? 230 : 55;
-        float height = part->type == PART_BREADBOARD ? 115 : 40;
+        float width = part->type == PART_BREADBOARD_WIDE ? 440 : bench_is_board(part->type) ? 230 : 55;
+        float height = bench_is_board(part->type) ? 115 : 40;
         width *= bench_part_scale(part);
         height *= bench_part_scale(part);
         float x = part->x;

@@ -217,51 +217,64 @@ static void transceiver_245(LogicWriter *w)
     }
 }
 
-/* AT28C16 read mode (CE and OE low, WE high). The stored bytes become an address decoder: each address
- * whose byte is not FF gets an AND of its address bits, and each data bit is the NOR of the addresses
- * where that bit is 0. Writing through WE is not modeled. */
-static void eeprom_28c16(LogicWriter *w, const RomImage *image)
+/* EEPROM pins cross the same analog bridges as other CIs; its state runs in d_cosim. */
+static void eeprom_28c16(LogicWriter *w)
 {
     static const int address_pins[EEPROM_ADDRESS_BITS] = {7, 6, 5, 4, 3, 2, 1, 0, 22, 21, 18};
     static const int data_pins[EEPROM_DATA_BITS] = {8, 9, 10, 12, 13, 14, 15, 16};
     static const int controls[] = {17, 19, 20};
-    const char *p = w->prefix;
     inputs(w, address_pins, EEPROM_ADDRESS_BITS);
+    inputs(w, data_pins, EEPROM_DATA_BITS);
     inputs(w, controls, 3);
-    primitive(w, "and", "[~d17 ~d19 d20] en");
-    for (int address = 0; address < ROM_IMAGE_BYTES; ++address)
-    {
-        if (image->data[address] == ROM_IMAGE_ERASED)
-            continue;
-        emit(w, "A%sm%d [", p, address);
-        for (int bit = 0; bit < EEPROM_ADDRESS_BITS; ++bit)
-            emit(w, "%s%s%sd%d", bit ? " " : "", address >> bit & 1 ? "" : "~", p, address_pins[bit]);
-        emit(w, "] %sm%d lic_and\n", p, address);
-    }
+    emit(w, "B%spower %spower 0 V=(V(%ssup)>=4.5 && V(%ssup)<=5.5)?5:0\n",
+         w->prefix, w->prefix, w->prefix, w->prefix);
+    emit(w, "A%spower [%spower] [%spowered] lic_adc\n", w->prefix, w->prefix, w->prefix);
     for (int bit = 0; bit < EEPROM_DATA_BITS; ++bit)
     {
-        int zeros = 0;
-        for (int address = 0; address < ROM_IMAGE_BYTES; ++address)
-            zeros += !(image->data[address] >> bit & 1);
-        if (!zeros)
-            emit(w, "A%sv%d %sv%d lic_one\n", p, bit, p, bit);
-        else
-        {
-            /* XSPICE gates need two inputs: a single address is listed twice. */
-            emit(w, "A%sv%d [", p, bit);
-            for (int address = 0, written = 0; address < ROM_IMAGE_BYTES; ++address)
-                if (!(image->data[address] >> bit & 1))
-                    emit(w, "%s%sm%d", written++ ? " " : "", p, address);
-            if (zeros == 1)
-                for (int address = 0; address < ROM_IMAGE_BYTES; ++address)
-                    if (!(image->data[address] >> bit & 1))
-                        emit(w, " %sm%d", p, address);
-            emit(w, "] %sv%d lic_nor\n", p, bit);
-        }
         char value[LOGIC_IC_TOKEN_CAPACITY];
         snprintf(value, sizeof(value), "v%d", bit);
         output(w, data_pins[bit], value, "en");
     }
+}
+
+int netlist_eeprom_core(FILE *out, const Workbench *bench)
+{
+    int count = 0;
+    for (int i = 0; i < bench->part_count; ++i)
+        count += bench->parts[i].type == PART_AT28C16;
+    if (!count)
+        return 1;
+    static const int pins[] = {7, 6, 5, 4, 3, 2, 1, 0, 22, 21, 18, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 20};
+    fprintf(out, "Aee_core [");
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].type == PART_AT28C16)
+        {
+            for (size_t p = 0; p < sizeof(pins) / sizeof(pins[0]); ++p)
+                fprintf(out, " l%d_d%d", i, pins[p]);
+            fprintf(out, " l%d_powered", i);
+        }
+    fprintf(out, "] [");
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].type == PART_AT28C16)
+        {
+            for (int bit = 0; bit < EEPROM_DATA_BITS; ++bit)
+                fprintf(out, " l%d_v%d", i, bit);
+            fprintf(out, " l%d_en", i);
+        }
+    fprintf(out, "] null ee_core\n.model ee_core d_cosim(simulation=\"bancada-eeprom.dll\" delay=1n lib_args=[");
+    for (int i = 0; i < bench->part_count; ++i)
+        if (bench->parts[i].type == PART_AT28C16)
+        {
+            RomImage image;
+            if (!rom_image_parse(bench->parts[i].code, &image, NULL))
+                return 0;
+            fprintf(out, " \"%d:", i);
+            for (int address = 0; address < ROM_IMAGE_BYTES; ++address)
+                fprintf(out, "%02X", image.data[address]);
+            fprintf(out, "\"");
+        }
+    fprintf(out, "])\n");
+    return !ferror(out);
 }
 
 typedef struct
@@ -312,7 +325,7 @@ int netlist_logic_write(FILE *out, const Part *part, int index, const int *nodes
         RomImage image;
         if (!rom_image_parse(part->code, &image, NULL))
             return 0;
-        eeprom_28c16(&w, &image);
+        eeprom_28c16(&w);
     }
     return w.ok;
 }

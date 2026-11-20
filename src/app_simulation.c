@@ -248,6 +248,20 @@ static void poll_result(AppState *app)
 {
     if (spice_job_poll(&app->dc_job))
     {
+        if (app->dc_job.memory_changed && !app->dc_job.live_reset_pending &&
+            same_electrical_assembly(&app->dc_job.snapshot, &app->bench, 0))
+        {
+            for (int i = 0; i < app->bench.part_count; ++i)
+                if (app->bench.parts[i].type == PART_AT28C16 &&
+                    app->dc_job.snapshot.parts[i].code &&
+                    !bench_set_code(&app->bench, i, app->dc_job.snapshot.parts[i].code))
+                {
+                    app->status = tr(TXT_APP_OUT_OF_MEMORY);
+                    return;
+                }
+            app->dc_job.snapshot.revision = app->bench.revision;
+            app->dc_job.memory_changed = 0;
+        }
         if (app->dc_job.snapshot.revision != app->bench.revision &&
             !(app->dc_job.success && compatible_live_sample(app)))
         {
@@ -408,6 +422,16 @@ static void start_pending_trace(AppState *app)
     }
     else
         app->status = tr(TXT_APP_CALCULATION_START_FAILED);
+}
+
+void app_simulation_flush(AppState *app)
+{
+    while (app->dc_job.thread)
+    {
+        poll_result(app);
+        if (app->dc_job.thread)
+            SDL_Delay(1);
+    }
 }
 
 void app_simulation_update(AppState *app)

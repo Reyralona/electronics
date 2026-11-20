@@ -233,6 +233,40 @@ float bench_part_scale(const Part *part)
     return part->scale == 0 ? 1 : part->scale;
 }
 
+static int keep_contact_tips(Workbench *bench, int component)
+{
+    Part *part = &bench->parts[component];
+    if (part->terminals || !bench_lead_count(part, 0))
+        return 1;
+    WirePoint points[WORKBENCH_MAX_PINS];
+    unsigned char fixed[WORKBENCH_MAX_PINS] = {0};
+    int count = bench_pin_count(part->type), found = 0;
+    for (int pin = 0; pin < count; ++pin)
+    {
+        Pin contact;
+        if (bench_find_contact(bench, component, pin, &contact))
+        {
+            bench_pin_position(part, pin, &points[pin].x, &points[pin].y);
+            fixed[pin] = 1;
+            found = 1;
+        }
+    }
+    if (!found)
+        return 1;
+    Part before = {0};
+    if (!bench_part_clone(&before, part))
+        return 0;
+    for (int pin = 0; pin < count; ++pin)
+        if (fixed[pin] && !bench_lead_move(bench, component, pin, 0, points[pin]))
+        {
+            bench_part_move(part, &before);
+            ++bench->revision;
+            return 0;
+        }
+    bench_part_clear(&before);
+    return 1;
+}
+
 int bench_set_scale(Workbench *bench, int component, float scale)
 {
     if (!bench || component < 0 || component >= bench->part_count || !isfinite(scale) ||
@@ -240,6 +274,17 @@ int bench_set_scale(Workbench *bench, int component, float scale)
         return 0;
     if (bench_part_scale(&bench->parts[component]) != scale)
     {
+        if (!keep_contact_tips(bench, component))
+            return 0;
+        Part *part = &bench->parts[component];
+        float ratio = bench_part_scale(part) / scale;
+        if (part->terminals)
+            for (size_t pin = 0; pin < part->terminals->pin_count; ++pin)
+                for (size_t point = 0; point < part->terminals->paths[pin].count; ++point)
+                {
+                    part->terminals->paths[pin].points[point].x *= ratio;
+                    part->terminals->paths[pin].points[point].y *= ratio;
+                }
         bench->parts[component].scale = scale;
         ++bench->revision;
     }
@@ -537,8 +582,12 @@ int bench_pin_count(PartType type)
 
 int bench_board_group_first(int pin)
 {
-    if (pin < 0 || pin >= BREADBOARD_PINS)
+    if (pin < 0 || pin >= BREADBOARD_WIDE_PINS)
         return -1;
+    if (pin >= 720)
+        return 300 + ((pin - 720) / 30) * 30;
+    if (pin >= 420)
+        return 420 + ((pin - 420) / 5) * 5;
     return pin < 300 ? (pin / 5) * 5 : 300 + ((pin - 300) / 30) * 30;
 }
 
@@ -547,10 +596,10 @@ WirePoint bench_part_to_world(const Part *part, WirePoint local)
     float scale = bench_part_scale(part);
     local.x *= scale;
     local.y *= scale;
-    if (part->mirrored && part->type != PART_BREADBOARD)
+    if (part->mirrored && !bench_is_board(part->type))
         local.x = -local.x;
     WirePoint rotated = local;
-    int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
+    int rotation = bench_is_board(part->type) ? 0 : part->rotation;
     switch (rotation)
     {
     case 1:
@@ -570,7 +619,7 @@ WirePoint bench_part_to_local(const Part *part, WirePoint world)
 {
     float scale = bench_part_scale(part);
     WirePoint offset = {(world.x - part->x) / scale, (world.y - part->y) / scale};
-    int rotation = part->type == PART_BREADBOARD ? 0 : part->rotation;
+    int rotation = bench_is_board(part->type) ? 0 : part->rotation;
     WirePoint local = offset;
     switch (rotation)
     {
@@ -584,7 +633,7 @@ WirePoint bench_part_to_local(const Part *part, WirePoint world)
         local = (WirePoint){-offset.y, offset.x};
         break;
     }
-    if (part->mirrored && part->type != PART_BREADBOARD)
+    if (part->mirrored && !bench_is_board(part->type))
         local.x = -local.x;
     return local;
 }
@@ -598,8 +647,25 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
         *y = device->pins[pin][1];
         return;
     }
-    if (p->type == PART_BREADBOARD)
+    if (bench_is_board(p->type))
     {
+        if (p->type == PART_BREADBOARD_WIDE && pin >= BREADBOARD_PINS)
+        {
+            int extra = pin - BREADBOARD_PINS;
+            if (extra < 300)
+            {
+                int column = (extra / 5) % 30;
+                *x = 7 + column * 14.0f;
+                *y = (extra < 150 ? -55.0f : 15.0f) + (extra % 5) * 10.0f;
+            }
+            else
+            {
+                int rail = (extra - 300) / 30;
+                *x = 7 + ((extra - 300) % 30) * 14.0f;
+                *y = rail == 0 ? -98 : rail == 1 ? -82 : rail == 2 ? 78 : 94;
+            }
+            return;
+        }
         int group = pin / 5, row = pin % 5;
         if (group < 20)
         {
@@ -627,6 +693,8 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
             *x = -203.0f + column * 14.0f;
             *y = (rail == 0 ? -98.0f : rail == 1 ? -82.0f : rail == 2 ? 78.0f : 94.0f);
         }
+        if (p->type == PART_BREADBOARD_WIDE)
+            *x -= 210;
     }
     else if (component_radial_pins(p->type))
     {
@@ -681,13 +749,12 @@ static void pin_local_position(const Part *p, int pin, float *x, float *y)
 static int rigid_device(PartType type)
 {
     const ComponentDevice *device = component_device(type);
-    return device && bench_pin_count(type) > 3 && type != PART_RGB_LED;
+    return device && bench_pin_count(type) > 3 && type != PART_RGB_LED && type != PART_DIP_SWITCH;
 }
 
 static int lead_editable(const Part *part, int pin)
 {
-    return part && pin >= 0 && pin < bench_pin_count(part->type) && part->type != PART_BREADBOARD &&
-           !component_has_flag(part->type, COMPONENT_DIP) &&
+    return part && pin >= 0 && pin < bench_pin_count(part->type) && !bench_is_board(part->type) &&
            !component_has_flag(part->type, COMPONENT_GATE_SYMBOL) && !rigid_device(part->type);
 }
 
@@ -951,16 +1018,22 @@ int bench_breadboard_snap_position(const Workbench *b, const Part *part, float *
 {
     int board, hole, pin, found = 0;
     float best = 64.0f, dx = 0, dy = 0;
-    if (!b || !part || !snapped_x || !snapped_y || part->type == PART_BREADBOARD)
+    if (!b || !part || !snapped_x || !snapped_y || bench_is_board(part->type))
         return 0;
     for (pin = 0; pin < bench_pin_count(part->type); ++pin)
     {
         float x, y;
         bench_pin_position(part, pin, &x, &y);
         for (board = 0; board < b->part_count; ++board)
-            if (b->parts[board].type == PART_BREADBOARD && b->parts[board].group == part->group)
+            if (bench_is_board(b->parts[board].type) && b->parts[board].group == part->group)
             {
-                for (hole = 0; hole < BREADBOARD_PINS; ++hole)
+                if (!part->terminals && lead_editable(part, pin))
+                {
+                    Part footprint = *part;
+                    footprint.scale = bench_part_scale(&b->parts[board]);
+                    bench_pin_position(&footprint, pin, &x, &y);
+                }
+                for (hole = 0; hole < bench_pin_count(b->parts[board].type); ++hole)
                 {
                     float hx, hy, distance;
                     bench_pin_position(&b->parts[board], hole, &hx, &hy);
@@ -991,6 +1064,46 @@ int bench_snap_to_breadboard(Workbench *b, int component)
     if (!bench_breadboard_snap_position(b, &b->parts[component], &x, &y))
         return 0;
     bench_move_part(b, component, x, y);
+    Part footprint = b->parts[component];
+    if (footprint.terminals)
+        return 1;
+    for (int board = 0; board < b->part_count; ++board)
+    {
+        if (!bench_is_board(b->parts[board].type) || b->parts[board].group != footprint.group)
+            continue;
+        footprint.scale = bench_part_scale(&b->parts[board]);
+        for (int pin = 0; pin < bench_pin_count(footprint.type); ++pin)
+        {
+            if (!lead_editable(&footprint, pin))
+                continue;
+            WirePoint point;
+            bench_pin_position(&footprint, pin, &point.x, &point.y);
+            float best = 64;
+            WirePoint target = point;
+            int found = 0;
+            for (int hole = 0; hole < bench_pin_count(b->parts[board].type); ++hole)
+            {
+                WirePoint candidate;
+                bench_pin_position(&b->parts[board], hole, &candidate.x, &candidate.y);
+                float dx = candidate.x - point.x, dy = candidate.y - point.y;
+                float distance = dx * dx + dy * dy;
+                if (distance < best)
+                {
+                    best = distance;
+                    target = candidate;
+                    found = 1;
+                }
+            }
+            if (found)
+            {
+                WirePoint current;
+                bench_pin_position(&b->parts[component], pin, &current.x, &current.y);
+                if (hypotf(current.x - target.x, current.y - target.y) > .001f &&
+                    !bench_lead_move(b, component, pin, 0, target))
+                    return 0;
+            }
+        }
+    }
     return 1;
 }
 
@@ -1018,7 +1131,7 @@ int bench_add(Workbench *b, PartType type, float x, float y)
                           .on = component_has_flag(type, COMPONENT_STARTS_ON),
                           .control = component_default_control(type),
                           .value = info->primary ? info->primary->initial : 0,
-                          .board_layout = type == PART_BREADBOARD};
+                          .board_layout = bench_is_board(type)};
     ++b->revision;
     return id;
 }
@@ -1028,10 +1141,10 @@ int bench_add(Workbench *b, PartType type, float x, float y)
 int bench_swap_type(Workbench *b, int component, PartType type)
 {
     const ComponentInfo *info = component_info(type);
-    if (!b || !info || component < 0 || component >= b->part_count || type == PART_BREADBOARD)
+    if (!b || !info || component < 0 || component >= b->part_count || bench_is_board(type))
         return 0;
     Part *part = &b->parts[component];
-    if (part->group || part->type == PART_BREADBOARD || part->type == type)
+    if (part->group || bench_is_board(part->type) || part->type == type)
         return 0;
     int pins = bench_pin_count(type);
     for (int i = b->wire_count - 1; i >= 0; --i)
@@ -1199,10 +1312,10 @@ void bench_simulate(const Workbench *b, int led_on[WORKBENCH_MAX_COMPONENTS])
         int base = i * WORKBENCH_MAX_PINS;
         if ((b->parts[i].type == PART_SWITCH || b->parts[i].type == PART_BUTTON) && b->parts[i].on)
             join(parent, base, base + 1);
-        if (b->parts[i].type == PART_BREADBOARD)
+        if (bench_is_board(b->parts[i].type))
         {
             int hole;
-            for (hole = 0; hole < BREADBOARD_PINS; ++hole)
+            for (hole = 0; hole < bench_pin_count(b->parts[i].type); ++hole)
                 join(parent, base + bench_board_group_first(hole), base + hole);
         }
     }

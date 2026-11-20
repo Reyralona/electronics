@@ -12,4 +12,5 @@ int netlist_logic_valid(const Part *part);
 /* nodes: SPICE node of each terminal (0 = ground). Returns 0 on I/O failure or an unreadable EEPROM text. */
 int netlist_logic_write(FILE *out, const Part *part, int index, const int *nodes);
 int netlist_logic_models(FILE *out);
+int netlist_eeprom_core(FILE *out, const Workbench *bench);
 #endif

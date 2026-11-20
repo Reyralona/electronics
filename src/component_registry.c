@@ -49,12 +49,12 @@ static const ComponentPinInfo pins_74hc283[] = {
     {"B1", PIN_INPUT},  {"C0", PIN_INPUT}, {"GND", PIN_GROUND}, {"C4", PIN_OUTPUT}, {"S4", PIN_OUTPUT},
     {"B4", PIN_INPUT},  {"A4", PIN_INPUT}, {"S3", PIN_OUTPUT},  {"A3", PIN_INPUT},  {"B3", PIN_INPUT},
     {"VCC", PIN_SUPPLY_POSITIVE}};
-/* AT28C16 in read mode: the data pins only drive (writing is not modeled). */
+/* AT28C16 shares each data terminal between programming and three-state readout. */
 static const ComponentPinInfo pins_at28c16[] = {
     {"A7", PIN_INPUT},   {"A6", PIN_INPUT},   {"A5", PIN_INPUT},   {"A4", PIN_INPUT},   {"A3", PIN_INPUT},
-    {"A2", PIN_INPUT},   {"A1", PIN_INPUT},   {"A0", PIN_INPUT},   {"IO0", PIN_OUTPUT}, {"IO1", PIN_OUTPUT},
-    {"IO2", PIN_OUTPUT}, {"GND", PIN_GROUND}, {"IO3", PIN_OUTPUT}, {"IO4", PIN_OUTPUT}, {"IO5", PIN_OUTPUT},
-    {"IO6", PIN_OUTPUT}, {"IO7", PIN_OUTPUT}, {"~CE", PIN_INPUT},  {"A10", PIN_INPUT},  {"~OE", PIN_INPUT},
+    {"A2", PIN_INPUT},   {"A1", PIN_INPUT},   {"A0", PIN_INPUT},   {"IO0", PIN_BIDIRECTIONAL}, {"IO1", PIN_BIDIRECTIONAL},
+    {"IO2", PIN_BIDIRECTIONAL}, {"GND", PIN_GROUND}, {"IO3", PIN_BIDIRECTIONAL}, {"IO4", PIN_BIDIRECTIONAL}, {"IO5", PIN_BIDIRECTIONAL},
+    {"IO6", PIN_BIDIRECTIONAL}, {"IO7", PIN_BIDIRECTIONAL}, {"~CE", PIN_INPUT},  {"A10", PIN_INPUT},  {"~OE", PIN_INPUT},
     {"~WE", PIN_INPUT},  {"A9", PIN_INPUT},   {"A8", PIN_INPUT},   {"VCC", PIN_SUPPLY_POSITIVE}};
 static const ComponentParameter battery_9v = {"voltage", "V", 9, 1e-12, 1e12};
 static const ComponentParameter battery_aa = {"voltage", "V", 1.5, 1e-12, 1e12};
@@ -171,6 +171,7 @@ static const ComponentInfo components[] = {
     [PART_74HC245] = {PART_74HC245, "74hc245", NULL, 20, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_74hc245},
     [PART_74HC283] = {PART_74HC283, "74hc283", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_74hc283},
     [PART_AT28C16] = {PART_AT28C16, "at28c16", NULL, 24, COMPONENT_ROTATES | COMPONENT_DIP, 35, NULL, pins_at28c16},
+    [PART_BREADBOARD_WIDE] = {PART_BREADBOARD_WIDE, "breadboard-wide", NULL, BREADBOARD_WIDE_PINS, COMPONENT_CONNECTIVITY, 36, NULL, NULL},
 };
 
 /* Display names; component_info() returns them in the current language. */
@@ -202,6 +203,7 @@ static const TextId display_texts[] = {
     [PART_74HC245] = TXT_CAT_74HC245,
     [PART_74HC283] = TXT_CAT_74HC283,
     [PART_AT28C16] = TXT_CAT_AT28C16,
+    [PART_BREADBOARD_WIDE] = TXT_CAT_BREADBOARD_WIDE,
     [PART_DIODE] = TXT_CAT_DIODE,
     [PART_LDR] = TXT_CAT_LDR,
     [PART_FLEX] = TXT_CAT_FLEX,
@@ -360,7 +362,7 @@ static const LocalizedCatalog *localized_catalog(void)
 /* Historical integer codes are fixed by file versions 1-16, independent of enum order. */
 static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,   PART_BREADBOARD, PART_RESISTOR,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
-                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION, PART_74HC161, PART_74HC173, PART_74HC245, PART_74HC283, PART_AT28C16};
+                                        PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION, PART_74HC161, PART_74HC173, PART_74HC245, PART_74HC283, PART_AT28C16, PART_BREADBOARD_WIDE};
 
 size_t component_registry_count(void)
 {
@@ -466,6 +468,8 @@ const char *component_pin_marker(ComponentPinRole role)
 
 PartType component_electrical_type(PartType type)
 {
+    if (bench_is_board(type))
+        return PART_BREADBOARD;
     switch (type)
     {
     case PART_LDR:
@@ -635,9 +639,9 @@ void component_body_extent(PartType type, float *half_width, float *half_height)
         *half_width = 31;
         *half_height = 27;
     }
-    else if (type == PART_BREADBOARD)
+    else if (bench_is_board(type))
     {
-        *half_width = 227;
+        *half_width = type == PART_BREADBOARD_WIDE ? 437 : 227;
         *half_height = 112;
     }
     else if (component_has_flag(type, COMPONENT_DIP))

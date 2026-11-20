@@ -2,6 +2,25 @@
 #include <stdio.h>
 #include "workbench_file.h"
 
+static void legacy_nested_layers(void)
+{
+    Workbench loaded = {0}, roundtrip = {0};
+    WorkbenchSettings settings;
+    assert(workbench_load_project("tests/fixtures/legacy-chip-layers-35.elec", &loaded, &settings));
+    assert(loaded.parts[0].group == 2 && loaded.parts[0].layers && loaded.parts[0].layers->group == 1);
+    assert(loaded.parts[0].layers->exposed[0] == 3);
+    for (size_t word = 7; word < (WORKBENCH_MAX_PINS + 63) / 64; ++word)
+        assert(loaded.parts[0].layers->exposed[word] == 0);
+    FILE *file = tmpfile();
+    assert(file && workbench_write_project(file, &loaded, &settings));
+    rewind(file);
+    assert(workbench_read_project(file, &roundtrip, &settings));
+    assert(roundtrip.parts[0].layers && roundtrip.parts[0].layers->exposed[0] == 3);
+    assert(fclose(file) == 0);
+    bench_snapshot_clear(&loaded);
+    bench_snapshot_clear(&roundtrip);
+}
+
 /* A person reopens a circuit saved before the shared palette: every legacy wire color, black included,
  * keeps its hue, and the next save writes the shared palette index. */
 static void legacy_wire_colors(void)
@@ -52,6 +71,7 @@ static void large_bench(void)
 
 int main(void)
 {
+    legacy_nested_layers();
     legacy_wire_colors();
     large_bench();
     Workbench source={0}, loaded={0}; FILE *file;

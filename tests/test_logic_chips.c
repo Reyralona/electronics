@@ -1,6 +1,7 @@
 #include "spice_live.h"
 #include "netlist.h"
 #include "component_registry.h"
+#include "rom_image.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -240,6 +241,75 @@ static void eeprom_reads_contents(void)
     bench_snapshot_clear(&rig.bench);
 }
 
+static int control_source(Rig *rig, int part, int pin, int high, float x)
+{
+    int source = bench_add(&rig->bench, PART_SOURCE, x, 1500);
+    assert(source >= 0 && bench_set_on(&rig->bench, source, high));
+    wire(rig, source, 1, rig->source, 1);
+    wire(rig, source, 0, part, pin);
+    return source;
+}
+
+static void eeprom_writes_and_retains(void)
+{
+    static Rig rig;
+    static SimAutoResult result;
+    rig_start(&rig);
+    int rom = chip(&rig, PART_AT28C16);
+    const int address_pins[] = {7, 6, 5, 4, 3, 2, 1, 0, 22, 21, 18};
+    const int data_pins[] = {8, 9, 10, 12, 13, 14, 15, 16};
+    for (int bit = 1; bit < 11; ++bit)
+        tie(&rig, rom, address_pins[bit], 2 >> bit & 1);
+    int address = control_source(&rig, rom, 7, 0, 100);
+    int oe = control_source(&rig, rom, 19, 1, 300);
+    int we = control_source(&rig, rom, 20, 1, 500);
+    tie(&rig, rom, 17, 0);
+    int loads[8], switches[8];
+    for (int bit = 0; bit < 8; ++bit)
+    {
+        loads[bit] = probe(&rig, rom, data_pins[bit]);
+        switches[bit] = bench_add(&rig.bench, PART_SWITCH, 100 + bit * 150, 1800);
+        assert(switches[bit] >= 0 && bench_set_on(&rig.bench, switches[bit], 1));
+        control_source(&rig, switches[bit], 0, 0x5A >> bit & 1, 700 + bit * 150);
+        wire(&rig, switches[bit], 1, rom, data_pins[bit]);
+    }
+    SpiceLive *live = run(&rig, .006, &result, NULL);
+    assert(bench_set_on(&rig.bench, we, 0));
+    run(&rig, .0000005, &result, live);
+    assert(bench_set_on(&rig.bench, we, 1));
+    run(&rig, .0000005, &result, live);
+    for (int bit = 0; bit < 8; ++bit)
+        assert(bench_set_on(&rig.bench, switches[bit], 0));
+    assert(bench_set_on(&rig.bench, oe, 0));
+    run(&rig, .000001, &result, live);
+    assert(read_bits(&result, loads, 8) & 128);
+    run(&rig, .002, &result, live);
+    assert(read_bits(&result, loads, 8) == 0x5A);
+    char message[256];
+    assert(spice_live_sync_memory(live, &rig.bench, message, sizeof(message)));
+    RomImage image;
+    assert(rom_image_parse(rig.bench.parts[rom].code, &image, NULL));
+    assert(image.data[2] == 0x5A && image.data[3] == 0xFF);
+    assert(bench_set_on(&rig.bench, address, 1));
+    run(&rig, .0001, &result, live);
+    assert(!spice_live_restarted(live));
+    assert(read_bits(&result, loads, 8) == 0xFF);
+    assert(bench_set_on(&rig.bench, address, 0));
+    run(&rig, .0001, &result, live);
+    assert(read_bits(&result, loads, 8) == 0x5A);
+    assert(bench_set_on(&rig.bench, rig.source, 0));
+    run(&rig, .001, &result, live);
+    assert(bench_set_on(&rig.bench, rig.source, 1));
+    run(&rig, .001, &result, live);
+    assert(read_bits(&result, loads, 8) == 0x5A);
+    spice_live_destroy(live);
+    live = run(&rig, .001, &result, NULL);
+    assert(read_bits(&result, loads, 8) == 0x5A);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+    puts("EEPROM bus: writes 5A at 2, polls busy, reads FF at 3, retains across power and solver restart.");
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -247,6 +317,7 @@ int main(int argc, char **argv)
     adder_adds();
     transceiver_passes_a_to_b();
     eeprom_reads_contents();
+    eeprom_writes_and_retains();
     register_loads_and_releases();
     counter_counts();
     printf("Logic ICs: 74HC283 adds, 74HC245 passes and releases, AT28C16 reads, 74HC173 loads and releases, "

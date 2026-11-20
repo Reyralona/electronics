@@ -1,5 +1,6 @@
 #include "workbench_grid.h"
 #include "app_controls.h"
+#include "app_editing.h"
 #include <windows.h>
 #include "app_render.h"
 #include "app_editor.h"
@@ -458,27 +459,28 @@ static void live_graph_draw(const AppState *app, GLuint font)
 static void draw_part_board(const Part *p, int selected)
 {
     float x = p->x, y = p->y;
+    float extra = p->type == PART_BREADBOARD_WIDE ? 210 : 0;
     color(.67f, .70f, .72f);
-    rect(x - 224, y - 108, 454, 224);
+    rect(x - 224 - extra, y - 108, 454 + 2 * extra, 224);
     color(.96f, .96f, .93f);
-    rect(x - 227, y - 112, 454, 224);
+    rect(x - 227 - extra, y - 112, 454 + 2 * extra, 224);
     color(.80f, .19f, .17f);
-    rect(x - 215, y - 109, 430, 2);
-    rect(x - 215, y + 68, 430, 2);
+    rect(x - 215 - extra, y - 109, 430 + 2 * extra, 2);
+    rect(x - 215 - extra, y + 68, 430 + 2 * extra, 2);
     color(.16f, .31f, .47f);
-    rect(x - 215, y - 72, 430, 2);
-    rect(x - 215, y + 107, 430, 2);
+    rect(x - 215 - extra, y - 72, 430 + 2 * extra, 2);
+    rect(x - 215 - extra, y + 107, 430 + 2 * extra, 2);
     color(.84f, .85f, .82f);
-    rect(x - 218, y - 6, 436, 10);
+    rect(x - 218 - extra, y - 6, 436 + 2 * extra, 10);
     if (selected)
     {
         color(.12f, .49f, .84f);
         glLineWidth(2);
         glBegin(GL_LINE_LOOP);
-        glVertex2f(x - 230, y - 115);
-        glVertex2f(x + 230, y - 115);
-        glVertex2f(x + 230, y + 115);
-        glVertex2f(x - 230, y + 115);
+        glVertex2f(x - 230 - extra, y - 115);
+        glVertex2f(x + 230 + extra, y - 115);
+        glVertex2f(x + 230 + extra, y + 115);
+        glVertex2f(x - 230 - extra, y + 115);
         glEnd();
         glLineWidth(1);
     }
@@ -808,7 +810,7 @@ static void draw_part_led(const Part *p, int led, float brightness)
     }
     else
     {
-        float glow = led < 0 ? 0 : brightness;
+        float glow = led == 1 ? .75f + .25f * brightness : 0;
         glColor3f(tone[1][0] + (tone[2][0] - tone[1][0]) * glow, tone[1][1] + (tone[2][1] - tone[1][1]) * glow,
                   tone[1][2] + (tone[2][2] - tone[1][2]) * glow);
         circle(x, y - 14, 13);
@@ -1712,7 +1714,7 @@ static void draw_diode(const Part *part)
 static void part_draw(const Part *p, int selected, int led, float brightness)
 {
     float x = p->x, y = p->y;
-    if (p->type == PART_BREADBOARD)
+    if (bench_is_board(p->type))
     {
         draw_part_board(p, selected);
         return;
@@ -1899,7 +1901,7 @@ static void part_draw_oriented(const Part *part, int selected, int led, float br
     glRotatef((float)part->rotation * 90.0f, 0, 0, 1);
     float scale = bench_part_scale(part);
     glScalef(scale, scale, 1);
-    drawing_mirrored = part->mirrored && part->type != PART_BREADBOARD;
+    drawing_mirrored = part->mirrored && !bench_is_board(part->type);
     if (drawing_mirrored)
         glScalef(-1, 1, 1);
     glLineWidth(fmaxf(1, drawing_scale * scale));
@@ -2245,7 +2247,7 @@ static void draw_thumbnail(PartType type, float x, float y)
     preview.control = .5;
     const ComponentInfo *info = component_info(type);
     preview.value = info && info->primary ? info->primary->initial : 0;
-    float scale = type == PART_BREADBOARD ? .09f : .42f;
+    float scale = bench_is_board(type) ? .09f : .42f;
     float half_width, half_height;
     component_body_extent(type, &half_width, &half_height);
     scale = fminf(scale, 22 / fmaxf(1, half_width + 8));
@@ -2256,12 +2258,12 @@ static void draw_thumbnail(PartType type, float x, float y)
     glScalef(scale, scale, 1);
     glLineWidth(1);
     part_draw_oriented(&preview, 0, 0, 0);
-    if (type == PART_BREADBOARD)
+    if (bench_is_board(type))
     {
         color(.18f, .22f, .24f);
         glPointSize(1);
         glBegin(GL_POINTS);
-        for (int pin = 0; pin < BREADBOARD_PINS; ++pin)
+        for (int pin = 0; pin < bench_pin_count(type); ++pin)
         {
             float px, py;
             bench_pin_position(&preview, pin, &px, &py);
@@ -2560,13 +2562,13 @@ static void draw_workspace_boards(const AppState *app)
 {
     int i;
     for (i = 0; i < app->bench.part_count; ++i)
-        if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_BREADBOARD)
+        if (!app->bench.parts[i].group && bench_is_board(app->bench.parts[i].type))
         {
             int p;
             float hole_radius = 3 * fminf(1, bench_part_scale(&app->bench.parts[i]));
             set_device_frame(app, i);
             part_draw_oriented(&app->bench.parts[i], (app->selected == i || app->selection.parts[i]), app->leds[i], measured_led_brightness(app, i));
-            for (p = 0; p < bench_pin_count(PART_BREADBOARD); ++p)
+            for (p = 0; p < bench_pin_count(app->bench.parts[i].type); ++p)
             {
                 float x, y;
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
@@ -2737,8 +2739,7 @@ static void draw_workspace_route(const AppState *app)
 
 static float terminal_world_radius(float zoom, float screen_radius)
 {
-    float shrink = fminf(1, zoom);
-    return fmaxf(TERMINAL_MIN_SCREEN_RADIUS, screen_radius * shrink) / zoom;
+    return fmaxf(3, fminf(5, screen_radius)) / zoom;
 }
 
 static int labels_visible(const AppState *app)
@@ -2767,7 +2768,7 @@ static void draw_workspace_parts(const AppState *app)
     for (i = 0; i < app->bench.part_count; ++i)
         if (!app->bench.parts[i].group && app->bench.parts[i].type == PART_JUNCTION)
             draw_junction(app, i);
-        else if (!app->bench.parts[i].group && app->bench.parts[i].type != PART_BREADBOARD)
+        else if (!app->bench.parts[i].group && !bench_is_board(app->bench.parts[i].type))
         {
             int p;
             set_device_frame(app, i);
@@ -2834,14 +2835,14 @@ static void draw_workspace_contacts(const AppState *app)
         bench_terminal_position(&app->bench, wire->a, &start.x, &start.y);
         bench_terminal_position(&app->bench, wire->b, &end.x, &end.y);
         count = wire_path(wire, start, end, app->round_wires ? 18.0f : 0.0f, path);
-        if (app->bench.parts[wire->a.component].type == PART_BREADBOARD)
+        if (bench_is_board(app->bench.parts[wire->a.component].type))
             for (k = 1; k < count; ++k)
                 if (hypotf(path[k].x - start.x, path[k].y - start.y) > .01f)
                 {
                     wire_contact_tip(start, path[k], wire->color);
                     break;
                 }
-        if (app->bench.parts[wire->b.component].type == PART_BREADBOARD)
+        if (bench_is_board(app->bench.parts[wire->b.component].type))
             for (k = count - 2; k >= 0; --k)
                 if (hypotf(path[k].x - end.x, path[k].y - end.y) > .01f)
                 {
@@ -3028,14 +3029,14 @@ static void draw_selected_pin_labels(const AppState *app, GLuint font)
         if (app->hover_revision != app->bench.revision || pin.component < 0 || pin.component >= app->bench.part_count)
             return;
         const Part *hovered = &app->bench.parts[pin.component];
-        if (!hovered->group && hovered->type != PART_BREADBOARD)
+        if (!hovered->group && !bench_is_board(hovered->type))
             draw_pin_name_labels(app, font, hovered, pin.pin);
         return;
     }
     if (app->selected < 0)
         return;
     const Part *part = &app->bench.parts[app->selected];
-    if (part->group || part->type == PART_BREADBOARD)
+    if (part->group || bench_is_board(part->type))
         return;
     if (!component_has_flag(part->type, COMPONENT_DIP))
     {
@@ -3604,24 +3605,36 @@ static void draw_part_inspector(const AppState *app, GLuint font)
         height = inspector_height_to(INSPECTOR_LINE_2, inspector_note_lines(font, note));
     ui_panel(app_layout_inspector(height));
     float title_right = app_layout_inspector_minimize().x;
-    if (part->type != PART_BREADBOARD)
+    if (!bench_is_board(part->type))
     {
         title_right = app_layout_inspector_mirror().x;
         ui_button(app, font, app_layout_inspector_rotate(), tr(TXT_UI_ROTATE), UI_BUTTON_NEUTRAL);
         ui_button(app, font, app_layout_inspector_mirror(), tr(TXT_UI_MIRROR), UI_BUTTON_NEUTRAL);
     }
-    draw_inspector_title(app, font, part_name(part->type), title_right);
+    int selected_count = bench_selection_count(&app->selection, &app->bench);
+    char title[160];
+    if (selected_count > 1 && !app_selection_same_type(app))
+        snprintf(title, sizeof(title), tr(TXT_UI_SELECTED_MIXED), selected_count);
+    else if (selected_count > 1)
+        snprintf(title, sizeof(title), tr(TXT_UI_SELECTED_PARTS), selected_count, part_name(part->type));
+    else
+        snprintf(title, sizeof(title), "%s", part_name(part->type));
+    draw_inspector_title(app, font, title, title_right);
     if (mcu_board(part->type))
         draw_inspector_row(app, font, app_layout_inspector_value(), tr(TXT_UI_CODE), tr(TXT_UI_EDIT_CODE), 1);
     else
     {
+        int editable = app_selection_value_target(app) >= 0;
         if (info && info->primary)
             snprintf(value, sizeof(value), "%.5g %s", part->value, info->primary->unit);
+        for (int i = 0; editable && i < app->bench.part_count; ++i)
+            if (app->selection.parts[i] && app->bench.parts[i].value != part->value)
+                snprintf(value, sizeof(value), "%s", tr(TXT_UI_MIXED_VALUES));
         draw_inspector_row(app, font, app_layout_inspector_value(), tr(TXT_UI_VALUE),
-                           info && info->primary ? value : tr(TXT_UI_NO_VALUE), info && info->primary);
+                           editable ? value : tr(TXT_UI_NO_VALUE), editable);
     }
     snprintf(value, sizeof(value), "%.5g %%", bench_part_scale(part) * 100);
-    draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), value, 1);
+    draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), value, app_selection_same_type(app));
     if (app->sim.burnt[app->selected])
         color(UI_DANGER);
     else
@@ -3716,7 +3729,7 @@ static void part_hint(const Part *part, char *hint, size_t capacity)
     const ComponentInfo *info = component_info(part->type);
     TextId hints[PART_HINT_MAX];
     int count = 0;
-    if (part->type != PART_BREADBOARD)
+    if (!bench_is_board(part->type))
         hints[count++] = TXT_UI_HINT_ROTATE;
     if (info && info->primary)
         hints[count++] = TXT_UI_HINT_VALUE;
@@ -4075,9 +4088,9 @@ static void draw_pin_help(const AppState *app, GLuint font)
     bench_terminal_position(&app->bench, pin, &x, &y);
     bench_view_to_screen(&app->view, x, y, &x, &y);
     glColor3f(UI_ACCENT);
-    circle(x, y, fmaxf(9 * app->view.zoom, 6));
+    circle(x, y, 7);
     ui_raw_white();
-    circle(x, y, fmaxf(5 * app->view.zoom, 3));
+    circle(x, y, 3.5f);
     AppRect panel = {238, y > 480 ? 80.0f : 566.0f, 520, 80};
     ui_panel(panel);
     char label[128];

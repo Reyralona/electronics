@@ -2,6 +2,7 @@
  * ABI subset follows the installed sharedspice.h and https://ngspice.sourceforge.io/shared.html.
  * Ngspice diagnostics go to stderr; stdout contains only the request/response protocol. */
 #include "spice_session_protocol.h"
+#include "rom_image.h"
 #include <windows.h>
 #include <stdbool.h>
 #include <errno.h>
@@ -295,6 +296,24 @@ static void respond(int failed)
     fflush(stdout);
 }
 
+static void send_eeprom(void)
+{
+    HMODULE module = GetModuleHandleA("bancada-eeprom.dll");
+    int (*next)(int *, unsigned char *) = NULL;
+    int part = -1;
+    unsigned char bytes[ROM_IMAGE_BYTES];
+    if (module && bind_function(module, "BancadaEepromNext", &next, sizeof(next)) && next(&part, bytes))
+    {
+        printf("OK %d ", part);
+        for (int address = 0; address < ROM_IMAGE_BYTES; ++address)
+            printf("%02X", bytes[address]);
+        putchar('\n');
+    }
+    else
+        puts("OK -1");
+    fflush(stdout);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 3)
@@ -364,6 +383,8 @@ int main(int argc, char **argv)
             respond(set_probe(input + 2));
         else if (!strcmp(input, "S"))
             send_samples();
+        else if (!strcmp(input, "E"))
+            send_eeprom();
         else
             respond(1);
     }

@@ -2,14 +2,58 @@
 #include "app_editing.h"
 #include "ui_text.h"
 #include "app_settings.h"
+#include "app_simulation.h"
 #include "workbench_file.h"
+#include "component_registry.h"
 #include <direct.h>
 #include <io.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <sys/stat.h>
+
+int app_selection_same_type(const AppState *app)
+{
+    int target = app->selected;
+    if (target < 0 || target >= app->bench.part_count || app->bench.parts[target].group)
+        return 0;
+    PartType type = app->bench.parts[target].type;
+    for (int i = 0; i < app->bench.part_count; ++i)
+        if (app->selection.parts[i] && (app->bench.parts[i].type != type || app->bench.parts[i].group))
+            return 0;
+    return 1;
+}
+
+int app_selection_value_target(const AppState *app)
+{
+    if (!app_selection_same_type(app))
+        return -1;
+    const ComponentInfo *info = component_info(app->bench.parts[app->selected].type);
+    return info && info->primary ? app->selected : -1;
+}
+
+int app_selection_set_value(AppState *app, int target, double value)
+{
+    if (target != app_selection_value_target(app) || target < 0 ||
+        !component_value_valid(app->bench.parts[target].type, value))
+        return 0;
+    for (int i = 0; i < app->bench.part_count; ++i)
+        if (i == target || app->selection.parts[i])
+            bench_set_value(&app->bench, i, value);
+    return 1;
+}
+
+int app_selection_set_scale(AppState *app, float scale)
+{
+    if (!app_selection_same_type(app) || !isfinite(scale) || scale < PART_SCALE_MIN || scale > PART_SCALE_MAX)
+        return 0;
+    for (int i = 0; i < app->bench.part_count; ++i)
+        if ((i == app->selected || app->selection.parts[i]) && !bench_set_scale(&app->bench, i, scale))
+            return 0;
+    return 1;
+}
 
 static void reset_interaction(AppState *app)
 {
@@ -213,6 +257,7 @@ void app_projects_refresh(AppState *app)
 
 static void save_project_slot(AppState *app, int slot)
 {
+    app_simulation_flush(app);
     char path[128];
     const char *directory = app->selftest ? "build/test-slots" : "saves";
     if (_mkdir(directory) != 0 && errno != EEXIST)

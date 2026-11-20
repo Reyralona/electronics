@@ -211,7 +211,7 @@ static int write_layers(FILE *file, const Workbench *bench)
     return 1;
 }
 
-static int read_layers(FILE *file, Workbench *bench)
+static int read_layers(FILE *file, Workbench *bench, int version)
 {
     char tag[32];
     int parts;
@@ -249,7 +249,8 @@ static int read_layers(FILE *file, Workbench *bench)
                     return 0;
                 seen[g] = used[g] = 1;
             }
-            for (size_t p = 0; p < sizeof(layer->exposed) / sizeof(layer->exposed[0]); ++p)
+            size_t words = version < 36 ? (420 + 63) / 64 : sizeof(layer->exposed) / sizeof(layer->exposed[0]);
+            for (size_t p = 0; p < words; ++p)
             {
                 unsigned long long bits;
                 if (fscanf(file, "%llu", &bits) != 1)
@@ -337,7 +338,7 @@ int workbench_write_project(FILE *f, const Workbench *b, const WorkbenchSettings
     int i, k;
     if (!f || !b || !workbench_settings_valid(s))
         return 0;
-    if (fprintf(f, "workbench 35\n%d %d\n", b->part_count, b->wire_count) < 0)
+    if (fprintf(f, "workbench 36\n%d %d\n", b->part_count, b->wire_count) < 0)
         return 0;
     for (i = 0; i < b->part_count; ++i)
     {
@@ -384,7 +385,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
     if (!f || !destination || !settings)
         goto cleanup;
     if (fscanf(f, "%31s %d %d %d", magic, &version, &parts, &wires) != 4 || strcmp(magic, "workbench") ||
-        (version < 1 || version > 35) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
+        (version < 1 || version > 36) || parts < 0 || parts > WORKBENCH_MAX_COMPONENTS || wires < 0 ||
         wires > WORKBENCH_MAX_WIRES)
         goto cleanup;
     for (i = 0; i < parts; ++i)
@@ -399,7 +400,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
             goto cleanup;
         PartType type = info->type;
         b.parts[i].on = on;
-        if (version < 9 && type == PART_BREADBOARD)
+        if (version < 9 && bench_is_board(type))
             b.parts[i].board_layout = 0;
         if (version >= 4)
         {
@@ -425,15 +426,17 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         if (version >= 9)
         {
             int layout;
-            if (fscanf(f, "%d", &layout) != 1 || layout < 0 || layout > 1 || (type != PART_BREADBOARD && layout != 0))
+            if (fscanf(f, "%d", &layout) != 1 || layout < 0 || layout > 1 || (!bench_is_board(type) && layout != 0))
                 goto cleanup;
             b.parts[i].board_layout = layout;
         }
         if (version >= 19)
         {
             float scale;
-            if (fscanf(f, "%f", &scale) != 1 || !bench_set_scale(&b, i, scale))
+            if (fscanf(f, "%f", &scale) != 1 || !isfinite(scale) ||
+                scale < PART_SCALE_MIN || scale > PART_SCALE_MAX)
                 goto cleanup;
+            b.parts[i].scale = scale;
         }
         if (version >= 21)
         {
@@ -483,7 +486,7 @@ int workbench_read_project(FILE *f, Workbench *destination, WorkbenchSettings *s
         goto cleanup;
     if (version >= 31 && !read_port_names(f, &b))
         goto cleanup;
-    if (version >= 32 && !read_layers(f, &b))
+    if (version >= 32 && !read_layers(f, &b, version))
         goto cleanup;
     if (version >= 10)
     {

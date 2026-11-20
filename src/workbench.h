@@ -5,10 +5,11 @@
 
 #define WORKBENCH_MAX_COMPONENTS 1024
 #define WORKBENCH_MAX_WIRES 2048
-#define WORKBENCH_MAX_PINS 420
+#define WORKBENCH_MAX_PINS 840
 #define WORKBENCH_MAX_IO 24
 #define BENCH_DIP_PITCH 14 /* distance between neighboring IC pins */
 #define BREADBOARD_PINS 420
+#define BREADBOARD_WIDE_PINS 840
 #define PART_SCALE_MIN 0.01f
 #define PART_SCALE_MAX 100.0f
 #define BENCH_GROUP_NAME_CAPACITY 128
@@ -79,8 +80,13 @@ typedef enum
     PART_74HC173,
     PART_74HC245,
     PART_74HC283,
-    PART_AT28C16
+    PART_AT28C16,
+    PART_BREADBOARD_WIDE
 } PartType;
+static inline int bench_is_board(PartType type)
+{
+    return type == PART_BREADBOARD || type == PART_BREADBOARD_WIDE;
+}
 typedef struct BenchPartLayer
 {
     int group;

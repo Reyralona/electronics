@@ -18,6 +18,14 @@ if (Test-Path (Join-Path $toolchain 'SDL3.dll')) {
         }
     }
 }
+# The event-driven EEPROM runs inside the same isolated solver process.
+& gcc -std=c11 -Wall -Wextra -Werror -shared -Isrc src/eeprom_cosim.c src/eeprom.c -o build/bancada-eeprom.dll
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Copy-Item -LiteralPath build/bancada-eeprom.dll -Destination (Join-Path $ngspiceBin 'bancada-eeprom.dll')
+& gcc -std=c11 -Wall -Wextra -Werror -Isrc tests/test_eeprom.c src/eeprom.c -o build/test_eeprom.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_eeprom.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 # The host may be locked by an open Bancada session; keep it if it is not older than its source.
 & gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc src/spice_live_host.c src/ui_text.c -o build/spice-live-host.new.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -62,6 +70,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_app_ui_flow.c src/workbench_grid.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_controls.c src/app_code_editor.c src/app_render.c src/app_palette.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench_fit.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/spice_process.c src/spice_job.c src/spice_live.c src/spice_session.c src/spice_trace.c src/sim_auto.c src/ui_text.c -o build/test_app_ui_flow.exe -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_app_ui_flow.exe
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_eeprom_programmer_flow.c src/workbench_grid.c src/app_text_utf8.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_input.c src/app_controls.c src/app_code_editor.c src/app_render.c src/app_palette.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_simulation.c src/sim_state.c src/dev_capture.c src/dev_scenarios.c src/workbench_fit.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_examples.c src/workbench_view.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/spice_process.c src/spice_job.c src/spice_live.c src/spice_session.c src/spice_trace.c src/sim_auto.c src/ui_text.c -o build/test_eeprom_programmer_flow.exe -lSDL3 -lopengl32 -lgdi32
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& ./build/test_eeprom_programmer_flow.exe tests/fixtures/eeprom-programmer.elec "$ngspiceBin/ngspice_con.exe"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_app_preferences.c src/app_preferences.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/ui_text.c -o build/test_app_preferences.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -163,7 +175,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_chip_library_flow.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_app_commands.c src/app_code_editor.c src/app_text_utf8.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench_fit.c src/workbench.c src/workbench_view.c src/bench_path.c src/component_registry.c src/component_devices.c src/ui_text.c -o build/test_app_commands.exe -lSDL3 -lopengl32 -lgdi32
+& gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_app_commands.c src/app_simulation.c src/app_code_editor.c src/app_text_utf8.c src/sim_state.c src/spice_trace.c src/app_commands.c src/app_editing.c src/app_settings.c src/app_preferences.c src/app_layout.c src/app_packing.c src/app_editor.c src/workbench_group_edit.c src/workbench_selection.c src/workbench_pack.c src/app_state.c src/mcu_runtime.c src/mcu_lang.c src/code_text.c src/app_palette.c src/workbench_examples.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/workbench_history.c src/spice_job.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench_fit.c src/workbench.c src/workbench_view.c src/bench_path.c src/component_registry.c src/component_devices.c src/ui_text.c -o build/test_app_commands.exe -lSDL3 -lopengl32 -lgdi32
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & ./build/test_app_commands.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -385,12 +385,13 @@ static void command_edit_value(AppState *app, SDL_Window *window)
 {
     PartType type = app->bench.parts[app->selected].type;
     const ComponentInfo *info = component_info(type);
-    if (info && info->primary)
+    if (info && info->primary && app_selection_value_target(app) >= 0)
     {
         if (SDL_StartTextInput(window))
         {
             app->editing = app->selected;
             app->edit_error = 0;
+            app->edit_select_all = 1;
             snprintf(app->edit_text, sizeof(app->edit_text), "%.9g", app->bench.parts[app->selected].value);
             app->status = tr(TXT_APP_TYPE_VALUE);
         }
@@ -410,7 +411,7 @@ static void command_scale_value(AppState *app, SDL_Keycode key)
         app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
-    if (bench_set_value(&app->bench, app->selected, app->bench.parts[app->selected].value * scale))
+    if (app_selection_set_value(app, app->selected, app->bench.parts[app->selected].value * scale))
     {
         bench_history_record(app->history, &before);
         app->status = tr(TXT_APP_VALUE_CHANGED);
@@ -460,7 +461,7 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
         command_mirror(app);
         break;
     case SDLK_T:
-        if (app->bench.parts[app->selected].type != PART_BREADBOARD)
+        if (!bench_is_board(app->bench.parts[app->selected].type))
             command_trace_part(app, (mod & SDL_KMOD_SHIFT) != 0);
         break;
     case SDLK_E:

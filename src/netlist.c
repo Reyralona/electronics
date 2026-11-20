@@ -53,9 +53,9 @@ static void build_nets(const Workbench *b, int *parents, int unite_wires, int sh
             unite(parents, base, base + 1);
         if (type == PART_INDUCTOR && short_inductors)
             unite(parents, base, base + 1);
-        if (type == PART_BREADBOARD)
+        if (bench_is_board(type))
         {
-            for (j = 0; j < BREADBOARD_PINS; ++j)
+            for (j = 0; j < bench_pin_count(type); ++j)
                 unite(parents, base + bench_board_group_first(j), base + j);
         }
     }
@@ -341,6 +341,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_BUTTON:
         case PART_SWITCH:
         case PART_BREADBOARD:
+        case PART_BREADBOARD_WIDE:
         case PART_RESISTOR:
         case PART_TEMPERATURE:
         case PART_SOIL:
@@ -664,7 +665,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         return NETLIST_IO_ERROR;
     /* RS: series resistance so an LED wired straight to a source gives a finite current in this didactic model.
        rshunt: 1 TOhm from every node to ground so unfinished circuits (floating nodes) still solve. */
-    if (logic_count && !netlist_logic_models(out))
+    if (logic_count && (!netlist_logic_models(out) || !netlist_eeprom_core(out, b)))
         return NETLIST_IO_ERROR;
     if (!netlist_device_models(out))
         return NETLIST_IO_ERROR;

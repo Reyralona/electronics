@@ -204,8 +204,13 @@ quando desabilitadas.
 - **74HC283**: soma A1–A4, B1–B4 e C0; saída S1–S4 e C4.
 - **AT28C16**: lê com `~CE` e `~OE` baixos e `~WE` alto. O conteúdo é texto hexadecimal guardado na peça,
   por exemplo `00: 1E 2F 3D` (o endereço antes de `:` é opcional). `;` ou `#` começam comentário.
-  Endereços não gravados leem `FF`, como uma memória apagada. Gravar pelo `~WE` não é simulado, e a
-  interface ainda não edita o conteúdo: ele vem do arquivo de projeto.
+  Endereços não gravados leem `FF`, como uma memória apagada. Com `~OE` alto e `~CE` baixo, um pulso
+  baixo em `~WE` grava: o endereço é retido na descida e o dado na subida. CE também pode controlar
+  o ciclo. Aguarde 5 ms simulados após ligar e 1 ms para concluir a escrita. Os bytes acompanham o
+  salvamento do projeto. Durante a escrita, IO7 permite consultar a conclusão.
+  Os pinos IO0–IO7 são bidirecionais: desligue o circuito que fornece os dados antes de ler.
+  O modelo funcional de 5 V não representa desgaste, dispersão analógica, identificação nem apagamento
+  especial a 12 V; veja [modelo e testes](MODELO_EEPROM.md).
 
 ## Microcontroladores
 
@@ -303,3 +308,9 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
 - O **tempo simulado** corre bem mais devagar que o real: cerca de 1 ms simulado por segundo na tela. Um RC de 1 kΩ × 1 µF leva de 1 a 3 s para descarregar visivelmente.
 - Adicionar ou remover peças ou ligações, ou mudar a frequência de um clock, reinicia a simulação contínua. O rodapé avisa quando isso acontece.
 - Capacidade: 1024 peças elementares (inclusive as que estão dentro dos chips; junções contam como peças), 2048 fios, 1024 grupos, slots de projeto conforme o espaço disponível e 8 modelos na biblioteca. Chips podem conter outros chips; cada instância é independente.
+
+### Seleção e protoboard — 0.48.0
+
+Ctrl+clique adiciona ou remove somente a peça clicada. Se todas as peças selecionadas forem do mesmo tipo, Valor (ou E) altera o valor de todas: selecione resistores, pressione E, digite 200 e confirme para aplicar 200 ohms. Ctrl+A dentro do campo seleciona o texto. Ctrl+Z desfaz a alteração conjunta. O campo Tamanho e a cor dos LEDs também aceitam seleção do mesmo tipo.
+
+O catálogo Básicos inclui Protoboard larga (60 colunas), com o mesmo passo de furos da placa original. Ao reduzir uma peça conectada, suas pontas conservam os contatos. As marcas e áreas clicáveis dos terminais mantêm um tamanho útil na tela. A cor física dos LEDs é igual nos temas claro e escuro.

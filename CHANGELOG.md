@@ -1,5 +1,22 @@
 # Histórico de versões
 
+## 0.48.0
+
+- EEPROM AT28C16 grava pelo barramento: endereço e dado retidos pelas bordas de CE/WE, proteção por OE,
+  espera após ligar, ciclo de 1 ms e consulta de conclusão por IO7. Bytes escritos acompanham o projeto
+  ao salvar/reabrir e sobrevivem à alimentação desligada; a gravação não reinicia os outros CIs.
+- O modelo usa eventos do ngspice, independentemente da taxa de quadros; a DLL faz parte do build e dos pacotes.
+- Ctrl+clique adiciona ou remove somente as peças clicadas. Seleções da mesma espécie permitem editar
+  valor, tamanho e cor dos LEDs em conjunto; valores diferentes são indicados e a alteração tem um único undo.
+- LEDs acesos ficam mais vivos, com a mesma cor física nos temas claro e escuro.
+- Conectores têm área clicável em pixels, escolhem o pino mais próximo e preservam o clique no corpo da peça.
+  O indicador do pino apontado deixa de crescer com o zoom.
+- Peças menores podem encaixar no passo da protoboard; redimensionar uma peça já conectada preserva as pontas.
+- Protoboard larga com 60 colunas/840 contatos no catálogo. O formato 36 preserva a leitura de montagens
+  antigas, inclusive os chips aninhados que usavam máscaras de 420 pinos.
+- Circuito de gravação/leitura na protoboard em `tests/fixtures/eeprom-programmer.elec`, com seletores de
+  endereço e dados, isolamento por 74HC245, botão GRAVAR e LEDs de dados/modo.
+
 ## 0.47.1
 
 - Esta distribuição também inclui as novidades da 0.47.0: até 1024 peças e 2048 fios, CIs 74HC161/173/245/283

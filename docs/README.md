@@ -35,3 +35,6 @@ O guia de uso acompanha a versão 0.45.0, revisada em 18/11/2026. Registros hist
 O [CHANGELOG](../CHANGELOG.md) registra as versões.
 Dados, comandos e pendências de uma revisão antiga descrevem aquela época.
 Use os guias atuais para operar o programa.
+
+- [MODELO_EEPROM.md](MODELO_EEPROM.md): gravação, leitura, circuito de teste e limites do modelo 0.48.0.
+- [PLANO_BANCADA_EEPROM.md](PLANO_BANCADA_EEPROM.md): comparação técnica e fontes oficiais.

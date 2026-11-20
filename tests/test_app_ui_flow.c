@@ -261,6 +261,48 @@ static void values_and_chip_flow(AppState *app, SDL_Window *window)
     }
 }
 
+static void multi_value_flow(AppState *app, SDL_Window *window)
+{
+    /* Select only clicked resistors, edit them together, then undo the entire edit. */
+    assert(bench_add(&app->bench, PART_RESISTOR, 450, 300) == 0);
+    assert(bench_add(&app->bench, PART_RESISTOR, 650, 300) == 1);
+    assert(bench_add(&app->bench, PART_RESISTOR, 850, 300) == 2);
+    click(app, window, (AppRect){450, 300, 1, 1});
+    SDL_SetModState(SDL_KMOD_CTRL);
+    click(app, window, (AppRect){850, 300, 1, 1});
+    SDL_SetModState(0);
+    assert(app->selection.parts[0] && !app->selection.parts[1] && app->selection.parts[2]);
+    key(app, window, SDLK_E, 0);
+    assert(app->editing >= 0);
+    key(app, window, SDLK_A, SDL_KMOD_CTRL);
+    type(app, window, "200");
+    key(app, window, SDLK_RETURN, 0);
+    assert(app->editing < 0);
+    assert(app->bench.parts[0].value == 200 && app->bench.parts[2].value == 200);
+    assert(app->bench.parts[1].value == 1000);
+    key(app, window, SDLK_Z, SDL_KMOD_CTRL);
+    assert(app->bench.parts[0].value == 1000 && app->bench.parts[2].value == 1000);
+    /* Ctrl+click removes one; a plain click replaces the selection. */
+    click(app, window, (AppRect){450, 300, 1, 1});
+    SDL_SetModState(SDL_KMOD_CTRL);
+    click(app, window, (AppRect){850, 300, 1, 1});
+    click(app, window, (AppRect){450, 300, 1, 1});
+    SDL_SetModState(0);
+    assert(!app->selection.parts[0] && app->selection.parts[2]);
+    click(app, window, (AppRect){650, 300, 1, 1});
+    assert(bench_selection_count(&app->selection, &app->bench) == 1 && app->selected == 1);
+    /* Mixed species cannot silently edit just the last clicked part. */
+    assert(bench_add(&app->bench, PART_CAPACITOR, 850, 450) == 3);
+    SDL_SetModState(SDL_KMOD_CTRL);
+    click(app, window, (AppRect){850, 450, 1, 1});
+    SDL_SetModState(0);
+    key(app, window, SDLK_E, 0);
+    assert(app->editing < 0);
+    bench_snapshot_clear(&app->bench);
+    bench_selection_clear(&app->selection);
+    app->selected = -1;
+}
+
 int main(void)
 {
     static Workbench dense_leds;
@@ -294,6 +336,17 @@ int main(void)
     app.selected = -1;
     app.view = (BenchView){1, 0, 0};
     dense_led_selection_flow(&app, window);
+    multi_value_flow(&app, window);
+    /* A small body between enlarged connection targets must still select the part. */
+    assert(bench_add(&app.bench, PART_RESISTOR, 500, 350) == 0);
+    assert(bench_set_scale(&app.bench, 0, .3f));
+    assert(bench_lead_move(&app.bench, 0, 0, 0, (WirePoint){493, 350}));
+    assert(bench_lead_move(&app.bench, 0, 1, 0, (WirePoint){507, 350}));
+    click(&app, window, (AppRect){500, 350, 1, 1});
+    assert(app.selected == 0 && app.pending.component < 0);
+    click(&app, window, (AppRect){507, 350, 1, 1});
+    assert(app.pending.component == 0 && app.pending.pin == 1);
+    key(&app, window, SDLK_ESCAPE, 0);
     app_state_dispose(&app);
     SDL_DestroyWindow(window);
     SDL_Quit();

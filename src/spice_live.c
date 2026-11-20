@@ -72,6 +72,57 @@ double spice_live_time(const SpiceLive *live)
     return live ? live->time : 0;
 }
 
+static char *topology_key(const Workbench *bench, int measure_wires, int *instrumented);
+
+int spice_live_sync_memory(SpiceLive *live, Workbench *bench, char *message, size_t capacity)
+{
+    if (!live || !live->session || !bench)
+        return 0;
+    int changed = 0;
+    for (;;)
+    {
+        RomImage image;
+        int part;
+        if (!spice_session_eeprom(live->session, &part, &image, message, capacity))
+            return 0;
+        if (part == -1)
+            break;
+        if (part < 0 || part >= bench->part_count || bench->parts[part].type != PART_AT28C16)
+        {
+            snprintf(message, capacity, "%s", tr(TXT_ENG_REPLY_INVALID));
+            return 0;
+        }
+        char text[ROM_IMAGE_BYTES * 4 + 1];
+        size_t used = 0;
+        for (int address = 0; address < ROM_IMAGE_BYTES; ++address)
+        {
+            if (address % 16 == 0)
+                used += (size_t)snprintf(text + used, sizeof(text) - used, "%03X:", address);
+            used += (size_t)snprintf(text + used, sizeof(text) - used, " %02X%s", image.data[address],
+                                     address % 16 == 15 ? "\n" : "");
+        }
+        if (!bench_set_code(bench, part, text))
+        {
+            snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY));
+            return 0;
+        }
+        changed = 1;
+    }
+    if (changed)
+    {
+        int instrumented;
+        char *key = topology_key(bench, live->measures_wires, &instrumented);
+        if (!key)
+        {
+            snprintf(message, capacity, "%s", tr(TXT_ENG_NO_MEMORY));
+            return 0;
+        }
+        free(live->topology);
+        live->topology = key;
+    }
+    return 1;
+}
+
 static char *topology_key(const Workbench *bench, int measure_wires, int *instrumented)
 {
     Workbench normalized = {0};

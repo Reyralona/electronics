@@ -18,6 +18,7 @@ typedef struct {
     struct SpiceLive *live;
     double live_span;
     int continuous;
+    int memory_changed;
     int live_reset_pending, reset_live; /* Pending belongs to UI; reset_live belongs to the running job. */
     int automatic;                 /* 1 for a job started by spice_job_start_auto */
     SimAutoOptions auto_options;

@@ -1,5 +1,6 @@
 #include "app_controls.h"
 #include "app_palette.h"
+#include "app_editing.h"
 #include "component_registry.h"
 #include <assert.h>
 
@@ -37,7 +38,7 @@ int app_controls_action_enabled(const AppState *app, AppAction action)
     if (action == APP_ACTION_CHIP)
         return app->selected >= 0 || bench_selection_count(&app->selection, &app->bench) > 0;
     return (app->selected >= 0 && app->selected < app->bench.part_count &&
-            app->bench.parts[app->selected].type != PART_BREADBOARD) ||
+            !bench_is_board(app->bench.parts[app->selected].type)) ||
            (app->selected_wire >= 0 && app->selected_wire < app->bench.wire_count);
 }
 
@@ -68,10 +69,10 @@ static void inspector_targets(const AppState *app, AppRect *targets, int *count)
         return;
     }
     const ComponentInfo *info = component_info(part->type);
-    if (info && (info->primary || part->type == PART_ARDUINO_UNO || part->type == PART_ESP32 || part->type == PART_ATTINY85))
+    if (info && (app_selection_value_target(app) >= 0 || part->type == PART_ARDUINO_UNO || part->type == PART_ESP32 || part->type == PART_ATTINY85))
         target(targets, count, app_layout_inspector_value());
     target(targets, count, app_layout_inspector_scale());
-    if (part->type != PART_BREADBOARD)
+    if (!bench_is_board(part->type))
     {
         target(targets, count, app_layout_inspector_rotate());
         target(targets, count, app_layout_inspector_mirror());

@@ -21,6 +21,15 @@ static int SDLCALL run_job(void *argument)
                 job->live = spice_live_create();
             job->success = job->live && spice_live_step(job->live, &job->snapshot, job->executable,
                                                        &job->auto_options, job->live_span, &job->auto_result);
+            job->memory_changed = 0;
+            if (job->success)
+            {
+                uint64_t revision = job->snapshot.revision;
+                job->success = spice_live_sync_memory(job->live, &job->snapshot, job->auto_result.message,
+                                                       sizeof(job->auto_result.message));
+                job->memory_changed = job->snapshot.revision != revision;
+                job->snapshot.revision = revision;
+            }
             if (!job->live)
                 snprintf(job->auto_result.message, sizeof(job->auto_result.message), "%s", tr(TXT_ENG_NO_MEMORY));
         }
@@ -56,6 +65,7 @@ static int start_job(SpiceJob *job,const Workbench *bench,const char *executable
         return 0;
     }
     job->continuous = continuous;
+    job->memory_changed = 0;
     job->reset_live = continuous && job->live_reset_pending;
     if (continuous)
         job->live_reset_pending = 0;

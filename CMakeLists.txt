@@ -65,13 +65,27 @@ add_executable(bancada WIN32
 target_link_libraries(bancada PRIVATE SDL3::SDL3 opengl32 gdi32)
 add_executable(spice-live-host src/spice_live_host.c src/ui_text.c)
 target_include_directories(spice-live-host PRIVATE src)
+add_library(bancada-eeprom SHARED src/eeprom_cosim.c src/eeprom.c)
+set_target_properties(bancada-eeprom PROPERTIES PREFIX "")
+target_include_directories(bancada-eeprom PRIVATE src)
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(test_eeprom tests/test_eeprom.c src/eeprom.c)
+    target_include_directories(test_eeprom PRIVATE src)
+    add_test(NAME eeprom COMMAND test_eeprom)
     get_target_property(BANCADA_UI_SOURCES bancada SOURCES)
     list(REMOVE_ITEM BANCADA_UI_SOURCES src/workbench_window.c)
     add_executable(test_app_ui_flow tests/test_app_ui_flow.c ${BANCADA_UI_SOURCES})
     target_include_directories(test_app_ui_flow PRIVATE src)
     target_link_libraries(test_app_ui_flow PRIVATE SDL3::SDL3 opengl32 gdi32)
+    add_executable(test_eeprom_programmer_flow tests/test_eeprom_programmer_flow.c ${BANCADA_UI_SOURCES})
+    target_include_directories(test_eeprom_programmer_flow PRIVATE src)
+    target_link_libraries(test_eeprom_programmer_flow PRIVATE SDL3::SDL3 opengl32 gdi32)
+    add_dependencies(test_eeprom_programmer_flow bancada-eeprom spice-live-host)
+    add_test(NAME eeprom_programmer_flow COMMAND test_eeprom_programmer_flow
+        "${CMAKE_SOURCE_DIR}/tests/fixtures/eeprom-programmer.elec"
+        "${CMAKE_SOURCE_DIR}/build/spice-local/ucrt64/bin/ngspice_con.exe")
+    set_tests_properties(eeprom_programmer_flow PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" TIMEOUT 45)
     add_test(NAME app_ui_flow COMMAND test_app_ui_flow)
     set_tests_properties(app_ui_flow PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" TIMEOUT 30)
     add_executable(test_recursive_chips
@@ -129,6 +143,11 @@ if(BUILD_TESTING)
         src/ui_text.c
     )
     target_include_directories(test_spice_live PRIVATE src)
+    get_target_property(BANCADA_LOGIC_TEST_SOURCES test_spice_live SOURCES)
+    list(REMOVE_ITEM BANCADA_LOGIC_TEST_SOURCES tests/test_spice_live.c)
+    add_executable(test_logic_chips tests/test_logic_chips.c ${BANCADA_LOGIC_TEST_SOURCES})
+    target_include_directories(test_logic_chips PRIVATE src)
+    add_dependencies(test_logic_chips bancada-eeprom spice-live-host)
     add_executable(test_cockcroft_slot
         tests/test_cockcroft_slot.c
         src/spice_live.c
@@ -210,6 +229,8 @@ endif()
 # CMake installs one prepared payload for both ZIP and NSIS. No dependency downloads at configure time.
 set(BANCADA_PAYLOAD "" CACHE PATH "Prepared runtime, documentation, licenses and sources")
 install(TARGETS bancada spice-live-host RUNTIME DESTINATION .)
+install(TARGETS bancada-eeprom RUNTIME DESTINATION .)
+install(TARGETS bancada-eeprom RUNTIME DESTINATION spice-local/ucrt64/bin)
 if(BANCADA_PAYLOAD)
     install(DIRECTORY "${BANCADA_PAYLOAD}/" DESTINATION .)
 endif()

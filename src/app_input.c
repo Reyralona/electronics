@@ -108,7 +108,7 @@ int app_input_part_at(const Workbench *bench, float x, float y, float zoom)
             const Part *part = &bench->parts[i];
             if (part->group)
                 continue;
-            int board = part->type == PART_BREADBOARD;
+            int board = bench_is_board(part->type);
             if (board != pass)
                 continue;
             WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
@@ -212,7 +212,8 @@ static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event
         return;
     }
     const char *p = event->text.text;
-    size_t length = strlen(app->edit_text);
+    size_t length = app->edit_select_all ? 0 : strlen(app->edit_text);
+    app->edit_select_all = 0;
     while (*p && length + 1 < sizeof(app->edit_text))
     {
         if ((unsigned char)*p >= 32 && (unsigned char)*p < 127)
@@ -269,9 +270,14 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         SDL_StopTextInput(window);
         app->status = tr(TXT_APP_EDIT_CANCELED);
     }
+    else if (event->key.key == SDLK_A && (event->key.mod & SDL_KMOD_CTRL))
+        app->edit_select_all = 1;
     else if (event->key.key == SDLK_BACKSPACE)
     {
-        size_t length = strlen(app->edit_text);
+        size_t length = app->edit_select_all ? 0 : strlen(app->edit_text);
+        if (app->edit_select_all)
+            app->edit_text[0] = 0;
+        app->edit_select_all = 0;
         if (length)
             app->edit_text[length - 1] = '\0';
     }
@@ -286,14 +292,20 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         }
         if (app->editing == APP_EDIT_SCALE)
         {
-            if (app->selected >= 0 && bench_parse_value(app->edit_text, &value) &&
-                bench_set_scale(&app->bench, app->selected, (float)(value / 100)))
+            int valid = app_selection_same_type(app) && bench_parse_value(app->edit_text, &value) &&
+                        value >= PART_SCALE_MIN * 100 && value <= PART_SCALE_MAX * 100;
+            if (valid && app_selection_set_scale(app, (float)(value / 100)))
             {
                 if (before.revision != app->bench.revision)
                     bench_history_record(app->history, &before);
                 app->editing = -1;
                 SDL_StopTextInput(window);
                 app->status = tr(TXT_APP_SIZE_CHANGED);
+            }
+            else if (valid)
+            {
+                bench_replace(&app->bench, &before);
+                app->status = tr(TXT_APP_OUT_OF_MEMORY);
             }
             else
                 report(app, TXT_APP_SIZE_RANGE, PART_SCALE_MIN * 100.0, PART_SCALE_MAX * 100.0);
@@ -330,9 +342,9 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
             else
                 report(app, TXT_APP_TIME_RANGE, TRACE_MAX_POINTS);
         }
-        else if (bench_parse_value(app->edit_text, &value) && bench_set_value(&app->bench, app->editing, value))
+        else if (bench_parse_value(app->edit_text, &value) && app_selection_set_value(app, app->editing, value))
         {
-            if (before.parts[app->editing].value != value)
+            if (before.revision != app->bench.revision)
                 bench_history_record(app->history, &before);
             app->editing = -1;
             SDL_StopTextInput(window);
@@ -465,7 +477,7 @@ static void input_rotate(AppState *app, SDL_Window *window, const SDL_Event *eve
         return;
     bench_view_to_world(&app->view, x, y, &x, &y);
     hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
-    if (hit >= 0 && app->bench.parts[hit].type != PART_BREADBOARD)
+    if (hit >= 0 && !bench_is_board(app->bench.parts[hit].type))
     {
         SDL_Event shortcut = {0};
         app->selected = hit;
@@ -814,14 +826,23 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
         swatch = -1;
     if (swatch >= 0)
     {
-        if (part->states != (unsigned)swatch && bench_history_record(app->history, &app->bench))
-            bench_set_states(&app->bench, app->selected, (unsigned)swatch);
+        if (!app_selection_same_type(app))
+            return 1;
+        if (!bench_history_record(app->history, &app->bench))
+        {
+            app->status = tr(TXT_APP_HISTORY_FAILED);
+            return 1;
+        }
+        for (int i = 0; i < app->bench.part_count; ++i)
+            if (i == app->selected || app->selection.parts[i])
+                bench_set_states(&app->bench, i, (unsigned)swatch);
         app->status = tr(TXT_APP_LED_COLOR_CHANGED);
         return 1;
     }
     if (app_rect_contains(app_layout_inspector_scale(), x, y))
     {
-        start_settings_edit(app, window, APP_EDIT_SCALE, bench_part_scale(part) * 100);
+        if (app_selection_same_type(app))
+            start_settings_edit(app, window, APP_EDIT_SCALE, bench_part_scale(part) * 100);
         return 1;
     }
     if (app_code_editable(app, app->selected) && app_rect_contains(app_layout_inspector_value(), x, y))
@@ -834,12 +855,12 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
         run_shortcut(app, window, SDLK_E);
         return 1;
     }
-    if (part->type != PART_BREADBOARD && app_rect_contains(app_layout_inspector_rotate(), x, y))
+    if (!bench_is_board(part->type) && app_rect_contains(app_layout_inspector_rotate(), x, y))
     {
         run_shortcut(app, window, SDLK_R);
         return 1;
     }
-    if (part->type != PART_BREADBOARD && app_rect_contains(app_layout_inspector_mirror(), x, y))
+    if (!bench_is_board(part->type) && app_rect_contains(app_layout_inspector_mirror(), x, y))
     {
         run_shortcut(app, window, SDLK_M);
         return 1;
@@ -924,7 +945,7 @@ static int input_click_trace(AppState *app, float x, float y)
 static int input_swap_selected(AppState *app, PartType type)
 {
     /* Same type: nothing to swap, so the click places a new one as usual. */
-    if (!selected_plain_part(app) || app->bench.parts[app->selected].type == PART_BREADBOARD ||
+    if (!selected_plain_part(app) || bench_is_board(app->bench.parts[app->selected].type) ||
         app->bench.parts[app->selected].type == type || bench_selection_count(&app->selection, &app->bench) > 1)
         return 0;
     Workbench before BENCH_AUTO_CLEAR = {0};
@@ -1164,11 +1185,11 @@ static void input_place_part(AppState *app, float x, float y)
 static int terminal_covered(const Workbench *bench, int owner, float x, float y)
 {
     const float edge_margin = 6;
-    int owner_is_board = bench->parts[owner].type == PART_BREADBOARD;
+    int owner_is_board = bench_is_board(bench->parts[owner].type);
     for (int i = bench->part_count - 1; i >= 0; --i)
     {
         const Part *part = &bench->parts[i];
-        if (i == owner || part->group || part->type == PART_BREADBOARD || (!owner_is_board && i < owner))
+        if (i == owner || part->group || bench_is_board(part->type) || (!owner_is_board && i < owner))
             continue;
         WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
         float half_width, half_height;
@@ -1181,49 +1202,37 @@ static int terminal_covered(const Workbench *bench, int owner, float x, float y)
 
 static Pin input_pin_at(const Workbench *bench, float x, float y, float zoom, int see_through)
 {
-    for (int i = bench->part_count - 1; i >= 0; --i)
-        if (bench->parts[i].group)
-            for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
-                if (bench_pin_exposed(&bench->parts[i], p))
-                {
-                    float px, py;
-                    bench_terminal_position(bench, (Pin){i, p}, &px, &py);
-                    if ((x - px) * (x - px) + (y - py) * (y - py) <= 64)
-                        return (Pin){i, p};
-                }
-
-    int i, hit = -1, hitpin = -1;
-    int pass;
-    for (pass = 0; pass < 2 && hit < 0; ++pass)
-        for (i = bench->part_count - 1; i >= 0; --i)
+    Pin hit = {-1, -1};
+    for (int pass = 0; pass < 3; ++pass)
+    {
+        float best = INFINITY;
+        for (int i = bench->part_count - 1; i >= 0; --i)
         {
-            if (bench->parts[i].group)
+            const Part *part = &bench->parts[i];
+            int kind = part->group ? 0 : bench_is_board(part->type) ? 2 : 1;
+            if (kind != pass)
                 continue;
-            int p, board = bench->parts[i].type == PART_BREADBOARD;
-            float radius = 12.0f;
-            if (board)
-                radius = 4.0f;
-            else if (component_has_flag(bench->parts[i].type, COMPONENT_DIP))
-                radius = 5.0f;
-            radius = fmaxf(4, radius * fminf(1, bench_part_scale(&bench->parts[i]))) / zoom;
-            if (board != pass)
-                continue;
-            for (p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
+            float radius = pass == 2 || component_has_flag(part->type, COMPONENT_DIP) ? 7 : 12;
+            radius /= zoom;
+            for (int pin = 0; pin < bench_pin_count(part->type); ++pin)
             {
+                if (part->group && !bench_pin_exposed(part, pin))
+                    continue;
                 float px, py;
-                bench_pin_position(&bench->parts[i], p, &px, &py);
-                if ((x - px) * (x - px) + (y - py) * (y - py) <= radius * radius &&
-                    (see_through || !terminal_covered(bench, i, px, py)))
+                bench_terminal_position(bench, (Pin){i, pin}, &px, &py);
+                float distance = (x - px) * (x - px) + (y - py) * (y - py);
+                if (distance < best && distance <= radius * radius &&
+                    (part->group || see_through || !terminal_covered(bench, i, px, py)))
                 {
-                    hit = i;
-                    hitpin = p;
-                    break;
+                    hit = (Pin){i, pin};
+                    best = distance;
                 }
             }
-            if (hit >= 0)
-                break;
         }
-    return (Pin){hit, hitpin};
+        if (hit.component >= 0)
+            return hit;
+    }
+    return hit;
 }
 
 static void input_connect_pin(AppState *app, Pin clicked)
@@ -1315,7 +1324,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
     bench_selection_expand_groups(&app->selection, &app->bench);
     app->selected = hit;
     app->selected_wire = -1;
-    if (hit < 0 || app->bench.parts[hit].type == PART_BREADBOARD)
+    if (hit < 0 || bench_is_board(app->bench.parts[hit].type))
     {
         app->selected_wire = hit_wire(&app->bench, x, y, 7.0f / app->view.zoom, app->round_wires);
         if (app->selected_wire >= 0)
@@ -1659,6 +1668,47 @@ static void input_click(AppState *app, SDL_Window *window, const SDL_Event *even
         input_place_part(app, x, y);
         return;
     }
+    if (SDL_GetModState() & SDL_KMOD_CTRL)
+    {
+        int hit = app_input_part_at(&app->bench, x, y, app->view.zoom);
+        if (hit >= 0)
+        {
+            if (app->selected >= 0 && !bench_selection_count(&app->selection, &app->bench))
+                app->selection.parts[app->selected] = 1;
+            int group = app->bench.parts[hit].group;
+            int selected = !app->selection.parts[hit];
+            for (int i = 0; i < app->bench.part_count; ++i)
+                if (i == hit || (group && app->bench.parts[i].group == group))
+                    app->selection.parts[i] = selected;
+            app->selected = -1;
+            for (int i = 0; i < app->bench.part_count; ++i)
+                if (app->selection.parts[i])
+                    app->selected = i;
+            app->selected_wire = -1;
+            app->pending.component = -1;
+        }
+        return;
+    }
+    /* Enlarged terminal hit areas must not swallow a small component's visible body. */
+    if (app->pending.component < 0)
+    {
+        int body = app_input_part_at(&app->bench, x, y, app->view.zoom);
+        if (body >= 0 && !app->bench.parts[body].group && !bench_is_board(app->bench.parts[body].type) &&
+            app->bench.parts[body].type != PART_JUNCTION)
+        {
+            const Part *part = &app->bench.parts[body];
+            WirePoint local = bench_part_to_local(part, (WirePoint){x, y});
+            float half_width, half_height;
+            component_body_extent(part->type, &half_width, &half_height);
+            if (part->type == PART_LED)
+                local.y += 6;
+            if (fabsf(local.x) < half_width - 6 && fabsf(local.y) < fmaxf(1, half_height - 6))
+            {
+                input_select(app, x, y, event->button.clicks);
+                return;
+            }
+        }
+    }
     Pin clicked = input_pin_at(&app->bench, x, y, app->view.zoom, app->xray);
     hitpin = clicked.pin;
     if (hitpin >= 0 && event->button.clicks >= 2 &&
@@ -1833,7 +1883,7 @@ static void snap_part_terminals(const AppState *app, int component, float *x, fl
             {
                 const Part *target = &bench->parts[other];
                 if (other == component || (moving->group && target->group == moving->group) ||
-                    (target->type == PART_BREADBOARD && !app->snap_board))
+                    (bench_is_board(target->type) && !app->snap_board))
                     continue;
                 for (int pin = 0; pin < bench_pin_count(target->type); ++pin)
                 {

@@ -1,4 +1,4 @@
-﻿#include "dev_scenarios.h"
+#include "dev_scenarios.h"
 #include "component_registry.h"
 #include "dev_capture.h"
 #include "app_editor.h"
@@ -53,7 +53,7 @@ static int component_closeup(AppState *app, const char *argument)
     bench_snapshot_clear(&app->bench);
     if (bench_add(&app->bench, info->type, 750, 365) < 0)
         return -1;
-    float zoom = info->type == PART_BREADBOARD ? fminf(requested_zoom, 1.8f) : requested_zoom;
+    float zoom = bench_is_board(info->type) ? fminf(requested_zoom, 1.8f) : requested_zoom;
     Part *part = &app->bench.parts[0];
     float min_y = part->y - 48, max_y = part->y + 45;
     for (int pin = 0; pin < info->pin_count; ++pin)
@@ -63,7 +63,7 @@ static int component_closeup(AppState *app, const char *argument)
         min_y = fminf(min_y, py - 5);
         max_y = fmaxf(max_y, py + 5);
     }
-    if (info->type != PART_BREADBOARD)
+    if (!bench_is_board(info->type))
         zoom = fminf(zoom, 520 / (max_y - min_y));
     float center_y = (min_y + max_y) * .5f;
     app->view = (BenchView){zoom, 530 * (1 - zoom), 295 - (center_y - 70) * zoom};

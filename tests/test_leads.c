@@ -20,6 +20,40 @@ static void check_render_pick(void *context, WirePoint point, size_t ignored)
 
 int main(int argc, char **argv)
 {
+    static Workbench fitting;
+    assert(bench_add(&fitting, PART_BREADBOARD, 650, 400) == 0);
+    assert(bench_add(&fitting, PART_RESISTOR, 650, 385) == 1);
+    Pin initial_contact;
+    assert(bench_find_contact(&fitting, 1, 0, &initial_contact));
+    assert(bench_set_scale(&fitting, 1, .4f));
+    assert(bench_find_contact(&fitting, 1, 0, &initial_contact));
+    assert(bench_snap_to_breadboard(&fitting, 1));
+    for (int pin = 0; pin < 2; ++pin)
+    {
+        Pin contact;
+        assert(bench_find_contact(&fitting, 1, pin, &contact) && contact.component == 0);
+        float x, y, after_x, after_y;
+        bench_pin_position(&fitting.parts[1], pin, &x, &y);
+        assert(bench_set_scale(&fitting, 1, .6f));
+        bench_pin_position(&fitting.parts[1], pin, &after_x, &after_y);
+        assert(hypotf(x - after_x, y - after_y) < .001f);
+    }
+    bench_snapshot_clear(&fitting);
+    assert(bench_add(&fitting, PART_BREADBOARD, 650, 400) == 0);
+    assert(bench_add(&fitting, PART_DIP_SWITCH, 650, 400) == 1);
+    assert(bench_set_scale(&fitting, 1, .5f));
+    for (int pin = 0; pin < 8; ++pin)
+        assert(bench_find_contact(&fitting, 1, pin, &initial_contact) && initial_contact.component == 0);
+    bench_snapshot_clear(&fitting);
+    assert(bench_add(&fitting, PART_BREADBOARD_WIDE, 650, 400) == 0);
+    assert(bench_pin_count(PART_BREADBOARD_WIDE) == 840);
+    assert(bench_board_group_first(720) == 300 && bench_board_group_first(839) == 390);
+    assert(bench_board_group_first(569) != bench_board_group_first(570));
+    WorkbenchSettings fit_settings = workbench_settings_default();
+    assert(workbench_save_project("build/test-wide-board.elec", &fitting, &fit_settings));
+    assert(workbench_load_project("build/test-wide-board.elec", &fitting, &fit_settings));
+    assert(fitting.parts[0].type == PART_BREADBOARD_WIDE);
+    bench_snapshot_clear(&fitting);
     Workbench bench = {0}, saved = {0}, loaded = {0};
     static BenchHistory storage;
     BenchHistory *history = &storage;
