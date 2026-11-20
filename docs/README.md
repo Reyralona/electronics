@@ -29,6 +29,7 @@ O guia de uso acompanha a versão 0.45.0, revisada em 18/11/2026. Registros hist
 | [CHIPS_RECURSIVOS.md](CHIPS_RECURSIVOS.md) | Comparação técnica e decisão para a composição de chips. |
 | [LOGICA_DIGITAL.md](LOGICA_DIGITAL.md) | Estudo inicial dos modelos digitais e seus limites. |
 | [REVISAO_VISUAL.md](REVISAO_VISUAL.md) | Evidências das rodadas de revisão de arte. Capturas ficam no build local. |
+| [AUDITORIA_REPOSITORIO.md](AUDITORIA_REPOSITORIO.md) | Auditorias consolidadas, falhas confirmadas e bateria de uso planejada. |
 | [CONTINUIDADE.md](CONTINUIDADE.md) | Diário interno. Leia as entradas finais para retomar o trabalho. |
 
 O [CHANGELOG](../CHANGELOG.md) registra as versões.
