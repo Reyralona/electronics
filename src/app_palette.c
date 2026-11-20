@@ -11,7 +11,8 @@ static const PartType digital[] = {PART_AND, PART_NAND, PART_OR, PART_XOR, PART_
     PART_DFF, PART_CLOCK, PART_74HC00, PART_74HC08, PART_74HC32, PART_74HC86, PART_74HC04,
     PART_74HC02, PART_74HC10, PART_74HC11, PART_74HC14};
 /* Logic ICs by function: flip-flops, counters, registers, arithmetic, bus. */
-static const PartType logic[] = {PART_74HC74, PART_74HC161, PART_74HC173, PART_74HC283, PART_74HC245};
+static const PartType logic[] = {PART_74HC74, PART_74HC273, PART_74HC374, PART_74HC373, PART_74HC161, PART_74HC173,
+    PART_74HC283, PART_74HC245};
 static const PartType memory[] = {PART_AT28C16};
 static const PartType linear[] = {PART_NOTE};
 static const PartType sensors[] = {PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_PHOTODIODE,

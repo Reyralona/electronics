@@ -332,6 +332,45 @@ static void hex_schmitt_14(LogicWriter *w)
     }
 }
 
+/* 74HC273/373/374 pinout: pin 1 (~CLR or ~OE), pin 11 (CLK or LE), nD to nQ. */
+static const int octal_d_pins[] = {2, 3, 6, 7, 12, 13, 16, 17}, octal_q_pins[] = {1, 4, 5, 8, 11, 14, 15, 18};
+
+/* Eight cells of `model` (dff or dlatch) taking nD under pin 11; `reset` and `enable` may be NULL. */
+static void octal_cells(LogicWriter *w, const char *model, const char *reset, const char *enable)
+{
+    static const int controls[] = {0, 10};
+    inputs(w, controls, 2);
+    inputs(w, octal_d_pins, 8);
+    for (int bit = 0; bit < 8; ++bit)
+    {
+        char q[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(q, sizeof(q), "q%d", bit);
+        primitive(w, model, "d%d d10 null %s %s null", octal_d_pins[bit], reset ? reset : "null", q);
+        output(w, octal_q_pins[bit], q, enable);
+    }
+}
+
+/* SN74HC273: rising-edge D flip-flops with an asynchronous, active-low clear. */
+static void octal_dff_273(LogicWriter *w)
+{
+    primitive(w, "inv", "d0 clr");
+    octal_cells(w, "dff", "clr", NULL);
+}
+
+/* SN74HC373: LE high makes Q follow D, LE low holds; ~OE high releases the outputs and keeps the latches. */
+static void octal_latch_373(LogicWriter *w)
+{
+    primitive(w, "inv", "d0 en");
+    octal_cells(w, "dlatch", NULL, "en");
+}
+
+/* SN74HC374: rising-edge D flip-flops; ~OE high releases the outputs and keeps the stored bits. */
+static void octal_dff_374(LogicWriter *w)
+{
+    primitive(w, "inv", "d0 en");
+    octal_cells(w, "dff", NULL, "en");
+}
+
 /* EEPROM pins cross the same analog bridges as other CIs; its state runs in d_cosim. */
 static void eeprom_28c16(LogicWriter *w)
 {
@@ -404,6 +443,7 @@ typedef struct
 #define AT28C16_ABSOLUTE_MAX 6.25
 #define AT28C16_RECOMMENDED_MAX 5.5
 #define HC_RATINGS HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX, HC_OUTPUT_ABSOLUTE_MAX_AMPS
+#define HC_RATINGS_35 HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX, HC35_OUTPUT_ABSOLUTE_MAX_AMPS
 static const LogicChip chips[] = {
     {PART_74HC161, 15, 7, HC_RATINGS, counter_161},
     {PART_74HC173, 15, 7, HC_RATINGS, register_173},
@@ -416,6 +456,9 @@ static const LogicChip chips[] = {
     {PART_74HC10, 13, 6, HC_RATINGS, triple_nand_10},
     {PART_74HC11, 13, 6, HC_RATINGS, triple_and_11},
     {PART_74HC14, 13, 6, HC_RATINGS, hex_schmitt_14},
+    {PART_74HC273, 19, 9, HC_RATINGS, octal_dff_273},
+    {PART_74HC373, 19, 9, HC_RATINGS_35, octal_latch_373},
+    {PART_74HC374, 19, 9, HC_RATINGS_35, octal_dff_374},
 };
 
 static const LogicChip *logic_chip(PartType type)
@@ -470,6 +513,8 @@ int netlist_logic_models(FILE *out)
                    ".model lic_dff d_dff(ic=0 clk_delay=1n set_delay=1n reset_delay=1n rise_delay=1n fall_delay=1n)\n"
                    ".model lic_one d_pullup\n"
                    ".model lic_nand d_nand(rise_delay=1n fall_delay=1n)\n"
+                   ".model lic_dlatch d_dlatch(ic=0 data_delay=1n enable_delay=1n set_delay=1n reset_delay=1n "
+                   "rise_delay=1n fall_delay=1n)\n"
                    ".model lic_srlatch d_srlatch(ic=0 sr_delay=1n enable_delay=1n set_delay=1n reset_delay=1n "
                    "rise_delay=1n fall_delay=1n)\n"
                    /* 74HC14 thresholds VT+ = .55 VCC and VT- = .35 VCC (TI SCLS085L typical, 4.5 and 6 V). */

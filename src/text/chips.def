@@ -150,3 +150,24 @@ UI_TEXT(PIN_EE_IO, "Linha de dados: entrada na gravação, saída na leitura.", 
 UI_TEXT(PIN_EE_CE, "Seleciona o chip: em 0 ele responde.", "Chip enable: low makes it respond.")
 UI_TEXT(PIN_EE_OE, "Habilita a leitura: em 0 os dados saem.", "Output enable: low drives the data out.")
 UI_TEXT(PIN_EE_WE, "Grava: um pulso em 0 grava o dado no endereço.", "Write enable: a low pulse writes the data at the address.")
+/* 74HC273/373/374: eight data bits, same pinout; nD goes to nQ */
+UI_TEXT(DOC_74HC273, "Oito flip-flops D. Na borda de subida do clock, cada Q copia seu D. ~CLR em 0 zera tudo na hora.",
+        "Eight D flip-flops. On the rising clock edge, each Q copies its D. ~CLR low clears all at once.")
+UI_TEXT(DOC_74HC373,
+        "Oito latches D com saídas de três estados. Com LE em 1, Q segue D; com LE em 0, Q guarda o valor.",
+        "Eight D latches with three-state outputs. With LE high, Q follows D; with LE low, Q holds its value.")
+UI_TEXT(DOC_74HC374,
+        "Oito flip-flops D com saídas de três estados. Na borda de subida do clock, cada Q copia seu D.",
+        "Eight D flip-flops with three-state outputs. On the rising clock edge, each Q copies its D.")
+UI_TEXT(PIN_OCT_D, "Dado: vai para a saída Q de mesmo número.", "Data: goes to the Q output with the same number.")
+UI_TEXT(PIN_OCT_CLK, "Clock: carrega os 8 dados na borda de subida.", "Clock: loads the 8 data bits on the rising edge.")
+UI_TEXT(PIN_OCT_OE, "Habilita as saídas: em 0 ligadas, em 1 alta impedância. O valor guardado não muda.",
+        "Output enable: low drives the outputs, high leaves them in high impedance. The stored value stays.")
+UI_TEXT(PIN_273_CLR, "Clear: em 0 zera as 8 saídas na hora, sem esperar o clock.",
+        "Clear: low resets the 8 outputs at once, without the clock.")
+UI_TEXT(PIN_273_Q, "Saída do flip-flop de mesmo número.", "Output of the flip-flop with the same number.")
+UI_TEXT(PIN_373_LE, "Latch: em 1 as saídas seguem D; em 0 guardam o último valor.",
+        "Latch enable: high makes the outputs follow D; low holds the last value.")
+UI_TEXT(PIN_373_Q, "Saída do latch de mesmo número, com três estados.", "Three-state output of the latch with the same number.")
+UI_TEXT(PIN_374_Q, "Saída do flip-flop de mesmo número, com três estados.",
+        "Three-state output of the flip-flop with the same number.")

@@ -13,6 +13,8 @@
 #define HC_SUPPLY_ABSOLUTE_MAX 7.0
 #define HC_SUPPLY_RECOMMENDED_MAX 6.0
 #define HC_OUTPUT_ABSOLUTE_MAX_AMPS .025
+/* Bus-driver class (TI SN74HC125, 151, 157, 244, 373, 374 and 595, consulted 20/11/2026): 35 mA per output. */
+#define HC35_OUTPUT_ABSOLUTE_MAX_AMPS .035
 #define LOGIC_REVERSE_ABSOLUTE_MAX .5
 /* Chosen policy (20/11/2026): above the absolute maximum the part warns; near twice it (a hard short or bus
  * contention) it burns. 1.8 and not 2: two opposed outputs at 5 V pass exactly 2x (5 V / 100 ohm) and must

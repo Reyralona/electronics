@@ -452,6 +452,103 @@ static void schmitt_holds_between_thresholds(void)
     bench_snapshot_clear(&rig.bench);
 }
 
+/* Continues the session (starting it when *live is NULL) and reads the loads. */
+static int step(Rig *rig, SpiceLive **live, double seconds, const int *loads, int count)
+{
+    static SimAutoResult result;
+    int fresh = *live == NULL;
+    *live = run(rig, seconds, &result, *live);
+    assert(fresh || !spice_live_restarted(*live));
+    return read_bits(&result, loads, count);
+}
+
+static int add_clock(Rig *rig, int part, int pin)
+{
+    int clock = bench_add(&rig->bench, PART_CLOCK, 300, 900);
+    assert(clock >= 0 && bench_set_value(&rig->bench, clock, CLOCK_HZ));
+    wire(rig, clock, 1, rig->source, 1);
+    wire(rig, clock, 0, part, pin);
+    return clock;
+}
+
+static const int octal_d[] = {2, 3, 6, 7, 12, 13, 16, 17}, octal_q[] = {1, 4, 5, 8, 11, 14, 15, 18};
+
+/* D1-D4 tied to 0101 (bit 0 first); D5-D8 share one switchable source. */
+static int octal_rig(Rig *rig, PartType type, int *loads, int *data)
+{
+    rig_start(rig);
+    int part = chip(rig, type);
+    tie_bits(rig, part, octal_d, 4, 0x5);
+    *data = control_source(rig, part, octal_d[4], 1, 100);
+    for (int bit = 5; bit < 8; ++bit)
+        wire(rig, *data, 0, part, octal_d[bit]);
+    probes(rig, part, octal_q, 8, loads);
+    return part;
+}
+
+/* With ~CLR high the clock loads F5; ~CLR low clears at once, clock or not; released, the next edge reloads. */
+static void octal_dff_273_clears(void)
+{
+    static Rig rig;
+    int loads[8], data;
+    int reg = octal_rig(&rig, PART_74HC273, loads, &data);
+    add_clock(&rig, reg, 10);
+    int clear = control_source(&rig, reg, 0, 1, 300);
+    SpiceLive *live = NULL;
+    assert(step(&rig, &live, 1.75 / CLOCK_HZ, loads, 8) == 0xF5);
+    assert(bench_set_on(&rig.bench, clear, 0));
+    assert(step(&rig, &live, .1 / CLOCK_HZ, loads, 8) == 0);
+    assert(step(&rig, &live, 1 / CLOCK_HZ, loads, 8) == 0);
+    assert(bench_set_on(&rig.bench, clear, 1));
+    assert(step(&rig, &live, 1 / CLOCK_HZ, loads, 8) == 0xF5);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* LE high: Q follows D. LE low: Q holds while D changes. ~OE high releases Q; low again shows the held bits. */
+static void octal_latch_373_follows_and_holds(void)
+{
+    static Rig rig;
+    int loads[8], data;
+    int latch = octal_rig(&rig, PART_74HC373, loads, &data);
+    int enable = control_source(&rig, latch, 10, 1, 300);
+    int release = control_source(&rig, latch, 0, 0, 500);
+    SpiceLive *live = NULL;
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0xF5);
+    assert(bench_set_on(&rig.bench, data, 0));
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0x05);
+    assert(bench_set_on(&rig.bench, enable, 0));
+    assert(bench_set_on(&rig.bench, data, 1));
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0x05);
+    assert(bench_set_on(&rig.bench, release, 1));
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0);
+    assert(bench_set_on(&rig.bench, release, 0));
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0x05);
+    assert(bench_set_on(&rig.bench, enable, 1));
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0xF5);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* The clock loads F5; ~OE high releases Q while the clock goes on loading 05; ~OE low shows 05. */
+static void octal_dff_374_loads_while_released(void)
+{
+    static Rig rig;
+    int loads[8], data;
+    int reg = octal_rig(&rig, PART_74HC374, loads, &data);
+    add_clock(&rig, reg, 10);
+    int release = control_source(&rig, reg, 0, 0, 300);
+    SpiceLive *live = NULL;
+    assert(step(&rig, &live, 1.75 / CLOCK_HZ, loads, 8) == 0xF5);
+    assert(bench_set_on(&rig.bench, release, 1));
+    assert(bench_set_on(&rig.bench, data, 0));
+    assert(step(&rig, &live, 1 / CLOCK_HZ, loads, 8) == 0);
+    assert(bench_set_on(&rig.bench, release, 0));
+    assert(step(&rig, &live, .1 / CLOCK_HZ, loads, 8) == 0x05);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -470,6 +567,10 @@ int main(int argc, char **argv)
     triple_gates_decide(PART_74HC11, 0x1);
     schmitt_holds_between_thresholds();
     puts("Logic ICs: 74HC02 nors, 74HC10 nands, 74HC11 ands, 74HC14 holds between its thresholds.");
+    octal_dff_273_clears();
+    octal_latch_373_follows_and_holds();
+    octal_dff_374_loads_while_released();
+    puts("Logic ICs: 74HC273 loads and clears, 74HC373 follows, holds and releases, 74HC374 loads while released.");
     printf("Logic ICs: 74HC283 adds, 74HC245 passes and releases, AT28C16 reads, 74HC173 loads and releases, "
            "74HC161 counts and carries.\n");
     return 0;
