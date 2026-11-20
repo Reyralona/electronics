@@ -3151,7 +3151,17 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
         if (!app->bench.parts[i].group && component_has_flag(app->bench.parts[i].type, COMPONENT_DIP))
         {
             color(.85f, .88f, .9f);
-            text(font, app->bench.parts[i].x - 32, app->bench.parts[i].y + 5, component_symbol(app->bench.parts[i].type));
+            const Part *part = &app->bench.parts[i];
+            const char *symbol = component_symbol(part->type);
+            float body_width = (bench_pin_count(part->type) / 2 - 1) * BENCH_DIP_PITCH + 14;
+            float room = (part->rotation % 2 ? 26 : body_width) - 10;
+            float width = (float)app_text_utf8_width(symbol, 2048);
+            float scale = bench_part_scale(part) * fminf(1, room / fmaxf(1, width));
+            glPushMatrix();
+            glTranslatef(part->x, part->y, 0);
+            glScalef(scale, scale, 1);
+            text(font, -width / 2, 5, symbol);
+            glPopMatrix();
         }
     for (i = 0; i < app->bench.part_count; ++i)
         if (!app->bench.parts[i].group && is_gate(app->bench.parts[i].type))

@@ -29,6 +29,12 @@ static void check_localized_texts(void)
 int main(void)
 {
     check_localized_texts();
+    for (int type = 0; type < PART_TYPE_COUNT; ++type)
+    {
+        const ComponentInfo *info = component_info((PartType)type);
+        assert(info && component_from_legacy(type, 38) == info);
+        assert(component_by_id(info->id) == info);
+    }
     /* This is the historical file contract, not the current enum's declaration order. */
     static const char *legacy_ids[] = {"source",    "switch",   "led",   "breadboard", "resistor",
                                        "capacitor", "inductor", "and",   "nand",       "or",
