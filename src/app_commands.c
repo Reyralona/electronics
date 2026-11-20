@@ -93,6 +93,7 @@ static void command_history(AppState *app, SDL_Keycode key)
         key == SDLK_Z ? bench_history_undo(app->history, &app->bench) : bench_history_redo(app->history, &app->bench);
     if (changed)
     {
+        mcu_runtime_reset(app->mcu);
         app->packed_placing = 0;
         bench_selection_clear(&app->selection);
         app->selected = -1;

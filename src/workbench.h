@@ -145,6 +145,7 @@ typedef struct
     uint64_t exposed[(WORKBENCH_MAX_PINS + 63) / 64];
     float scale; /* 0 is the legacy/default identity scale. */
     int edit_origin; /* Transaction provenance; cleared by paste/import, never serialized. */
+    uint64_t runtime_identity; /* Assigned on first MCU run; copies/imports start fresh, never serialized. */
 } Part;
 typedef struct
 {

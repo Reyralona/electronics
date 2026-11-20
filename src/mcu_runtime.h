@@ -21,6 +21,7 @@ typedef struct
     char error[200];
     int error_line;
     int runs_default; /* running the board's default program (Part.code is NULL) */
+    uint64_t identity;
 } McuInstance;
 
 typedef struct
@@ -34,6 +35,7 @@ typedef struct
     McuInstance mcu[WORKBENCH_MAX_COMPONENTS];
     LcdScreen lcd[WORKBENCH_MAX_COMPONENTS];
     double clock_ms;
+    uint64_t next_identity;
 } McuRuntime;
 
 McuRuntime *mcu_runtime_create(void);

@@ -103,8 +103,43 @@ static void compile_error_releases_pins(void)
     bench_snapshot_clear(&bench);
 }
 
+static void power_and_identity_follow_the_board(void)
+{
+    static Workbench bench;
+    static double elements[WORKBENCH_MAX_COMPONENTS][COMPONENT_MAX_ELEMENTS];
+    McuRuntime *runtime = mcu_runtime_create();
+    int tiny = bench_add(&bench, PART_ATTINY85, 0, 0);
+    assert(bench_set_code(&bench, tiny, "void setup(){Serial.println(456);} void loop(){delay(100);}"));
+    mcu_runtime_step(runtime, &bench, NULL, 0);
+    assert(!runtime->mcu[tiny].serial[0]);
+    elements[tiny][6] = 5;
+    mcu_runtime_step(runtime, &bench, (const double(*)[COMPONENT_MAX_ELEMENTS])elements, 1);
+    assert(strstr(runtime->mcu[tiny].serial, "456"));
+    elements[tiny][6] = 0;
+    mcu_runtime_step(runtime, &bench, (const double(*)[COMPONENT_MAX_ELEMENTS])elements, 1);
+    assert(!runtime->mcu[tiny].vm);
+    elements[tiny][6] = 5;
+    mcu_runtime_step(runtime, &bench, (const double(*)[COMPONENT_MAX_ELEMENTS])elements, 1);
+    assert(strstr(runtime->mcu[tiny].serial, "456"));
+    bench_snapshot_clear(&bench);
+    mcu_runtime_reset(runtime);
+    const char *code = "void setup(){pinMode(13,OUTPUT);} void loop(){delay(100);}";
+    int first = bench_add(&bench, PART_ARDUINO_UNO, 0, 0);
+    assert(bench_set_code(&bench, first, code));
+    mcu_runtime_step(runtime, &bench, NULL, 0);
+    assert(bench.parts[first].io_mode[13] == MCU_OUTPUT);
+    int second = bench_add(&bench, PART_ARDUINO_UNO, 200, 0);
+    assert(bench_set_code(&bench, second, code));
+    bench_remove(&bench, first);
+    mcu_runtime_step(runtime, &bench, NULL, 0);
+    assert(bench.parts[0].io_mode[13] == MCU_OUTPUT);
+    mcu_runtime_destroy(runtime);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
+    power_and_identity_follow_the_board();
     compile_error_releases_pins();
     assert(argc == 2);
     executable = argv[1];

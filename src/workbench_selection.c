@@ -168,6 +168,7 @@ static int paste_into(Workbench *bench, BenchSelection *selection, const BenchCl
     {
         Part part = copy->parts[i];
         part.edit_origin = 0;
+        part.runtime_identity = 0;
         part.x += dx;
         part.y += dy;
         if (part.group)

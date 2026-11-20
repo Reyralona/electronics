@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MCU_BARE_MINIMUM_SUPPLY_VOLTS 2.7
+
 typedef struct
 {
     McuRuntime *runtime;
@@ -180,7 +182,7 @@ static void host_lcd(void *context, int object, McuLcdOperation operation, int a
 /* The default program counts as unchanged when only the interface language changed its comment. */
 static int instance_current(const McuInstance *instance, const Part *part, const char *source)
 {
-    if (!instance->source || instance->type != part->type)
+    if (!instance->source || instance->type != part->type || instance->identity != part->runtime_identity)
         return 0;
     if (instance->runs_default && !part->code)
         return 1;
@@ -195,6 +197,7 @@ static int instance_prepare(McuRuntime *runtime, int index, const Part *part, co
         return instance->vm != NULL;
     instance_clear(instance);
     instance->type = part->type;
+    instance->identity = part->runtime_identity;
     instance->runs_default = part->code == NULL;
     instance->source = _strdup(source);
     instance->started_ms = runtime->clock_ms;
@@ -225,6 +228,17 @@ void mcu_runtime_step(McuRuntime *runtime, Workbench *bench,
         {
             if (runtime->mcu[i].source)
                 instance_clear(&runtime->mcu[i]);
+            continue;
+        }
+        Part *part = &bench->parts[i];
+        if (!part->runtime_identity)
+            part->runtime_identity = ++runtime->next_identity;
+        /* USB-fed boards have an ideal supply; bare MCUs need a measured VCC. */
+        if (board->supply_volts <= 0 && (!elements || !isfinite(elements[i][board->io_count]) ||
+            elements[i][board->io_count] < MCU_BARE_MINIMUM_SUPPLY_VOLTS))
+        {
+            instance_clear(&runtime->mcu[i]);
+            release_pins(part);
             continue;
         }
         if (!instance_prepare(runtime, i, &bench->parts[i], board))

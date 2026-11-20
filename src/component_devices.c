@@ -39,7 +39,7 @@ static const ComponentDevice devices[] = {
       {-28, 58}, {-14, 58}, {0, 58}},
      160, 46, 20, 0, 0},
     {PART_ATTINY85, {{-21, 22}, {-7, 22}, {7, 22}, {21, 22}, {21, -22}, {7, -22}, {-7, -22}, {-21, -22}},
-     30, 14, 6, 0, 0},
+     30, 14, 7, 0, 0},
     {PART_LCD_I2C, {{-136, -21}, {-136, -7}, {-136, 7}, {-136, 21}}, 124, 46, 1, 0, 0},
 };
 
@@ -88,6 +88,11 @@ int component_element_vector(PartType type, int index, int element, char *vector
     case PART_ARDUINO_UNO:
     case PART_ESP32:
     case PART_ATTINY85:
+        if (type == PART_ATTINY85 && element == 6)
+        {
+            snprintf(vector, capacity, "v(mcu%d_vcc)", index);
+            return 1;
+        }
         snprintf(vector, capacity, "v(mcu%d_in%d)", index, element);
         return 1;
     case PART_LCD_I2C:

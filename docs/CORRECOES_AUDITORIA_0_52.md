@@ -8,9 +8,9 @@ Pedido: corrigir os onze pontos, sem integrar/publicar por enquanto. Não altera
 | Item | Estado | Evidência / próximo passo |
 |---|---|---|
 | 1. Corrente de alimentação do 555/LM358 | Pendente | Regressão com carga e fonte CV/CC limitada |
-| 2. Identidade do runtime ao excluir placa | Pendente | Regressão: remover Uno e substituir por código igual |
+| 2. Identidade do runtime ao excluir placa | Corrigido; teste especifico passou | test_mcu: exclusao com codigo igual, sem VCC, queda e retorno |
 | 3. Gráfico após aplicar chip | Pendente | Regressão: fonte muda de índice sem mudar contagens |
-| 4. ATtiny sem alimentação | Pendente | Medir VCC, interromper e reiniciar execução |
+| 4. ATtiny sem alimentação | Corrigido; teste especifico passou | test_mcu: exclusao com codigo igual, sem VCC, queda e retorno |
 | 5. Histórico sob falha de memória | Pendente | Injetar falha, garantir transação |
 | 6. Erro de envio ocultado | Pendente | Preservar causa no botão e Ctrl+Enter |
 | 7. Relógio das placas | Pendente | Usar tempo aceito do solver, limitar latência de saída |
@@ -134,3 +134,7 @@ Passaram test_eeprom, test_mcu_lang, test_workbench_group_edit e test_sim_state.
 ### Item 1
 
 Fonte de corrente comportamental debita de VCC a corrente positiva medida na sa?da; corrente absorvida retorna ao GND. Teste novo falhou antes e passou ap?s a corre??o. Fonte CV/CC existente tem ganho finito: teste admite 0,3 mA de excesso no limite de 10 mA (medido no LM358: 10,20 mA). Comandos: linha gcc de test_linear_chips em build.ps1; ./build/test_linear_chips.exe build/spice-local/ucrt64/bin/ngspice_con.exe. Modelos continuam funcionais, sem corrente de repouso completa ou t?rmica.
+
+### Itens 2 e 4
+
+Identidade de runtime atribuida na primeira execucao, conservada ao mover e em snapshots; colar zera identidade para criar instancia independente. Nao altera formato de arquivo. Undo/redo reiniciam programas. ATtiny mede VCC no elemento 6 e so executa com pelo menos 2,7 V; perder alimentacao limpa VM/pinos, retornar repete setup. Uno/ESP32 mantem fonte USB ideal. Regressao de test_mcu falhou antes; depois passaram identidade, energia, blink, entradas e LCD.
