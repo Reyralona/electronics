@@ -50,8 +50,10 @@ static void paused_program(void)
     SDL_Delay(2);
     app_simulation_update(&app);
     assert(app.mcu->clock_ms == clock && !strcmp(app.mcu->mcu[0].serial, serial));
+    /* Resumed, the program follows the solver clock: 2 ms of accepted simulated time run loop() again. */
     app.sim.sim_running = 1;
-    SDL_Delay(2);
+    app.sim.live_mode = 1;
+    app.sim.live_time = clock / 1000 + .002;
     app_simulation_update(&app);
     assert(app.mcu->clock_ms > clock && strcmp(app.mcu->mcu[0].serial, serial));
     app_state_dispose(&app);

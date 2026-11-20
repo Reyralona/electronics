@@ -175,7 +175,7 @@ static void check_project_overwrite_flow(void)
     app_state_init(&app);
     app.selftest = 1;
     app.save_slot = 7;
-    remove("build/test-slots/slot-8.elec");
+    remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-8.elec"));
     /* Save a resistor, add an LED, then try saving over the occupied slot. */
     assert(bench_add(&app.bench, PART_RESISTOR, 400, 300) == 0);
     app_projects_save(&app);
@@ -184,7 +184,7 @@ static void check_project_overwrite_flow(void)
     app_projects_save(&app);
     Workbench saved = {0};
     WorkbenchSettings settings;
-    assert(workbench_load_project("build/test-slots/slot-8.elec", &saved, &settings));
+    assert(workbench_load_project(APP_TEST_PATH(APP_TEST_SLOTS, "slot-8.elec"), &saved, &settings));
     assert(saved.part_count == 1);
     bench_snapshot_clear(&saved);
     app_commands_key(&app, NULL, SDLK_ESCAPE, 0);
@@ -195,10 +195,10 @@ static void check_project_overwrite_flow(void)
     assert(app.project_overwrite == 7);
     app.save_slot = 6;
     app_projects_confirm(&app, 1);
-    assert(workbench_load_project("build/test-slots/slot-8.elec", &saved, &settings));
+    assert(workbench_load_project(APP_TEST_PATH(APP_TEST_SLOTS, "slot-8.elec"), &saved, &settings));
     assert(saved.part_count == 2);
     bench_snapshot_clear(&saved);
-    remove("build/test-slots/slot-8.elec");
+    remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-8.elec"));
     app_state_dispose(&app);
 }
 
@@ -212,7 +212,7 @@ static void check_project_growth_and_fit_flow(void)
     for (int slot = 0; slot < 11; ++slot)
     {
         char path[128];
-        snprintf(path, sizeof(path), "build/test-slots/slot-%d.elec", slot + 1);
+        snprintf(path, sizeof(path), "%s/slot-%d.elec", app_test_directory(APP_TEST_SLOTS), slot + 1);
         remove(path);
     }
     for (int slot = 0; slot < 11; ++slot)
@@ -240,7 +240,7 @@ static void check_project_growth_and_fit_flow(void)
         for (int slot = 0; slot < 11; ++slot)
         {
             char path[128];
-            snprintf(path, sizeof(path), "build/test-slots/slot-%d.elec", slot + 1);
+            snprintf(path, sizeof(path), "%s/slot-%d.elec", app_test_directory(APP_TEST_SLOTS), slot + 1);
             remove(path);
         }
     app_state_dispose(&app);
@@ -250,7 +250,7 @@ static void check_project_replaces_editor_and_runtime(void)
 {
     static AppState app;
     static Workbench project;
-    _mkdir("build/test-slots");
+    _mkdir(app_test_directory(APP_TEST_SLOTS));
     app_state_init(&app);
     app.selftest = 1;
     app.save_slot = 10;
@@ -263,7 +263,7 @@ static void check_project_replaces_editor_and_runtime(void)
     const char *code_b = "void setup(){}void loop(){delay(33);}";
     assert(bench_set_code(&project, 0, code_b));
     WorkbenchSettings settings = workbench_settings_default();
-    assert(workbench_save_project("build/test-slots/slot-11.elec", &project, &settings));
+    assert(workbench_save_project(APP_TEST_PATH(APP_TEST_SLOTS, "slot-11.elec"), &project, &settings));
     app_projects_refresh(&app);
     app.save_slot = 11;
     app_projects_load(&app);
@@ -285,7 +285,7 @@ static void check_project_replaces_editor_and_runtime(void)
     bench_move_part(&app.bench, 0, 600, 300);
     mcu_runtime_step(app.mcu, &app.bench, NULL, 2);
     assert(app.bench.parts[0].io_mode[io] == MCU_OUTPUT);
-    assert(workbench_save_project("build/test-slots/slot-11.elec", &app.bench, &settings));
+    assert(workbench_save_project(APP_TEST_PATH(APP_TEST_SLOTS, "slot-11.elec"), &app.bench, &settings));
     app_projects_load(&app);
     mcu_runtime_step(app.mcu, &app.bench, NULL, 2);
     assert(app.bench.parts[0].io_mode[io] == MCU_OUTPUT);
@@ -294,7 +294,7 @@ static void check_project_replaces_editor_and_runtime(void)
     app.code_dirty = 1;
     app_commands_load_example(&app, 0);
     assert(app.code_part == -1);
-    remove("build/test-slots/slot-11.elec");
+    remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-11.elec"));
     bench_snapshot_clear(&project);
     app_state_dispose(&app);
 }
@@ -400,7 +400,7 @@ int main(void)
 
     app.selftest = 1;
     app.save_slot = 8;
-    remove("build/test-slots/slot-9.elec");
+    remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-9.elec"));
     app.show_grid = 0;
     app.wire_color = 4;
     app_commands_key(&app, NULL, SDLK_S, SDL_KMOD_CTRL);
@@ -410,19 +410,19 @@ int main(void)
     app.wire_color = 0;
     app_commands_key(&app, NULL, SDLK_L, SDL_KMOD_CTRL);
     assert(app.bench.part_count == original_count && !app.show_grid && app.wire_color == 4);
-    FILE *invalid = fopen("build/test-slots/slot-9.elec", "w");
+    FILE *invalid = fopen(APP_TEST_PATH(APP_TEST_SLOTS, "slot-9.elec"), "w");
     assert(invalid);
     fputs("invalid slot", invalid);
     fclose(invalid);
     uint64_t unchanged = app.bench.revision;
     app_commands_key(&app, NULL, SDLK_L, SDL_KMOD_CTRL);
     assert(app.bench.revision == unchanged && !strcmp(app.status, tr(TXT_APP_PROJECT_LOAD_FAILED)));
-    remove("build/test-slots/slot-9.elec");
+    remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-9.elec"));
 
     for (int i = 1; i <= 8; ++i)
     {
         char path[128];
-        snprintf(path, sizeof(path), "build/test-blocks/block-%d.elec", i);
+        snprintf(path, sizeof(path), "%s/block-%d.elec", app_test_directory(APP_TEST_BLOCKS), i);
         remove(path);
     }
     app_commands_key(&app, NULL, SDLK_A, SDL_KMOD_CTRL);
@@ -437,7 +437,7 @@ int main(void)
     assert(!app.bench.groups[1].active && app.bench.groups[0].active);
     app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
     assert(app.bench.groups[1].active);
-    remove("build/test-blocks/block-1.elec");
+    remove(APP_TEST_PATH(APP_TEST_BLOCKS, "block-1.elec"));
 
     app_state_dispose(&app);
     return 0;

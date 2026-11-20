@@ -113,9 +113,8 @@ typedef struct AppState
     uint64_t editor_parent_revision, editor_initial_revision, editor_saved_revision, editor_opened_at;
     char editor_name[BENCH_GROUP_NAME_CAPACITY];
     char editor_initial_name[BENCH_GROUP_NAME_CAPACITY], editor_saved_name[BENCH_GROUP_NAME_CAPACITY];
-    /* Microcontrollers: programs run on the wall clock; the code editor edits one board at a time. */
+    /* Microcontrollers: programs follow the solver clock; the code editor edits one board at a time. */
     McuRuntime *mcu;
-    uint64_t mcu_last_ticks;
     int code_part, code_cursor, code_scroll, code_dirty;
     int completion_selected, completion_hidden;
     char code_text[MCU_CODE_CAPACITY];
@@ -133,4 +132,10 @@ typedef enum
 } AppPanel;
 /* Opens panel and closes the others, or closes it if it was already open. Returns 1 if now open. */
 int app_state_toggle_panel(AppState *app, AppPanel panel);
+typedef enum { APP_TEST_BLOCKS, APP_TEST_SLOTS } AppTestDirectory;
+const char *app_test_directory(AppTestDirectory kind);
+#define APP_TEST_PATH_CAPACITY 256
+/* The compound literal keeps each test path alive for its caller's enclosing block. */
+#define APP_TEST_PATH(kind, leaf) app_test_path((char[APP_TEST_PATH_CAPACITY]){0}, kind, leaf)
+char *app_test_path(char path[APP_TEST_PATH_CAPACITY], AppTestDirectory kind, const char *leaf);
 #endif

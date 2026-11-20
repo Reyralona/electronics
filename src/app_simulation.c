@@ -408,6 +408,9 @@ static void schedule_analysis(AppState *app)
                 set_live_probe(app, &options);
                 double span = app_simulation_live_span(app->live_last_scheduled, now, options.step,
                                                        app->simulation_speed, app->sim.live_rate);
+                double event = mcu_runtime_next_event(app->mcu);
+                if (event > app->sim.live_time)
+                    span = fmin(span, event - app->sim.live_time);
                 started = spice_job_start_live(&app->dc_job, &app->bench, app->ngspice, &options,
                                                span);
             }
@@ -423,17 +426,15 @@ static void schedule_analysis(AppState *app)
     }
 }
 
-/* Programs run on the wall clock while the simulation runs; paused means frozen. */
+/* Firmware and analog components share the last accepted solver time. */
 static void step_microcontrollers(AppState *app)
 {
-    uint64_t now = SDL_GetTicks();
-    double elapsed = app->mcu_last_ticks && app->sim.sim_running ? (double)(now - app->mcu_last_ticks) : 0;
-    app->mcu_last_ticks = now;
     if (!app->sim.sim_running)
         return;
     int measured = sim_state_has_result(&app->sim, SIM_RESULT_DC);
-    mcu_runtime_step(app->mcu, &app->bench, measured ? (const double(*)[COMPONENT_MAX_ELEMENTS])app->sim.dc_elements : NULL,
-                     elapsed);
+    mcu_runtime_at(app->mcu, &app->bench,
+                   measured ? (const double(*)[COMPONENT_MAX_ELEMENTS])app->sim.dc_elements : NULL,
+                   app->sim.live_mode ? app->sim.live_time : 0);
 }
 
 static void start_pending_trace(AppState *app)

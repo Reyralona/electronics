@@ -45,6 +45,7 @@ void mcu_runtime_reset(McuRuntime *runtime)
         return;
     for (int i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
         instance_clear(&runtime->mcu[i]);
+    runtime->clock_ms = 0;
     memset(runtime->lcd, 0, sizeof(runtime->lcd));
     free(runtime->connection_nodes);
     runtime->connection_nodes = NULL;
@@ -272,4 +273,30 @@ void mcu_runtime_step(McuRuntime *runtime, Workbench *bench,
                         sizeof(instance->error)))
             release_pins(&bench->parts[i]);
     }
+}
+
+void mcu_runtime_at(McuRuntime *runtime, Workbench *bench,
+                    const double (*elements)[COMPONENT_MAX_ELEMENTS], double seconds)
+{
+    if (!runtime || !isfinite(seconds) || seconds < 0)
+        return;
+    double target_ms = seconds * 1000;
+    if (target_ms < runtime->clock_ms - MCU_TIME_TOLERANCE_MS)
+        mcu_runtime_reset(runtime);
+    mcu_runtime_step(runtime, bench, elements, fmax(0, target_ms - runtime->clock_ms));
+}
+
+double mcu_runtime_next_event(const McuRuntime *runtime)
+{
+    double next = INFINITY;
+    if (!runtime)
+        return next;
+    for (int i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
+    {
+        const McuInstance *instance = &runtime->mcu[i];
+        double wake = instance->started_ms + mcu_vm_wake_ms(instance->vm);
+        if (wake > runtime->clock_ms + MCU_TIME_TOLERANCE_MS && wake < next)
+            next = wake;
+    }
+    return next / 1000;
 }

@@ -16,7 +16,7 @@ enum { TRASH_NAME_ATTEMPTS = 100 };
 
 static void block_path(const AppState *app, int index, char *path, size_t capacity)
 {
-    snprintf(path, capacity, "%s/block-%d.elec", app->selftest ? "build/test-blocks" : "blocks", index + 1);
+    snprintf(path, capacity, "%s/block-%d.elec", app->selftest ? app_test_directory(APP_TEST_BLOCKS) : "blocks", index + 1);
 }
 
 /* Free name in the trash: deletions of the same slot within one second get a counter suffix. */
@@ -135,7 +135,7 @@ int app_packing_rename_model(AppState *app, uint64_t model, const char *legacy_n
 
 int app_packing_store_model(AppState *app, const Workbench *model, int *slot)
 {
-    const char *directory = app->selftest ? "build/test-blocks" : "blocks";
+    const char *directory = app->selftest ? app_test_directory(APP_TEST_BLOCKS) : "blocks";
     if (_mkdir(directory) != 0 && errno != EEXIST)
     {
         snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_LIBRARY_FOLDER_FAILED),
@@ -292,7 +292,7 @@ int app_packing_delete(AppState *app, int index)
         return 0;
     }
     app->library_delete_armed = -1;
-    const char *library = app->selftest ? "build/test-blocks" : "blocks";
+    const char *library = app->selftest ? app_test_directory(APP_TEST_BLOCKS) : "blocks";
     char path[128], trash[160], target[224];
     block_path(app, index, path, sizeof(path));
     snprintf(trash, sizeof(trash), "%s/lixeira", library);

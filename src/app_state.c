@@ -2,6 +2,29 @@
 #include "ui_text.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <direct.h>
+#include <process.h>
+
+const char *app_test_directory(AppTestDirectory kind)
+{
+    static char paths[2][96];
+    static unsigned long long nonce;
+    if (!nonce)
+        nonce = SDL_GetPerformanceCounter();
+    int slot = kind == APP_TEST_SLOTS;
+    if (!paths[slot][0])
+        snprintf(paths[slot], sizeof(paths[slot]), "build/test-%s-%d-%llu", slot ? "slots" : "blocks", _getpid(), nonce);
+    _mkdir("build");
+    _mkdir(paths[slot]);
+    return paths[slot];
+}
+
+char *app_test_path(char path[APP_TEST_PATH_CAPACITY], AppTestDirectory kind, const char *leaf)
+{
+    snprintf(path, APP_TEST_PATH_CAPACITY, "%s/%s", app_test_directory(kind), leaf);
+    return path;
+}
 
 void app_state_init(AppState *app)
 {

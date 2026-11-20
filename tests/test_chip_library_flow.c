@@ -13,7 +13,7 @@
 #include <time.h>
 #include <windows.h>
 
-static const char *const library_dir = "build/test-blocks";
+static const char *library_dir;
 
 static void empty_library(void)
 {
@@ -119,8 +119,8 @@ static void leave_chip(AppState *inside)
 /* Save the bench to a project file and open it again, as after closing and reopening the program. */
 static void reopen_project(AppState *app)
 {
-    const char *folder = "build/test-slots";
-    const char *path = "build/test-slots/chip-flow.elec";
+    const char *folder = app_test_directory(APP_TEST_SLOTS);
+    const char *path = APP_TEST_PATH(APP_TEST_SLOTS, "chip-flow.elec");
     assert(_mkdir(folder) == 0 || errno == EEXIST);
     WorkbenchSettings settings = workbench_settings_default();
     assert(workbench_save_project(path, &app->bench, &settings));
@@ -143,6 +143,7 @@ static void build_bench(AppState *app)
 
 int main(void)
 {
+    library_dir = app_test_directory(APP_TEST_BLOCKS);
     static AppState app;
     app_state_init(&app);
     assert(app.history);
@@ -168,7 +169,7 @@ int main(void)
     assert(!strcmp(app.bench.groups[chip - 1].name, "4and"));
     assert(library_count(inside) == 1 && library_lists(inside, "4and"));
     assert(!app_editor_dirty(inside));
-    HANDLE locked_model = CreateFileA("build/test-blocks/block-1.elec", GENERIC_READ, FILE_SHARE_READ,
+    HANDLE locked_model = CreateFileA(APP_TEST_PATH(APP_TEST_BLOCKS, "block-1.elec"), GENERIC_READ, FILE_SHARE_READ,
                                       NULL, OPEN_EXISTING, 0, NULL);
     assert(locked_model != INVALID_HANDLE_VALUE);
     int renamed_locked = app_editor_set_name(inside, "must not replace");

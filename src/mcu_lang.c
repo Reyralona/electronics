@@ -1868,7 +1868,7 @@ int mcu_vm_run(McuVm *vm, const McuHost *host, double now_ms, char *error, size_
         return 0;
     for (int executed = 0; executed < VM_BUDGET; ++executed)
     {
-        if (vm->wake_ms > now_ms)
+        if (vm->wake_ms > now_ms + MCU_TIME_TOLERANCE_MS)
             return 1;
         if (vm->pc < 0 || vm->pc >= vm->program->count)
             return vm_error(vm, error, capacity, TXT_MCU_ERROR_PROGRAM_END);
@@ -1876,4 +1876,9 @@ int mcu_vm_run(McuVm *vm, const McuHost *host, double now_ms, char *error, size_
             return 0;
     }
     return 1;
+}
+
+double mcu_vm_wake_ms(const McuVm *vm)
+{
+    return vm && !vm->stopped ? vm->wake_ms : INFINITY;
 }

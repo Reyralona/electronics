@@ -1,6 +1,6 @@
 # Caminho para a 1.0.0 - revisao em 20/11/2026
 
-Base integrada e distribuida: 0.52.0. Inclui as branches de desempenho, protecao e colecao digital.
+Base publicada: 0.52.0. Correcoes em desenvolvimento: 0.52.1, branch `fix/ponytail-audit-0.52`. Relatorio e evidencias em [CORRECOES_AUDITORIA_0_52.md](CORRECOES_AUDITORIA_0_52.md).
 A 1.0 ainda nao foi atingida. Este documento diferencia recursos entregues, erros reproduzidos e criterios de aceite pendentes; aumentar a versao nao substitui esses criterios.
 
 ## 1. Histórico desde 14/11/2026
@@ -77,9 +77,9 @@ Fontes, alternativas e comandos: [PLANO_CORRECOES_E_DESEMPENHO.md](PLANO_CORRECO
 
 ### 5.1 Confiabilidade antes de ampliar o catalogo
 
-- Encerrar R3-04 e a parte restante de R3-03 com regressoes que falhem antes.
+- R3-04 e R3-03 receberam correcoes na branch 0.52.1: invalidacao de grafico apos aplicar chip, transacoes de historico e preservacao de erros de envio. Aguardar verificacao completa/integracao; evidencias no relatorio.
 - Testar salvar/reabrir sob falha de disco e memoria; verificar que a montagem e o arquivo anterior sobrevivem.
-- Revisar identidade de placas, sondas e programas ao excluir/reordenar pecas. Reiniciar ao carregar resolve esse fluxo, nao prova todas as mutacoes.
+- Identidade do runtime de placas e alimentacao do ATtiny corrigidas na branch 0.52.1; ampliar cenarios de copia, undo e edicao aninhada antes de declarar a meta 1.0 concluida.
 - Conservar estado eletrico ao alterar topologia/frequencia, conforme a meta; explicitar os reinicios enquanto essa capacidade nao existir.
 
 ### 5.2 Capacidade e formato
@@ -90,9 +90,9 @@ Fontes, alternativas e comandos: [PLANO_CORRECOES_E_DESEMPENHO.md](PLANO_CORRECO
 
 ### 5.3 Modelos, catalogo e instrumentos
 
-- Protecao por elemento para RGB/sete segmentos; registrar limites e diferencas do hardware real.
+- Protecao individual de RGB/sete segmentos implementada e testada na 0.52.0. Falta ampliar validacao de pulsos, dissipacao e protecao dos CIs lineares; os avisos nao sao um modelo termico.
 - Servo por largura de pulso, ultrassonico trigger/echo e DIP configuravel. O sensor IR de distancia atual nao substitui ultrassonico.
-- Inventario oficial verificavel dos CIs restantes, pinagem e modelos: 555, familias 74HC restantes, 4511, L293D, LM741 etc. Lista anterior e planejamento, nao comprovacao de catalogo completo.
+- 555, LM358, LM393, LM7805, ULN2003A, L293D, 74HC4511 e a colecao digital da 0.52.0 ja estao implementados com testes funcionais. Inventariar familias ainda ausentes (por exemplo, LM741) e ampliar os contratos de pinagem, alimentacao, carga e temporizacao; existencia no catalogo nao comprova todos os casos do datasheet.
 - Sondas posicionaveis independentes, medicao diferencial e de clock/pulso; netlist e diagnostico inspecionaveis. Usar circuitos de referencia para validar leituras.
 - Avaliar modelos compactos dos CIs restantes e redes digitais densas com medidas antes/depois, mantendo comportamento e limites explicitos.
 
@@ -101,7 +101,7 @@ Fontes, alternativas e comandos: [PLANO_CORRECOES_E_DESEMPENHO.md](PLANO_CORRECO
 - Validar leitor de tela, monitores/DPI reais e inspector sem cobrir a selecao. Foco de teclado sozinho nao encerra acessibilidade.
 - VM limpa Windows 10/11, atualizacao entre versoes publicadas, assinatura e pipeline de release por tag. Instalacao/desinstalacao isoladas ja tem testes; nao substituem VM limpa.
 - Dividir renderizacao/entrada/netlist somente em refatoracoes separadas de funcionalidades, protegidas por testes/capturas. Evitar nova camada sem necessidade demonstrada.
-- Manter roteiro humano de montar, programar, criar chip, inspecionar, salvar, reabrir, excluir e desfazer, incluindo cancelamentos e falhas.
+- Manter roteiro humano de montar, programar, criar chip, inspecionar, salvar, reabrir, excluir e desfazer, incluindo cancelamentos e falhas. Scripts de interface da branch 0.52.1 isolam projetos/bibliotecas por processo e execucao.
 
 ## 6. Verificacoes desta branch
 

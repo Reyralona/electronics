@@ -158,6 +158,19 @@ if(BUILD_TESTING)
     add_executable(test_logic_chips tests/test_logic_chips.c ${BANCADA_LOGIC_TEST_SOURCES})
     target_include_directories(test_logic_chips PRIVATE src)
     add_dependencies(test_logic_chips bancada-eeprom spice-live-host)
+    foreach(chip_test logic_chips linear_chips chip_protection mcu)
+        if(NOT TARGET test_${chip_test})
+            add_executable(test_${chip_test} tests/test_${chip_test}.c ${BANCADA_LOGIC_TEST_SOURCES})
+            target_include_directories(test_${chip_test} PRIVATE src)
+            add_dependencies(test_${chip_test} bancada-eeprom spice-live-host)
+            if(chip_test STREQUAL "mcu")
+                target_sources(test_${chip_test} PRIVATE src/mcu_runtime.c src/mcu_lang.c)
+            endif()
+        endif()
+        add_test(NAME ${chip_test} COMMAND test_${chip_test}
+            "${CMAKE_SOURCE_DIR}/build/spice-local/ucrt64/bin/ngspice_con.exe")
+        set_tests_properties(${chip_test} PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" TIMEOUT 60)
+    endforeach()
     add_executable(test_cockcroft_slot
         tests/test_cockcroft_slot.c
         src/spice_live.c

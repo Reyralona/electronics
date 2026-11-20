@@ -350,3 +350,14 @@ O catálogo Bancada inclui Protoboard larga (60 colunas), com o mesmo passo de f
 Em Bancada, escolha **Nota** e coloque na bancada. Clique duplo ou use **Texto** no painel para escrever até 127 bytes (acentos ocupam mais de um byte); Enter confirma e Esc cancela. O texto quebra automaticamente conforme o espaço do papel. No painel, **Fundo** e **Texto** têm paletas independentes. Arraste para mover, ajuste Tamanho para ampliar e use Delete para remover. Notas não têm pinos nem participam eletricamente do circuito. São salvas no projeto e acompanham copiar/colar e desfazer.
 
 Na 0.50.0, selecione a nota e arraste a alça azul no canto inferior direito para ampliar ou reduzir proporcionalmente (mínimo de 50% pelo arraste). O canto superior esquerdo fica fixo. Também pode digitar Tamanho no painel. Ctrl+Z desfaz o redimensionamento. A fita, a sombra e o canto levantado são apenas visuais.
+
+
+### Correcoes em desenvolvimento - 0.52.1
+
+Firmware e circuito avancam pelo mesmo tempo simulado: mudar a velocidade ou o desempenho da maquina nao muda a relacao entre delay/micros/millis e componentes externos. O solver para no proximo delay/delayMicroseconds; as instrucoes entre esperas sao instantaneas, sem emulacao dos ciclos de um AVR/ESP32. PWM continua representado pela media, conforme o modelo atual.
+
+ATtiny85 precisa de VCC medido de pelo menos 2,7 V. Perder alimentacao reinicia a VM; retornar repete setup. Uno e ESP32 conservam a alimentacao USB ideal. Excluir, substituir ou colar uma placa nao reaproveita a execucao de outra instancia. Undo/redo reiniciam os programas para aplicar o estado restaurado.
+
+555 e LM358 debitam a corrente positiva entregue a carga da sua alimentacao. A fonte CV/CC existente tem ganho finito (no teste de limite 10 mA houve excesso de aproximadamente 0,20 mA); nao e um limitador matematico perfeito. Corrente de repouso completa, aquecimento e tolerancias do componente fisico continuam fora deste incremento.
+
+Aplicar uma edicao no interior de um chip fecha o grafico ao vivo, pois os indices podem mudar. Apenas consultar ou cancelar a edicao conserva o grafico. Falha ao registrar historico impede a publicacao da edicao; o rascunho e a causa permanecem visiveis.

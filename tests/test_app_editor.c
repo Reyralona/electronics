@@ -151,7 +151,7 @@ int main(void)
     for (int i = 1; i <= BLOCK_LIBRARY_SLOTS; ++i)
     {
         char path[128];
-        snprintf(path, sizeof(path), "build/test-blocks/block-%d.elec", i);
+        snprintf(path, sizeof(path), "%s/block-%d.elec", app_test_directory(APP_TEST_BLOCKS), i);
         remove(path);
     }
     assert(app_editor_save(child) && !app_editor_dirty(child));
@@ -166,7 +166,7 @@ int main(void)
     assert(bench_history_undo(root.history, &root.bench));
     assert(root.bench.parts[1].value == 1000);
     assert(!strcmp(root.bench.groups[0].name, before.groups[0].name));
-    remove("build/test-blocks/block-1.elec");
+    remove(APP_TEST_PATH(APP_TEST_BLOCKS, "block-1.elec"));
     app_state_dispose(&root);
     assert(!root.history && root.bench.part_count == 0 && !root.dc_job.thread);
     app_state_dispose(&root);

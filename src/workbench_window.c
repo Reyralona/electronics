@@ -355,8 +355,7 @@ int main(int argc, char **argv)
     spice_job_join(&app.dc_job);
     if (app.selftest)
     {
-        remove("build/gui-settings-test.elec");
-        remove("build/test-blocks/block-1.elec");
+        remove(APP_TEST_PATH(APP_TEST_BLOCKS, "block-1.elec"));
     }
     app_state_dispose(&app);
     app_text_utf8_clear();

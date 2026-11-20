@@ -1066,7 +1066,7 @@ static int input_swap_selected(AppState *app, PartType type)
         return 1;
     }
     if (!app_history_record(app, &before))
-        return 0;
+        return 1;
     app->placing = -1;
     app->status = tr(TXT_APP_PART_SWAPPED);
     return 1;

@@ -4178,7 +4178,7 @@ static void draw_project_thumbnail(const AppState *app, GLuint font, int index, 
     static unsigned cached_revisions[PROJECT_SLOTS_PER_PAGE];
     int cell = index % PROJECT_SLOTS_PER_PAGE;
     char path[128];
-    snprintf(path, sizeof(path), "%s/slot-%d.bmp", app->selftest ? "build/test-slots" : "saves", index + 1);
+    snprintf(path, sizeof(path), "%s/slot-%d.bmp", app->selftest ? app_test_directory(APP_TEST_SLOTS) : "saves", index + 1);
     struct _stat metadata;
     int exists = _stat(path, &metadata) == 0;
     if (cached_slots[cell] != index || cached_revisions[cell] != app->project_thumbnail_revision ||

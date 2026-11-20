@@ -191,12 +191,12 @@ int app_editing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
 
 static void slot_path(const AppState *app, int slot, char *path, size_t capacity)
 {
-    snprintf(path, capacity, "%s/slot-%d.elec", app->selftest ? "build/test-slots" : "saves", slot + 1);
+    snprintf(path, capacity, "%s/slot-%d.elec", app->selftest ? app_test_directory(APP_TEST_SLOTS) : "saves", slot + 1);
 }
 
 void app_projects_refresh(AppState *app)
 {
-    const char *directory = app->selftest ? "build/test-slots" : "saves";
+    const char *directory = app->selftest ? app_test_directory(APP_TEST_SLOTS) : "saves";
     char pattern[128];
     snprintf(pattern, sizeof(pattern), "%s/slot-*.elec", directory);
     struct _finddata_t entry;
@@ -263,7 +263,7 @@ static void save_project_slot(AppState *app, int slot)
 {
     app_simulation_flush(app);
     char path[128];
-    const char *directory = app->selftest ? "build/test-slots" : "saves";
+    const char *directory = app->selftest ? app_test_directory(APP_TEST_SLOTS) : "saves";
     if (_mkdir(directory) != 0 && errno != EEXIST)
     {
         snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_PROJECT_FOLDER_FAILED),
@@ -399,7 +399,11 @@ int app_history_record(AppState *app, Workbench *before)
     if (bench_history_record(app->history, before))
         return 1;
     if (before != &app->bench)
+    {
         bench_snapshot_move(&app->bench, before);
+        reset_interaction(app);
+        bench_selection_clear(&app->selection);
+    }
     app->status = tr(TXT_APP_HISTORY_FAILED);
     return 0;
 }

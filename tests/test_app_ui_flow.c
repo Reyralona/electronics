@@ -126,7 +126,7 @@ static void focus_and_save_flow(AppState *app, SDL_Window *window)
     assert(!app->projects_open);
     /* Save, change the circuit, then cancel and confirm replacing the same slot. */
     app->save_slot = 5;
-    remove("build/test-slots/slot-6.elec");
+    remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-6.elec"));
     key(app, window, SDLK_S, SDL_KMOD_CTRL);
     assert(app->saved_slots[5]);
     assert(bench_add(&app->bench, PART_LED, 650, 350) == 1);
@@ -146,7 +146,7 @@ static void focus_and_save_flow(AppState *app, SDL_Window *window)
     assert(app->project_overwrite < 0 && app->bench.revision == revision);
     Workbench saved = {0};
     WorkbenchSettings settings;
-    assert(workbench_load_project("build/test-slots/slot-6.elec", &saved, &settings));
+    assert(workbench_load_project(APP_TEST_PATH(APP_TEST_SLOTS, "slot-6.elec"), &saved, &settings));
     assert(saved.part_count == 1);
     bench_snapshot_clear(&saved);
     key(app, window, SDLK_S, SDL_KMOD_CTRL);
@@ -154,7 +154,7 @@ static void focus_and_save_flow(AppState *app, SDL_Window *window)
     click(app, window, app_layout_confirm_button(0));
     key(app, window, SDLK_L, SDL_KMOD_CTRL);
     assert(app->bench.part_count == 2 && app->project_parts[5] == 2);
-    remove("build/test-slots/slot-6.elec");
+    remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-6.elec"));
 }
 
 static void actions_and_scaling_flow(AppState *app, SDL_Window *window)
@@ -259,7 +259,7 @@ static void values_and_chip_flow(AppState *app, SDL_Window *window)
         if (available[i] || !app->library_available[i])
             continue;
         char path[128];
-        snprintf(path, sizeof(path), "build/test-blocks/block-%d.elec", i + 1);
+        snprintf(path, sizeof(path), "%s/block-%d.elec", app_test_directory(APP_TEST_BLOCKS), i + 1);
         assert(remove(path) == 0);
     }
 }

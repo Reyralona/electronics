@@ -4,8 +4,8 @@
 #include "component_devices.h"
 #include "mcu_lang.h"
 /* Runs the programs of microcontroller parts against measured pin voltages. Pure: no SDL/OpenGL.
- * Programs run in real (wall-clock) time: millis() follows the user's clock, not the analog
- * simulation time scale. Output drive is written to Part.io_* (runtime fields, not versioned). */
+ * The UI advances programs on the accepted solver clock. Output drive is written to Part.io_*
+ * (runtime fields, not versioned). */
 #define MCU_SERIAL_CAPACITY 4096
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
@@ -48,5 +48,10 @@ void mcu_runtime_reset(McuRuntime *runtime);
 /* elements may be NULL before the first measurement (inputs read 0 V). */
 void mcu_runtime_step(McuRuntime *runtime, Workbench *bench,
                       const double (*elements)[COMPONENT_MAX_ELEMENTS], double elapsed_ms);
+/* Advance to an absolute simulated time; rewinding restarts firmware. */
+void mcu_runtime_at(McuRuntime *runtime, Workbench *bench,
+                    const double (*elements)[COMPONENT_MAX_ELEMENTS], double seconds);
+/* Absolute simulated wake time of the next delay/delayMicroseconds, or INFINITY. */
+double mcu_runtime_next_event(const McuRuntime *runtime);
 const char *mcu_program_text(const Part *part);
 #endif

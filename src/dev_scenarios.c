@@ -81,7 +81,7 @@ static int component_closeup(AppState *app, const char *argument)
 int dev_scenario_prepare(AppState *app, int argc, char **argv)
 {
     if (app->selftest)
-        remove("build/test-slots/slot-1.elec");
+        remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-1.elec"));
     if (argc > 1 && !strcmp(argv[1], "--capture-search"))
     {
         snprintf(app->palette_search, sizeof(app->palette_search), "arduino");

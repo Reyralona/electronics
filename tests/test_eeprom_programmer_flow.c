@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     _mkdir("build/test-eeprom-ui");
     assert(SetCurrentDirectoryA("build/test-eeprom-ui"));
     _mkdir("build");
-    _mkdir("build/test-slots");
+    _mkdir(app_test_directory(APP_TEST_SLOTS));
     assert(SDL_Init(SDL_INIT_VIDEO));
     SDL_Window *window = SDL_CreateWindow("EEPROM flow", 1280, 720, SDL_WINDOW_HIDDEN);
     assert(window);
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     assert(workbench_load_project(fixture, &app.bench, &settings));
     int note = bench_add(&app.bench, PART_NOTE, 500, 170);
     assert(note >= 0 && bench_set_code(&app.bench, note, "Escolha o endereco antes de gravar."));
-    assert(workbench_save_project("build/test-slots/slot-1.elec", &app.bench, &settings));
+    assert(workbench_save_project(APP_TEST_PATH(APP_TEST_SLOTS, "slot-1.elec"), &app.bench, &settings));
     app_projects_refresh(&app);
     app_projects_load(&app);
     int dips[5], dip_count = 0, mode = -1, button = -1, rom = -1, source = -1;
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
     app_state_dispose(&app);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    assert(remove("build/test-slots/slot-1.elec") == 0);
+    assert(remove(APP_TEST_PATH(APP_TEST_SLOTS, "slot-1.elec")) == 0);
     assert(SetCurrentDirectoryA(original));
     puts("EEPROM person flow: open, choose address/data, press/release write, read another address, power cycle, save/reopen passed.");
     return 0;

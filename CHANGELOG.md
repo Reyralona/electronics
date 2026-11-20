@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.52.1
+
+- Correcoes da auditoria Ponytail: 555 e LM358 debitam a corrente de carga da alimentacao, incluindo o efeito do limite CV/CC.
+- Placas mantem identidade durante edicoes; remover/substituir nao transfere a VM para outra placa. ATtiny so executa com VCC medido de pelo menos 2,7 V e repete setup apos queda e retorno.
+- Firmware segue o tempo simulado; delay e delayMicroseconds limitam o proximo lote do solver para preservar as transicoes. Instrucoes entre esperas continuam instantaneas no modelo, sem emulacao de ciclos de CPU.
+- Falha do historico aborta ou restaura a edicao; rascunhos e mensagens de falha sobrevivem a Executar e Ctrl+Enter. Aplicar alteracoes em chip fecha grafico cujo indice pode mudar.
+- Conectividade do LCD reutilizada ate mudar a bancada; testes de interface usam diretorios exclusivos por processo e execucao. CTest inclui logica, lineares, protecoes e placas.
+- Relatorio, evidencias e retomada em docs/CORRECOES_AUDITORIA_0_52.md. Formato 38 preservado; branch ainda nao integrada/publicada.
+
 ## 0.52.0
 
 - Inclui as correcoes da 0.51.2: oito falhas da auditoria, rascunhos e reinicio de placas, chips personalizados ao copiar/espelhar e otimizacao do simulador.

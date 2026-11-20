@@ -41,6 +41,7 @@ typedef struct
     void (*lcd)(void *context, int object, McuLcdOperation operation, int a, int b, const char *text);
 } McuHost;
 
+#define MCU_TIME_TOLERANCE_MS 1e-9
 #define MCU_INPUT 0
 #define MCU_OUTPUT 1
 #define MCU_INPUT_PULLUP 2
@@ -55,6 +56,7 @@ void mcu_vm_free(McuVm *vm);
 /* Runs until delay() waits past now_ms or the instruction budget is spent. Returns 0 on a runtime
  * error (message in error); the VM then stays stopped. */
 int mcu_vm_run(McuVm *vm, const McuHost *host, double now_ms, char *error, size_t capacity);
+double mcu_vm_wake_ms(const McuVm *vm);
 
 /* Completion catalog for the editor: names, signatures and summaries (texts in the interface language). */
 typedef struct

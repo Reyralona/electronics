@@ -90,7 +90,7 @@ static void analog_and_lcd(void)
     mcu_runtime_step(runtime, &bench, NULL, 150);
     assert(runtime->connection_nodes == cached);
     assert(bench_toggle_wire(&bench, (Pin){lcd, 3}, (Pin){uno, UNO_A5}) == 2); /* Disconnect SCL; the next write must not reach the LCD. */
-    memset(runtime->lcd[lcd].text, 'X', sizeof(runtime->lcd[lcd].text));
+    runtime->lcd[lcd].text[1][0] = 'X';
     mcu_runtime_step(runtime, &bench, NULL, 150);
     assert(runtime->connection_revision == bench.revision && runtime->lcd[lcd].text[1][0] == 'X');
     wire(&bench, lcd, 3, uno, UNO_A5);
@@ -148,6 +148,41 @@ static void power_and_identity_follow_the_board(void)
     bench_snapshot_clear(&bench);
 }
 
+static void firmware_uses_simulated_deadlines(int micros)
+{
+    static Workbench bench;
+    int board = bench_add(&bench, PART_ARDUINO_UNO, 400, 300);
+    int load = bench_add(&bench, PART_RESISTOR, 700, 300);
+    assert(bench_set_value(&bench, load, 1000));
+    wire(&bench, board, UNO_D13, load, 0);
+    wire(&bench, load, 1, board, UNO_GND);
+    double pulse = micros * 1e-6;
+    char code[256];
+    snprintf(code, sizeof(code),
+        "void setup(){pinMode(13,OUTPUT);} void loop(){digitalWrite(13,HIGH);delayMicroseconds(%d);"
+        "digitalWrite(13,LOW);delayMicroseconds(%d);}", micros, micros);
+    assert(bench_set_code(&bench, board, code));
+    McuRuntime *runtime = mcu_runtime_create();
+    SpiceLive *session = spice_live_create();
+    mcu_runtime_at(runtime, &bench, NULL, 0);
+    assert(bench.parts[board].io_level[13] == 1);
+    assert(fabs(mcu_runtime_next_event(runtime) - pulse) < 1e-12);
+    assert(spice_live_step(session, &bench, executable, &options, pulse, &result));
+    assert(result.currents[load] > .004);
+    mcu_runtime_at(runtime, &bench, (const double(*)[COMPONENT_MAX_ELEMENTS])result.elements, spice_live_time(session));
+    assert(bench.parts[board].io_level[13] == 0 && fabs(runtime->clock_ms - pulse * 1000) < 1e-8);
+    assert(fabs(mcu_runtime_next_event(runtime) - 2 * pulse) < 1e-12);
+    mcu_runtime_at(runtime, &bench, NULL, spice_live_time(session));
+    assert(bench.parts[board].io_level[13] == 0); /* Wall frames do not advance delay. */
+    assert(spice_live_step(session, &bench, executable, &options, pulse, &result));
+    assert(fabs(result.currents[load]) < 1e-7);
+    mcu_runtime_at(runtime, &bench, NULL, 0); /* Rewinding repeats setup. */
+    assert(runtime->clock_ms == 0 && bench.parts[board].io_level[13] == 1);
+    spice_live_destroy(session);
+    mcu_runtime_destroy(runtime);
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
     power_and_identity_follow_the_board();
@@ -155,6 +190,8 @@ int main(int argc, char **argv)
     assert(argc == 2);
     executable = argv[1];
     options = (SimAutoOptions){0, {0, 0}, 1e-5, .005, burn_limits_default(), {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
+    firmware_uses_simulated_deadlines(1);
+    firmware_uses_simulated_deadlines(100);
     blink_drives_led();
     analog_and_lcd();
     puts("MCU boards: blink drives an LED, analogRead follows a pot, LCD over I2C pins and compile errors passed.");
