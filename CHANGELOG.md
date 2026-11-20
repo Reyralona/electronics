@@ -2,6 +2,8 @@
 
 ## 0.52.0
 
+- Inclui as correcoes da 0.51.2: oito falhas da auditoria, rascunhos e reinicio de placas, chips personalizados ao copiar/espelhar e otimizacao do simulador.
+
 - Integra a coleção digital: 74HC02/10/11/14, 74HC273/373/374, 74HC163/193, 74HC138/139/151/157 e 74HC4511, com fichas e testes funcionais.
 - Nomes dos CIs centralizados e ajustados ao encapsulamento, tamanho e rotação; corrige o texto do NE555 saindo do corpo. Preserva os códigos dos componentes existentes ao integrar as branches.
 

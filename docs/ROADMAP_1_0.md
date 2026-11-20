@@ -1,6 +1,6 @@
 # Caminho para a 1.0.0 - revisao em 20/11/2026
 
-Base publicada: 0.51.1. Trabalho atual: 0.52.0, branch `feature/protecao-arsenal-cis`, criada de `fix/audit-and-slot2-performance`.
+Base integrada e distribuida: 0.52.0. Inclui as branches de desempenho, protecao e colecao digital.
 A 1.0 ainda nao foi atingida. Este documento diferencia recursos entregues, erros reproduzidos e criterios de aceite pendentes; aumentar a versao nao substitui esses criterios.
 
 ## 1. Histórico desde 14/11/2026
@@ -27,8 +27,8 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 | 16/11 | 0.36.0 | CMake, ZIP portátil e instalador NSIS por usuário; dependências fixadas, fontes e hashes. Pré-release publicada no GitHub. |
 | 16/11 | 0.37.0 | Rotação de chips por R e contatos diretos entre terminais, breadboards e portas de chips. Formato 29. |
 | 20/11 | 0.48-0.51.1 | EEPROM gravavel, protoboard larga, selecao conjunta, notas e catalogo reorganizado. Pre-release 0.51.1 publicada. |
-| 20/11, branch atual | 0.52.0 | Fonte CV/CC, proteção pelos datasheets (CIs, displays, placas, entradas soltas), ficha dos CIs, abas Lógica/Memória/Lineares e coleção de CIs. Ainda nao publicada. |
-| 20/11 | 0.51.2 | Oito correcoes da auditoria, regressoes e otimizacao do circuito contador/adder/decoders. Ainda nao publicada. |
+| 20/11, branch atual | 0.52.0 | Fonte CV/CC, proteção pelos datasheets (CIs, displays, placas, entradas soltas), ficha dos CIs, abas Lógica/Memória/Lineares e coleção de CIs. Integrada na distribuicao 0.52.0. |
+| 20/11 | 0.51.2 | Oito correcoes da auditoria, regressoes e otimizacao do circuito contador/adder/decoders. Integrada na distribuicao 0.52.0. |
 
 ## 2. Estado atual
 
@@ -42,7 +42,7 @@ Primeiro commit em 14/11 12:21 (protótipo SDL/OpenGL). Até 15/11: 100+ commits
 
 ## 3. Oito correcoes desta rodada
 
-Os testes novos falharam antes das correcoes e passaram individualmente depois. A suite completa final ainda esta em verificacao nesta branch.
+Os testes novos falharam antes das correcoes e passaram individualmente depois. Regressoes funcionais, interface e distribuicao verificadas na 0.52.0.
 
 | Item da auditoria | Correcao | Evidencia permanente |
 |---|---|---|
@@ -63,11 +63,11 @@ A auditoria original continua em [AUDITORIA_REPOSITORIO.md](AUDITORIA_REPOSITORI
 
 ## 4. Desempenho medido e limites
 
-O circuito de referencia do slot 2 esta em `tests/fixtures/counter-adder-seven-segment.elec`: 235 pecas e 333 fios internos, clock de 50 Hz, contador, adder e decoders personalizados. Os blocos visiveis ocultam uma rede maior; ha tres grupos de decoder no arquivo, um fora da montagem principal.
+O circuito de referencia do slot 2 esta em `tests/fixtures/counter-adder-seven-segment.elec`: 249 pecas e 347 fios internos, incluindo resistores nos segmentos, clock de 50 Hz, contador, adder e decoders personalizados. Os blocos visiveis ocultam uma rede maior; ha tres grupos de decoder no arquivo, um fora da montagem principal.
 
 - Conectividade para protecao contra curto e reutilizada enquanto a revisao nao muda. Editar fios/controles invalida o cache; um teste abre, fecha e reabre o curto.
 - Conversao de entrada e compartilhada por no; a saida baixa usa `low=logic_ok-high`, eliminando fontes redundantes. Mantidos alimentacao, impedancia, limiares, passo e cadencia.
-- Comparacao na mesma copia a 50 Hz, sem interface: **0,295x antes / 0,709x depois**, cerca de **2,4x**. Valores locais, nao promessa para qualquer maquina. Ainda nao e tempo real nesse caso.
+- Comparacao na mesma copia a 50 Hz, sem interface: **0,295x antes / 0,709x depois**, cerca de **2,4x**. Comparacao historica da fixture anterior, com 235 pecas e 333 fios. A fixture atual inclui resistores nos segmentos; na validacao da 0.52.0 mediu 0,624x sem instrumentos e 0,367x com instrumentos. Valores locais, nao promessa para qualquer maquina.
 - O teste conserva as 21 leituras anteriores dos dois displays, com e sem correntes nos fios. Isso prova equivalencia da otimizacao; nao certifica a tabela-verdade dos decoders montados pelo usuario.
 - `test_counter_decoder` imprime a taxa, excluindo o primeiro lote. Nao ha assert de tempo dependente da maquina. Repetir com build de desenvolvimento e Release antes de comparar numeros.
 
@@ -105,6 +105,8 @@ Fontes, alternativas e comandos: [PLANO_CORRECOES_E_DESEMPENHO.md](PLANO_CORRECO
 
 ## 6. Verificacoes desta branch
 
-- `./build.ps1 -GuiTests`: suite final em andamento; log `build/audit-fixes/full-tests.log`.
+- `./build.ps1 -GuiTests`: passou; log `build/release-0.52.0-tests-final.log`.
+- `./tools/package-windows.ps1`: passou, incluindo 10 CTest, pacote movido com PATH minimo e instalacao/desinstalacao. Log `build/release-0.52.0-package.log`.
+- Revisao visual dos 30 CIs DIP e do NE555 em quatro rotacoes, espelho e escalas 50/100/200% em `build/chip-name-review/`.
 - `./build/test_counter_decoder.exe tests/fixtures/counter-adder-seven-segment.elec build/spice-local/ucrt64/bin/ngspice_con.exe`: equivalencia e taxa, sem alterar saves pessoais.
 - Nao publicar 1.0 ate satisfazer [META_1_0.md](META_1_0.md), [QUALIDADE_DE_USO.md](QUALIDADE_DE_USO.md) e os aceites de distribuicao.
