@@ -4,6 +4,7 @@
 #include "app_settings.h"
 #include "app_simulation.h"
 #include "app_code_editor.h"
+#include "mcu_board.h"
 #include "workbench_file.h"
 #include "component_registry.h"
 #include <direct.h>
@@ -345,3 +346,47 @@ void app_projects_load(AppState *app)
     app->projects_open = 0;
     app->status = tr(TXT_APP_PROJECT_LOADED);
 }
+
+int app_code_editable(const AppState *app, int part)
+{
+    return part >= 0 && part < app->bench.part_count && !app->bench.parts[part].group &&
+           mcu_board(app->bench.parts[part].type) != NULL;
+}
+
+int app_code_apply(AppState *app)
+{
+    if (!app_code_editable(app, app->code_part))
+        return 0;
+    const Part *part = &app->bench.parts[app->code_part];
+    if (!strcmp(mcu_program_text(part), app->code_text))
+    {
+        app->code_dirty = 0;
+        return 0;
+    }
+    Workbench before BENCH_AUTO_CLEAR = {0};
+    if (!bench_snapshot_clone(&before, &app->bench) || !bench_set_code(&app->bench, app->code_part, app->code_text))
+    {
+        app->status = tr(TXT_MCU_CODE_NO_MEMORY);
+        return 0;
+    }
+    bench_history_record(app->history, &before);
+    app->code_dirty = 0;
+    app->status = tr(TXT_MCU_CODE_SENT);
+    return 1;
+}
+
+int app_code_close(AppState *app, SDL_Window *window)
+{
+    if (app->code_part < 0)
+        return 1;
+    int applied = app->code_dirty && app_code_apply(app);
+    if (app->code_dirty && !applied)
+        return 0;
+    app->code_part = -1;
+    app->code_dirty = 0;
+    if (window)
+        SDL_StopTextInput(window);
+    app->status = applied ? tr(TXT_MCU_CODE_APPLIED) : tr(TXT_MCU_EDITOR_CLOSED);
+    return 1;
+}
+
