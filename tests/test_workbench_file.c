@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include "workbench_file.h"
 
 static void legacy_nested_layers(void)
@@ -306,6 +307,24 @@ int main(void)
         uint64_t revision = loaded.revision;
         assert(!workbench_read(file, &loaded) && loaded.revision == revision);
         fclose(file);
+    }
+    {
+        Workbench notes = {0};
+        assert(bench_add(&notes, PART_NOTE, 300, 200) == 0);
+        assert(bench_pin_count(PART_NOTE) == 0);
+        assert(bench_set_code(&notes, 0, "Endereco 2: byte 5A"));
+        assert(bench_set_states(&notes, 0, 2 | (3 << 8)));
+        assert(!bench_set_states(&notes, 0, BENCH_COLOR_COUNT));
+        assert(!bench_set_states(&notes, 0, BENCH_COLOR_COUNT << 8));
+        file = tmpfile();
+        assert(file && workbench_write(file, &notes));
+        rewind(file);
+        assert(workbench_read(file, &loaded));
+        fclose(file);
+        assert(loaded.parts[0].type == PART_NOTE);
+        assert(loaded.parts[0].states == (2 | (3 << 8)));
+        assert(!strcmp(loaded.parts[0].code, "Endereco 2: byte 5A"));
+        bench_snapshot_clear(&notes);
     }
     return 0;
 }

@@ -88,3 +88,7 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 ## Bancada EEPROM em desenvolvimento — 20/11/2026
 
 Branch `feature/eeprom-workbench-usability`, versão 0.48.0, formato 36. EEPROM aceita gravação pelo barramento; detalhes e limites em [MODELO_EEPROM.md](MODELO_EEPROM.md). Protoboard larga de 60 colunas, seleção com Ctrl+clique e edição conjunta, terminais com alvos de clique independentes da escala. Fixture pública: `tests/fixtures/eeprom-programmer.elec`. Testes humanos com mouse e teclado no `build/build.exe` e capturas em `build/human-review/captures`. A versão 0.48.0 ainda não foi publicada.
+
+## Notas na bancada - 20/11/2026
+
+Na mesma branch, versão 0.49.0 e formato 37: componente Nota em Básicos, edição por clique duplo, cores independentes de fundo e texto, histórico e persistência. Slot 1 pessoal anotado por etapa, com cópia anterior em saves/backup. ./build.ps1 -GuiTests passou; captura revisada em build/notes-circuit.bmp. Montagem física não validada: contatos e fios continuam idealizados.

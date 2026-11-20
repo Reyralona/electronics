@@ -69,7 +69,7 @@ static void inspector_targets(const AppState *app, AppRect *targets, int *count)
         return;
     }
     const ComponentInfo *info = component_info(part->type);
-    if (info && (app_selection_value_target(app) >= 0 || part->type == PART_ARDUINO_UNO || part->type == PART_ESP32 || part->type == PART_ATTINY85))
+    if (info && (app_selection_value_target(app) >= 0 || part->type == PART_NOTE || part->type == PART_ARDUINO_UNO || part->type == PART_ESP32 || part->type == PART_ATTINY85))
         target(targets, count, app_layout_inspector_value());
     target(targets, count, app_layout_inspector_scale());
     if (!bench_is_board(part->type))

@@ -139,7 +139,7 @@ int app_input_part_at(const Workbench *bench, float x, float y, float zoom)
 
 static int editing_name(const AppState *app)
 {
-    return app->editing == APP_EDIT_GROUP_NAME || app->editing == APP_EDIT_PORT_NAME;
+    return app->editing == APP_EDIT_NOTE || app->editing == APP_EDIT_GROUP_NAME || app->editing == APP_EDIT_PORT_NAME;
 }
 
 /* Double-click on a chip terminal: type its name (Enter confirms, empty removes, Esc cancels). */
@@ -187,6 +187,15 @@ static int commit_port_name(AppState *app)
 
 static int commit_name(AppState *app)
 {
+    if (app->editing == APP_EDIT_NOTE)
+    {
+        if (!bench_history_record(app->history, &app->bench))
+        {
+            app->status = tr(TXT_APP_HISTORY_FAILED);
+            return 0;
+        }
+        return bench_set_code(&app->bench, app->selected, app->edit_text);
+    }
     if (app->editing == APP_EDIT_PORT_NAME)
         return commit_port_name(app);
     return app_editor_set_name(app, app->edit_text);
@@ -201,7 +210,7 @@ static void input_text(AppState *app, SDL_Window *window, const SDL_Event *event
     {
         const char *input = event->text.text;
         size_t before = app->edit_select_all ? 0 : strlen(app->edit_text);
-        if ((!bench_group_name_valid(input) && strspn(input, " ") != strlen(input)) ||
+        if ((app->editing != APP_EDIT_NOTE && !bench_group_name_valid(input) && strspn(input, " ") != strlen(input)) ||
             before + strlen(input) >= sizeof(app->edit_text))
         {
             app_editor_report_invalid_name(app);
@@ -816,11 +825,49 @@ static int input_click_environment(AppState *app, float x, float y)
     return 1;
 }
 
+static void start_note_edit(AppState *app, SDL_Window *window)
+{
+    if (!window)
+        window = SDL_GetKeyboardFocus();
+    if (!SDL_StartTextInput(window))
+    {
+        app->status = tr(TXT_APP_TEXT_INPUT_FAILED);
+        return;
+    }
+    app->editing = APP_EDIT_NOTE;
+    app->edit_select_all = 1;
+    app->edit_error = 0;
+    snprintf(app->edit_text, sizeof(app->edit_text), "%s", app->bench.parts[app->selected].code ? app->bench.parts[app->selected].code : "");
+}
+
 static int input_click_inspector(AppState *app, SDL_Window *window, float x, float y)
 {
     if (app->inspector_minimized || !selected_plain_part(app))
         return 0;
     const Part *part = &app->bench.parts[app->selected];
+    if (part->type == PART_NOTE)
+    {
+        if (app_rect_contains(app_layout_inspector_value(), x, y))
+        {
+            start_note_edit(app, window);
+            return 1;
+        }
+        for (int row = 0; row < 2; ++row)
+        {
+            int tone = app_layout_color_swatch_at(x, y - row * 48);
+            if (tone < 0)
+                continue;
+            if (!bench_history_record(app->history, &app->bench))
+            {
+                app->status = tr(TXT_APP_HISTORY_FAILED);
+                return 1;
+            }
+            unsigned shift = row ? 8 : 0;
+            unsigned encoded = (unsigned)(tone + BENCH_COLOR_COUNT - (row ? BENCH_COLOR_BLACK : BENCH_COLOR_YELLOW)) % BENCH_COLOR_COUNT;
+            bench_set_states(&app->bench, app->selected, (part->states & ~(255u << shift)) | (encoded << shift));
+            return 1;
+        }
+    }
     int swatch = part->type == PART_LED ? app_layout_color_swatch_at(x, y) : -1;
     if (swatch >= COMPONENT_LED_COLORS)
         swatch = -1;
@@ -1344,6 +1391,12 @@ static void input_select(AppState *app, float x, float y, int clicks)
             bench_set_on(&app->bench, hit, 1);
             app->held_button = hit;
             app->status = tr(TXT_APP_BUTTON_PRESSED);
+            return;
+        }
+        if (clicks >= 2 && app->bench.parts[hit].type == PART_NOTE)
+        {
+            app->selected = hit;
+            start_note_edit(app, NULL);
             return;
         }
         if (clicks >= 2 && app_code_editable(app, hit))

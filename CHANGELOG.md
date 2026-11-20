@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.49.0 — 20/11/2026
+
+- Notas flutuantes no catálogo Básicos: texto por clique duplo, cores de fundo e texto independentes, arraste, escala, cópia, desfazer e salvamento. Formato 37, leitura dos projetos anteriores preservada.
+- Bancada pessoal de EEPROM anotada por etapas; ligações preservadas.
+
 ## 0.48.0
 
 - EEPROM AT28C16 grava pelo barramento: endereço e dado retidos pelas bordas de CE/WE, proteção por OE,

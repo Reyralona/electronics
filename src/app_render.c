@@ -3299,6 +3299,20 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
             name_text(font, part->x + 10, part->y - 10, name, 150);
         }
     }
+    for (int i = 0; i < app->bench.part_count; ++i)
+    {
+        const Part *part = &app->bench.parts[i];
+        if (part->type != PART_NOTE || part->group)
+            continue;
+        float scale = bench_part_scale(part);
+        const float *bg = palette_tone(((part->states & 255) + BENCH_COLOR_YELLOW) % BENCH_COLOR_COUNT)->wire;
+        const float *fg = palette_tone(((part->states >> 8) + BENCH_COLOR_BLACK) % BENCH_COLOR_COUNT)->wire;
+        glColor3fv(bg);
+        rect(part->x - 120 * scale, part->y - 55 * scale, 240 * scale, 110 * scale);
+        glColor3fv(fg);
+        ui_wrapped(font, part->x - 110 * scale, part->y - 34 * scale,
+                   part->code ? part->code : tr(TXT_UI_NOTE_HINT), (int)(220 * scale), 4, 22 * scale);
+    }
     draw_groups(app, font);
     draw_workspace_labels(app, font);
     draw_workspace_probe(app, font);
@@ -3582,6 +3596,25 @@ static void draw_led_colors(GLuint font, const Part *part)
 static void draw_part_inspector(const AppState *app, GLuint font)
 {
     const Part *part = &app->bench.parts[app->selected];
+    if (part->type == PART_NOTE)
+    {
+        ui_panel(app_layout_inspector(230));
+        draw_inspector_title(app, font, tr(TXT_CAT_NOTE), app_layout_inspector_minimize().x);
+        draw_inspector_row(app, font, app_layout_inspector_value(), tr(TXT_UI_NOTE_TEXT), tr(TXT_UI_NOTE_EDIT), 1);
+        char size[32];
+        snprintf(size, sizeof(size), "%.5g %%", bench_part_scale(part) * 100);
+        draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), size, 1);
+        color(UI_INK);
+        text(font, inspector_text_x(), INSPECTOR_LINE_2, tr(TXT_UI_NOTE_BACKGROUND));
+        draw_color_swatches(app_layout_color_swatch, BENCH_COLOR_COUNT, ((part->states & 255) + BENCH_COLOR_YELLOW) % BENCH_COLOR_COUNT);
+        glPushMatrix();
+        glTranslatef(0, 48, 0);
+        color(UI_INK);
+        text(font, inspector_text_x(), INSPECTOR_LINE_2, tr(TXT_UI_NOTE_TEXT));
+        draw_color_swatches(app_layout_color_swatch, BENCH_COLOR_COUNT, ((part->states >> 8) + BENCH_COLOR_BLACK) % BENCH_COLOR_COUNT);
+        glPopMatrix();
+        return;
+    }
     const ComponentInfo *info = component_info(part->type);
     char reading[160], note[160], value[64];
     inspector_reading(app, part, reading, sizeof(reading));
@@ -3912,6 +3945,8 @@ static void draw_settings(const AppState *app, GLuint font)
 
 static TextId value_editor_title(int editing)
 {
+    if (editing == APP_EDIT_NOTE)
+        return TXT_UI_NOTE_TEXT;
     if (editing == APP_EDIT_GROUP_NAME)
         return TXT_UI_EDIT_CHIP_NAME;
     if (editing == APP_EDIT_PORT_NAME)

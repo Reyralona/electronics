@@ -100,6 +100,8 @@ int component_element_vector(PartType type, int index, int element, char *vector
 
 int component_states_valid(PartType type, unsigned states)
 {
+    if (type == PART_NOTE)
+        return states < 65536 && (states & 255) < BENCH_COLOR_COUNT && (states >> 8) < BENCH_COLOR_COUNT;
     if (type == PART_LED)
         return states < COMPONENT_LED_COLORS;
     const ComponentDevice *device = component_device(type);

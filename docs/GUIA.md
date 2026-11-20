@@ -314,3 +314,7 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
 Ctrl+clique adiciona ou remove somente a peça clicada. Se todas as peças selecionadas forem do mesmo tipo, Valor (ou E) altera o valor de todas: selecione resistores, pressione E, digite 200 e confirme para aplicar 200 ohms. Ctrl+A dentro do campo seleciona o texto. Ctrl+Z desfaz a alteração conjunta. O campo Tamanho e a cor dos LEDs também aceitam seleção do mesmo tipo.
 
 O catálogo Básicos inclui Protoboard larga (60 colunas), com o mesmo passo de furos da placa original. Ao reduzir uma peça conectada, suas pontas conservam os contatos. As marcas e áreas clicáveis dos terminais mantêm um tamanho útil na tela. A cor física dos LEDs é igual nos temas claro e escuro.
+
+### Notas flutuantes — 0.49.0
+
+Em Básicos, escolha **Nota** e coloque na bancada. Clique duplo ou use **Texto** no painel para escrever até 127 bytes (acentos ocupam mais de um byte); Enter confirma e Esc cancela. O texto quebra automaticamente em até quatro linhas. No painel, **Fundo** e **Texto** têm paletas independentes. Arraste para mover, ajuste Tamanho para ampliar e use Delete para remover. Notas não têm pinos nem participam eletricamente do circuito. São salvas no projeto e acompanham copiar/colar e desfazer.
