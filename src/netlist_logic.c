@@ -274,6 +274,64 @@ static void dual_dff_74(LogicWriter *w)
     }
 }
 
+/* `count` gates of `model` with `width` inputs each: gate g reads in_pins[g * width ...] and drives y_pins[g]. */
+static void gate_array(LogicWriter *w, const char *model, const int *in_pins, int width, const int *y_pins, int count)
+{
+    inputs(w, in_pins, width * count);
+    for (int gate = 0; gate < count; ++gate)
+    {
+        char list[LOGIC_IC_PORTS_CAPACITY] = "", y[LOGIC_IC_TOKEN_CAPACITY];
+        for (int i = 0; i < width; ++i)
+        {
+            size_t used = strlen(list);
+            snprintf(list + used, sizeof(list) - used, " d%d", in_pins[gate * width + i]);
+        }
+        snprintf(y, sizeof(y), "y%d", gate);
+        primitive(w, model, "[%s] %s", list + 1, y);
+        output(w, y_pins[gate], y, NULL);
+    }
+}
+
+/* SN74HC02: four 2-input NOR gates; outputs 1Y and 2Y come before their inputs. */
+static void quad_nor_02(LogicWriter *w)
+{
+    static const int in_pins[] = {1, 2, 4, 5, 7, 8, 10, 11}, y_pins[] = {0, 3, 9, 12};
+    gate_array(w, "nor", in_pins, 2, y_pins, 4);
+}
+
+/* SN74HC10 and SN74HC11 share a pinout: gate 1 takes pins 1, 2 and 13 and drives pin 12. */
+static const int triple_in_pins[] = {0, 1, 12, 2, 3, 4, 8, 9, 10}, triple_y_pins[] = {11, 5, 7};
+
+static void triple_nand_10(LogicWriter *w)
+{
+    gate_array(w, "nand", triple_in_pins, 3, triple_y_pins, 3);
+}
+
+static void triple_and_11(LogicWriter *w)
+{
+    gate_array(w, "and", triple_in_pins, 3, triple_y_pins, 3);
+}
+
+/* SN74HC14: Y = NOT A with hysteresis. Two bridges at VT+ and VT- (lic_vtp, lic_vtn) set and reset a
+ * latch; between them the latch holds, so Y keeps its level. */
+static void hex_schmitt_14(LogicWriter *w)
+{
+    static const int a_pins[] = {0, 2, 4, 8, 10, 12}, y_pins[] = {1, 3, 5, 7, 9, 11};
+    const char *p = w->prefix;
+    primitive(w, "one", "one");
+    for (int gate = 0; gate < 6; ++gate)
+    {
+        int pin = a_pins[gate];
+        input_scaled(w, pin);
+        emit(w, "A%sup%d [%svin%d] [%sup%d] lic_vtp\n", p, pin, p, pin, p, pin);
+        emit(w, "A%sdn%d [%svin%d] [%sdn%d] lic_vtn\n", p, pin, p, pin, p, pin);
+        primitive(w, "srlatch", "up%d ~dn%d one null null s%d y%d", pin, pin, gate, gate);
+        char y[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(y, sizeof(y), "y%d", gate);
+        output(w, y_pins[gate], y, NULL);
+    }
+}
+
 /* EEPROM pins cross the same analog bridges as other CIs; its state runs in d_cosim. */
 static void eeprom_28c16(LogicWriter *w)
 {
@@ -354,6 +412,10 @@ static const LogicChip chips[] = {
     {PART_AT28C16, 23, 11, AT28C16_ABSOLUTE_MAX, AT28C16_RECOMMENDED_MAX, 0, eeprom_28c16},
     {PART_74HC04, 13, 6, HC_RATINGS, hex_inverter_04},
     {PART_74HC74, 13, 6, HC_RATINGS, dual_dff_74},
+    {PART_74HC02, 13, 6, HC_RATINGS, quad_nor_02},
+    {PART_74HC10, 13, 6, HC_RATINGS, triple_nand_10},
+    {PART_74HC11, 13, 6, HC_RATINGS, triple_and_11},
+    {PART_74HC14, 13, 6, HC_RATINGS, hex_schmitt_14},
 };
 
 static const LogicChip *logic_chip(PartType type)
@@ -406,7 +468,13 @@ int netlist_logic_models(FILE *out)
                    ".model lic_xor d_xor(rise_delay=1n fall_delay=1n)\n"
                    ".model lic_inv d_inverter(rise_delay=1n fall_delay=1n)\n"
                    ".model lic_dff d_dff(ic=0 clk_delay=1n set_delay=1n reset_delay=1n rise_delay=1n fall_delay=1n)\n"
-                   ".model lic_one d_pullup\n") >= 0;
+                   ".model lic_one d_pullup\n"
+                   ".model lic_nand d_nand(rise_delay=1n fall_delay=1n)\n"
+                   ".model lic_srlatch d_srlatch(ic=0 sr_delay=1n enable_delay=1n set_delay=1n reset_delay=1n "
+                   "rise_delay=1n fall_delay=1n)\n"
+                   /* 74HC14 thresholds VT+ = .55 VCC and VT- = .35 VCC (TI SCLS085L typical, 4.5 and 6 V). */
+                   ".model lic_vtp adc_bridge(in_low=2.75 in_high=2.75)\n"
+                   ".model lic_vtn adc_bridge(in_low=1.75 in_high=1.75)\n") >= 0;
 }
 
 void netlist_logic_ratings(PartType type, double *supply_absolute_max, double *supply_recommended_max,

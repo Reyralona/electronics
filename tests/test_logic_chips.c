@@ -364,6 +364,94 @@ static void dual_dff_captures_and_overrides(void)
     bench_snapshot_clear(&rig.bench);
 }
 
+static void probes(Rig *rig, int part, const int *pins, int count, int *loads)
+{
+    for (int i = 0; i < count; ++i)
+        loads[i] = probe(rig, part, pins[i]);
+}
+
+/* Runs a fresh session for 0.1 ms and reads the loads. */
+static int settle(Rig *rig, const int *loads, int count)
+{
+    static SimAutoResult result;
+    SpiceLive *live = run(rig, 1e-4, &result, NULL);
+    int value = read_bits(&result, loads, count);
+    spice_live_destroy(live);
+    return value;
+}
+
+/* Ties each listed pin to bit i of `levels`. */
+static void tie_bits(Rig *rig, int part, const int *pins, int count, unsigned levels)
+{
+    for (int i = 0; i < count; ++i)
+        tie(rig, part, pins[i], levels >> i & 1);
+}
+
+/* NOR gates with A,B = 00, 01, 10, 11: only the first output is high. */
+static void quad_nor_nors(void)
+{
+    static Rig rig;
+    rig_start(&rig);
+    int nor = chip(&rig, PART_74HC02);
+    const int a_pins[] = {1, 4, 7, 10}, b_pins[] = {2, 5, 8, 11}, y_pins[] = {0, 3, 9, 12};
+    int loads[4];
+    tie_bits(&rig, nor, a_pins, 4, 0xC);
+    tie_bits(&rig, nor, b_pins, 4, 0xA);
+    probes(&rig, nor, y_pins, 4, loads);
+    assert(settle(&rig, loads, 4) == 0x1);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* Gates fed 111, 110 and 011: the 74HC10 answers 0, 1, 1 and the 74HC11 answers 1, 0, 0. */
+static void triple_gates_decide(PartType type, int expected)
+{
+    static Rig rig;
+    rig_start(&rig);
+    int gates = chip(&rig, type);
+    const int in_pins[] = {0, 1, 12, 2, 3, 4, 8, 9, 10}, y_pins[] = {11, 5, 7};
+    int loads[3];
+    tie_bits(&rig, gates, in_pins, 9, 0x19F); /* gate 1: 111, gate 2: 110 (C low), gate 3: 011 (A low) */
+    probes(&rig, gates, y_pins, 3, loads);
+    assert(settle(&rig, loads, 3) == expected);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* Sets the input source and reads the inverter output in the same session. */
+static int schmitt_at(Rig *rig, int source, double volts, int load, SpiceLive **live)
+{
+    static SimAutoResult result;
+    assert(bench_set_value(&rig->bench, source, volts));
+    *live = run(rig, 1e-4, &result, *live);
+    assert(!spice_live_restarted(*live));
+    return read_bits(&result, &load, 1);
+}
+
+/* 2.25 V lies between the thresholds: the output keeps what the last crossing set. Rising past 2.75 V
+ * drives it low; falling below 1.75 V drives it high. */
+static void schmitt_holds_between_thresholds(void)
+{
+    static Rig rig;
+    static SimAutoResult result;
+    rig_start(&rig);
+    int inverter = chip(&rig, PART_74HC14);
+    int source = bench_add(&rig.bench, PART_SOURCE, 300, 1500);
+    assert(source >= 0 && bench_set_value(&rig.bench, source, .5));
+    wire(&rig, source, 1, rig.source, 1);
+    wire(&rig, source, 0, inverter, 0);
+    int load = probe(&rig, inverter, 1);
+    SpiceLive *live = run(&rig, 1e-4, &result, NULL);
+    assert(read_bits(&result, &load, 1) == 1);
+    assert(schmitt_at(&rig, source, 2.25, load, &live) == 1);
+    assert(schmitt_at(&rig, source, 2.6, load, &live) == 1);
+    assert(schmitt_at(&rig, source, 3.0, load, &live) == 0);
+    assert(schmitt_at(&rig, source, 2.25, load, &live) == 0);
+    assert(schmitt_at(&rig, source, 1.9, load, &live) == 0);
+    assert(schmitt_at(&rig, source, 1.5, load, &live) == 1);
+    assert(schmitt_at(&rig, source, 2.25, load, &live) == 1);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -377,6 +465,11 @@ int main(int argc, char **argv)
     hex_inverter_inverts();
     dual_dff_captures_and_overrides();
     puts("Logic ICs: 74HC04 inverts, 74HC74 captures, presets and clears.");
+    quad_nor_nors();
+    triple_gates_decide(PART_74HC10, 0x6);
+    triple_gates_decide(PART_74HC11, 0x1);
+    schmitt_holds_between_thresholds();
+    puts("Logic ICs: 74HC02 nors, 74HC10 nands, 74HC11 ands, 74HC14 holds between its thresholds.");
     printf("Logic ICs: 74HC283 adds, 74HC245 passes and releases, AT28C16 reads, 74HC173 loads and releases, "
            "74HC161 counts and carries.\n");
     return 0;

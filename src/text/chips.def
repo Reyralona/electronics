@@ -43,6 +43,21 @@ UI_TEXT(PIN_INV5_A, "Entrada do inversor 5.", "Input of inverter 5.")
 UI_TEXT(PIN_INV5_Y, "Saída do inversor 5.", "Output of inverter 5.")
 UI_TEXT(PIN_INV6_A, "Entrada do inversor 6.", "Input of inverter 6.")
 UI_TEXT(PIN_INV6_Y, "Saída do inversor 6.", "Output of inverter 6.")
+/* 74HC02 */
+UI_TEXT(DOC_74HC02, "Quatro portas NOR de 2 entradas. Y = NÃO (A OU B).", "Four 2-input NOR gates. Y = NOT (A OR B).")
+/* 74HC10/11: three 3-input gates, same pinout */
+UI_TEXT(DOC_74HC10, "Três portas NAND de 3 entradas. Y = NÃO (A E B E C).",
+        "Three 3-input NAND gates. Y = NOT (A AND B AND C).")
+UI_TEXT(DOC_74HC11, "Três portas AND de 3 entradas. Y = A E B E C.", "Three 3-input AND gates. Y = A AND B AND C.")
+UI_TEXT(PIN_GATE1_C, "Entrada C da porta 1.", "Input C of gate 1.")
+UI_TEXT(PIN_GATE2_C, "Entrada C da porta 2.", "Input C of gate 2.")
+UI_TEXT(PIN_GATE3_C, "Entrada C da porta 3.", "Input C of gate 3.")
+/* 74HC14 */
+UI_TEXT(DOC_74HC14,
+        "Seis inversores Schmitt, Y = NÃO A. Y vai a 0 com A acima de 0,55 VCC e a 1 abaixo de 0,35 VCC. "
+        "Entre os dois, Y fica como estava.",
+        "Six Schmitt inverters, Y = NOT A. Y goes low with A above 0.55 VCC and high below 0.35 VCC. "
+        "In between, Y stays as it was.")
 /* 74HC74 */
 UI_TEXT(DOC_74HC74,
         "Dois flip-flops D. Na borda de subida do clock, Q copia D. ~PRE e ~CLR agem na hora, em nível baixo.",

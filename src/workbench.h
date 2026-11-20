@@ -86,6 +86,10 @@ typedef enum
     /* Logic IC collection, saved from format 38. Append new types at the end: the index is the file code. */
     PART_74HC04,
     PART_74HC74,
+    PART_74HC02,
+    PART_74HC10,
+    PART_74HC11,
+    PART_74HC14,
     PART_TYPE_COUNT
 } PartType;
 static inline int bench_is_board(PartType type)
