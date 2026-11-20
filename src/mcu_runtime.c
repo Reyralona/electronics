@@ -35,6 +35,7 @@ void mcu_runtime_destroy(McuRuntime *runtime)
         return;
     for (int i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
         instance_clear(&runtime->mcu[i]);
+    free(runtime->connection_nodes);
     free(runtime);
 }
 
@@ -45,6 +46,9 @@ void mcu_runtime_reset(McuRuntime *runtime)
     for (int i = 0; i < WORKBENCH_MAX_COMPONENTS; ++i)
         instance_clear(&runtime->mcu[i]);
     memset(runtime->lcd, 0, sizeof(runtime->lcd));
+    free(runtime->connection_nodes);
+    runtime->connection_nodes = NULL;
+    runtime->connection_bench = NULL;
 }
 
 const char *mcu_program_text(const Part *part)
@@ -141,8 +145,22 @@ static int lcd_connected(const HostContext *host, int lcd)
     if (sda < 0 || scl < 0)
         return 0;
     Pin board_sda = {host->index, host->board->io_terminal[sda]}, board_scl = {host->index, host->board->io_terminal[scl]};
-    return netlist_same_net(host->bench, (Pin){lcd, sda_terminal}, board_sda) &&
-           netlist_same_net(host->bench, (Pin){lcd, scl_terminal}, board_scl);
+    McuRuntime *runtime = host->runtime;
+    if (!runtime->connection_nodes || runtime->connection_bench != host->bench ||
+        runtime->connection_revision != host->bench->revision)
+    {
+        int *nodes = netlist_connection_nodes(host->bench);
+        if (!nodes)
+            return 0;
+        free(runtime->connection_nodes);
+        runtime->connection_nodes = nodes;
+        runtime->connection_bench = host->bench;
+        runtime->connection_revision = host->bench->revision;
+    }
+    const int *nodes = runtime->connection_nodes;
+    int base = lcd * WORKBENCH_MAX_PINS;
+    return nodes[base + sda_terminal] == nodes[board_sda.component * WORKBENCH_MAX_PINS + board_sda.pin] &&
+           nodes[base + scl_terminal] == nodes[board_scl.component * WORKBENCH_MAX_PINS + board_scl.pin];
 }
 
 static void lcd_apply(LcdScreen *screen, McuLcdOperation operation, int a, int b, const char *text)

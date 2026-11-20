@@ -36,6 +36,9 @@ typedef struct
     LcdScreen lcd[WORKBENCH_MAX_COMPONENTS];
     double clock_ms;
     uint64_t next_identity;
+    int *connection_nodes;
+    const Workbench *connection_bench;
+    uint64_t connection_revision;
 } McuRuntime;
 
 McuRuntime *mcu_runtime_create(void);

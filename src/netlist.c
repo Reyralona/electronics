@@ -927,17 +927,28 @@ int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin)
     return node == ground ? 0 : node + 1;
 }
 
+int *netlist_connection_nodes(const Workbench *bench)
+{
+    if (!bench)
+        return NULL;
+    int *nodes = malloc(sizeof(int) * PIN_TOTAL);
+    if (!nodes)
+        return NULL;
+    build_nets(bench, nodes, 1, 0, 0);
+    for (int pin = 0; pin < PIN_TOTAL; ++pin)
+        nodes[pin] = find_root(nodes, pin);
+    return nodes;
+}
+
 int netlist_same_net(const Workbench *bench, Pin a, Pin b)
 {
-    if (!bench || a.component < 0 || b.component < 0 || a.component >= bench->part_count ||
-        b.component >= bench->part_count)
+    if (!bench || !valid_pin(bench, a) || !valid_pin(bench, b))
         return 0;
-    int *parents = malloc(sizeof(int) * PIN_TOTAL);
-    if (!parents)
+    int *nodes = netlist_connection_nodes(bench);
+    if (!nodes)
         return 0;
-    build_nets(bench, parents, 1, 0, 0);
-    int same = find_root(parents, pin_index(a)) == find_root(parents, pin_index(b));
-    free(parents);
+    int same = nodes[pin_index(a)] == nodes[pin_index(b)];
+    free(nodes);
     return same;
 }
 

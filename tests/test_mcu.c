@@ -85,6 +85,17 @@ static void analog_and_lcd(void)
     int reading = 0;
     assert(sscanf(runtime->mcu[uno].serial, "%d", &reading) == 1 && reading > 490 && reading < 530);
     assert(!strncmp(runtime->lcd[lcd].text[1], "5", 1));
+    int *cached = runtime->connection_nodes;
+    assert(cached && runtime->connection_revision == bench.revision);
+    mcu_runtime_step(runtime, &bench, NULL, 150);
+    assert(runtime->connection_nodes == cached);
+    assert(bench_toggle_wire(&bench, (Pin){lcd, 3}, (Pin){uno, UNO_A5}) == 2); /* Disconnect SCL; the next write must not reach the LCD. */
+    memset(runtime->lcd[lcd].text, 'X', sizeof(runtime->lcd[lcd].text));
+    mcu_runtime_step(runtime, &bench, NULL, 150);
+    assert(runtime->connection_revision == bench.revision && runtime->lcd[lcd].text[1][0] == 'X');
+    wire(&bench, lcd, 3, uno, UNO_A5);
+    mcu_runtime_step(runtime, &bench, NULL, 150);
+    assert(runtime->connection_revision == bench.revision && runtime->lcd[lcd].text[1][0] != 'X');
     spice_live_destroy(session);
     mcu_runtime_destroy(runtime);
     bench_snapshot_clear(&bench);

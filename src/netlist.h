@@ -44,6 +44,8 @@ NetlistResult netlist_write_live(FILE *out, const Workbench *bench, int measure_
 NetlistResult netlist_write_live_protected(FILE *out, const Workbench *bench, int measure_wires,
                                            NetlistProtection *protection);
 /* Terminals joined by wires, breadboard strips or direct contact (switch states ignored). */
+/* Owned array of component * WORKBENCH_MAX_PINS + pin nodes; caller frees it. */
+int *netlist_connection_nodes(const Workbench *bench);
 int netlist_same_net(const Workbench *bench, Pin a, Pin b);
 int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin);
 NetlistResult netlist_write_dc(FILE *out, const Workbench *bench);
