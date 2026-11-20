@@ -549,6 +549,103 @@ static void octal_dff_374_loads_while_released(void)
     bench_snapshot_clear(&rig.bench);
 }
 
+/* Counting, then ~LOAD low: nothing until the next edge, which loads 9. ~CLR low with ~LOAD still low:
+ * nothing until the next edge, which clears (clear beats load). Released, it counts again. */
+static void counter_163_waits_for_the_edge(void)
+{
+    static Rig rig;
+    rig_start(&rig);
+    int counter = chip(&rig, PART_74HC163);
+    add_clock(&rig, counter, 1);
+    const int enables[] = {6, 9}, data[] = {2, 3, 4, 5}, q_pins[] = {13, 12, 11, 10};
+    tie_bits(&rig, counter, enables, 2, 0x3);
+    tie_bits(&rig, counter, data, 4, 0x9);
+    int clear = control_source(&rig, counter, 0, 1, 100);
+    int load = control_source(&rig, counter, 8, 1, 300);
+    int loads[4];
+    probes(&rig, counter, q_pins, 4, loads);
+    SpiceLive *live = NULL;
+    int first = step(&rig, &live, .75 / CLOCK_HZ, loads, 4);
+    int counted = step(&rig, &live, 1 / CLOCK_HZ, loads, 4);
+    assert(counted == (first + 1) % 16);
+    assert(bench_set_on(&rig.bench, load, 0));
+    assert(step(&rig, &live, .1 / CLOCK_HZ, loads, 4) == counted);
+    assert(step(&rig, &live, 1 / CLOCK_HZ, loads, 4) == 9);
+    assert(bench_set_on(&rig.bench, clear, 0));
+    assert(step(&rig, &live, .1 / CLOCK_HZ, loads, 4) == 9);
+    assert(step(&rig, &live, 1 / CLOCK_HZ, loads, 4) == 0);
+    assert(bench_set_on(&rig.bench, clear, 1));
+    assert(bench_set_on(&rig.bench, load, 1));
+    assert(step(&rig, &live, 1 / CLOCK_HZ, loads, 4) == 1);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* A 74HC193 with its clock on UP (count up) or on DOWN (count down); the other clock pin tied high. Data A-D
+ * is 12. Loads: QA-QD, then ~CO (up) or ~BO (down). */
+static int up_down_rig(Rig *rig, int up, int *loads)
+{
+    rig_start(rig);
+    int counter = chip(rig, PART_74HC193);
+    const int data[] = {14, 0, 9, 8}, outputs[] = {2, 1, 5, 6, up ? 11 : 12};
+    add_clock(rig, counter, up ? 4 : 3);
+    tie(rig, counter, up ? 3 : 4, 1);
+    tie_bits(rig, counter, data, 4, 0xC);
+    probes(rig, counter, outputs, 5, loads);
+    return counter;
+}
+
+/* Up: one step per UP edge, wrapping 15 to 0; ~CO is low only at 15 (read while UP is low). ~LOAD low loads 12
+ * at once, between edges. CLR high clears at once and beats ~LOAD. */
+static void up_down_193_counts_up_loads_and_clears(void)
+{
+    static Rig rig;
+    int loads[5];
+    int counter = up_down_rig(&rig, 1, loads);
+    int clear = control_source(&rig, counter, 13, 0, 100);
+    int load = control_source(&rig, counter, 10, 1, 300);
+    SpiceLive *live = NULL;
+    int first = step(&rig, &live, .75 / CLOCK_HZ, loads, 5) & 15, seen_carry = 0;
+    for (int period = 1; period <= 17; ++period)
+    {
+        int bits = step(&rig, &live, 1 / CLOCK_HZ, loads, 5), value = bits & 15;
+        assert(value == (first + period) % 16);
+        assert(!(bits & 16) == (value == 15));
+        seen_carry |= value == 15;
+    }
+    assert(seen_carry);
+    assert(bench_set_on(&rig.bench, load, 0));
+    assert((step(&rig, &live, .1 / CLOCK_HZ, loads, 5) & 15) == 12);
+    assert(bench_set_on(&rig.bench, clear, 1));
+    assert((step(&rig, &live, .1 / CLOCK_HZ, loads, 5) & 15) == 0);
+    assert(bench_set_on(&rig.bench, clear, 0));
+    assert((step(&rig, &live, .1 / CLOCK_HZ, loads, 5) & 15) == 12);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* Down: one step per DOWN edge, wrapping 0 to 15; ~BO is low only at 0 (read while DOWN is low). */
+static void up_down_193_counts_down(void)
+{
+    static Rig rig;
+    int loads[5];
+    int counter = up_down_rig(&rig, 0, loads);
+    tie(&rig, counter, 13, 0);
+    tie(&rig, counter, 10, 1);
+    SpiceLive *live = NULL;
+    int first = step(&rig, &live, .75 / CLOCK_HZ, loads, 5) & 15, seen_borrow = 0;
+    for (int period = 1; period <= 17; ++period)
+    {
+        int bits = step(&rig, &live, 1 / CLOCK_HZ, loads, 5), value = bits & 15;
+        assert(value == (first + 16 * 2 - period) % 16);
+        assert(!(bits & 16) == (value == 0));
+        seen_borrow |= value == 0;
+    }
+    assert(seen_borrow);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -571,6 +668,10 @@ int main(int argc, char **argv)
     octal_latch_373_follows_and_holds();
     octal_dff_374_loads_while_released();
     puts("Logic ICs: 74HC273 loads and clears, 74HC373 follows, holds and releases, 74HC374 loads while released.");
+    counter_163_waits_for_the_edge();
+    up_down_193_counts_up_loads_and_clears();
+    up_down_193_counts_down();
+    puts("Logic ICs: 74HC163 clears and loads on the edge, 74HC193 counts both ways, loads and clears at once.");
     printf("Logic ICs: 74HC283 adds, 74HC245 passes and releases, AT28C16 reads, 74HC173 loads and releases, "
            "74HC161 counts and carries.\n");
     return 0;

@@ -148,13 +148,15 @@ static void supply(LogicWriter *w)
          LOGIC_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, LOGIC_SUPPLY_MAX + QUAD_EDGE_VOLTS, p, QUAD_EDGE_VOLTS);
 }
 
-/* SN74HC161 (TI SCLS297D): synchronous load and count on the rising CLK edge, asynchronous clear. */
-static void counter_161(LogicWriter *w)
+/* SN74HC161 and SN74HC163 share everything but the clear: asynchronous on the 161, on the clock edge on the 163
+ * (where it beats LOAD). */
+static void binary_counter(LogicWriter *w, int clear_on_edge)
 {
     static const int pins[] = {0, 1, 2, 3, 4, 5, 6, 8, 9};
     static const int data_pins[] = {2, 3, 4, 5}, q_pins[] = {13, 12, 11, 10};
     inputs(w, pins, (int)(sizeof(pins) / sizeof(pins[0])));
-    primitive(w, "inv", "d0 clr");
+    if (!clear_on_edge)
+        primitive(w, "inv", "d0 clr");
     primitive(w, "and", "[d6 d9] t0");
     for (int bit = 0; bit < 4; ++bit)
     {
@@ -164,14 +166,64 @@ static void counter_161(LogicWriter *w)
         primitive(w, "xor", "[q%d t%d] inc%d", bit, bit, bit);
         primitive(w, "and", "[~d8 d%d] ld%d", data_pins[bit], bit);
         primitive(w, "and", "[d8 inc%d] kp%d", bit, bit);
-        primitive(w, "or", "[ld%d kp%d] n%d", bit, bit, bit);
-        primitive(w, "dff", "n%d d1 null clr q%d null", bit, bit);
+        primitive(w, "or", "[ld%d kp%d] %s%d", bit, bit, clear_on_edge ? "nx" : "n", bit);
+        if (clear_on_edge)
+            primitive(w, "and", "[d0 nx%d] n%d", bit, bit);
+        primitive(w, "dff", "n%d d1 null %s q%d null", bit, clear_on_edge ? "null" : "clr", bit);
         char q[LOGIC_IC_TOKEN_CAPACITY];
         snprintf(q, sizeof(q), "q%d", bit);
         output(w, q_pins[bit], q, NULL);
     }
     primitive(w, "and", "[d9 q0 q1 q2 q3] rco");
     output(w, 14, "rco", NULL);
+}
+
+/* SN74HC161 (TI SCLS297D): synchronous load and count on the rising CLK edge, asynchronous clear. */
+static void counter_161(LogicWriter *w)
+{
+    binary_counter(w, 0);
+}
+
+/* SN74HC163 (TI SCLS298D): clear, load and count all on the rising CLK edge. */
+static void counter_163(LogicWriter *w)
+{
+    binary_counter(w, 1);
+}
+
+/* SN74HC193 (TI SCLS122D): counts up on the rising edge of UP with DOWN high, down on that of DOWN with UP
+ * high. CLR (high) and ~LOAD (low) act at once through the flip-flop set and reset; CLR wins. A flip-flop
+ * set by UP low and reset by DOWN low remembers which clock went low last, so the edge that brings both
+ * high knows its direction. */
+static void up_down_counter_193(LogicWriter *w)
+{
+    static const int pins[] = {0, 3, 4, 8, 9, 10, 13, 14};
+    static const int data_pins[] = {14, 0, 9, 8}, q_pins[] = {2, 1, 5, 6};
+    inputs(w, pins, (int)(sizeof(pins) / sizeof(pins[0])));
+    primitive(w, "one", "t0");
+    primitive(w, "and", "[d4 d3] ck");
+    primitive(w, "dff", "t0 t0 ~d4 ~d3 up dn");
+    primitive(w, "and", "[~d10 ~d13] ld");
+    for (int bit = 0; bit < 4; ++bit)
+    {
+        /* Up: a bit toggles when every lower bit is 1. Down: when every lower bit is 0. */
+        if (bit)
+            primitive(w, "xor", "[q%d dn] x%d", bit - 1, bit - 1);
+        if (bit)
+            primitive(w, "and", "[t%d x%d] t%d", bit - 1, bit - 1, bit);
+        primitive(w, "xor", "[q%d t%d] n%d", bit, bit, bit);
+        primitive(w, "and", "[ld ~d%d] lr%d", data_pins[bit], bit);
+        primitive(w, "or", "[d13 lr%d] r%d", bit, bit);
+        /* Set waits for reset to drop: both active and released together would leave the flip-flop unknown. */
+        primitive(w, "and", "[ld d%d ~r%d] s%d", data_pins[bit], bit, bit);
+        primitive(w, "dff", "n%d ck s%d r%d q%d null", bit, bit, bit, bit);
+        char q[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(q, sizeof(q), "q%d", bit);
+        output(w, q_pins[bit], q, NULL);
+    }
+    primitive(w, "nand", "[~d4 q0 q1 q2 q3] co");
+    primitive(w, "nand", "[~d3 ~q0 ~q1 ~q2 ~q3] bo");
+    output(w, 11, "co", NULL);
+    output(w, 12, "bo", NULL);
 }
 
 /* SN74HC173: loads D on the rising CLK edge when G1 and G2 are low, CLR high clears, outputs enabled
@@ -459,6 +511,8 @@ static const LogicChip chips[] = {
     {PART_74HC273, 19, 9, HC_RATINGS, octal_dff_273},
     {PART_74HC373, 19, 9, HC_RATINGS_35, octal_latch_373},
     {PART_74HC374, 19, 9, HC_RATINGS_35, octal_dff_374},
+    {PART_74HC163, 15, 7, HC_RATINGS, counter_163},
+    {PART_74HC193, 15, 7, HC_RATINGS, up_down_counter_193},
 };
 
 static const LogicChip *logic_chip(PartType type)

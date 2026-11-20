@@ -32,6 +32,8 @@ UI_TEXT(CAT_74HC14, "6 inversores Schmitt 74HC14", "74HC14 hex Schmitt inverter"
 UI_TEXT(CAT_74HC273, "8 flip-flops D com clear 74HC273", "74HC273 octal D flip-flop with clear")
 UI_TEXT(CAT_74HC373, "8 latches D com 3 estados 74HC373", "74HC373 octal D latch, 3-state")
 UI_TEXT(CAT_74HC374, "8 flip-flops D com 3 estados 74HC374", "74HC374 octal D flip-flop, 3-state")
+UI_TEXT(CAT_74HC163, "Contador 74HC163", "74HC163 counter")
+UI_TEXT(CAT_74HC193, "Contador crescente e decrescente 74HC193", "74HC193 up/down counter")
 UI_TEXT(CAT_74HC173, "Registrador 74HC173", "74HC173 register")
 UI_TEXT(CAT_74HC245, "Transceptor 74HC245", "74HC245 transceiver")
 UI_TEXT(CAT_74HC283, "Somador 74HC283", "74HC283 adder")

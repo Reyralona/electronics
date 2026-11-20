@@ -84,6 +84,12 @@ static const ComponentPinInfo pins_74hc374[] = {
     {"3Q", PIN_OUTPUT}, {"3D", PIN_INPUT}, {"4D", PIN_INPUT}, {"4Q", PIN_OUTPUT}, {"GND", PIN_GROUND},
     {"CLK", PIN_CLOCK_INPUT}, {"5Q", PIN_OUTPUT}, {"5D", PIN_INPUT}, {"6D", PIN_INPUT}, {"6Q", PIN_OUTPUT},
     {"7Q", PIN_OUTPUT}, {"7D", PIN_INPUT}, {"8D", PIN_INPUT}, {"8Q", PIN_OUTPUT}, {"VCC", PIN_SUPPLY_POSITIVE}};
+/* TI SN74HC193 (SCLS122D), consulted 20/11/2026; CLR is active high. */
+static const ComponentPinInfo pins_74hc193[] = {
+    {"B", PIN_INPUT}, {"QB", PIN_OUTPUT}, {"QA", PIN_OUTPUT}, {"DOWN", PIN_CLOCK_INPUT}, {"UP", PIN_CLOCK_INPUT},
+    {"QC", PIN_OUTPUT}, {"QD", PIN_OUTPUT}, {"GND", PIN_GROUND}, {"D", PIN_INPUT}, {"C", PIN_INPUT},
+    {"~LOAD", PIN_INPUT}, {"~CO", PIN_OUTPUT}, {"~BO", PIN_OUTPUT}, {"CLR", PIN_INPUT}, {"A", PIN_INPUT},
+    {"VCC", PIN_SUPPLY_POSITIVE}};
 /* AT28C16 shares each data terminal between programming and three-state readout. */
 static const ComponentPinInfo pins_at28c16[] = {
     {"A7", PIN_INPUT},   {"A6", PIN_INPUT},   {"A5", PIN_INPUT},   {"A4", PIN_INPUT},   {"A3", PIN_INPUT},
@@ -217,6 +223,8 @@ static const ComponentInfo components[] = {
     [PART_74HC273] = {PART_74HC273, "74hc273", NULL, 20, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_74hc273},
     [PART_74HC373] = {PART_74HC373, "74hc373", NULL, 20, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_74hc373},
     [PART_74HC374] = {PART_74HC374, "74hc374", NULL, 20, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_74hc374},
+    [PART_74HC163] = {PART_74HC163, "74hc163", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_74hc161},
+    [PART_74HC193] = {PART_74HC193, "74hc193", NULL, 16, COMPONENT_ROTATES | COMPONENT_DIP, 38, NULL, pins_74hc193},
 };
 
 /* Display names; component_info() returns them in the current language. */
@@ -296,6 +304,8 @@ static const TextId display_texts[] = {
     [PART_74HC273] = TXT_CAT_74HC273,
     [PART_74HC373] = TXT_CAT_74HC373,
     [PART_74HC374] = TXT_CAT_74HC374,
+    [PART_74HC163] = TXT_CAT_74HC163,
+    [PART_74HC193] = TXT_CAT_74HC193,
 };
 
 /* Pins whose names are words; symbols such as GND or 1A are the same in every language. */
@@ -421,7 +431,8 @@ static const PartType legacy_types[] = {PART_SOURCE,    PART_SWITCH,   PART_LED,
                                         PART_CAPACITOR, PART_INDUCTOR, PART_AND,   PART_NAND,       PART_OR,
                                         PART_XOR,       PART_NOT,      PART_CLOCK, PART_DFF,        PART_74HC00, PART_NOR, PART_XNOR, PART_POTENTIOMETER, PART_BUTTON, PART_74HC08, PART_74HC32, PART_74HC86, PART_DIODE, PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_NPN, PART_PNP, PART_BATTERY_9V, PART_BATTERY_AA, PART_BATTERY_COIN, PART_PHOTODIODE, PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_LAMP, PART_RGB_LED, PART_SEVEN_SEGMENT, PART_DIP_SWITCH, PART_DPST, PART_RELAY, PART_DC_MOTOR, PART_VIBRATION_MOTOR, PART_ENCODER_MOTOR, PART_SERVO, PART_PIEZO, PART_FUNCTION_GENERATOR, PART_MULTIMETER, PART_OSCILLOSCOPE, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE, PART_ARDUINO_UNO, PART_ESP32, PART_ATTINY85, PART_LCD_I2C, PART_JUNCTION, PART_74HC161, PART_74HC173, PART_74HC245, PART_74HC283, PART_AT28C16, PART_BREADBOARD_WIDE, PART_NOTE, PART_74HC04, PART_74HC74,
                                         PART_74HC02, PART_74HC10, PART_74HC11, PART_74HC14,
-                                        PART_74HC273, PART_74HC373, PART_74HC374};
+                                        PART_74HC273, PART_74HC373, PART_74HC374,
+                                        PART_74HC163, PART_74HC193};
 _Static_assert(sizeof(legacy_types) / sizeof(legacy_types[0]) == PART_TYPE_COUNT, "every type needs its file code");
 
 size_t component_registry_count(void)
@@ -513,7 +524,8 @@ const char *component_symbol(PartType type)
         {PART_74HC161, "74HC161"}, {PART_74HC173, "74HC173"}, {PART_74HC245, "74HC245"}, {PART_74HC283, "74HC283"},
         {PART_AT28C16, "AT28C16"}, {PART_74HC04, "74HC04"}, {PART_74HC74, "74HC74"},
         {PART_74HC02, "74HC02"}, {PART_74HC10, "74HC10"}, {PART_74HC11, "74HC11"}, {PART_74HC14, "74HC14"},
-        {PART_74HC273, "74HC273"}, {PART_74HC373, "74HC373"}, {PART_74HC374, "74HC374"}};
+        {PART_74HC273, "74HC273"}, {PART_74HC373, "74HC373"}, {PART_74HC374, "74HC374"},
+        {PART_74HC163, "74HC163"}, {PART_74HC193, "74HC193"}};
     for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); ++i)
         if (symbols[i].type == type)
             return symbols[i].symbol;

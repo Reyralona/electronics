@@ -93,6 +93,8 @@ typedef enum
     PART_74HC273,
     PART_74HC373,
     PART_74HC374,
+    PART_74HC163,
+    PART_74HC193,
     PART_TYPE_COUNT
 } PartType;
 static inline int bench_is_board(PartType type)

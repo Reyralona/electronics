@@ -171,3 +171,27 @@ UI_TEXT(PIN_373_LE, "Latch: em 1 as saídas seguem D; em 0 guardam o último val
 UI_TEXT(PIN_373_Q, "Saída do latch de mesmo número, com três estados.", "Three-state output of the latch with the same number.")
 UI_TEXT(PIN_374_Q, "Saída do flip-flop de mesmo número, com três estados.",
         "Three-state output of the flip-flop with the same number.")
+/* 74HC163: 74HC161 pinout, clear on the clock edge */
+UI_TEXT(DOC_74HC163,
+        "Contador binário de 4 bits. Conta na borda de subida do clock com ENP e ENT em 1. ~CLR zera na próxima borda.",
+        "4-bit binary counter. Counts on the rising clock edge with ENP and ENT high. ~CLR clears on the next edge.")
+UI_TEXT(PIN_163_CLR, "Clear: em 0, a próxima borda do clock zera as saídas. Vence o load.",
+        "Clear: when low, the next clock edge resets the outputs. It beats load.")
+/* 74HC193 */
+UI_TEXT(DOC_74HC193,
+        "Contador crescente e decrescente de 4 bits. Sobe na borda de subida de UP e desce na de DOWN. "
+        "CLR em 1 zera e ~LOAD em 0 carrega A-D na hora.",
+        "4-bit up/down counter. Counts up on the rising edge of UP and down on that of DOWN. "
+        "CLR high clears and ~LOAD low loads A-D at once.")
+UI_TEXT(PIN_193_UP, "Clock de subida: soma 1 na borda de subida, com DOWN em 1.",
+        "Count-up clock: adds 1 on the rising edge, with DOWN high.")
+UI_TEXT(PIN_193_DOWN, "Clock de descida: subtrai 1 na borda de subida, com UP em 1.",
+        "Count-down clock: subtracts 1 on the rising edge, with UP high.")
+UI_TEXT(PIN_193_LOAD, "Load: em 0 copia A-D para as saídas na hora, sem clock.",
+        "Load: low copies A-D to the outputs at once, without a clock.")
+UI_TEXT(PIN_193_CLR, "Clear: em 1 zera as saídas na hora. Vence o load e a contagem.",
+        "Clear: high resets the outputs at once. It beats load and counting.")
+UI_TEXT(PIN_193_CO, "Vai-um: em 0 enquanto a contagem é 15 e UP está em 0. Ligue no UP do próximo contador.",
+        "Carry: low while the count is 15 and UP is low. Connect it to UP of the next counter.")
+UI_TEXT(PIN_193_BO, "Empresta-um: em 0 enquanto a contagem é 0 e DOWN está em 0. Ligue no DOWN do próximo contador.",
+        "Borrow: low while the count is 0 and DOWN is low. Connect it to DOWN of the next counter.")
