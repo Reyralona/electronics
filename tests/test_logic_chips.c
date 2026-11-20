@@ -310,6 +310,60 @@ static void eeprom_writes_and_retains(void)
     puts("EEPROM bus: writes 5A at 2, polls busy, reads FF at 3, retains across power and solver restart.");
 }
 
+/* Inputs 1, 0, 1, 0, 1, 0 on the six inverters read back as 0, 1, 0, 1, 0, 1. */
+static void hex_inverter_inverts(void)
+{
+    static Rig rig;
+    SimAutoResult result;
+    rig_start(&rig);
+    int inverter = chip(&rig, PART_74HC04);
+    const int a_pins[] = {0, 2, 4, 8, 10, 12}, y_pins[] = {1, 3, 5, 7, 9, 11};
+    int loads[6];
+    for (int gate = 0; gate < 6; ++gate)
+    {
+        tie(&rig, inverter, a_pins[gate], gate % 2 == 0);
+        loads[gate] = probe(&rig, inverter, y_pins[gate]);
+    }
+    SpiceLive *live = run(&rig, 1e-4, &result, NULL);
+    assert(read_bits(&result, loads, 6) == 0x2A);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* Flip-flop 1 captures D=1 on the clock edge (Q=1, ~Q=0). Flip-flop 2 has ~CLR low: Q=0 whatever D and the
+ * clock do. Then ~PRE and ~CLR low together drive both outputs of flip-flop 2 high (datasheet table). */
+static void dual_dff_captures_and_overrides(void)
+{
+    static Rig rig;
+    SimAutoResult result;
+    rig_start(&rig);
+    int ff = chip(&rig, PART_74HC74);
+    int clock = bench_add(&rig.bench, PART_CLOCK, 300, 900);
+    assert(clock >= 0 && bench_set_value(&rig.bench, clock, CLOCK_HZ));
+    wire(&rig, clock, 1, rig.source, 1);
+    wire(&rig, clock, 0, ff, 2);
+    wire(&rig, clock, 0, ff, 10);
+    tie(&rig, ff, 0, 1);
+    tie(&rig, ff, 3, 1);
+    tie(&rig, ff, 1, 1);
+    tie(&rig, ff, 9, 1);
+    tie(&rig, ff, 11, 1);
+    tie(&rig, ff, 12, 0);
+    const int outputs[] = {4, 5, 8, 7};
+    int loads[4];
+    for (int i = 0; i < 4; ++i)
+        loads[i] = probe(&rig, ff, outputs[i]);
+    SpiceLive *live = run(&rig, 1.75 / CLOCK_HZ, &result, NULL);
+    assert(read_bits(&result, loads, 4) == 0x9); /* 1Q=1, ~1Q=0, 2Q=0, ~2Q=1 */
+    spice_live_destroy(live);
+    assert(bench_toggle_wire(&rig.bench, (Pin){ff, 9}, (Pin){rig.source, 0}) == 2);
+    tie(&rig, ff, 9, 0);
+    live = run(&rig, 1.75 / CLOCK_HZ, &result, NULL);
+    assert(read_bits(&result, loads, 4) == 0xD); /* 2Q=1 and ~2Q=1 */
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -320,6 +374,9 @@ int main(int argc, char **argv)
     eeprom_writes_and_retains();
     register_loads_and_releases();
     counter_counts();
+    hex_inverter_inverts();
+    dual_dff_captures_and_overrides();
+    puts("Logic ICs: 74HC04 inverts, 74HC74 captures, presets and clears.");
     printf("Logic ICs: 74HC283 adds, 74HC245 passes and releases, AT28C16 reads, 74HC173 loads and releases, "
            "74HC161 counts and carries.\n");
     return 0;

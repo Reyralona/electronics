@@ -41,6 +41,7 @@ add_executable(bancada WIN32
     src/workbench.c
     src/bench_path.c
     src/component_registry.c
+    src/chip_docs.c
     src/component_devices.c
     src/workbench_examples.c
     src/workbench_view.c
@@ -107,6 +108,7 @@ if(BUILD_TESTING)
         src/workbench.c
         src/bench_path.c
         src/component_registry.c
+        src/chip_docs.c
         src/component_devices.c
         src/ui_text.c
     )
@@ -142,6 +144,7 @@ if(BUILD_TESTING)
         src/workbench.c
         src/bench_path.c
         src/component_registry.c
+        src/chip_docs.c
         src/component_devices.c
         src/ui_text.c
     )
@@ -166,6 +169,7 @@ if(BUILD_TESTING)
         src/workbench.c
         src/bench_path.c
         src/component_registry.c
+        src/chip_docs.c
         src/component_devices.c
         src/workbench_file.c
         src/workbench_pack_file.c
@@ -195,6 +199,7 @@ if(BUILD_TESTING)
         src/workbench.c
         src/bench_path.c
         src/component_registry.c
+        src/chip_docs.c
         src/component_devices.c
         src/ui_text.c
     )
@@ -212,6 +217,7 @@ if(BUILD_TESTING)
         src/workbench.c
         src/bench_path.c
         src/component_registry.c
+        src/chip_docs.c
         src/component_devices.c
         src/ui_text.c
     )
@@ -234,6 +240,7 @@ if(BUILD_TESTING)
         src/workbench.c
         src/bench_path.c
         src/component_registry.c
+        src/chip_docs.c
         src/component_devices.c
         src/ui_text.c
     )

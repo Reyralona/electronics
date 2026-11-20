@@ -19,6 +19,7 @@ typedef enum
 #include "text/render.def"
 #include "text/app.def"
 #include "text/engine.def"
+#include "text/chips.def"
 #undef UI_TEXT
     TXT_COUNT
 } TextId;

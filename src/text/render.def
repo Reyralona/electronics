@@ -1,7 +1,7 @@
 /* Texts of the render area. Format: UI_TEXT(ID, "pt-BR", "en-US"); style and glossary: docs/TEXTOS.md. */
 /* Catalog tabs and part names. */
 UI_TEXT(UI_PAGE_BASICS, "Básicos", "Basics")
-UI_TEXT(UI_PAGE_DIGITAL, "Digital", "Digital")
+UI_TEXT(UI_PAGE_DIGITAL, "Portas", "Gates")
 UI_TEXT(UI_PAGE_CHIPS, "Salvos", "Saved")
 UI_TEXT(UI_PAGE_SENSORS, "Sensores", "Sensors")
 UI_TEXT(UI_PAGE_OUTPUTS, "Saídas", "Outputs")
@@ -193,3 +193,6 @@ UI_TEXT(UI_NOTE_EDIT, "Editar texto", "Edit text")
 UI_TEXT(UI_PAGE_POWER, "Fontes", "Power")
 UI_TEXT(UI_PAGE_BOARDS, "Placas", "Boards")
 UI_TEXT(UI_PAGE_WORKBENCH, "Bancada", "Bench")
+UI_TEXT(UI_PAGE_LOGIC, "Lógica", "Logic")
+UI_TEXT(UI_PAGE_MEMORY, "Memória", "Memory")
+UI_TEXT(UI_PAGE_LINEAR, "Lineares", "Linear")

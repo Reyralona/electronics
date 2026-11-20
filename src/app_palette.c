@@ -7,9 +7,12 @@
 /* The saved-chip library keeps page 2; the remaining pages contain each built-in part once. */
 static const PartType basic[] = {PART_RESISTOR, PART_CAPACITOR, PART_INDUCTOR, PART_POTENTIOMETER,
     PART_DIODE, PART_NPN, PART_PNP, PART_SWITCH, PART_BUTTON, PART_DPST, PART_DIP_SWITCH};
-static const PartType digital[] = {PART_AND, PART_NAND, PART_OR, PART_XOR, PART_NOT, PART_CLOCK, PART_DFF,
-    PART_74HC00, PART_NOR, PART_XNOR, PART_74HC08, PART_74HC32, PART_74HC86,
-    PART_74HC161, PART_74HC173, PART_74HC245, PART_74HC283, PART_AT28C16};
+static const PartType digital[] = {PART_AND, PART_NAND, PART_OR, PART_XOR, PART_NOT, PART_NOR, PART_XNOR,
+    PART_DFF, PART_CLOCK, PART_74HC00, PART_74HC08, PART_74HC32, PART_74HC86, PART_74HC04};
+/* Logic ICs by function: flip-flops, counters, registers, arithmetic, bus. */
+static const PartType logic[] = {PART_74HC74, PART_74HC161, PART_74HC173, PART_74HC283, PART_74HC245};
+static const PartType memory[] = {PART_AT28C16};
+static const PartType linear[] = {PART_NOTE};
 static const PartType sensors[] = {PART_LDR, PART_FLEX, PART_FORCE, PART_TILT, PART_PHOTODIODE,
     PART_AMBIENT_LIGHT, PART_TEMPERATURE, PART_SOIL, PART_PIR, PART_GAS, PART_IR_OBSTACLE, PART_DISTANCE};
 static const PartType outputs[] = {PART_LED, PART_RGB_LED, PART_LAMP, PART_SEVEN_SEGMENT, PART_LCD_I2C,
@@ -28,13 +31,16 @@ int is_gate(PartType type)
 
 int palette_count(int page)
 {
-    static const int counts[] = {COUNT(basic), COUNT(digital), 8, COUNT(sensors), COUNT(outputs), COUNT(instruments), COUNT(power), COUNT(boards), COUNT(workbench)};
+    static const int counts[] = {COUNT(basic),  COUNT(digital), 8,           COUNT(sensors),
+                                 COUNT(outputs), COUNT(instruments), COUNT(power), COUNT(boards),
+                                 COUNT(workbench), COUNT(logic), COUNT(memory), 0};
     return page >= 0 && page < PALETTE_PAGES ? counts[page] : 0;
 }
 
 PartType palette_part(int page, int item)
 {
-    static const PartType *lists[] = {basic, digital, NULL, sensors, outputs, instruments, power, boards, workbench};
+    static const PartType *lists[] = {basic, digital, NULL, sensors, outputs, instruments, power, boards, workbench,
+                                      logic, memory, linear};
     if (page < 0 || page >= PALETTE_PAGES || !lists[page] || item < 0 || item >= palette_count(page))
         return PART_RESISTOR;
     return lists[page][item];
@@ -44,7 +50,8 @@ const char *palette_page_name(int page)
 {
     static const TextId names[PALETTE_PAGES] = {TXT_UI_PAGE_BASICS,  TXT_UI_PAGE_DIGITAL, TXT_UI_PAGE_CHIPS,
                                                 TXT_UI_PAGE_SENSORS, TXT_UI_PAGE_OUTPUTS, TXT_UI_PAGE_METERS,
-        TXT_UI_PAGE_POWER, TXT_UI_PAGE_BOARDS, TXT_UI_PAGE_WORKBENCH};
+        TXT_UI_PAGE_POWER, TXT_UI_PAGE_BOARDS, TXT_UI_PAGE_WORKBENCH, TXT_UI_PAGE_LOGIC, TXT_UI_PAGE_MEMORY,
+        TXT_UI_PAGE_LINEAR};
     return page >= 0 && page < PALETTE_PAGES ? tr(names[page]) : "";
 }
 

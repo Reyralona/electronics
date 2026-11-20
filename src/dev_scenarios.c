@@ -205,6 +205,14 @@ int dev_scenario_prepare(AppState *app, int argc, char **argv)
     }
     if (argc > 1 && strcmp(argv[1], "--capture-examples") == 0)
         app->examples_open = 1;
+    if (argc > 1 && strcmp(argv[1], "--capture-doc") == 0)
+    {
+        /* IC sheet with the pointer on the list row of pin 9 (~LOAD). */
+        AppRect list = app_layout_doc_pin_list();
+        app->doc_type = PART_74HC161;
+        app->mouse_screen = (WirePoint){list.x + 40, list.y + 8.5f * 19.0f};
+        app->mouse_position_valid = 1;
+    }
     if (argc > 1 && strcmp(argv[1], "--capture-settings") == 0)
         app->settings = 1;
     if (app->capture)

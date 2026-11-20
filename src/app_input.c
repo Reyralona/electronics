@@ -1,6 +1,7 @@
 #include "bench_scope.h"
 #include "bench_path.h"
 #include "component_registry.h"
+#include "chip_docs.h"
 #include "workbench_grid.h"
 #include "app_input.h"
 #include "app_editor.h"
@@ -955,7 +956,22 @@ static int input_click_inspector(AppState *app, SDL_Window *window, float x, flo
         run_shortcut(app, window, SDLK_M);
         return 1;
     }
+    if (chip_doc(part->type) && app_rect_contains(app_layout_inspector_doc(), x, y))
+    {
+        run_shortcut(app, window, SDLK_I);
+        return 1;
+    }
     return 0;
+}
+
+/* The IC sheet is modal: any click is taken; the close button or a click outside closes it. */
+static int input_doc_window(AppState *app, float x, float y)
+{
+    if (app->doc_type < 0)
+        return 0;
+    if (app_rect_contains(app_layout_doc_close(), x, y) || !app_rect_contains(app_layout_doc_panel(), x, y))
+        app->doc_type = -1;
+    return 1;
 }
 
 static int input_click_header(AppState *app, float x, float y)
@@ -1110,6 +1126,8 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
     }
     if (app->editor_confirm_close)
         return app_editor_click(app, window, x, y);
+    if (input_doc_window(app, x, y))
+        return 1;
     if (app->settings || app->projects_open || app->examples_open)
     {
         if ((!app->editor_parent || app_layout_header_at(x, y) == APP_HEADER_PLAY) && input_click_header(app, x, y))
@@ -2343,7 +2361,8 @@ void app_input_poll(AppState *app, SDL_Window *window)
         {
             app_commands_key(app, window, e.key.key, e.key.mod);
         }
-        else if ((app->projects_open || app->examples_open) && e.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
+        else if ((app->projects_open || app->examples_open || app->doc_type >= 0) &&
+                 e.type != SDL_EVENT_MOUSE_BUTTON_DOWN)
             continue;
         else if (e.type == SDL_EVENT_MOUSE_MOTION && app->selecting_area)
             continue;

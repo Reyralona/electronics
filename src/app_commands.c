@@ -8,6 +8,7 @@
 #include "app_palette.h"
 #include "component_registry.h"
 #include "workbench_examples.h"
+#include "chip_docs.h"
 #include "workbench_file.h"
 #include <stdio.h>
 #include <string.h>
@@ -464,6 +465,12 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
     case SDLK_M:
         command_mirror(app);
         break;
+    case SDLK_I:
+        if (chip_doc(app->bench.parts[app->selected].type))
+            app->doc_type = app->bench.parts[app->selected].type;
+        else
+            app->status = tr(TXT_DOC_NONE);
+        break;
     case SDLK_T:
         if (!bench_is_board(app->bench.parts[app->selected].type))
             command_trace_part(app, (mod & SDL_KMOD_SHIFT) != 0);
@@ -510,6 +517,12 @@ void app_commands_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_Ke
             app_state_toggle_panel(app, APP_PANEL_EXAMPLES);
         else
             app_editing_key(app, key, mod);
+        return;
+    }
+    if (app->doc_type >= 0)
+    {
+        if (key == SDLK_ESCAPE || key == SDLK_I)
+            app->doc_type = -1;
         return;
     }
     if (app->examples_open)

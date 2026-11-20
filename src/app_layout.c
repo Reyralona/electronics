@@ -2,7 +2,12 @@
 #include "workbench_view.h"
 #include <math.h>
 
-#define PALETTE_ITEM_TOP 252.0f
+/* Category tabs: rows of three under the header; search below them, then the part list. */
+#define PALETTE_TAB_TOP 80.0f
+#define PALETTE_TAB_PITCH 42.0f
+#define PALETTE_TAB_ROWS ((APP_PALETTE_TABS + 2) / 3)
+#define PALETTE_SEARCH_TOP (PALETTE_TAB_TOP + PALETTE_TAB_ROWS * PALETTE_TAB_PITCH + 6)
+#define PALETTE_ITEM_TOP (PALETTE_SEARCH_TOP + 40)
 #define PALETTE_ITEM_PITCH 59.0f
 #define APP_PALETTE_BOTTOM_MARGIN 8.0f
 #define HEADER_BUTTON_Y 14.0f
@@ -168,7 +173,7 @@ AppRect app_layout_palette_tab(int tab)
 {
     if (tab < 0 || tab >= APP_PALETTE_TABS)
         return NO_RECT;
-    return (AppRect){14 + (tab % 3) * 64.0f, 80 + (tab / 3) * 42.0f, 64, 38};
+    return (AppRect){14 + (tab % 3) * 64.0f, PALETTE_TAB_TOP + (tab / 3) * PALETTE_TAB_PITCH, 64, 38};
 }
 
 int app_layout_palette_tab_at(float x, float y)
@@ -368,6 +373,35 @@ AppRect app_layout_inspector_mirror(void)
     return (AppRect){x, INSPECTOR_HEADER_Y, INSPECTOR_MIRROR_W, INSPECTOR_HEADER_BUTTON};
 }
 
+AppRect app_layout_inspector_doc(void)
+{
+    float x = app_layout_inspector_mirror().x - 6 - INSPECTOR_MIRROR_W;
+    return (AppRect){x, INSPECTOR_HEADER_Y, INSPECTOR_MIRROR_W, INSPECTOR_HEADER_BUTTON};
+}
+
+/* IC sheet: zoomed package on the left, pin list on the right, pin explanation under the package. */
+AppRect app_layout_doc_panel(void)
+{
+    return centered((AppRect){250, 84, 1000, 600});
+}
+
+AppRect app_layout_doc_close(void)
+{
+    return close_button(app_layout_doc_panel());
+}
+
+AppRect app_layout_doc_package(void)
+{
+    AppRect panel = app_layout_doc_panel();
+    return (AppRect){panel.x + 30, panel.y + 150, 520, 300};
+}
+
+AppRect app_layout_doc_pin_list(void)
+{
+    AppRect panel = app_layout_doc_panel();
+    return (AppRect){panel.x + 580, panel.y + 120, panel.w - 610, panel.h - 150};
+}
+
 AppRect app_layout_inspector_value(void)
 {
     return (AppRect){INSPECTOR_ROW_X, INSPECTOR_TOP + 38, INSPECTOR_ROW_W, INSPECTOR_ROW_H};
@@ -557,12 +591,12 @@ AppRect app_layout_action(AppAction action)
 
 AppRect app_layout_search(void)
 {
-    return (AppRect){14, 212, 186, 32};
+    return (AppRect){14, PALETTE_SEARCH_TOP, 186, 32};
 }
 
 AppRect app_layout_search_clear(void)
 {
-    return (AppRect){172, 212, 28, 32};
+    return (AppRect){172, PALETTE_SEARCH_TOP, 28, 32};
 }
 
 AppRect app_layout_value_panel(void)

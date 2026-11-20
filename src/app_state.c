@@ -42,6 +42,7 @@ void app_state_init(AppState *app)
     app->name_target_group = -1;
     app->library_delete_armed = -1;
     app->code_part = -1;
+    app->doc_type = -1;
     app->mcu = mcu_runtime_create();
     app->status = tr(TXT_APP_START);
     app->sim.sim_running = 1;

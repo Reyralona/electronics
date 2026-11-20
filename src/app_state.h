@@ -89,6 +89,7 @@ typedef struct AppState
     BenchSelection selection;
     BenchClipboard clipboard;
     int selecting_area, projects_open, save_slot, examples_open;
+    int doc_type; /* PartType whose IC sheet (info window) is open, or -1 */
     int *saved_slots;
     int project_overwrite; /* Slot presented by the confirmation; -1 when no confirmation is open. */
     int *project_parts, *project_wires;

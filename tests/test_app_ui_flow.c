@@ -307,7 +307,7 @@ static void multi_value_flow(AppState *app, SDL_Window *window)
 
 static void catalog_categories_cover_every_part(void)
 {
-    int seen[PART_NOTE + 1] = {0};
+    int seen[PART_TYPE_COUNT] = {0};
     for (int page = 0; page < PALETTE_PAGES; ++page)
     {
         assert(palette_page_name(page)[0]);

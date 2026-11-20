@@ -1,0 +1,137 @@
+/* IC reference sheets (info window): summary of each chip and one line per pin, from its datasheet.
+ * Pin texts say what the pin does; "~" names are active low. Style: docs/TEXTOS.md. */
+UI_TEXT(DOC_RATINGS, "Alimentação %.3g a %.3g V. Máximo absoluto: %.3g V e %.0f mA por saída.",
+        "Supply %.3g to %.3g V. Absolute maximum: %.3g V and %.0f mA per output.")
+UI_TEXT(DOC_RATINGS_SUPPLY, "Alimentação até %.3g V. Máximo absoluto: %.3g V.", "Supply up to %.3g V. Absolute maximum: %.3g V.")
+UI_TEXT(DOC_TITLE, "Ficha do %s", "%s sheet")
+UI_TEXT(DOC_PIN_HINT, "Passe o mouse num pino para ver o que ele faz.", "Point at a pin to see what it does.")
+UI_TEXT(DOC_CLOSE_HINT, "Esc: fechar", "Esc: close")
+UI_TEXT(DOC_OPEN, "Ficha", "Sheet")
+UI_TEXT(DOC_NONE, "Esta peça não tem ficha.", "This part has no sheet.")
+/* Shared pins */
+UI_TEXT(PIN_VCC, "Alimentação positiva (VCC).", "Positive supply (VCC).")
+UI_TEXT(PIN_GND, "Terra (GND), o 0 V do circuito.", "Ground (GND), the circuit's 0 V.")
+/* 74HC00/08/32/86: four 2-input gates, same pinout */
+UI_TEXT(DOC_74HC00, "Quatro portas NAND de 2 entradas. Y = NÃO (A E B).", "Four 2-input NAND gates. Y = NOT (A AND B).")
+UI_TEXT(DOC_74HC08, "Quatro portas AND de 2 entradas. Y = A E B.", "Four 2-input AND gates. Y = A AND B.")
+UI_TEXT(DOC_74HC32, "Quatro portas OR de 2 entradas. Y = A OU B.", "Four 2-input OR gates. Y = A OR B.")
+UI_TEXT(DOC_74HC86, "Quatro portas XOR de 2 entradas. Y = 1 quando A e B são diferentes.",
+        "Four 2-input XOR gates. Y = 1 when A and B differ.")
+UI_TEXT(PIN_GATE1_A, "Entrada A da porta 1.", "Input A of gate 1.")
+UI_TEXT(PIN_GATE1_B, "Entrada B da porta 1.", "Input B of gate 1.")
+UI_TEXT(PIN_GATE1_Y, "Saída da porta 1.", "Output of gate 1.")
+UI_TEXT(PIN_GATE2_A, "Entrada A da porta 2.", "Input A of gate 2.")
+UI_TEXT(PIN_GATE2_B, "Entrada B da porta 2.", "Input B of gate 2.")
+UI_TEXT(PIN_GATE2_Y, "Saída da porta 2.", "Output of gate 2.")
+UI_TEXT(PIN_GATE3_A, "Entrada A da porta 3.", "Input A of gate 3.")
+UI_TEXT(PIN_GATE3_B, "Entrada B da porta 3.", "Input B of gate 3.")
+UI_TEXT(PIN_GATE3_Y, "Saída da porta 3.", "Output of gate 3.")
+UI_TEXT(PIN_GATE4_A, "Entrada A da porta 4.", "Input A of gate 4.")
+UI_TEXT(PIN_GATE4_B, "Entrada B da porta 4.", "Input B of gate 4.")
+UI_TEXT(PIN_GATE4_Y, "Saída da porta 4.", "Output of gate 4.")
+/* 74HC04 */
+UI_TEXT(DOC_74HC04, "Seis inversores independentes. Y = NÃO A.", "Six independent inverters. Y = NOT A.")
+UI_TEXT(PIN_INV1_A, "Entrada do inversor 1.", "Input of inverter 1.")
+UI_TEXT(PIN_INV1_Y, "Saída do inversor 1.", "Output of inverter 1.")
+UI_TEXT(PIN_INV2_A, "Entrada do inversor 2.", "Input of inverter 2.")
+UI_TEXT(PIN_INV2_Y, "Saída do inversor 2.", "Output of inverter 2.")
+UI_TEXT(PIN_INV3_A, "Entrada do inversor 3.", "Input of inverter 3.")
+UI_TEXT(PIN_INV3_Y, "Saída do inversor 3.", "Output of inverter 3.")
+UI_TEXT(PIN_INV4_A, "Entrada do inversor 4.", "Input of inverter 4.")
+UI_TEXT(PIN_INV4_Y, "Saída do inversor 4.", "Output of inverter 4.")
+UI_TEXT(PIN_INV5_A, "Entrada do inversor 5.", "Input of inverter 5.")
+UI_TEXT(PIN_INV5_Y, "Saída do inversor 5.", "Output of inverter 5.")
+UI_TEXT(PIN_INV6_A, "Entrada do inversor 6.", "Input of inverter 6.")
+UI_TEXT(PIN_INV6_Y, "Saída do inversor 6.", "Output of inverter 6.")
+/* 74HC74 */
+UI_TEXT(DOC_74HC74,
+        "Dois flip-flops D. Na borda de subida do clock, Q copia D. ~PRE e ~CLR agem na hora, em nível baixo.",
+        "Two D flip-flops. On the rising clock edge, Q copies D. ~PRE and ~CLR act at once, when low.")
+UI_TEXT(PIN_74HC74_CLR1, "Clear do flip-flop 1: em 0 força Q = 0, sem esperar o clock.",
+        "Clear of flip-flop 1: low forces Q = 0 without waiting for the clock.")
+UI_TEXT(PIN_74HC74_D1, "Dado do flip-flop 1, copiado na borda de subida do clock.",
+        "Data of flip-flop 1, copied on the rising clock edge.")
+UI_TEXT(PIN_74HC74_CLK1, "Clock do flip-flop 1: captura D na borda de subida.",
+        "Clock of flip-flop 1: captures D on the rising edge.")
+UI_TEXT(PIN_74HC74_PRE1, "Preset do flip-flop 1: em 0 força Q = 1, sem esperar o clock.",
+        "Preset of flip-flop 1: low forces Q = 1 without waiting for the clock.")
+UI_TEXT(PIN_74HC74_Q1, "Saída Q do flip-flop 1.", "Output Q of flip-flop 1.")
+UI_TEXT(PIN_74HC74_NQ1, "Saída invertida ~Q do flip-flop 1.", "Inverted output ~Q of flip-flop 1.")
+UI_TEXT(PIN_74HC74_NQ2, "Saída invertida ~Q do flip-flop 2.", "Inverted output ~Q of flip-flop 2.")
+UI_TEXT(PIN_74HC74_Q2, "Saída Q do flip-flop 2.", "Output Q of flip-flop 2.")
+UI_TEXT(PIN_74HC74_PRE2, "Preset do flip-flop 2: em 0 força Q = 1, sem esperar o clock.",
+        "Preset of flip-flop 2: low forces Q = 1 without waiting for the clock.")
+UI_TEXT(PIN_74HC74_CLK2, "Clock do flip-flop 2: captura D na borda de subida.",
+        "Clock of flip-flop 2: captures D on the rising edge.")
+UI_TEXT(PIN_74HC74_D2, "Dado do flip-flop 2, copiado na borda de subida do clock.",
+        "Data of flip-flop 2, copied on the rising clock edge.")
+UI_TEXT(PIN_74HC74_CLR2, "Clear do flip-flop 2: em 0 força Q = 0, sem esperar o clock.",
+        "Clear of flip-flop 2: low forces Q = 0 without waiting for the clock.")
+/* 74HC161 */
+UI_TEXT(DOC_74HC161,
+        "Contador binário de 4 bits. Conta na borda de subida do clock com ENP e ENT em 1. ~CLR zera na hora.",
+        "4-bit binary counter. Counts on the rising clock edge with ENP and ENT high. ~CLR clears at once.")
+UI_TEXT(PIN_161_CLR, "Clear: em 0 zera as saídas na hora, sem esperar o clock.",
+        "Clear: low resets the outputs at once, without the clock.")
+UI_TEXT(PIN_161_CLK, "Clock: conta ou carrega na borda de subida.", "Clock: counts or loads on the rising edge.")
+UI_TEXT(PIN_161_A, "Dado A (bit 0) para a carga paralela.", "Data A (bit 0) for parallel load.")
+UI_TEXT(PIN_161_B, "Dado B (bit 1) para a carga paralela.", "Data B (bit 1) for parallel load.")
+UI_TEXT(PIN_161_C, "Dado C (bit 2) para a carga paralela.", "Data C (bit 2) for parallel load.")
+UI_TEXT(PIN_161_D, "Dado D (bit 3) para a carga paralela.", "Data D (bit 3) for parallel load.")
+UI_TEXT(PIN_161_ENP, "Habilita a contagem (com ENT em 1).", "Enables counting (with ENT high).")
+UI_TEXT(PIN_161_LOAD, "Load: em 0, a próxima borda do clock copia A-D para as saídas.",
+        "Load: when low, the next clock edge copies A-D to the outputs.")
+UI_TEXT(PIN_161_ENT, "Habilita a contagem e o RCO; liga contadores em cascata.",
+        "Enables counting and RCO; chains counters.")
+UI_TEXT(PIN_161_QD, "Saída QD (bit 3, o mais significativo).", "Output QD (bit 3, most significant).")
+UI_TEXT(PIN_161_QC, "Saída QC (bit 2).", "Output QC (bit 2).")
+UI_TEXT(PIN_161_QB, "Saída QB (bit 1).", "Output QB (bit 1).")
+UI_TEXT(PIN_161_QA, "Saída QA (bit 0, o menos significativo).", "Output QA (bit 0, least significant).")
+UI_TEXT(PIN_161_RCO, "Vai-um: em 1 quando a contagem chega a 15 com ENT em 1.",
+        "Ripple carry: high when the count reaches 15 with ENT high.")
+/* 74HC173 */
+UI_TEXT(DOC_74HC173,
+        "Registrador de 4 bits com saídas de três estados. Carrega D na borda do clock com ~G1 e ~G2 em 0.",
+        "4-bit register with three-state outputs. Loads D on the clock edge with ~G1 and ~G2 low.")
+UI_TEXT(PIN_173_M, "Habilita as saídas: M e N em 0 ligam as saídas.", "Output enable: M and N low turn the outputs on.")
+UI_TEXT(PIN_173_N, "Habilita as saídas: M e N em 0 ligam as saídas.", "Output enable: M and N low turn the outputs on.")
+UI_TEXT(PIN_173_Q1, "Saída 1Q.", "Output 1Q.")
+UI_TEXT(PIN_173_Q2, "Saída 2Q.", "Output 2Q.")
+UI_TEXT(PIN_173_Q3, "Saída 3Q.", "Output 3Q.")
+UI_TEXT(PIN_173_Q4, "Saída 4Q.", "Output 4Q.")
+UI_TEXT(PIN_173_CLK, "Clock: carrega na borda de subida.", "Clock: loads on the rising edge.")
+UI_TEXT(PIN_173_G1, "Habilita a carga: ~G1 e ~G2 em 0 carregam D no clock.",
+        "Load enable: ~G1 and ~G2 low load D on the clock.")
+UI_TEXT(PIN_173_G2, "Habilita a carga: ~G1 e ~G2 em 0 carregam D no clock.",
+        "Load enable: ~G1 and ~G2 low load D on the clock.")
+UI_TEXT(PIN_173_D4, "Dado 4D.", "Data 4D.")
+UI_TEXT(PIN_173_D3, "Dado 3D.", "Data 3D.")
+UI_TEXT(PIN_173_D2, "Dado 2D.", "Data 2D.")
+UI_TEXT(PIN_173_D1, "Dado 1D.", "Data 1D.")
+UI_TEXT(PIN_173_CLR, "Clear: em 1 zera o registrador na hora.", "Clear: high resets the register at once.")
+/* 74HC245 */
+UI_TEXT(DOC_74HC245,
+        "Transceptor de barramento de 8 bits. Com ~OE em 0, DIR escolhe o sentido: 1 leva A para B, 0 leva B para A.",
+        "8-bit bus transceiver. With ~OE low, DIR picks the direction: high drives A to B, low drives B to A.")
+UI_TEXT(PIN_245_DIR, "Direção: 1 leva A para B; 0 leva B para A.", "Direction: high drives A to B; low drives B to A.")
+UI_TEXT(PIN_245_A, "Linha do lado A: entrada ou saída conforme DIR.", "Side A line: input or output by DIR.")
+UI_TEXT(PIN_245_B, "Linha do lado B: entrada ou saída conforme DIR.", "Side B line: input or output by DIR.")
+UI_TEXT(PIN_245_OE, "Habilita: em 1 desliga os dois lados (alta impedância).",
+        "Enable: high turns both sides off (high impedance).")
+/* 74HC283 */
+UI_TEXT(DOC_74HC283, "Somador binário de 4 bits: S = A + B + C0, com vai-um em C4.",
+        "4-bit binary adder: S = A + B + C0, with carry out on C4.")
+UI_TEXT(PIN_283_S, "Bit da soma.", "Sum bit.")
+UI_TEXT(PIN_283_A, "Bit do número A.", "Bit of number A.")
+UI_TEXT(PIN_283_B, "Bit do número B.", "Bit of number B.")
+UI_TEXT(PIN_283_C0, "Vem-um (carry de entrada).", "Carry in.")
+UI_TEXT(PIN_283_C4, "Vai-um (carry de saída).", "Carry out.")
+/* AT28C16 */
+UI_TEXT(DOC_AT28C16,
+        "EEPROM de 2 KB. Lê com ~CE e ~OE em 0. Grava com um pulso em 0 em ~WE; cada gravação leva até 1 ms.",
+        "2 KB EEPROM. Reads with ~CE and ~OE low. Writes with a low pulse on ~WE; each write takes up to 1 ms.")
+UI_TEXT(PIN_EE_A, "Linha de endereço.", "Address line.")
+UI_TEXT(PIN_EE_IO, "Linha de dados: entrada na gravação, saída na leitura.", "Data line: input when writing, output when reading.")
+UI_TEXT(PIN_EE_CE, "Seleciona o chip: em 0 ele responde.", "Chip enable: low makes it respond.")
+UI_TEXT(PIN_EE_OE, "Habilita a leitura: em 0 os dados saem.", "Output enable: low drives the data out.")
+UI_TEXT(PIN_EE_WE, "Grava: um pulso em 0 grava o dado no endereço.", "Write enable: a low pulse writes the data at the address.")

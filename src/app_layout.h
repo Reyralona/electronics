@@ -23,7 +23,7 @@ WirePoint app_layout_from_ui(int width, int height, float x, float y);
 #define APP_FOOTER_HEIGHT 60.0f
 #define APP_HEADER_HEIGHT 68.0f
 #define APP_PALETTE_WIDTH 220.0f
-#define APP_PALETTE_TABS 9
+#define APP_PALETTE_TABS 12
 /* Catalog cards that fit the canvas height (7 on the design canvas). */
 int app_layout_palette_visible(void);
 #define APP_PALETTE_VISIBLE app_layout_palette_visible()
@@ -130,6 +130,11 @@ AppRect app_layout_inspector_minimize(void);
 AppRect app_layout_inspector_tab(void);
 AppRect app_layout_inspector_rotate(void);
 AppRect app_layout_inspector_mirror(void);
+AppRect app_layout_inspector_doc(void);
+AppRect app_layout_doc_panel(void);
+AppRect app_layout_doc_close(void);
+AppRect app_layout_doc_package(void);
+AppRect app_layout_doc_pin_list(void);
 AppRect app_layout_inspector_value(void);
 AppRect app_layout_inspector_scale(void);
 AppRect app_layout_environment_slider(void);

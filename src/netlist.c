@@ -395,17 +395,14 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_JUNCTION:
         case PART_NOTE:
             break;
-        case PART_74HC161:
-        case PART_74HC173:
-        case PART_74HC245:
-        case PART_74HC283:
-        case PART_AT28C16:
-            if (!netlist_logic_valid(&b->parts[i]))
-                return NETLIST_INVALID;
-            ++logic_count;
-            break;
         default:
-            if (!netlist_device_supported(component_electrical_type(b->parts[i].type)))
+            if (netlist_logic_supported(b->parts[i].type))
+            {
+                if (!netlist_logic_valid(&b->parts[i]))
+                    return NETLIST_INVALID;
+                ++logic_count;
+            }
+            else if (!netlist_device_supported(component_electrical_type(b->parts[i].type)))
                 return NETLIST_UNSUPPORTED;
             break;
         }

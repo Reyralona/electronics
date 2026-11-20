@@ -10,6 +10,7 @@ static const char *const texts[UI_LANG_COUNT][TXT_COUNT] = {
 #include "text/render.def"
 #include "text/app.def"
 #include "text/engine.def"
+#include "text/chips.def"
 #undef UI_TEXT
     },
     {
@@ -20,6 +21,7 @@ static const char *const texts[UI_LANG_COUNT][TXT_COUNT] = {
 #include "text/render.def"
 #include "text/app.def"
 #include "text/engine.def"
+#include "text/chips.def"
 #undef UI_TEXT
     },
 };
@@ -32,6 +34,7 @@ static const char *const names[TXT_COUNT] = {
 #include "text/render.def"
 #include "text/app.def"
 #include "text/engine.def"
+#include "text/chips.def"
 #undef UI_TEXT
 };
 

@@ -17,6 +17,8 @@
 #include "app_code_editor.h"
 #include "ui_text.h"
 #include "netlist_logic.h"
+#include "chip_docs.h"
+#include "netlist.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -2423,9 +2425,10 @@ static void draw_palette_tabs(const AppState *app, GLuint font)
 {
     const int per_row = 3;
     color(UI_SURFACE_ALT);
-    for (int row = 0; row < APP_PALETTE_TABS / per_row; ++row)
+    for (int row = 0; row < (APP_PALETTE_TABS + per_row - 1) / per_row; ++row)
     {
-        AppRect first = app_layout_palette_tab(row * per_row), last = app_layout_palette_tab(row * per_row + per_row - 1);
+        int last_tab = row * per_row + per_row - 1 < APP_PALETTE_TABS ? row * per_row + per_row - 1 : APP_PALETTE_TABS - 1;
+        AppRect first = app_layout_palette_tab(row * per_row), last = app_layout_palette_tab(last_tab);
         rounded_rect(first.x, first.y, last.x + last.w - first.x, first.h, UI_RADIUS);
     }
     for (int tab = 0; tab < APP_PALETTE_TABS; ++tab)
@@ -3784,6 +3787,11 @@ static void draw_part_inspector(const AppState *app, GLuint font)
         ui_button(app, font, app_layout_inspector_rotate(), tr(TXT_UI_ROTATE), UI_BUTTON_NEUTRAL);
         ui_button(app, font, app_layout_inspector_mirror(), tr(TXT_UI_MIRROR), UI_BUTTON_NEUTRAL);
     }
+    if (chip_doc(part->type) && !part->group)
+    {
+        title_right = app_layout_inspector_doc().x;
+        ui_button(app, font, app_layout_inspector_doc(), tr(TXT_DOC_OPEN), UI_BUTTON_NEUTRAL);
+    }
     int selected_count = bench_selection_count(&app->selection, &app->bench);
     char title[160];
     if (selected_count > 1 && !app_selection_same_type(app))
@@ -4365,6 +4373,154 @@ static void draw_example_card(const AppState *app, GLuint font, int index)
                (float)ui_font_pixels + 3);
 }
 
+/* ---- IC sheet (info window): the package alone and zoomed, every pin explained ---- */
+#define DOC_PACKAGE_MAX_SCALE 6.0f
+#define DOC_PIN_ROW 19.0f
+
+typedef struct
+{
+    float cx, cy, scale;
+} DocView;
+
+static DocView doc_view(PartType type)
+{
+    AppRect area = app_layout_doc_package();
+    int side = bench_pin_count(type) / 2;
+    float span = (float)((side + 1) * BENCH_DIP_PITCH);
+    return (DocView){app_rect_center_x(area), app_rect_center_y(area), fminf(DOC_PACKAGE_MAX_SCALE, area.w / span)};
+}
+
+static void doc_pin_screen(PartType type, const DocView *view, int pin, float *x, float *y)
+{
+    Part nominal = {.type = type, .scale = 1};
+    bench_pin_position(&nominal, pin, x, y);
+    *x = view->cx + *x * view->scale;
+    *y = view->cy + *y * view->scale;
+}
+
+/* Pin under the pointer, on the package or on the list; -1 when none. */
+static int doc_hovered_pin(const AppState *app, PartType type, const DocView *view)
+{
+    if (!app->mouse_position_valid)
+        return -1;
+    WirePoint mouse = app->mouse_screen;
+    AppRect list = app_layout_doc_pin_list();
+    if (app_rect_contains(list, mouse.x, mouse.y))
+    {
+        int row = (int)((mouse.y - list.y) / DOC_PIN_ROW);
+        return row < bench_pin_count(type) ? row : -1;
+    }
+    for (int pin = 0; pin < bench_pin_count(type); ++pin)
+    {
+        float x, y;
+        doc_pin_screen(type, view, pin, &x, &y);
+        if (fabsf(mouse.x - x) < view->scale * 5 && fabsf(mouse.y - y) < view->scale * 9)
+            return pin;
+    }
+    return -1;
+}
+
+static void doc_draw_package(GLuint font, PartType type, const DocView *view, int hovered)
+{
+    Part nominal = {.type = type, .scale = 1};
+    glPushMatrix();
+    glTranslatef(view->cx, view->cy, 0);
+    glScalef(view->scale, view->scale, 1);
+    part_draw(&nominal, 0, 0, 0);
+    glPopMatrix();
+    color(.85f, .88f, .9f);
+    const char *symbol = component_symbol(type);
+    text(font, view->cx - (float)app_text_utf8_width(symbol, 2048) * .5f, view->cy + 6, symbol);
+    for (int pin = 0; pin < bench_pin_count(type); ++pin)
+    {
+        const ComponentPinInfo *info = component_pin_info(type, pin);
+        float x, y;
+        doc_pin_screen(type, view, pin, &x, &y);
+        int above = y < view->cy;
+        if (pin == hovered)
+        {
+            glColor3f(UI_ACCENT);
+            circle(x, y, view->scale * 2.5f);
+        }
+        char number[16];
+        snprintf(number, sizeof(number), "%d", pin + 1);
+        color(UI_MUTED);
+        text(font, x - (float)app_text_utf8_width(number, 64) * .5f, above ? y - 14 : y + 26, number);
+        pin_role_color(info->role);
+        glPushMatrix();
+        glTranslatef(x + 5, above ? y - 32 : y + 36, 0);
+        glRotatef(above ? -55.0f : 55.0f, 0, 0, 1);
+        text(font, 0, 0, info->name);
+        glPopMatrix();
+    }
+}
+
+static void doc_draw_pin_list(GLuint font, const ChipDoc *doc, PartType type, int hovered)
+{
+    AppRect list = app_layout_doc_pin_list();
+    for (int pin = 0; pin < bench_pin_count(type); ++pin)
+    {
+        float y = list.y + pin * DOC_PIN_ROW;
+        if (pin == hovered)
+        {
+            color(UI_ACCENT_SOFT);
+            rect(list.x - 6, y, list.w + 6, DOC_PIN_ROW);
+        }
+        char label[24];
+        snprintf(label, sizeof(label), "%d  %s", pin + 1, component_pin_info(type, pin)->name);
+        pin_role_color(component_pin_info(type, pin)->role);
+        text(font, list.x, y + DOC_PIN_ROW - 5, label);
+        color(UI_INK);
+        name_text(font, list.x + 92, y + DOC_PIN_ROW - 5, tr(doc->pins[pin]), (int)list.w - 92);
+    }
+}
+
+static void draw_doc_window(const AppState *app, GLuint font)
+{
+    const ChipDoc *doc = app->doc_type >= 0 ? chip_doc((PartType)app->doc_type) : NULL;
+    if (!doc)
+        return;
+    PartType type = doc->type;
+    AppRect panel = app_layout_doc_panel();
+    glow_blend_begin();
+    glColor4f(0, 0, 0, .35f);
+    rect(-4000, -4000, 12000, 12000);
+    glow_blend_end();
+    ui_panel(panel);
+    char title[96];
+    snprintf(title, sizeof(title), tr(TXT_DOC_TITLE), component_symbol(type));
+    color(UI_INK);
+    text(font, panel.x + 30, panel.y + 42, title);
+    ui_close_button(app, app_layout_doc_close());
+    ui_wrapped(font, panel.x + 30, panel.y + 72, tr(doc->summary), 520, 3, (float)ui_font_pixels + 3);
+    double absolute, recommended, output;
+    netlist_logic_ratings(type, &absolute, &recommended, &output);
+    char ratings[160];
+    if (output > 0)
+        snprintf(ratings, sizeof(ratings), tr(TXT_DOC_RATINGS), LOGIC_SUPPLY_MIN, recommended, absolute,
+                 output * 1000.0);
+    else
+        snprintf(ratings, sizeof(ratings), tr(TXT_DOC_RATINGS_SUPPLY), recommended, absolute);
+    ui_note(font, panel.x + 30, panel.y + 130, ratings, 520);
+    DocView view = doc_view(type);
+    int hovered = doc_hovered_pin(app, type, &view);
+    doc_draw_package(font, type, &view, hovered);
+    doc_draw_pin_list(font, doc, type, hovered);
+    AppRect package = app_layout_doc_package();
+    color(UI_INK);
+    if (hovered >= 0)
+    {
+        char heading[64];
+        snprintf(heading, sizeof(heading), "%d  %s", hovered + 1, component_pin_info(type, hovered)->name);
+        text(font, package.x, package.y + package.h + 40, heading);
+        ui_wrapped(font, package.x, package.y + package.h + 64, tr(doc->pins[hovered]), (int)package.w, 3,
+                   (float)ui_font_pixels + 3);
+    }
+    else
+        ui_note(font, package.x, package.y + package.h + 40, tr(TXT_DOC_PIN_HINT), (int)package.w);
+    ui_note(font, panel.x + 30, panel.y + panel.h - 18, tr(TXT_DOC_CLOSE_HINT), 300);
+}
+
 static void draw_examples(const AppState *app, GLuint font)
 {
     if (!app->examples_open)
@@ -4612,6 +4768,7 @@ void app_render_draw(const AppState *app, GLuint font, int width, int height)
     draw_settings(app, font);
     draw_projects(app, font);
     draw_examples(app, font);
+    draw_doc_window(app, font);
     draw_value_editor(app, font);
     draw_editor_confirmation(app, font);
     draw_project_confirmation(app, font);

@@ -231,6 +231,43 @@ static void transceiver_245(LogicWriter *w)
     }
 }
 
+/* SN74HC04: six inverters, Y = NOT A. */
+static void hex_inverter_04(LogicWriter *w)
+{
+    static const int a_pins[] = {0, 2, 4, 8, 10, 12}, y_pins[] = {1, 3, 5, 7, 9, 11};
+    inputs(w, a_pins, 6);
+    for (int gate = 0; gate < 6; ++gate)
+    {
+        char y[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(y, sizeof(y), "y%d", gate);
+        primitive(w, "inv", "d%d y%d", a_pins[gate], gate);
+        output(w, y_pins[gate], y, NULL);
+    }
+}
+
+/* SN74HC74: rising-edge D flip-flops; ~PRE/~CLR asynchronous and active low. Both low drive Q and ~Q
+ * high (the datasheet's unstable state); releasing them returns to the stored bit. */
+static void dual_dff_74(LogicWriter *w)
+{
+    static const int pins[] = {0, 1, 2, 3, 9, 10, 11, 12};
+    static const int clr[] = {0, 12}, d[] = {1, 11}, clk[] = {2, 10}, pre[] = {3, 9}, q[] = {4, 8}, nq[] = {5, 7};
+    inputs(w, pins, 8);
+    for (int ff = 0; ff < 2; ++ff)
+    {
+        primitive(w, "and", "[~d%d d%d] set%d", pre[ff], clr[ff], ff);
+        primitive(w, "and", "[d%d ~d%d] rst%d", pre[ff], clr[ff], ff);
+        primitive(w, "nor", "[d%d d%d] both%d", pre[ff], clr[ff], ff);
+        primitive(w, "dff", "d%d d%d set%d rst%d s%d ns%d", d[ff], clk[ff], ff, ff, ff, ff);
+        primitive(w, "or", "[s%d both%d] q%d", ff, ff, ff);
+        primitive(w, "or", "[ns%d both%d] nq%d", ff, ff, ff);
+        char out[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(out, sizeof(out), "q%d", ff);
+        output(w, q[ff], out, NULL);
+        snprintf(out, sizeof(out), "nq%d", ff);
+        output(w, nq[ff], out, NULL);
+    }
+}
+
 /* EEPROM pins cross the same analog bridges as other CIs; its state runs in d_cosim. */
 static void eeprom_28c16(LogicWriter *w)
 {
@@ -296,6 +333,7 @@ typedef struct
     PartType type;
     int vcc, gnd;
     double supply_absolute_max, supply_recommended_max, output_limit_amps;
+    void (*write)(LogicWriter *w);
 } LogicChip;
 
 /* AT28C16 (Microchip, consulted 20/11/2026): pins -0.6..+6.25 V, VCC 5 V +-10%; no output current rating. */
@@ -303,8 +341,14 @@ typedef struct
 #define AT28C16_RECOMMENDED_MAX 5.5
 #define HC_RATINGS HC_SUPPLY_ABSOLUTE_MAX, HC_SUPPLY_RECOMMENDED_MAX, HC_OUTPUT_ABSOLUTE_MAX_AMPS
 static const LogicChip chips[] = {
-    {PART_74HC161, 15, 7, HC_RATINGS}, {PART_74HC173, 15, 7, HC_RATINGS}, {PART_74HC283, 15, 7, HC_RATINGS},
-    {PART_74HC245, 19, 9, HC_RATINGS}, {PART_AT28C16, 23, 11, AT28C16_ABSOLUTE_MAX, AT28C16_RECOMMENDED_MAX, 0}};
+    {PART_74HC161, 15, 7, HC_RATINGS, counter_161},
+    {PART_74HC173, 15, 7, HC_RATINGS, register_173},
+    {PART_74HC283, 15, 7, HC_RATINGS, adder_283},
+    {PART_74HC245, 19, 9, HC_RATINGS, transceiver_245},
+    {PART_AT28C16, 23, 11, AT28C16_ABSOLUTE_MAX, AT28C16_RECOMMENDED_MAX, 0, eeprom_28c16},
+    {PART_74HC04, 13, 6, HC_RATINGS, hex_inverter_04},
+    {PART_74HC74, 13, 6, HC_RATINGS, dual_dff_74},
+};
 
 static const LogicChip *logic_chip(PartType type)
 {
@@ -336,22 +380,11 @@ int netlist_logic_write(FILE *out, const Part *part, int index, const int *nodes
     snprintf(supply_node, sizeof(supply_node), "%ssup", w.prefix);
     netlist_protection_supply(protection, index, supply_node, chip->supply_absolute_max,
                               chip->supply_recommended_max);
+    RomImage image;
+    if (part->type == PART_AT28C16 && !rom_image_parse(part->code, &image, NULL))
+        return 0;
     supply(&w);
-    if (part->type == PART_74HC161)
-        counter_161(&w);
-    else if (part->type == PART_74HC173)
-        register_173(&w);
-    else if (part->type == PART_74HC283)
-        adder_283(&w);
-    else if (part->type == PART_74HC245)
-        transceiver_245(&w);
-    else
-    {
-        RomImage image;
-        if (!rom_image_parse(part->code, &image, NULL))
-            return 0;
-        eeprom_28c16(&w);
-    }
+    chip->write(&w);
     return w.ok;
 }
 
