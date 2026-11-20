@@ -1,8 +1,15 @@
 # Histórico de versões
 
-## 0.51.1 - 20/11/2026
+## 0.51.1
 
-- Ajusta o post-it conforme a referência: folha quase plana, cor uniforme, canto suavemente levantado e sombra discreta.
+Esta distribuicao reune as mudancas desde a pre-release 0.47.1.
+
+- EEPROM AT28C16 grava e le pelo barramento, com persistencia dos bytes no projeto, consulta de conclusao e circuito de referencia com LEDs de dados e modo.
+- Ctrl+clique seleciona pecas individualmente; selecoes da mesma especie permitem editar valores em conjunto. LEDs acesos usam cores mais vivas e iguais nos dois temas.
+- Protoboard larga de 60 colunas, melhor encaixe de pecas reduzidas e terminais padronizados que acompanham o zoom.
+- Notas com texto e cores configuraveis, redimensionamento proporcional, fita e canto suavemente levantado. Notas nao alteram a simulacao.
+- Catalogo reorganizado em nove categorias, com icones proprios para notas e juncoes, busca global e todos os componentes preservados.
+- Formato 37, com leitura de projetos anteriores. Modelos eletricos continuam didaticos; a distribuicao permanece experimental.
 
 ## 0.51.0 - 20/11/2026
 
