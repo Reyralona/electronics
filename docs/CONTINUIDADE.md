@@ -110,3 +110,8 @@ Papel usa malha sombreada com borda inferior arqueada, fita fora da area de text
 
 
 0.51.1: papel simplificado conforme referencia visual: plano na maior parte, curva localizada no canto direito e sombra discreta. Apenas renderizacao; build recompilado e captura build/catalog-review/paper-simple.bmp revisada. Sem repetir suite de simulacao.
+
+
+## Publicacao 0.51.1 - 20/11/2026
+
+Trabalho de EEPROM, notas e catalogo integrado na main; tag v0.51.1 publicada como pre-release com instalador, ZIP portatil, fontes completas e hashes. ./build.ps1 -GuiTests e ./tools/package-windows.ps1 passaram, incluindo 9 testes CTest, PATH minimo, pacote movido e instalacao/desinstalacao. Corrigida omissao do codigo do aplicativo no ZIP de fontes: bsdtar com verificacao de erro e inclusao obrigatoria de Bancada-source.zip. Logs em build/release-0.51.1-*.log. Continua sem assinatura digital e sem validacao em VM limpa. Branch docs/audit-consolidation ja era ancestral da main e permanece referenciada pelo outro worktree, que nao foi alterado.
