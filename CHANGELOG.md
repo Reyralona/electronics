@@ -2,6 +2,9 @@
 
 ## 0.47.1
 
+- Esta distribuição também inclui as novidades da 0.47.0: até 1024 peças e 2048 fios, CIs 74HC161/173/245/283
+  e EEPROM AT28C16, ritmos de simulação até 0,001×, escala real da interface, textos nítidos e ajustes nos fios.
+- A EEPROM lê conteúdo hexadecimal salvo no projeto; edição na interface e gravação pelo pino WE seguem pendentes.
 - O build interrompe antes de compilar quando o ngspice está ausente ou incompleto e indica como prepará-lo.
 - A referência DC e o teste de sessão contínua verificam o solver com PATH mínimo, sem depender do MSYS2.
 - Teste de regressão cobre instalação ausente, DLL principal ausente, modelo digital ausente e executável inválido.

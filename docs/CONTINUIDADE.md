@@ -5,7 +5,8 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 
 ## Produto e versão
 
-- Versão da branch `claude/computador-8-bits`: 0.47.0 (sem integração ou release). `main` está em 0.46.0.
+- Versão integrada na `main`: 0.47.1, incluindo os recursos da 0.47.0, a validação do runtime ngspice
+  no build e a auditoria consolidada. Publicação da pré-release em preparação.
   Formato de projeto 35. Última pré-release publicada: 0.43.0, Windows x64.
 - 0.47.0: limites de 1024 peças e 2048 fios; CIs 74HC161/173/245/283 e EEPROM AT28C16 (`netlist_logic.c`,
   `rom_image.c`). O exemplo do computador de 8 bits foi retirado (commit 3ca0d8e guarda o gerador).
