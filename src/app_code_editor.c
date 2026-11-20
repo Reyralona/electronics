@@ -223,7 +223,7 @@ static void editing_key(AppState *app, SDL_Window *window, SDL_Keycode key, SDL_
     size_t capacity = sizeof(app->code_text);
     if ((mod & SDL_KMOD_CTRL) && (key == SDLK_RETURN || key == SDLK_KP_ENTER))
     {
-        if (!app_code_apply(app))
+        if (!app_code_apply(app) && !app->code_dirty)
             app->status = tr(TXT_MCU_NO_CHANGES);
         return;
     }
@@ -300,7 +300,7 @@ static int panel_click(AppState *app, SDL_Window *window, float x, float y)
         app_code_close(app, window);
     else if (app_rect_contains(app_layout_code_run(), x, y))
     {
-        if (!app_code_apply(app))
+        if (!app_code_apply(app) && !app->code_dirty)
             app->status = tr(TXT_MCU_NO_CHANGES);
     }
     else if (app_rect_contains(app_layout_code_text(), x, y))

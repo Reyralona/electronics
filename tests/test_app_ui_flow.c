@@ -1,3 +1,4 @@
+#include "app_code_editor.h"
 #include "app_input.h"
 #include "app_controls.h"
 #include "app_palette.h"
@@ -322,6 +323,29 @@ static void catalog_categories_cover_every_part(void)
     assert(palette_part(6, 0) == PART_SOURCE);
 }
 
+static void failed_code_send_keeps_message(SDL_Window *window)
+{
+    static AppState app;
+    app_state_init(&app);
+    int board = bench_add(&app.bench, PART_ARDUINO_UNO, 400, 300);
+    app.code_part = board;
+    strcpy(app.code_text, "void setup(){} void loop(){delay(123);}");
+    app.code_dirty = 1;
+    BenchHistory *history = app.history;
+    app.history = NULL;
+    key(&app, window, SDLK_RETURN, SDL_KMOD_CTRL);
+    assert(app.code_dirty && !app.bench.parts[board].code);
+    assert(!strcmp(app.status, tr(TXT_APP_HISTORY_FAILED)));
+    click(&app, window, app_layout_code_run());
+    assert(app.code_dirty && !strcmp(app.status, tr(TXT_APP_HISTORY_FAILED)));
+    app.history = history;
+    key(&app, window, SDLK_RETURN, SDL_KMOD_CTRL);
+    assert(!app.code_dirty && app.bench.parts[board].code);
+    key(&app, window, SDLK_RETURN, SDL_KMOD_CTRL);
+    assert(!strcmp(app.status, tr(TXT_MCU_NO_CHANGES)));
+    app_state_dispose(&app);
+}
+
 int main(void)
 {
     catalog_categories_cover_every_part();
@@ -343,6 +367,7 @@ int main(void)
     assert(palette_filtered_part(0, "JUNÇÃO", 0) == PART_JUNCTION);
     SDL_Window *window = SDL_CreateWindow("UI flow", 1280, 720, SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE);
     assert(window);
+    failed_code_send_keeps_message(window);
     static AppState app;
     app_state_init(&app);
     app.selftest = 1;

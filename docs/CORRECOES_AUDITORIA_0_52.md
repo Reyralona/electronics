@@ -12,7 +12,7 @@ Pedido: corrigir os onze pontos, sem integrar/publicar por enquanto. Não altera
 | 3. Gráfico após aplicar chip | Corrigido; teste especifico passou | test_app_editor: editar/aplicar fecha grafico; consultar nao fecha |
 | 4. ATtiny sem alimentação | Corrigido; teste especifico passou | test_mcu: exclusao com codigo igual, sem VCC, queda e retorno |
 | 5. Histórico sob falha de memória | Corrigido; teste especifico passou | test_app_editor e test_app_commands: armazenamento de historico indisponivel conserva bancada e rascunho |
-| 6. Erro de envio ocultado | Pendente | Preservar causa no botão e Ctrl+Enter |
+| 6. Erro de envio ocultado | Corrigido; teste especifico passou | test_app_ui_flow: Ctrl+Enter e Executar preservam causa, rascunho e programa anterior |
 | 7. Relógio das placas | Pendente | Usar tempo aceito do solver, limitar latência de saída |
 | 8. Conectividade do LCD | Corrigido; teste especifico passou | test_mcu: reutiliza cache e invalida ao desconectar/reconectar SCL |
 | 9. Bateria CTest | Pendente | Registrar lógica, lineares e proteção |
@@ -146,3 +146,7 @@ Regressoes permanentes falharam antes: aplicar chip e enviar codigo anunciam suc
 ### Item 8
 
 Mapa de nos pertence ao runtime, reutilizado enquanto bancada/revisao coincidem, liberado no reset/destrutor. netlist_same_net continua disponivel e agora valida pinos. Teste LCD passa por escrever, reutilizar mapa, desconectar SCL, tentar escrever sem alterar display, reconectar e escrever novamente.
+
+### Item 6
+
+Regressao de interface compilada com app_code_editor anterior falhou por ocultar TXT_APP_HISTORY_FAILED. Com os chamadores corrigidos passou: Ctrl+Enter e botao Executar mantem erro/rascunho; retornar historico permite enviar e proxima tentativa sem mudancas mostra mensagem correta. Teste: linha gcc de test_app_ui_flow em build.ps1, ./build/test_app_ui_flow.exe.
