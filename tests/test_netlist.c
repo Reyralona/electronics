@@ -3,8 +3,40 @@
 #include <string.h>
 #include "netlist.h"
 
+static void notes_do_not_change_circuit(void)
+{
+    Workbench bench = {0};
+    assert(bench_add(&bench, PART_SOURCE, 0, 0) == 0);
+    assert(bench_add(&bench, PART_RESISTOR, 300, 0) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){0, 0}, (Pin){1, 0}) == 1);
+    assert(bench_toggle_wire(&bench, (Pin){0, 1}, (Pin){1, 1}) == 1);
+    for (int live = 0; live < 2; ++live)
+    {
+        char before[16384], after[16384];
+        FILE *file = tmpfile();
+        assert(file);
+        assert((live ? netlist_write_live(file, &bench, 0) : netlist_write_dc(file, &bench)) == NETLIST_OK);
+        rewind(file);
+        size_t count = fread(before, 1, sizeof(before), file);
+        assert(count < sizeof(before));
+        fclose(file);
+        assert(bench_add(&bench, PART_NOTE, 600, 300) == 2);
+        assert(bench_set_code(&bench, 2, "Teste: nota sem efeito eletrico"));
+        file = tmpfile();
+        assert(file);
+        assert((live ? netlist_write_live(file, &bench, 0) : netlist_write_dc(file, &bench)) == NETLIST_OK);
+        rewind(file);
+        size_t annotated = fread(after, 1, sizeof(after), file);
+        assert(count == annotated && !memcmp(before, after, count));
+        fclose(file);
+        bench_remove(&bench, 2);
+    }
+    bench_snapshot_clear(&bench);
+}
+
 int main(void)
 {
+    notes_do_not_change_circuit();
     Workbench b={0}; FILE *f; char text[4096]; size_t n;
     assert(bench_add(&b, PART_SOURCE, 250 * b.part_count, 0)==0);
     assert(bench_add(&b, PART_RESISTOR, 250 * b.part_count, 0)==1);

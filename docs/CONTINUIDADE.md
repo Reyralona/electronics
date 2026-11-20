@@ -92,3 +92,8 @@ Branch `feature/eeprom-workbench-usability`, versão 0.48.0, formato 36. EEPROM 
 ## Notas na bancada - 20/11/2026
 
 Na mesma branch, versão 0.49.0 e formato 37: componente Nota em Básicos, edição por clique duplo, cores independentes de fundo e texto, histórico e persistência. Slot 1 pessoal anotado por etapa, com cópia anterior em saves/backup. ./build.ps1 -GuiTests passou; captura revisada em build/notes-circuit.bmp. Montagem física não validada: contatos e fios continuam idealizados.
+
+
+### Correcao 0.49.1
+
+Notas agora sao aceitas como elementos sem efeito eletrico no gerador de netlist. Regressao em test_netlist falhou antes da correcao e passou depois (DC e sessao continua, circuito identico com/sem nota). test_eeprom_programmer_flow passou com nota, incluindo gravacao e persistencia. Slot 1 pessoal, 76 pecas, simulado por 10 ms sem erro. build/build.exe recompilado; suite completa nao repetida nesta correcao localizada.

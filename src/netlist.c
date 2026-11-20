@@ -355,6 +355,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
         case PART_INDUCTOR:
         case PART_CLOCK:
         case PART_JUNCTION:
+        case PART_NOTE:
             break;
         case PART_74HC161:
         case PART_74HC173:

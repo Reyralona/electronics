@@ -96,6 +96,8 @@ int main(int argc, char **argv)
     snprintf(app.ngspice, sizeof(app.ngspice), "%s", solver);
     WorkbenchSettings settings;
     assert(workbench_load_project(fixture, &app.bench, &settings));
+    int note = bench_add(&app.bench, PART_NOTE, 500, 170);
+    assert(note >= 0 && bench_set_code(&app.bench, note, "Escolha o endereco antes de gravar."));
     assert(workbench_save_project("build/test-slots/slot-1.elec", &app.bench, &settings));
     app_projects_refresh(&app);
     app_projects_load(&app);

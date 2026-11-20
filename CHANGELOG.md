@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.49.1 - 20/11/2026
+
+- Corrige erro de cálculo ao simular circuitos com notas. Testes verificam que as notas preservam o circuito elétrico e o fluxo de gravação da EEPROM.
+
 ## 0.49.0 — 20/11/2026
 
 - Notas flutuantes no catálogo Básicos: texto por clique duplo, cores de fundo e texto independentes, arraste, escala, cópia, desfazer e salvamento. Formato 37, leitura dos projetos anteriores preservada.
