@@ -214,10 +214,54 @@ static void half_bridge_drives(int enabled)
     bench_snapshot_clear(&rig.bench);
 }
 
+static void loaded_supply_conserves_current(PartType type, double limit)
+{
+    static Rig rig;
+    memset(&rig, 0, sizeof(rig));
+    int source = supply(&rig, 5);
+    assert(bench_set_control(&rig.bench, source, limit / 3));
+    int chip = add(&rig, type, 0);
+    wire(&rig, source, 0, chip, 7);
+    wire(&rig, source, 1, chip, type == PART_NE555 ? 0 : 3);
+    int output = type == PART_NE555 ? 2 : 0;
+    if (type == PART_NE555)
+    {
+        wire(&rig, source, 0, chip, 3);
+        wire(&rig, source, 1, chip, 1);
+        wire(&rig, source, 1, chip, 5);
+    }
+    else
+    {
+        wire(&rig, source, 0, chip, 2);
+        wire(&rig, source, 1, chip, 1);
+        wire(&rig, source, 1, chip, 4);
+        wire(&rig, source, 1, chip, 5);
+    }
+    resistor(&rig, 100, chip, output, source, 1);
+    SpiceLive *live = spice_live_create();
+    step(live, &rig, .002);
+    double load = volts(live, &rig, chip, output) / 100;
+    assert(load > .001 && -result.source_current >= load - 1e-6);
+    if (limit < .02)
+    {
+        /* The existing CV/CC stage has finite gain, allowing a small current excess. */
+        assert(load <= limit + .0003);
+        assert(volts(live, &rig, chip, 7) < 4.99);
+    }
+    else
+        assert(volts(live, &rig, chip, 7) > 4.99);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
     executable = argv[1];
+    loaded_supply_conserves_current(PART_NE555, .01);
+    loaded_supply_conserves_current(PART_NE555, 1);
+    loaded_supply_conserves_current(PART_LM358, .01);
+    loaded_supply_conserves_current(PART_LM358, 1);
     timer_astable(0);
     timer_astable(1);
     op_amp_gain(1, 2);

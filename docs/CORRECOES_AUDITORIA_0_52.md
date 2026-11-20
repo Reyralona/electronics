@@ -130,3 +130,7 @@ Passaram test_eeprom, test_mcu_lang, test_workbench_group_edit e test_sim_state.
 
 - Branch criada limpa a partir de main. Este documento registra relatório e plano antes das mudanças.
 - Próximo passo: regressões permanentes para alimentação, identidade/runtime e gráfico; depois aplicar correções em commits pequenos.
+
+### Item 1
+
+Fonte de corrente comportamental debita de VCC a corrente positiva medida na sa?da; corrente absorvida retorna ao GND. Teste novo falhou antes e passou ap?s a corre??o. Fonte CV/CC existente tem ganho finito: teste admite 0,3 mA de excesso no limite de 10 mA (medido no LM358: 10,20 mA). Comandos: linha gcc de test_linear_chips em build.ps1; ./build/test_linear_chips.exe build/spice-local/ucrt64/bin/ngspice_con.exe. Modelos continuam funcionais, sem corrente de repouso completa ou t?rmica.

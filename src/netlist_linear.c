@@ -78,7 +78,9 @@ static void timer_555(LinearWriter *w)
     emit(w, "A%srst [%shr %sdr] %srst lin_or\nA%szero %szero lin_zero\n", p, p, p, p, p, p);
     emit(w, "A%sff %sq %szero %sset %srst %sq null lin_dff\n", p, p, p, p, p, p);
     emit(w, "A%sdac [%sq] [%sqa] lin_dac\n", p, p, p);
-    emit(w, "B%so %so 0 V=V(%d)+V(%sok)*(V(%sqa)*max(V(%ssup)-%g,0)+(1-V(%sqa))*%g)\nR%sout %so %d %g\n", p, p, w->gnd,
+    /* Debit sourced load current from VCC; sinking current returns to GND. */
+    emit(w, "V%ssense %so %sload 0\nB%sload %d %d I=max(I(V%ssense),0)\n", p, p, p, p, w->vcc, w->gnd, p);
+    emit(w, "B%so %so 0 V=V(%d)+V(%sok)*(V(%sqa)*max(V(%ssup)-%g,0)+(1-V(%sqa))*%g)\nR%sout %sload %d %g\n", p, p, w->gnd,
          p, p, p, NE555_HIGH_DROP, p, NE555_LOW_LEVEL, p, p, out, NE555_OUTPUT_OHMS);
     emit(w, "B%sdc %sdc 0 V=V(%sok)*(1-V(%sqa))\nS%sdis %d %d %sdc 0 lin_disch\n", p, p, p, p, p, disch, w->gnd, p);
 }
@@ -104,7 +106,9 @@ static void op_amp_358(LinearWriter *w)
         emit(w, "B%sh%d %sh%d 0 V=max(V(%ssup)-%g,0)\n", p, amp, p, amp, p, LM358_HIGH_DROP);
         emit(w, "B%sa%d %sa%d 0 V=V(%d)+V(%sok)*.5*(V(%sy%d)+V(%sh%d)-sqrt((V(%sy%d)-V(%sh%d))^2+%g))\n", p, amp, p, amp,
              w->gnd, p, p, amp, p, amp, p, amp, p, amp, OP_AMP_SMOOTH * OP_AMP_SMOOTH);
-        emit(w, "R%sa%d %sa%d %d %g\n", p, amp, p, amp, w->nodes[outputs[amp]], LM358_OUTPUT_OHMS);
+        emit(w, "V%ssense%d %sa%d %sload%d 0\nB%sload%d %d %d I=max(I(V%ssense%d),0)\n",
+             p, amp, p, amp, p, amp, p, amp, w->vcc, w->gnd, p, amp);
+        emit(w, "R%sa%d %sload%d %d %g\n", p, amp, p, amp, w->nodes[outputs[amp]], LM358_OUTPUT_OHMS);
     }
 }
 
