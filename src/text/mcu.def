@@ -159,3 +159,7 @@ UI_TEXT(MCU_HELP_INT, "Número inteiro", "Whole number")
 UI_TEXT(MCU_SIG_FLOAT, "float nome = valor;", "float name = value;")
 UI_TEXT(MCU_HELP_FLOAT, "Número com casas decimais", "Number with decimals")
 UI_TEXT(MCU_CODE_TOO_LONG, "Código grande demais para o editor. O programa original foi mantido.", "Code is too long for the editor. The original program was kept.")
+
+UI_TEXT(MCU_ERROR_BAD_NUMBER, "número inválido: %s.", "invalid number: %s.")
+UI_TEXT(MCU_ERROR_ENTRY_SIGNATURE, "setup e loop precisam ser void e sem parâmetros.", "setup and loop must be void with no parameters.")
+UI_TEXT(MCU_ERROR_INTEGER_RANGE, "valor fora do intervalo de inteiros de 64 bits.", "value outside the signed 64-bit integer range.")

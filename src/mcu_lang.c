@@ -1,6 +1,8 @@
 #include "mcu_lang.h"
 #include <ctype.h>
 #include <math.h>
+#include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +26,7 @@ enum
     OP_PUSHK, OP_PUSHS, OP_LOADG, OP_STOREG, OP_LOADL, OP_STOREL, OP_LOADGA, OP_STOREGA, OP_LOADLA, OP_STORELA,
     OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD, OP_LT, OP_LE, OP_GT, OP_GE, OP_EQ, OP_NE, OP_BAND, OP_BOR, OP_BXOR,
     OP_SHL, OP_SHR, OP_NEG, OP_NOT, OP_BNOT, OP_JMP, OP_JZ, OP_JNZ, OP_CALL, OP_RET, OP_BUILTIN, OP_POP, OP_DUP,
-    OP_TOINT, OP_LOCALS, OP_OVER
+    OP_TOINT, OP_LOCALS, OP_OVER, OP_TOFLOAT, OP_PARAM
 };
 
 enum
@@ -156,7 +158,8 @@ typedef struct
 typedef struct
 {
     char name[NAME_MAX_LEN];
-    int params, defined, returns_value;
+    int params, defined, return_type;
+    int calls, min_args, max_args, min_line, max_line;
 } Function;
 
 typedef struct
@@ -183,7 +186,7 @@ typedef struct
     Var globals[MAX_GLOBALS / 4];
     int global_count;
     Var locals[MAX_LOCALS];
-    int local_count, local_slots, max_local_slots, in_function, function_is_void;
+    int local_count, local_slots, max_local_slots, in_function, function_return_type;
     Function functions[MAX_FUNCTIONS];
     Define defines[MAX_DEFINES];
     int define_count;
@@ -251,11 +254,15 @@ static void skip_space(Compiler *c)
 static void lex_number(Compiler *c, const char *text)
 {
     char *end;
+    errno = 0;
+    int hexadecimal = !strncmp(text, "0x", 2) || !strncmp(text, "0X", 2);
     c->token.kind = T_NUMBER;
-    c->token.is_float = strchr(text, '.') != NULL || ((strchr(text, 'e') || strchr(text, 'E')) && strncmp(text, "0x", 2));
+    c->token.is_float = strchr(text, '.') != NULL || ((strchr(text, 'e') || strchr(text, 'E')) && !hexadecimal);
     c->token.number = !strncmp(text, "0x", 2) || !strncmp(text, "0X", 2) ? (double)strtoll(text, &end, 16)
                       : !strncmp(text, "0b", 2) ? (double)strtoll(text + 2, &end, 2)
                                                  : strtod(text, &end);
+    if (end == text || (!strncmp(text, "0b", 2) && end == text + 2) || *end || errno == ERANGE || !isfinite(c->token.number))
+        fail(c, TXT_MCU_ERROR_BAD_NUMBER, text);
 }
 
 static void apply_define(Compiler *c)
@@ -292,8 +299,16 @@ static void next(Compiler *c)
     }
     else if (isdigit((unsigned char)*s) || (*s == '.' && isdigit((unsigned char)s[1])))
     {
-        while ((isalnum((unsigned char)s[length]) || s[length] == '.') && length < sizeof(c->token.text) - 1)
+        int hexadecimal = s[0] == '0' && (s[1] == 'x' || s[1] == 'X');
+        while (length < sizeof(c->token.text) - 1)
+        {
+            char ch = s[length];
+            int exponent_sign = !hexadecimal && length > 0 && (ch == '+' || ch == '-') &&
+                (s[length - 1] == 'e' || s[length - 1] == 'E');
+            if (!isalnum((unsigned char)ch) && ch != '.' && !exponent_sign)
+                break;
             ++length;
+        }
         c->token.kind = T_NUMBER;
     }
     else if (*s == '"' || *s == '\'')
@@ -556,8 +571,7 @@ static void load(Compiler *c, const LValue *lv)
 /* Stores the value on top of the stack (array: index below it) and leaves the stored value. */
 static void store(Compiler *c, const LValue *lv)
 {
-    if (lv->var.is_int)
-        emit(c, OP_TOINT);
+    emit(c, lv->var.is_int ? OP_TOINT : OP_TOFLOAT);
     if (lv->kind == 1)
     {
         emit(c, lv->global ? OP_STOREG : OP_STOREL);
@@ -665,7 +679,20 @@ static LValue name_reference(Compiler *c)
             fail(c, TXT_MCU_ERROR_TOO_MANY_FUNCTIONS, MAX_FUNCTIONS);
             return lv;
         }
+        int call_line = c->token.line;
         int count = call_arguments(c);
+        Function *called = &c->functions[function];
+        if (!called->calls || count < called->min_args)
+        {
+            called->min_args = count;
+            called->min_line = call_line;
+        }
+        if (!called->calls || count > called->max_args)
+        {
+            called->max_args = count;
+            called->max_line = call_line;
+        }
+        called->calls++;
         emit(c, OP_CALL);
         emit(c, function);
         emit(c, count);
@@ -718,8 +745,7 @@ static LValue primary(Compiler *c)
             int is_int = parse_type(c);
             expect(c, ")");
             value(c, unary(c));
-            if (is_int > 0)
-                emit(c, OP_TOINT);
+            emit(c, is_int > 0 ? OP_TOINT : OP_TOFLOAT);
             return lv;
         }
         expression(c);
@@ -1221,6 +1247,8 @@ static void statement(Compiler *c)
         else
             expression(c);
         expect(c, ";");
+        if (c->function_return_type >= 0)
+            emit(c, c->function_return_type > 0 ? OP_TOINT : OP_TOFLOAT);
         emit(c, OP_RET);
     }
     else if (is_type(c))
@@ -1241,7 +1269,7 @@ static void statement(Compiler *c)
     }
 }
 
-static void function_definition(Compiler *c, const char *name, int returns_value)
+static void function_definition(Compiler *c, const char *name, int return_type)
 {
     int index = find_function(c, name, 1);
     if (index < 0 || c->functions[index].defined)
@@ -1273,12 +1301,21 @@ static void function_definition(Compiler *c, const char *name, int returns_value
     expect(c, ")");
     c->functions[index].params = params;
     c->functions[index].defined = 1;
-    c->functions[index].returns_value = returns_value;
+    c->functions[index].return_type = return_type;
+    c->function_return_type = return_type;
     emit(c, OP_LOCALS);
     int locals_at = emit(c, 0);
     emit(c, params);
+    for (int param = 0; param < params; ++param)
+    {
+        emit(c, OP_PARAM);
+        emit(c, param);
+        emit(c, c->locals[param].is_int);
+    }
     block(c);
     emit_constant(c, 0);
+    if (return_type >= 0)
+        emit(c, return_type > 0 ? OP_TOINT : OP_TOFLOAT);
     emit(c, OP_RET);
     patch(c, locals_at, c->max_local_slots);
     c->in_function = 0;
@@ -1320,7 +1357,7 @@ static void top_level(Compiler *c)
     }
     next(c);
     if (is(c, "("))
-        function_definition(c, name, kind >= 0);
+        function_definition(c, name, kind);
     else
         declaration_rest(c, kind > 0, name);
 }
@@ -1331,6 +1368,12 @@ static void entry_stub(Compiler *c)
     if (setup < 0 || !c->functions[setup].defined || loop < 0 || !c->functions[loop].defined)
     {
         fail(c, TXT_MCU_ERROR_NO_SETUP_LOOP);
+        return;
+    }
+    if (c->functions[setup].params || c->functions[loop].params ||
+        c->functions[setup].return_type != -1 || c->functions[loop].return_type != -1)
+    {
+        fail(c, TXT_MCU_ERROR_ENTRY_SIGNATURE);
         return;
     }
     emit(c, OP_CALL);
@@ -1349,8 +1392,16 @@ static void entry_stub(Compiler *c)
 static void check_calls(Compiler *c)
 {
     for (int i = 0; i < c->program->functions && !c->failed; ++i)
+    {
         if (!c->functions[i].defined)
             fail(c, TXT_MCU_ERROR_UNDEFINED_FUNCTION, c->functions[i].name);
+        Function *function = &c->functions[i];
+        if (function->calls && (function->min_args != function->params || function->max_args != function->params))
+        {
+            c->token.line = function->min_args != function->params ? function->min_line : function->max_line;
+            fail(c, TXT_MCU_ERROR_VALUE_COUNT, function->name, function->params, function->params);
+        }
+    }
 }
 
 McuProgram *mcu_compile(const char *source, const McuConstant *constants, int constant_count, char *error,
@@ -1587,7 +1638,12 @@ static Value builtin(McuVm *vm, const McuHost *host, int id, Value *a, int count
 static Value arithmetic(int op, Value a, Value b)
 {
     int ints = a.kind == 0 && b.kind == 0;
-    long long x = (long long)a.v, y = (long long)b.v;
+    long long x = 0, y = 0;
+    if (ints || op == OP_MOD || op >= OP_BAND)
+    {
+        x = (long long)a.v;
+        y = (long long)b.v;
+    }
     switch (op)
     {
     case OP_ADD:
@@ -1621,7 +1677,7 @@ static Value arithmetic(int op, Value a, Value b)
     case OP_BXOR:
         return make((double)(x ^ y), 1);
     case OP_SHL:
-        return make((double)(x << (y & 63)), 1);
+        return make((double)(long long)((unsigned long long)x << (y & 63)), 1);
     default:
         return make((double)(x >> (y & 63)), 1);
     }
@@ -1629,6 +1685,12 @@ static Value arithmetic(int op, Value a, Value b)
 
 #define POP() (vm->stack[--vm->sp])
 #define PUSH(value) (vm->stack[vm->sp++] = (value))
+
+/* Values are stored as doubles; the upper signed-64 boundary itself is not representable as an integer. */
+static int integer_representable(double value)
+{
+    return isfinite(value) && value >= -0x1p63 && value < 0x1p63;
+}
 
 static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size_t capacity)
 {
@@ -1689,6 +1751,8 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
         vm->stack[vm->sp - 1] = make(vm->stack[vm->sp - 1].v == 0, 1);
         break;
     case OP_BNOT:
+        if (!integer_representable(vm->stack[vm->sp - 1].v))
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_INTEGER_RANGE);
         vm->stack[vm->sp - 1] = make((double)~(long long)vm->stack[vm->sp - 1].v, 1);
         break;
     case OP_JMP:
@@ -1766,12 +1830,35 @@ static int step(McuVm *vm, const McuHost *host, double now_ms, char *error, size
         if (vm->stack[vm->sp - 1].kind != 2)
             vm->stack[vm->sp - 1] = make(vm->stack[vm->sp - 1].v, 1);
         break;
+    case OP_TOFLOAT:
+        if (vm->stack[vm->sp - 1].kind != 2)
+            vm->stack[vm->sp - 1] = make(vm->stack[vm->sp - 1].v, 0);
+        break;
+    case OP_PARAM:
+    {
+        int slot = vm->fp + code[vm->pc++];
+        int is_int = code[vm->pc++];
+        vm->stack[slot] = make(vm->stack[slot].v, is_int);
+        if (is_int && !integer_representable(vm->stack[slot].v))
+            return vm_error(vm, error, capacity, TXT_MCU_ERROR_INTEGER_RANGE);
+        break;
+    }
     default:
     {
         Value b = POP(), a = POP();
+        if ((a.kind == 0 && b.kind == 0) || op == OP_MOD || op >= OP_BAND)
+        {
+            if (!integer_representable(a.v) || !integer_representable(b.v))
+                return vm_error(vm, error, capacity, TXT_MCU_ERROR_INTEGER_RANGE);
+            long long x = (long long)a.v, y = (long long)b.v;
+            if ((op == OP_DIV || op == OP_MOD) && x == LLONG_MIN && y == -1)
+                return vm_error(vm, error, capacity, TXT_MCU_ERROR_INTEGER_RANGE);
+        }
         PUSH(arithmetic(op, a, b));
     }
     }
+    if (vm->sp > 0 && vm->stack[vm->sp - 1].kind == 0 && !integer_representable(vm->stack[vm->sp - 1].v))
+        return vm_error(vm, error, capacity, TXT_MCU_ERROR_INTEGER_RANGE);
     return 1;
 }
 

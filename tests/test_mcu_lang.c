@@ -165,8 +165,69 @@ static void random_bounds(void)
     mcu_program_free(program);
 }
 
+static void numeric_and_type_regressions(void)
+{
+    FakeBoard board;
+    McuHost host;
+    McuProgram *program;
+    McuVm *vm = start("int echo(int x){return x;} float half(float x){return x/2;}"
+        "int truncated(){return 2.5;} float floating(){return 1;}"
+        "void setup(){float x=1;float a[1]={1};Serial.println(1e-3*1000);Serial.println(1E+2);"
+        "Serial.println(x/2);Serial.println(a[0]/2);Serial.println(echo(2.5));"
+        "Serial.println(half(1));Serial.println(truncated());Serial.println(floating()/2);"
+        "Serial.println(1-3);Serial.println(0xFF);Serial.println(0b101);}"
+        "void loop(){delay(1);}", &board, &host, &program);
+    run(vm, &host, 0);
+    assert(!strcmp(board.serial, "1.00\n100.00\n0.50\n0.50\n2\n0.50\n2\n0.50\n-2\n255\n5\n"));
+    mcu_vm_free(vm);
+    mcu_program_free(program);
+}
+
+static void signatures_and_tokens_rejected(void)
+{
+    const char *invalid[] = {
+        "void setup(){Serial.println(123abc);}void loop(){}",
+        "void setup(){Serial.println(1e-);}void loop(){}",
+        "int echo(int x){return x;}void setup(){echo();}void loop(){}",
+        "void setup(){echo(1,2);}void loop(){}int echo(int x){return x;}",
+        "void setup(int x){}void loop(){}", "int setup(){return 1;}void loop(){}"
+    };
+    for (size_t i = 0; i < sizeof(invalid)/sizeof(invalid[0]); ++i)
+    {
+        char error[200];
+        int line;
+        McuProgram *program = mcu_compile(invalid[i], NULL, 0, error, sizeof(error), &line);
+        assert(!program && error[0] && line > 0);
+    }
+}
+
+static void integer_boundaries_stop_safely(void)
+{
+    const char *invalid[] = {
+        "void setup(){long x=-9223372036854775808;Serial.println(x/-1);}void loop(){}",
+        "void setup(){long x=-9223372036854775808;Serial.println(x%-1);}void loop(){}",
+        "void setup(){long x=pow(10,400);Serial.println(x);}void loop(){}",
+        "void setup(){long x=-4611686018427387904;x*=2;Serial.println(x/-1);}void loop(){}",
+        "void setup(){long x=-4611686018427387904;x*=2;Serial.println(x%-1);}void loop(){}"
+    };
+    for (size_t i = 0; i < sizeof(invalid)/sizeof(invalid[0]); ++i)
+    {
+        FakeBoard board;
+        McuHost host;
+        McuProgram *program;
+        McuVm *vm = start(invalid[i], &board, &host, &program);
+        char error[200] = "";
+        assert(!mcu_vm_run(vm, &host, 0, error, sizeof(error)) && error[0]);
+        mcu_vm_free(vm);
+        mcu_program_free(program);
+    }
+}
+
 int main(void)
 {
+    numeric_and_type_regressions();
+    signatures_and_tokens_rejected();
+    integer_boundaries_stop_safely();
     random_bounds();
     blink();
     language();
