@@ -49,7 +49,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_cockcroft_slot.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/ui_text.c -o build/test_cockcroft_slot.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_counter_decoder.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/ui_text.c -o build/test_counter_decoder.exe
+& gcc -std=c11 -Wall -Wextra -Werror '-Wl,--stack,67108864' -Isrc tests/test_counter_decoder.c src/workbench_selection.c src/spice_live.c src/spice_session.c src/sim_auto.c src/spice_process.c src/netlist.c src/netlist_devices.c src/netlist_logic.c src/rom_image.c src/mcu_board.c src/workbench.c src/bench_path.c src/component_registry.c src/component_devices.c src/workbench_file.c src/workbench_pack_file.c src/workbench_group_name.c src/ui_text.c -o build/test_counter_decoder.exe
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (Test-Path "$ngspiceBin/ngspice_con.exe") {
     $normalPath = $env:Path

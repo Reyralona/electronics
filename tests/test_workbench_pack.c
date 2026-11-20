@@ -45,7 +45,9 @@ static void test_overlapping_instances(const char *solver)
         selection.parts[i] = 1;
     assert(bench_pack_selection(&bench, &selection, message, sizeof(message)));
     assert(bench_selection_copy(&bench, &selection, &clipboard));
-    assert(bench_selection_paste(&bench, &selection, &clipboard, bench.parts[0].x, bench.parts[0].y));
+    int copied_group = bench.parts[0].group;
+    assert(bench_selection_paste(&bench, &selection, &clipboard,
+                                 bench.groups[copied_group - 1].x, bench.groups[copied_group - 1].y));
     Pin contact;
     assert(bench_find_contact(&bench, 6, 0, &contact) && contact.component == 5);
     if (solver)

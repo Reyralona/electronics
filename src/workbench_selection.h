@@ -20,6 +20,7 @@ int bench_selection_count(const BenchSelection *selection, const Workbench *benc
 int bench_selection_knee_count(const BenchSelection *selection, const Workbench *bench);
 void bench_selection_rect(BenchSelection *selection, const Workbench *bench, WirePoint a, WirePoint b);
 int bench_selection_copy(const Workbench *bench, const BenchSelection *selection, BenchClipboard *clipboard);
+/* Places the first visible part/package at x,y; hidden chip members never determine the anchor. */
 int bench_selection_paste(Workbench *bench, BenchSelection *selection, const BenchClipboard *clipboard, float x,
                           float y);
 void bench_selection_delete(Workbench *bench, BenchSelection *selection);

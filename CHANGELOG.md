@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 0.51.2
+
+- Corrige os oito erros reproduzidos na auditoria: estouro inteiro, numeros cientificos, tipos float, assinaturas de funcoes, rascunhos na troca de projeto, reinicio das placas, conexoes da protoboard larga ao criar chips e persistencia de terminais de sonda acima de 13.
+- Falha ao aplicar codigo conserva o rascunho aberto; trocar projetos ou exemplos resolve o rascunho anterior e reinicia o runtime. Undo da troca recupera o programa editado.
+- Verificacao de curtos reutiliza conectividade enquanto a montagem nao muda. Portas compartilham a conversao do mesmo no e eliminam uma fonte redundante da saida, mantendo alimentacao, impedancia e limiares.
+- Circuito de contador/adder/decoders com 235 pecas e 333 fios ganha teste de equivalencia e benchmark. Medicao local a 50 Hz: aproximadamente 2,4x mais rapido; ainda abaixo de tempo real nesse caso, sem reduzir precisao ou pular ciclos.
+- Chips personalizados: copiar/colar ancora no encapsulamento visivel (nao numa peca interna), entao a copia cai no cursor mesmo girada ou espelhada; espelhar nao inverte mais nomes, numeros de terminais nem displays. Teste com duas copias do decoder do slot 2 (uma espelhada e girada) confere as 16 entradas.
+- Cada chip logico tem carga minima de 100 MOhm na alimentacao, para que a fuga de uma fonte desligada nao alimente o chip flutuando; desligar a fonte volta a convergir e deixa as saidas em alta impedancia.
+- Build normal usa -O2. Roadmap revisado com pendencias reais da 1.0 e evidencias das correcoes.
+
+
 ## 0.51.1
 
 Esta distribuicao reune as mudancas desde a pre-release 0.47.1.

@@ -204,3 +204,13 @@ Estado desta consolidação: **14 achados, cinco corrigidos e nove confirmados p
 O objetivo da próxima implementação é cobrir esses nove em uma bateria coerente; não há garantia
 prévia de esgotar todos os erros do repositório. A branch de interface deve ser confrontada com
 este registro antes de implementar problemas sobrepostos.
+
+
+## Atualizacao em 20/11/2026 - branch 0.51.2
+
+O texto das rodadas acima e historico. O estado consolidado atual esta em ROADMAP_1_0.md.
+
+- R2-01/02/03/04, R3-01/02 e a parte restante de R3-05 receberam correcoes e testes permanentes nesta branch; testes especificos passaram, suite final ainda em andamento.
+- Novo R4-01: criar chip perdia conexoes na metade extra da protoboard larga. Corrigido usando a contagem real de contatos; regressao exercita as duas metades e retira a placa.
+- R3-03 e parcial: falha ao aplicar ja nao descarta o rascunho ao fechar, mas a injecao de falha e os chamadores que ocultam o erro continuam pendentes.
+- R3-04 continua pendente. Esta rodada nao declara que todos os problemas possiveis foram encontrados ou corrigidos.

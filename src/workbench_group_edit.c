@@ -163,7 +163,8 @@ int bench_group_apply(Workbench *parent, int group, uint64_t expected_revision, 
     /* Borrowed only for this paste; the clipboard does not own packed here. */
     clipboard.bench = packed;
     BenchSelection pasted = {0};
-    if (!bench_selection_paste(&result, &pasted, &clipboard, packed.parts[0].x, packed.parts[0].y))
+    if (!bench_selection_paste(&result, &pasted, &clipboard,
+                              packed.groups[packed_group - 1].x, packed.groups[packed_group - 1].y))
     {
         snprintf(message, capacity, "%s", tr(TXT_ENG_EDIT_APPLY_FAILED));
         goto cleanup;

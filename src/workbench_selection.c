@@ -119,7 +119,14 @@ static int paste_into(Workbench *bench, BenchSelection *selection, const BenchCl
     if (bench->part_count + copy->part_count > WORKBENCH_MAX_COMPONENTS ||
         bench->wire_count + copy->wire_count > WORKBENCH_MAX_WIRES)
         return 0;
-    float dx = x - copy->parts[0].x, dy = y - copy->parts[0].y;
+    float anchor_x = copy->parts[0].x, anchor_y = copy->parts[0].y;
+    int group = copy->parts[0].group;
+    if (group)
+    {
+        anchor_x = copy->groups[group - 1].x;
+        anchor_y = copy->groups[group - 1].y;
+    }
+    float dx = x - anchor_x, dy = y - anchor_y;
     if (!isfinite(dx) || !isfinite(dy))
         return 0;
     for (int i = 0; i < copy->part_count; ++i)

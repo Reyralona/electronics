@@ -239,9 +239,10 @@ static int write_logic_supply(FILE *out, int rail_node, int clock_reference)
     else if (fprintf(out, "Rlogic_rail logic_rail %d %.17g\n", rail_node, NETLIST_LIVE_CLOSED_OHMS) < 0)
         return 0;
     return fprintf(out,
+                   "Rlogic_supply logic_rail 0 %.17g\n"
                    "Blogic_vcc logic_vcc 0 V=V(logic_rail)\n"
                    "Blogic_ok logic_ok 0 V=min(max((V(logic_vcc)-%g)/%g,0),1)*min(max((%g-V(logic_vcc))/%g,0),1)\n",
-                   LOGIC_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, LOGIC_SUPPLY_MAX + QUAD_EDGE_VOLTS,
+                   NETLIST_LOGIC_SUPPLY_OHMS, LOGIC_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, LOGIC_SUPPLY_MAX + QUAD_EDGE_VOLTS,
                    QUAD_EDGE_VOLTS) >= 0;
 }
 
@@ -620,7 +621,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 ref = find_root(parents, i * WORKBENCH_MAX_PINS + 6), g;
             rail = rail == ground ? 0 : rail + 1;
             ref = ref == ground ? 0 : ref + 1;
-            if (fprintf(out, "Bchip%d_sup chip%d_sup 0 V=V(%d,%d)\n", i, i, rail, ref) < 0 ||
+            if (fprintf(out, "Rchip%d_supply %d %d %.17g\nBchip%d_sup chip%d_sup 0 V=V(%d,%d)\n",
+                        i, rail, ref, NETLIST_LOGIC_SUPPLY_OHMS, i, i, rail, ref) < 0 ||
                 fprintf(out,
                         "Bchip%d_ok chip%d_ok 0 V=min(max((V(chip%d_sup)-%g)/%g,0),1)*min(max((%g-V(chip%d_sup))/%g,0),1)\n",
                         i, i, i, QUAD_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, QUAD_SUPPLY_MAX + QUAD_EDGE_VOLTS, i,

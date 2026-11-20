@@ -14,6 +14,8 @@ typedef enum { NETLIST_OK, NETLIST_INVALID, NETLIST_UNSUPPORTED, NETLIST_IO_ERRO
  * Must stay far below NETLIST_LIVE_OPEN_OHMS: with only the 1 TOhm rshunt, an input behind an open
  * switch divided to ~4.95 V and read HIGH, lighting a 4-input AND with every switch off. */
 #define NETLIST_GATE_INPUT_OHMS 1e8
+/* Minimum supply load (50 nA at 5 V) keeps an off source's finite leakage from powering a floating chip. */
+#define NETLIST_LOGIC_SUPPLY_OHMS 1e8
 /* 74HC family (TI SN74HC08 / Nexperia 74HC08 datasheets, consulted 16/11/2026): specified for VCC 2..6 V;
  * input low <= ~30% VCC, high >= ~70% VCC; output high close to VCC. Both the quad chips and the loose gate
  * symbols use these supply-relative thresholds and this window; outside it the gates are off.

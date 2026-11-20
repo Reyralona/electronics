@@ -123,6 +123,7 @@ static void output(LogicWriter *w, int pin, const char *value, const char *enabl
 static void supply(LogicWriter *w)
 {
     const char *p = w->prefix;
+    emit(w, "R%ssupply %d %d %.17g\n", p, w->vcc, w->gnd, NETLIST_LOGIC_SUPPLY_OHMS);
     emit(w, "B%ssup %ssup 0 V=V(%d,%d)\n", p, p, w->vcc, w->gnd);
     emit(w, "B%sok %sok 0 V=min(max((V(%ssup)-%g)/%g,0),1)*min(max((%g-V(%ssup))/%g,0),1)\n", p, p, p,
          LOGIC_SUPPLY_MIN - QUAD_EDGE_VOLTS, QUAD_EDGE_VOLTS, LOGIC_SUPPLY_MAX + QUAD_EDGE_VOLTS, p, QUAD_EDGE_VOLTS);

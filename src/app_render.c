@@ -3165,7 +3165,9 @@ static void draw_group_displays(const AppState *app, int group, float width, flo
         glPushMatrix();
         glTranslatef(right - display_w * scale * .5f, body->y, 0);
         glScalef(scale, scale, 1);
+        readable_begin(0);
         draw_device(&view);
+        readable_end();
         glPopMatrix();
         right -= display_w * scale + gap;
     }
@@ -3187,7 +3189,9 @@ static int draw_group_port_name(const AppState *app, GLuint font, const Part *pa
     float text_width = fminf((float)app_text_utf8_width(name, 2048), width * .5f);
     float x = left_side ? left + inset : left + width - inset - text_width;
     glColor3f(.80f, .86f, .90f);
+    readable_begin(x + text_width * .5f);
     name_text(font, x, y + baseline, name, (int)(width * .5f));
+    readable_end();
     return 1;
 }
 
@@ -3212,6 +3216,8 @@ static void draw_groups(const AppState *app, GLuint font)
         glPushMatrix();
         glTranslatef(group->x, group->y, 0);
         glRotatef(group->rotation * 90.0f, 0, 0, 1);
+        int previous_mirror = drawing_mirrored;
+        drawing_mirrored = group->mirrored;
         if (group->mirrored)
             glScalef(-1, 1, 1);
         glTranslatef(-group->x, -group->y, 0);
@@ -3265,7 +3271,11 @@ static void draw_groups(const AppState *app, GLuint font)
             const ComponentPinInfo *info = component_pin_info(app->bench.parts[pin.component].type, pin.pin);
             pin_role_color(info->role);
             snprintf(label, sizeof(label), "%d", index + 1);
-            world_text(font, x + (x < group->x ? -14 : 6) / app->view.zoom, y - 6 / app->view.zoom, label, app->view.zoom);
+            float number_x = x + (x < group->x ? -14 : 6) / app->view.zoom;
+            float number_width = app_text_utf8_width(label, 2048) / app->view.zoom;
+            readable_begin(number_x + number_width * .5f);
+            world_text(font, number_x, y - 6 / app->view.zoom, label, app->view.zoom);
+            readable_end();
         }
         if (!named)
         {
@@ -3274,6 +3284,7 @@ static void draw_groups(const AppState *app, GLuint font)
             circle(left + 9, top + 9, 2.5f);
         }
         glPopMatrix();
+        drawing_mirrored = previous_mirror;
         snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), g + 1);
         float label_width = group->rotation % 2 ? height : width;
         const char *chip_name = group->name[0] ? group->name : label;

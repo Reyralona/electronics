@@ -171,7 +171,7 @@ if(BUILD_TESTING)
     target_include_directories(test_cockcroft_slot PRIVATE src)
     get_target_property(COUNTER_DECODER_SOURCES test_cockcroft_slot SOURCES)
     list(REMOVE_ITEM COUNTER_DECODER_SOURCES tests/test_cockcroft_slot.c)
-    add_executable(test_counter_decoder tests/test_counter_decoder.c ${COUNTER_DECODER_SOURCES})
+    add_executable(test_counter_decoder tests/test_counter_decoder.c src/workbench_selection.c ${COUNTER_DECODER_SOURCES})
     target_include_directories(test_counter_decoder PRIVATE src)
     add_dependencies(test_counter_decoder spice-live-host)
     add_test(NAME counter_decoder COMMAND test_counter_decoder

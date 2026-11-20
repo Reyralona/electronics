@@ -259,13 +259,6 @@ void app_packing_place(AppState *app, float x, float y)
         app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
-    const Workbench *model = &app->library_template.bench;
-    int group = model->parts[0].group;
-    if (group)
-    {
-        x += model->parts[0].x - model->groups[group - 1].x;
-        y += model->parts[0].y - model->groups[group - 1].y;
-    }
     if (!bench_selection_paste(&app->bench, &app->selection, &app->library_template, x, y))
     {
         snprintf(app->selection_status, sizeof(app->selection_status), tr(TXT_APP_NO_ROOM), WORKBENCH_MAX_COMPONENTS,

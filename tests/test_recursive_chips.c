@@ -106,8 +106,74 @@ static void test_touching_children(void)
     bench_snapshot_clear(&bench);
 }
 
+static void test_decoder_copy_uses_visible_package(void)
+{
+    static Workbench original, bench, source_inner, copy_inner;
+    static BenchClipboard clipboard;
+    WorkbenchSettings settings;
+    assert(workbench_load_project("tests/fixtures/counter-adder-seven-segment.elec", &original, &settings));
+    const int group = 1;
+    int first = bench_group_first(&original, group);
+    assert(first >= 0);
+    for (int rotation = 0; rotation < 4; ++rotation)
+        for (int mirrored = 0; mirrored < 2; ++mirrored)
+        {
+            assert(bench_snapshot_clone(&bench, &original));
+            bench.groups[group - 1].rotation = rotation;
+            bench.groups[group - 1].mirrored = mirrored;
+            BenchSelection selected = {0};
+            selected.parts[first] = 1;
+            assert(bench_selection_copy(&bench, &selected, &clipboard));
+            int offset = bench.part_count;
+            const float target_x = 1700, target_y = 800;
+            assert(bench_selection_paste(&bench, &selected, &clipboard, target_x, target_y));
+            int copied = bench.parts[offset].group;
+            assert(copied > 0 && copied != group);
+            const BenchGroup *body = &bench.groups[copied - 1];
+            assert(fabsf(body->x - target_x) < .01f && fabsf(body->y - target_y) < .01f);
+            assert(body->rotation == rotation && body->mirrored == mirrored);
+            assert(!memcmp(body->port_places, bench.groups[group - 1].port_places, sizeof(body->port_places)));
+            int ports = bench_group_ports(&bench, group);
+            assert(ports == bench_group_ports(&bench, copied));
+            for (int port = 0; port < ports; ++port)
+            {
+                Pin a, b;
+                assert(bench_group_port(&bench, group, port, &a));
+                assert(bench_group_port(&bench, copied, port, &b));
+                assert(a.pin == b.pin && bench.parts[a.component].type == bench.parts[b.component].type);
+                float ax, ay, bx, by;
+                bench_terminal_position(&bench, a, &ax, &ay);
+                bench_terminal_position(&bench, b, &bx, &by);
+                assert(fabsf((bx - ax) - (target_x - bench.groups[group - 1].x)) < .01f);
+                assert(fabsf((by - ay) - (target_y - bench.groups[group - 1].y)) < .01f);
+                char name_a[BENCH_PORT_NAME_CAPACITY], name_b[BENCH_PORT_NAME_CAPACITY];
+                assert(bench_port_name(&bench.parts[a.component], a.pin, name_a, sizeof(name_a)));
+                assert(bench_port_name(&bench.parts[b.component], b.pin, name_b, sizeof(name_b)));
+                assert(!strcmp(name_a, name_b));
+            }
+            assert(bench_group_extract(&bench, group, &source_inner));
+            assert(bench_group_extract(&bench, copied, &copy_inner));
+            assert(source_inner.part_count == copy_inner.part_count && source_inner.wire_count == copy_inner.wire_count);
+            for (int wire = 0; wire < source_inner.wire_count; ++wire)
+            {
+                const Wire *a = &source_inner.wires[wire], *b = &copy_inner.wires[wire];
+                assert(a->a.component == b->a.component && a->a.pin == b->a.pin);
+                assert(a->b.component == b->b.component && a->b.pin == b->b.pin);
+            }
+            assert(bench_set_port_name(&bench, (Pin){offset, 0}, "COPY"));
+            char name[BENCH_PORT_NAME_CAPACITY];
+            assert(bench_port_name(&bench.parts[first], 0, name, sizeof(name)) && strcmp(name, "COPY"));
+            bench_snapshot_clear(&bench);
+            bench_snapshot_clear(&source_inner);
+            bench_snapshot_clear(&copy_inner);
+            bench_snapshot_clear(&clipboard.bench);
+        }
+    bench_snapshot_clear(&original);
+}
+
 int main(int argc, char **argv)
 {
+    test_decoder_copy_uses_visible_package();
     test_electrical_layers(argc > 1 ? argv[1] : NULL);
     test_depth_and_invalid_parent();
     test_touching_children();
