@@ -6,8 +6,8 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 ## Produto e versão
 
 - Versão integrada na `main`: 0.47.1, incluindo os recursos da 0.47.0, a validação do runtime ngspice
-  no build e a auditoria consolidada. Publicação da pré-release em preparação.
-  Formato de projeto 35. Última pré-release publicada: 0.43.0, Windows x64.
+  no build e a auditoria consolidada. Pacotes da pré-release validados em 19/11/2026.
+  Formato de projeto 35. Pré-release anterior: 0.46.0, Windows x64.
 - 0.47.0: limites de 1024 peças e 2048 fios; CIs 74HC161/173/245/283 e EEPROM AT28C16 (`netlist_logic.c`,
   `rom_image.c`). O exemplo do computador de 8 bits foi retirado (commit 3ca0d8e guarda o gerador).
   Pendente: editor do conteúdo da EEPROM na interface e conferência visual das pinagens além do 74HC161.
@@ -54,6 +54,12 @@ este arquivo registra apenas fatos e pendências que continuam relevantes.
 - A comparação técnica está em `COMPARACAO_PROJETOS_2026_11_19.md`; `build.ps1` verifica crescimento além do slot 9 e carga enquadrada.
 
 ## Verificação e próximos passos
+
+- 0.47.1: `./build.ps1 -GuiTests` passou; `./tools/package-windows.ps1` passou com CTest,
+  simulação relocada e PATH mínimo, instalação/desinstalação e preservação de arquivos extras.
+  Captura do pacote revisada em `build/cmake-release/package-test-*/package.bmp`.
+  Artefatos e hashes em `build/dist/`; sem assinatura digital nem validação em VM limpa.
+  A integração inclui todas as branches locais e remotas existentes em 19/11/2026.
 
 - 0.45.1: bancada em largura total; seleção de peças próximas ajustada e validada no slot 4;
   terminais visuais das portas espelhadas corrigidos. Capturas individuais dos 59 tipos em
