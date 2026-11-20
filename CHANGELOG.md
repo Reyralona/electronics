@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.51.1 - 20/11/2026
+
+- Ajusta o post-it conforme a referência: folha quase plana, cor uniforme, canto suavemente levantado e sombra discreta.
+
 ## 0.51.0 - 20/11/2026
 
 - Papel curvado em toda a superfície, com luz e sombra; fita afastada da área de escrita. Nota e junção recebem miniaturas próprias, sem reutilizar LED.

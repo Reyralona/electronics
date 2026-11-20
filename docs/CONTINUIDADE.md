@@ -107,3 +107,6 @@ Notas com fita, sombra e canto levantado; alca no canto inferior direito altera 
 ### Papel e catalogo - 0.51.0
 
 Papel usa malha sombreada com borda inferior arqueada, fita fora da area de texto e a mesma representacao nas miniaturas. Nota e juncao nao usam mais fallback de LED. Catalogo tem 9 categorias; biblioteca de chips conserva indice 2 (Salvos), Fontes=6, Placas=7, Bancada=8. Cada tipo aparece uma unica vez, verificado em test_app_ui_flow, que tambem cria Nota pela aba Bancada e verifica texto, cores e redimensionamento. Passaram test_app_layout, test_app_ui_flow, test_app_commands e --self-test-history. Capturas de todas as abas e do papel em build/catalog-review/. Suite completa nao repetida; formato permanece 37.
+
+
+0.51.1: papel simplificado conforme referencia visual: plano na maior parte, curva localizada no canto direito e sombra discreta. Apenas renderizacao; build recompilado e captura build/catalog-review/paper-simple.bmp revisada. Sem repetir suite de simulacao.

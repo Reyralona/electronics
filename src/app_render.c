@@ -1711,41 +1711,28 @@ static void draw_diode(const Part *part)
     gradient_rect(x + 11, y - 8, 5, 16, (SurfaceColor){.91f,.92f,.93f}, (SurfaceColor){.54f,.57f,.60f});
 }
 
-/* A bowed sheet: the edge lifts away from its cast shadow across the full width. */
-static float paper_y(float y, float height, float u, float v)
-{
-    float edge = 2 * u - 1;
-    return y + height * v - height * .14f * v * v * v * (.35f + .65f * edge * edge);
-}
-
+/* Mostly flat paper, with a small lifted corner and a soft cast shadow. */
 static void draw_note_paper(const Part *part, float width, float height)
 {
     float x = part->x - width / 2, y = part->y - height / 2;
     const float *bg = palette_tone(((part->states & 255) + BENCH_COLOR_YELLOW) % BENCH_COLOR_COUNT)->wire;
-    ui_shadow((AppRect){x + 3, y + 5, width, height - 6}, 3, 8);
-    for (int row = 0; row < 16; ++row)
+    ui_shadow((AppRect){x + 1, y + 2, width - 2, height - 2}, 2, 2);
+    ui_shadow((AppRect){x + width - 46, y + height - 25, 42, 19}, 8, 4);
+    for (int row = 0; row < 12; ++row)
     {
         glBegin(GL_QUAD_STRIP);
         for (int col = 0; col <= 20; ++col)
             for (int side = 0; side < 2; ++side)
             {
-                float u = col / 20.0f, v = (row + side) / 16.0f;
-                float bow = sinf(v * 3.14159265f);
-                float shade = .96f + .13f * bow - .22f * powf(v, 6);
-                glColor3f(fminf(1, bg[0] * shade + .02f * bow),
-                          fminf(1, bg[1] * shade + .02f * bow), fminf(1, bg[2] * shade + .02f * bow));
-                glVertex2f(x + width * u, paper_y(y, height, u, v));
+                float u = col / 20.0f, v = (row + side) / 12.0f;
+                float curl = powf(u, 8) * powf(v, 8);
+                float shade = 1 + .025f * v + .10f * curl;
+                glColor3f(fminf(1, bg[0] * shade), fminf(1, bg[1] * shade), fminf(1, bg[2] * shade));
+                glVertex2f(x + width * u - fminf(14, width * .12f) * curl,
+                           y + height * v - height * .22f * curl);
             }
         glEnd();
     }
-    glColor3f(bg[0] * .65f, bg[1] * .65f, bg[2] * .65f);
-    glBegin(GL_LINE_STRIP);
-    for (int col = 0; col <= 20; ++col)
-    {
-        float u = col / 20.0f;
-        glVertex2f(x + width * u, paper_y(y, height, u, 1) + 1);
-    }
-    glEnd();
     float tape = fminf(26, width * .16f);
     glColor4f(.92f, .85f, .65f, .76f);
     glBegin(GL_QUADS);
