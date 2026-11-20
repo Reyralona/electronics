@@ -17,7 +17,7 @@ int workbench_settings_valid(const WorkbenchSettings *s)
 {
     return s && s->gui_font_size >= 12 && s->gui_font_size <= 20 && (s->dark_theme == 0 || s->dark_theme == 1) && (s->show_grid == 0 || s->show_grid == 1) && (s->show_handles == 0 || s->show_handles == 1) &&
            (s->round_wires == 0 || s->round_wires == 1) && (s->show_current == 0 || s->show_current == 1) &&
-           s->wire_color >= 0 && s->wire_color < WIRE_COLOR_COUNT && (s->probe_pin >= 0 && s->probe_pin < 14) &&
+           s->wire_color >= 0 && s->wire_color < WIRE_COLOR_COUNT && (s->probe_pin >= 0 && s->probe_pin < WORKBENCH_MAX_PINS) &&
            (s->probe_current == 0 || s->probe_current == 1) && isfinite(s->transient_step) &&
            isfinite(s->transient_stop) && s->transient_step >= 1e-12 && s->transient_stop <= 1e12 &&
            isfinite(s->grid_spacing) && s->grid_spacing >= 1 && s->grid_spacing <= 10000 &&

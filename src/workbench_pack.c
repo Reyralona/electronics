@@ -89,7 +89,7 @@ static void pack_nets(const Workbench *bench, const BenchSelection *selection, i
         int board = bench_is_board(bench->parts[i].type);
         if (inner_only && !selection->parts[i])
             continue;
-        for (int p = 0; board && p < BREADBOARD_PINS; ++p)
+        for (int p = 0; board && p < bench_pin_count(bench->parts[i].type); ++p)
             pack_join(parents, pin_slot((Pin){i, bench_board_group_first(p)}), pin_slot((Pin){i, p}));
         for (int p = 0; p < bench_pin_count(bench->parts[i].type); ++p)
         {

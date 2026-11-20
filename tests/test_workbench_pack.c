@@ -1,3 +1,4 @@
+#include "netlist.h"
 #include "workbench_pack.h"
 #include "workbench_file.h"
 #include "spice_process.h"
@@ -295,8 +296,32 @@ static void test_terminal_names(void)
     bench_snapshot_clear(&bench);
 }
 
+static void wide_board_connections_survive_packing(void)
+{
+    static Workbench bench;
+    for (int hole = 0; hole <= 420; hole += 420)
+    {
+        bench_snapshot_clear(&bench);
+        bench_add(&bench, PART_BREADBOARD_WIDE, 1000, 800);
+        bench_add(&bench, PART_RESISTOR, 100, 100);
+        bench_add(&bench, PART_RESISTOR, 400, 100);
+        assert(bench_toggle_wire(&bench, (Pin){1,0}, (Pin){0,hole}) == 1);
+        assert(bench_toggle_wire(&bench, (Pin){2,0}, (Pin){0,hole+1}) == 1);
+        assert(netlist_same_net(&bench, (Pin){1,0}, (Pin){2,0}));
+        BenchSelection selected = {0};
+        selected.parts[1] = selected.parts[2] = 1;
+        char message[200];
+        int group = bench_pack_selection(&bench, &selected, message, sizeof(message));
+        assert(group > 0 && bench_group_ports(&bench, group) == 2);
+        bench_remove(&bench, 0);
+        assert(netlist_same_net(&bench, (Pin){0,0}, (Pin){1,0}));
+    }
+    bench_snapshot_clear(&bench);
+}
+
 int main(int argc, char **argv)
 {
+    wide_board_connections_survive_packing();
     test_three_input_and_layout();
     test_terminal_names();
     const char *solver = argc > 1 ? argv[1] : NULL;

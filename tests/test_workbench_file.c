@@ -70,8 +70,28 @@ static void large_bench(void)
     bench_snapshot_clear(&loaded);
 }
 
+static void high_probe_terminal_roundtrip(void)
+{
+    static Workbench board, reopened;
+    assert(bench_add(&board, PART_ARDUINO_UNO, 300, 300) == 0);
+    WorkbenchSettings settings = workbench_settings_default();
+    settings.probe_pin = 14;
+    assert(workbench_settings_valid(&settings));
+    FILE *file = tmpfile();
+    assert(file && workbench_write_project(file, &board, &settings));
+    rewind(file);
+    assert(workbench_read_project(file, &reopened, &settings));
+    assert(settings.probe_pin == 14);
+    fclose(file);
+    settings.probe_pin = WORKBENCH_MAX_PINS;
+    assert(!workbench_settings_valid(&settings));
+    bench_snapshot_clear(&board);
+    bench_snapshot_clear(&reopened);
+}
+
 int main(void)
 {
+    high_probe_terminal_roundtrip();
     legacy_nested_layers();
     legacy_wire_colors();
     large_bench();
