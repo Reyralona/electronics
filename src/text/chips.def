@@ -259,3 +259,62 @@ UI_TEXT(PIN_193_CO, "Vai-um: em 0 enquanto a contagem é 15 e UP está em 0. Lig
         "Carry: low while the count is 15 and UP is low. Connect it to UP of the next counter.")
 UI_TEXT(PIN_193_BO, "Empresta-um: em 0 enquanto a contagem é 0 e DOWN está em 0. Ligue no DOWN do próximo contador.",
         "Borrow: low while the count is 0 and DOWN is low. Connect it to DOWN of the next counter.")
+/* Decoders and multiplexers: shared select and output pins */
+UI_TEXT(PIN_SEL_A, "Seleção A (bit 0, o menos significativo).", "Select A (bit 0, least significant).")
+UI_TEXT(PIN_SEL_B, "Seleção B (bit 1).", "Select B (bit 1).")
+UI_TEXT(PIN_SEL_C, "Seleção C (bit 2, o mais significativo).", "Select C (bit 2, most significant).")
+UI_TEXT(PIN_DEC_Y, "Saída de mesmo número: em 0 quando escolhida e habilitada; senão em 1.",
+        "Output with the same number: low when selected and enabled; otherwise high.")
+/* 74HC138 */
+UI_TEXT(DOC_74HC138,
+        "Decodificador 3 para 8. Com G1 em 1 e ~G2A e ~G2B em 0, só a saída número CBA vai a 0.",
+        "3-to-8 decoder. With G1 high and ~G2A and ~G2B low, only output number CBA goes low.")
+UI_TEXT(PIN_138_G1, "Habilita em 1. Em 0, todas as saídas ficam em 1.", "Enable, active high. When low, every output is high.")
+UI_TEXT(PIN_138_G2A, "Habilita em 0. Em 1, todas as saídas ficam em 1.", "Enable, active low. When high, every output is high.")
+UI_TEXT(PIN_138_G2B, "Habilita em 0. Em 1, todas as saídas ficam em 1.", "Enable, active low. When high, every output is high.")
+/* 74HC139 */
+UI_TEXT(DOC_74HC139,
+        "Dois decodificadores 2 para 4. Com ~G em 0, só a saída número BA daquele decodificador vai a 0.",
+        "Two 2-to-4 decoders. With ~G low, only output number BA of that decoder goes low.")
+UI_TEXT(PIN_139_G1, "Habilita o decodificador 1 em 0. Em 1, suas saídas ficam em 1.",
+        "Enables decoder 1 when low. When high, its outputs are high.")
+UI_TEXT(PIN_139_A1, "Seleção A (bit 0) do decodificador 1.", "Select A (bit 0) of decoder 1.")
+UI_TEXT(PIN_139_B1, "Seleção B (bit 1) do decodificador 1.", "Select B (bit 1) of decoder 1.")
+UI_TEXT(PIN_139_G2, "Habilita o decodificador 2 em 0. Em 1, suas saídas ficam em 1.",
+        "Enables decoder 2 when low. When high, its outputs are high.")
+UI_TEXT(PIN_139_A2, "Seleção A (bit 0) do decodificador 2.", "Select A (bit 0) of decoder 2.")
+UI_TEXT(PIN_139_B2, "Seleção B (bit 1) do decodificador 2.", "Select B (bit 1) of decoder 2.")
+/* 74HC151 */
+UI_TEXT(DOC_74HC151,
+        "Multiplexador 8 para 1. Com ~G em 0, Y copia a entrada número CBA e ~W é o inverso.",
+        "8-to-1 multiplexer. With ~G low, Y copies input number CBA and ~W is its inverse.")
+UI_TEXT(PIN_MUX_D, "Entrada de dado de mesmo número.", "Data input with the same number.")
+UI_TEXT(PIN_151_Y, "Saída: a entrada escolhida. Em 0 com ~G em 1.", "Output: the selected input. Low with ~G high.")
+UI_TEXT(PIN_151_W, "Saída invertida: o inverso de Y.", "Inverted output: the inverse of Y.")
+UI_TEXT(PIN_151_G, "Habilita em 0. Em 1, Y fica em 0 e ~W em 1.", "Enable, active low. When high, Y is low and ~W is high.")
+/* 74HC157 */
+UI_TEXT(DOC_74HC157,
+        "Quatro multiplexadores 2 para 1 com seleção comum. A/~B em 0 escolhe A; em 1 escolhe B.",
+        "Four 2-to-1 multiplexers with a shared select. A/~B low picks A; high picks B.")
+UI_TEXT(PIN_157_S, "Seleção comum: em 0 as saídas copiam A; em 1 copiam B.",
+        "Shared select: low makes the outputs copy A; high makes them copy B.")
+UI_TEXT(PIN_157_A, "Entrada A do canal de mesmo número.", "Input A of the channel with the same number.")
+UI_TEXT(PIN_157_B, "Entrada B do canal de mesmo número.", "Input B of the channel with the same number.")
+UI_TEXT(PIN_157_Y, "Saída do canal de mesmo número.", "Output of the channel with the same number.")
+UI_TEXT(PIN_157_G, "Habilita em 0. Em 1, as quatro saídas ficam em 0.", "Enable, active low. When high, the four outputs are low.")
+/* 74HC4511 */
+UI_TEXT(DOC_74HC4511,
+        "Decodificador BCD para display de 7 segmentos de catodo comum. Códigos de 10 a 15 apagam o display.",
+        "BCD decoder for a common-cathode 7-segment display. Codes 10 to 15 blank the display.")
+UI_TEXT(PIN_4511_D0, "Entrada BCD D0 (bit 0, o menos significativo).", "BCD input D0 (bit 0, least significant).")
+UI_TEXT(PIN_4511_D1, "Entrada BCD D1 (bit 1).", "BCD input D1 (bit 1).")
+UI_TEXT(PIN_4511_D2, "Entrada BCD D2 (bit 2).", "BCD input D2 (bit 2).")
+UI_TEXT(PIN_4511_D3, "Entrada BCD D3 (bit 3, o mais significativo).", "BCD input D3 (bit 3, most significant).")
+UI_TEXT(PIN_4511_LT, "Teste: em 0 acende os sete segmentos. Vence ~BL e o latch.",
+        "Lamp test: low lights all seven segments. It beats ~BL and the latch.")
+UI_TEXT(PIN_4511_BL, "Apaga: em 0 desliga os sete segmentos. Vence o latch.",
+        "Blanking: low turns all seven segments off. It beats the latch.")
+UI_TEXT(PIN_4511_LE, "Latch: em 0 o display segue D0-D3; em 1 guarda o último código.",
+        "Latch enable: low makes the display follow D0-D3; high holds the last code.")
+UI_TEXT(PIN_4511_SEG, "Saída do segmento de mesmo nome. Em 1 acende; use um resistor por segmento.",
+        "Output of the segment with the same name. High lights it; use one resistor per segment.")

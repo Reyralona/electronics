@@ -424,6 +424,122 @@ static void octal_dff_374(LogicWriter *w)
     octal_cells(w, "dff", NULL, "en");
 }
 
+/* Appends " <node><index>" per bit, inverted ("~") where code n has a 0: an AND of the list is true only for n. */
+static void append_code(char *list, size_t capacity, const char *node, const int *index, int bits, int n)
+{
+    for (int bit = 0; bit < bits; ++bit)
+    {
+        size_t used = strlen(list);
+        snprintf(list + used, capacity - used, " %s%s%d", n >> bit & 1 ? "" : "~", node, index[bit]);
+    }
+}
+
+/* Active-low decoder: output n is low when `enable` is high and the select pins hold code n. */
+static void decoder(LogicWriter *w, const char *enable, const int *select, int bits, const int *y_pins,
+                    const char *tag)
+{
+    for (int n = 0; n < 1 << bits; ++n)
+    {
+        char list[LOGIC_IC_PORTS_CAPACITY], y[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(list, sizeof(list), "%s", enable);
+        append_code(list, sizeof(list), "d", select, bits, n);
+        snprintf(y, sizeof(y), "%s%d", tag, n);
+        primitive(w, "nand", "[%s] %s", list, y);
+        output(w, y_pins[n], y, NULL);
+    }
+}
+
+/* SN74HC138: with G1 high and ~G2A, ~G2B low, output ~Y(4C + 2B + A) goes low; otherwise all stay high. */
+static void decoder_138(LogicWriter *w)
+{
+    static const int pins[] = {0, 1, 2, 3, 4, 5}, select[] = {0, 1, 2}, y_pins[] = {14, 13, 12, 11, 10, 9, 8, 6};
+    inputs(w, pins, 6);
+    primitive(w, "and", "[d5 ~d3 ~d4] en");
+    decoder(w, "en", select, 3, y_pins, "y");
+}
+
+/* SN74HC139: two 2-to-4 decoders, each enabled by its ~G low. */
+static void dual_decoder_139(LogicWriter *w)
+{
+    static const int pins[] = {0, 1, 2, 12, 13, 14}, select1[] = {1, 2}, select2[] = {13, 12};
+    static const int y1_pins[] = {3, 4, 5, 6}, y2_pins[] = {11, 10, 9, 8};
+    inputs(w, pins, 6);
+    decoder(w, "~d0", select1, 2, y1_pins, "ya");
+    decoder(w, "~d14", select2, 2, y2_pins, "yb");
+}
+
+/* SN74HC151: with ~G low, Y = D(4C + 2B + A) and ~W = NOT Y; ~G high gives Y low, ~W high. */
+static void multiplexer_151(LogicWriter *w)
+{
+    static const int pins[] = {0, 1, 2, 3, 6, 8, 9, 10, 11, 12, 13, 14}, select[] = {10, 9, 8};
+    static const int data_pins[] = {3, 2, 1, 0, 14, 13, 12, 11};
+    inputs(w, pins, 12);
+    for (int n = 0; n < 8; ++n)
+    {
+        char list[LOGIC_IC_PORTS_CAPACITY];
+        snprintf(list, sizeof(list), "~d6 d%d", data_pins[n]);
+        append_code(list, sizeof(list), "d", select, 3, n);
+        primitive(w, "and", "[%s] m%d", list, n);
+    }
+    primitive(w, "or", "[m0 m1 m2 m3 m4 m5 m6 m7] y");
+    primitive(w, "inv", "y w");
+    output(w, 4, "y", NULL);
+    output(w, 5, "w", NULL);
+}
+
+/* SN74HC157: with ~G low, each Y copies its A (A/~B low) or its B (A/~B high); ~G high gives every Y low. */
+static void quad_multiplexer_157(LogicWriter *w)
+{
+    static const int pins[] = {0, 1, 2, 4, 5, 9, 10, 12, 13, 14};
+    static const int a_pins[] = {1, 4, 10, 13}, b_pins[] = {2, 5, 9, 12}, y_pins[] = {3, 6, 8, 11};
+    inputs(w, pins, 10);
+    for (int channel = 0; channel < 4; ++channel)
+    {
+        char y[LOGIC_IC_TOKEN_CAPACITY];
+        snprintf(y, sizeof(y), "y%d", channel);
+        primitive(w, "and", "[~d14 ~d0 d%d] ya%d", a_pins[channel], channel);
+        primitive(w, "and", "[~d14 d0 d%d] yb%d", b_pins[channel], channel);
+        primitive(w, "or", "[ya%d yb%d] %s", channel, channel, y);
+        output(w, y_pins[channel], y, NULL);
+    }
+}
+
+/* CD74HC4511 segments a-g (bit 6 = a ... bit 0 = g) for BCD 0-9; 6 and 9 have no tails; 10-15 stay dark. */
+static const unsigned char bcd_segments[10] = {0x7E, 0x30, 0x6D, 0x79, 0x33, 0x5B, 0x1F, 0x70, 0x7F, 0x73};
+
+/* CD74HC4511 (TI SCHS279E): pin 5 (LE) low passes D0-D3 to the latch, high holds the code. ~BL low darkens
+ * every segment over the latch; ~LT low lights every segment over both. Outputs drive high. */
+static void bcd_decoder_4511(LogicWriter *w)
+{
+    static const int pins[] = {0, 1, 2, 3, 4, 5, 6}, bcd_pins[] = {6, 0, 1, 5}, bits[] = {0, 1, 2, 3};
+    static const int segment_pins[] = {12, 11, 10, 9, 8, 14, 13}; /* a-g */
+    inputs(w, pins, 7);
+    primitive(w, "inv", "d4 le");
+    for (int bit = 0; bit < 4; ++bit)
+        primitive(w, "dlatch", "d%d le null null b%d null", bcd_pins[bit], bit);
+    for (int digit = 0; digit < 10; ++digit)
+    {
+        char list[LOGIC_IC_PORTS_CAPACITY] = "";
+        append_code(list, sizeof(list), "b", bits, 4, digit);
+        primitive(w, "and", "[%s] m%d", list + 1, digit);
+    }
+    for (int segment = 0; segment < 7; ++segment)
+    {
+        char list[LOGIC_IC_PORTS_CAPACITY] = "", out[LOGIC_IC_TOKEN_CAPACITY];
+        for (int digit = 0; digit < 10; ++digit)
+            if (bcd_segments[digit] >> (6 - segment) & 1)
+            {
+                size_t used = strlen(list);
+                snprintf(list + used, sizeof(list) - used, " m%d", digit);
+            }
+        primitive(w, "or", "[%s] sg%d", list + 1, segment);
+        primitive(w, "and", "[d3 sg%d] lit%d", segment, segment);
+        snprintf(out, sizeof(out), "seg%d", segment);
+        primitive(w, "or", "[~d2 lit%d] %s", segment, out);
+        output(w, segment_pins[segment], out, NULL);
+    }
+}
+
 /* EEPROM pins cross the same analog bridges as other CIs; its state runs in d_cosim. */
 static void eeprom_28c16(LogicWriter *w)
 {
@@ -514,6 +630,11 @@ static const LogicChip chips[] = {
     {PART_74HC374, 19, 9, HC_RATINGS_35, octal_dff_374},
     {PART_74HC163, 15, 7, HC_RATINGS, counter_163},
     {PART_74HC193, 15, 7, HC_RATINGS, up_down_counter_193},
+    {PART_74HC138, 15, 7, HC_RATINGS, decoder_138},
+    {PART_74HC139, 15, 7, HC_RATINGS, dual_decoder_139},
+    {PART_74HC151, 15, 7, HC_RATINGS_35, multiplexer_151},
+    {PART_74HC157, 15, 7, HC_RATINGS_35, quad_multiplexer_157},
+    {PART_74HC4511, 15, 7, HC_RATINGS, bcd_decoder_4511},
 };
 
 static const LogicChip *logic_chip(PartType type)

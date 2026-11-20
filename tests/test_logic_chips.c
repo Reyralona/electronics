@@ -646,6 +646,160 @@ static void up_down_193_counts_down(void)
     bench_snapshot_clear(&rig.bench);
 }
 
+/* One switchable source per pin, all starting low. */
+static void control_sources(Rig *rig, int part, const int *pins, int count, int *sources)
+{
+    for (int i = 0; i < count; ++i)
+        sources[i] = control_source(rig, part, pins[i], 0, 100 + 150 * (float)i);
+}
+
+/* Sets the sources to the bits of `value`, bit 0 first. */
+static void set_code(Rig *rig, const int *sources, int count, unsigned value)
+{
+    for (int i = 0; i < count; ++i)
+        assert(bench_set_on(&rig->bench, sources[i], value >> i & 1));
+}
+
+/* Select 5 with G1 high and ~G2A, ~G2B low: only ~Y5 goes low. G1 low, or ~G2A high, keeps all high. */
+static void decoder_138_selects_one(void)
+{
+    static Rig rig;
+    rig_start(&rig);
+    int dec = chip(&rig, PART_74HC138);
+    const int select[] = {0, 1, 2}, enables[] = {5, 3, 4}, y_pins[] = {14, 13, 12, 11, 10, 9, 8, 6};
+    int sources[3], loads[8];
+    tie_bits(&rig, dec, select, 3, 5);
+    control_sources(&rig, dec, enables, 3, sources);
+    probes(&rig, dec, y_pins, 8, loads);
+    SpiceLive *live = NULL;
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0xFF);
+    set_code(&rig, sources, 3, 0x1);
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0xDF);
+    set_code(&rig, sources, 3, 0x3);
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0xFF);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* Decoder 1 enabled with BA = 2: only ~1Y2 low. Decoder 2 disabled: all high; enabled with BA = 1: ~2Y1 low. */
+static void dual_decoder_139_selects_per_half(void)
+{
+    static Rig rig;
+    rig_start(&rig);
+    int dec = chip(&rig, PART_74HC139);
+    const int select1[] = {1, 2}, select2[] = {13, 12}, y_pins[] = {3, 4, 5, 6, 11, 10, 9, 8};
+    int loads[8];
+    tie(&rig, dec, 0, 0);
+    tie_bits(&rig, dec, select1, 2, 2);
+    tie_bits(&rig, dec, select2, 2, 1);
+    int enable2 = control_source(&rig, dec, 14, 1, 100);
+    probes(&rig, dec, y_pins, 8, loads);
+    SpiceLive *live = NULL;
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0xFB);
+    assert(bench_set_on(&rig.bench, enable2, 0));
+    assert(step(&rig, &live, 1e-4, loads, 8) == 0xDB);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* Data 10010110 on D7-D0; each select code CBA routes its bit to Y, and ~W is the opposite. ~G high: Y low. */
+static void multiplexer_151_routes(void)
+{
+    static Rig rig;
+    rig_start(&rig);
+    int mux = chip(&rig, PART_74HC151);
+    const int data[] = {3, 2, 1, 0, 14, 13, 12, 11}, select[] = {10, 9, 8}, outputs[] = {4, 5};
+    int sources[3], loads[2];
+    tie_bits(&rig, mux, data, 8, 0x96);
+    control_sources(&rig, mux, select, 3, sources);
+    int strobe = control_source(&rig, mux, 6, 0, 600);
+    probes(&rig, mux, outputs, 2, loads);
+    SpiceLive *live = NULL;
+    for (int code = 0; code < 8; ++code)
+    {
+        set_code(&rig, sources, 3, (unsigned)code);
+        int bit = 0x96 >> code & 1;
+        assert(step(&rig, &live, 1e-4, loads, 2) == (bit ? 1 : 2));
+    }
+    assert(bench_set_on(&rig.bench, strobe, 1));
+    assert(step(&rig, &live, 1e-4, loads, 2) == 2);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* A inputs 0101 and B inputs 1010: A/~B low shows A, high shows B; ~G high drives every Y low. */
+static void quad_multiplexer_157_switches(void)
+{
+    static Rig rig;
+    rig_start(&rig);
+    int mux = chip(&rig, PART_74HC157);
+    const int a_pins[] = {1, 4, 10, 13}, b_pins[] = {2, 5, 9, 12}, y_pins[] = {3, 6, 8, 11};
+    int loads[4];
+    tie_bits(&rig, mux, a_pins, 4, 0x5);
+    tie_bits(&rig, mux, b_pins, 4, 0xA);
+    int select = control_source(&rig, mux, 0, 0, 100);
+    int strobe = control_source(&rig, mux, 14, 0, 300);
+    probes(&rig, mux, y_pins, 4, loads);
+    SpiceLive *live = NULL;
+    assert(step(&rig, &live, 1e-4, loads, 4) == 0x5);
+    assert(bench_set_on(&rig.bench, select, 1));
+    assert(step(&rig, &live, 1e-4, loads, 4) == 0xA);
+    assert(bench_set_on(&rig.bench, strobe, 1));
+    assert(step(&rig, &live, 1e-4, loads, 4) == 0);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+/* Segments lit for each BCD code, as a person reads the display; 10-15 are dark. */
+static int segments(const char *lit)
+{
+    int mask = 0;
+    for (const char *c = lit; *c; ++c)
+        mask |= 1 << (*c - 'a');
+    return mask;
+}
+
+/* Every code shows its digit (6 and 9 without tails, 10-15 dark). LE high holds 3 while the inputs read 8.
+ * ~BL low darkens it; ~LT low lights all segments even then. Released, the held 3 returns; LE low shows 8. */
+static void bcd_decoder_4511_shows_digits(void)
+{
+    static const char *const digits[16] = {"abcdef", "bc", "abdeg", "abcdg", "bcfg", "acdfg", "cdefg", "abc",
+                                           "abcdefg", "abcfg", "", "", "", "", "", ""};
+    static Rig rig;
+    rig_start(&rig);
+    int dec = chip(&rig, PART_74HC4511);
+    const int bcd[] = {6, 0, 1, 5}, segment_pins[] = {12, 11, 10, 9, 8, 14, 13}; /* a-g */
+    int sources[4], loads[7];
+    control_sources(&rig, dec, bcd, 4, sources);
+    int latch = control_source(&rig, dec, 4, 0, 700);
+    int blank = control_source(&rig, dec, 3, 1, 850);
+    int test = control_source(&rig, dec, 2, 1, 1000);
+    probes(&rig, dec, segment_pins, 7, loads);
+    SpiceLive *live = NULL;
+    for (int code = 0; code < 16; ++code)
+    {
+        set_code(&rig, sources, 4, (unsigned)code);
+        assert(step(&rig, &live, 1e-4, loads, 7) == segments(digits[code]));
+    }
+    set_code(&rig, sources, 4, 3);
+    step(&rig, &live, 1e-4, loads, 7);
+    assert(bench_set_on(&rig.bench, latch, 1));
+    assert(step(&rig, &live, 1e-4, loads, 7) == segments(digits[3]));
+    set_code(&rig, sources, 4, 8);
+    assert(step(&rig, &live, 1e-4, loads, 7) == segments(digits[3]));
+    assert(bench_set_on(&rig.bench, blank, 0));
+    assert(step(&rig, &live, 1e-4, loads, 7) == 0);
+    assert(bench_set_on(&rig.bench, test, 0));
+    assert(step(&rig, &live, 1e-4, loads, 7) == 0x7F);
+    assert(bench_set_on(&rig.bench, test, 1));
+    assert(bench_set_on(&rig.bench, blank, 1));
+    assert(step(&rig, &live, 1e-4, loads, 7) == segments(digits[3]));
+    assert(bench_set_on(&rig.bench, latch, 0));
+    assert(step(&rig, &live, 1e-4, loads, 7) == segments(digits[8]));
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -672,6 +826,13 @@ int main(int argc, char **argv)
     up_down_193_counts_up_loads_and_clears();
     up_down_193_counts_down();
     puts("Logic ICs: 74HC163 clears and loads on the edge, 74HC193 counts both ways, loads and clears at once.");
+    decoder_138_selects_one();
+    dual_decoder_139_selects_per_half();
+    multiplexer_151_routes();
+    quad_multiplexer_157_switches();
+    bcd_decoder_4511_shows_digits();
+    puts("Logic ICs: 74HC138 and 74HC139 decode, 74HC151 and 74HC157 route, 74HC4511 shows, holds, blanks and "
+         "tests digits.");
     printf("Logic ICs: 74HC283 adds, 74HC245 passes and releases, AT28C16 reads, 74HC173 loads and releases, "
            "74HC161 counts and carries.\n");
     return 0;
