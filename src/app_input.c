@@ -83,7 +83,8 @@ static void input_insert_knee(AppState *app, float x, float y)
         report(app, TXT_APP_BEND_LIMIT, WIRE_MAX_KNEES);
         return;
     }
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return;
     app->show_handles = 1;
     app->status = tr(TXT_APP_BEND_ADDED);
 }
@@ -181,7 +182,8 @@ static int commit_port_name(AppState *app)
         return 0;
     }
     if (app->bench.revision != before.revision)
-        bench_history_record(app->history, &before);
+        if (!app_history_record(app, &before))
+            return 0;
     app->status = tr(name[0] ? TXT_APP_TERMINAL_NAMED : TXT_APP_TERMINAL_NAME_REMOVED);
     return 1;
 }
@@ -307,7 +309,8 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
             if (valid && app_selection_set_scale(app, (float)(value / 100)))
             {
                 if (before.revision != app->bench.revision)
-                    bench_history_record(app->history, &before);
+                    if (!app_history_record(app, &before))
+                        return;
                 app->editing = -1;
                 SDL_StopTextInput(window);
                 app->status = tr(TXT_APP_SIZE_CHANGED);
@@ -355,7 +358,8 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         else if (bench_parse_value(app->edit_text, &value) && app_selection_set_value(app, app->editing, value))
         {
             if (before.revision != app->bench.revision)
-                bench_history_record(app->history, &before);
+                if (!app_history_record(app, &before))
+                    return;
             app->editing = -1;
             SDL_StopTextInput(window);
             app->status = tr(TXT_APP_VALUE_CHANGED);
@@ -574,7 +578,8 @@ static void choose_wire_color(AppState *app, int chosen)
         app->status = tr(TXT_APP_NEW_WIRE_COLOR);
         return;
     }
-    bench_history_record(app->history, &app->bench);
+    if (!app_history_record(app, &app->bench))
+        return;
     bench_set_wire_color(&app->bench, app->selected_wire, chosen);
     app->status = tr(TXT_APP_WIRE_COLOR_CHANGED);
 }
@@ -1060,7 +1065,8 @@ static int input_swap_selected(AppState *app, PartType type)
         app->status = tr(TXT_APP_SWAP_FAILED);
         return 1;
     }
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return 0;
     app->placing = -1;
     app->status = tr(TXT_APP_PART_SWAPPED);
     return 1;
@@ -1213,7 +1219,8 @@ static int input_click_knee(AppState *app, float x, float y, int clicks)
         {
             if (clicks >= 2)
             {
-                bench_history_record(app->history, &app->bench);
+                if (!app_history_record(app, &app->bench))
+                    return 1;
                 bench_remove_knee(&app->bench, app->drag_wire, app->drag_knee);
                 bench_selection_clear(&app->selection);
                 app->drag_wire = -1;
@@ -1277,7 +1284,8 @@ static void input_place_part(AppState *app, float x, float y)
                 snap_part_terminals(app, added, &x, &y);
             bench_move_part(&app->bench, added, x, y);
         }
-        bench_history_record(app->history, &before);
+        if (!app_history_record(app, &before))
+            return;
         app->selected_wire = -1;
         app->status =
             snapped ? tr(TXT_APP_PART_SNAPPED) : tr(TXT_APP_PART_ADDED);
@@ -1374,7 +1382,8 @@ static void input_connect_pin(AppState *app, Pin clicked)
             bench_set_wire_color(&app->bench, wire, app->wire_color);
         }
         if (result)
-            bench_history_record(app->history, &before);
+            if (!app_history_record(app, &before))
+                return;
         if (result == 1)
             app->status = tr(TXT_APP_WIRE_CONNECTED);
         else if (result == 2)
@@ -1473,7 +1482,8 @@ static void input_select(AppState *app, float x, float y, int clicks)
              app->bench.parts[hit].type == PART_CLOCK || app->bench.parts[hit].type == PART_DPST ||
              app->bench.parts[hit].type == PART_FUNCTION_GENERATOR))
         {
-            bench_history_record(app->history, &app->bench);
+            if (!app_history_record(app, &app->bench))
+                return;
             bench_set_on(&app->bench, hit, !app->bench.parts[hit].on);
             app->status = tr(TXT_APP_STATE_CHANGED);
         }
@@ -1554,7 +1564,8 @@ static int input_end_wire_on_wire(AppState *app, float x, float y)
     int wire = app->bench.wire_count - 1;
     bench_set_wire_route(&app->bench, wire, app->route, app->route_count);
     bench_set_wire_color(&app->bench, wire, app->wire_color);
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return 1;
     app->pending.component = -1;
     app->route_count = 0;
     app->status = tr(TXT_APP_WIRE_JOINED);
@@ -1573,7 +1584,8 @@ static int input_branch_from_wire(AppState *app, float x, float y)
     int junction = split_wire_at(app, x, y);
     if (junction < 0)
         return junction == JUNCTION_REFUSED;
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return 1;
     app->selected_wire = -1;
     app->pending = (Pin){junction, 0};
     app->route_count = 0;
@@ -1970,7 +1982,8 @@ static void input_drag_wire(AppState *app, SDL_Window *window, const SDL_Event *
         {
             if (!app->move_recorded)
             {
-                bench_history_record(app->history, &app->bench);
+                if (!app_history_record(app, &app->bench))
+                    return;
                 app->move_recorded = 1;
             }
             if (app->dragging_selection_knee)
@@ -2090,7 +2103,8 @@ static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *
         {
             if (!app->move_recorded)
             {
-                bench_history_record(app->history, &app->bench);
+                if (!app_history_record(app, &app->bench))
+                    return;
                 app->move_recorded = 1;
             }
             if (bench_selection_count(&app->selection, &app->bench) > 1 ||

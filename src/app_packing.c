@@ -1,3 +1,4 @@
+#include "app_editing.h"
 #include "bench_scope.h"
 #include "app_packing.h"
 #include "ui_text.h"
@@ -189,7 +190,8 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
     {
         if (bench_unpack_selection(&app->bench, &app->selection))
         {
-            bench_history_record(app->history, &before);
+            if (!app_history_record(app, &before))
+                return 1;
             app->status = tr(TXT_APP_CHIP_UNPACKED);
         }
         else
@@ -203,7 +205,8 @@ int app_packing_key(AppState *app, SDL_Keycode key, SDL_Keymod mod)
         app->status = app->selection_status;
         return 1;
     }
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return 1;
     /* The new instance and its library entry share an identity, so editing it later updates that entry. */
     app->bench.groups[group - 1].model = app_packing_new_model(app);
     int stored = store_block(app);
@@ -266,7 +269,8 @@ void app_packing_place(AppState *app, float x, float y)
         app->status = app->selection_status;
         return;
     }
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return;
     app->selected = before.part_count;
     app->selected_wire = -1;
     app->packed_placing = 0;

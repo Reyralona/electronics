@@ -67,8 +67,40 @@ static void test_nested_editor(void)
     app_state_dispose(&root);
 }
 
+static void apply_keeps_history_and_closes_old_probe(void)
+{
+    static AppState root;
+    app_state_init(&root);
+    root.selftest = 1;
+    bench_add(&root.bench, PART_RESISTOR, 100, 100);
+    bench_add(&root.bench, PART_SOURCE, 300, 100);
+    root.selection.parts[0] = 1;
+    assert(bench_pack_selection(&root.bench, &root.selection, root.selection_status, sizeof(root.selection_status)));
+    root.selected = 0;
+    sim_live_graph_open(&root.live_graph, (SimLiveProbe){SIM_LIVE_PROBE_VOLTAGE, {1, 0}, .001}, &root.bench);
+    AppState *child = app_editor_open(&root);
+    assert(child);
+    assert(app_editor_apply(child));
+    assert(root.live_graph.active); /* Inspecting without edits keeps the probe. */
+    assert(app_editor_route(child) == &root);
+    child = app_editor_open(&root);
+    assert(bench_set_value(&child->bench, 0, 200));
+    BenchHistory *history = root.history;
+    root.history = NULL; /* Inject an unavailable history store. */
+    uint64_t revision = root.bench.revision;
+    assert(!app_editor_apply(child));
+    assert(!child->editor_close_requested && root.live_graph.active);
+    assert(root.bench.revision == revision && root.bench.parts[0].value == 1000);
+    root.history = history;
+    assert(app_editor_apply(child));
+    assert(!root.live_graph.active && root.bench.parts[0].type == PART_SOURCE);
+    assert(app_editor_route(child) == &root);
+    app_state_dispose(&root);
+}
+
 int main(void)
 {
+    apply_keeps_history_and_closes_old_probe();
     test_nested_editor();
     static AppState root;
     app_state_init(&root);

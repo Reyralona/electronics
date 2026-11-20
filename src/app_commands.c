@@ -22,7 +22,8 @@ void app_commands_load_example(AppState *app, int choice)
     {
         if (!app_code_close(app, NULL))
             return;
-        bench_history_record(app->history, &app->bench);
+        if (!app_history_record(app, &app->bench))
+            return;
         bench_replace(&app->bench, &example);
         mcu_runtime_reset(app->mcu);
         spice_job_request_reset(&app->dc_job);
@@ -192,7 +193,8 @@ static void command_rotate(AppState *app)
     {
         if (!app->bench.parts[app->selected].group)
             bench_snap_to_breadboard(&app->bench, app->selected);
-        bench_history_record(app->history, &before);
+        if (!app_history_record(app, &before))
+            return;
         app->dragging = -1;
         app->pending.component = -1;
         app->route_count = 0;
@@ -217,7 +219,8 @@ static void command_mirror(AppState *app)
     }
     if (!app->bench.parts[app->selected].group)
         bench_snap_to_breadboard(&app->bench, app->selected);
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return;
     app->dragging = -1;
     app->pending.component = -1;
     app->route_count = 0;
@@ -419,7 +422,8 @@ static void command_scale_value(AppState *app, SDL_Keycode key)
     }
     if (app_selection_set_value(app, app->selected, app->bench.parts[app->selected].value * scale))
     {
-        bench_history_record(app->history, &before);
+        if (!app_history_record(app, &before))
+            return;
         app->status = tr(TXT_APP_VALUE_CHANGED);
     }
     else
@@ -428,7 +432,8 @@ static void command_scale_value(AppState *app, SDL_Keycode key)
 
 static void command_delete_part(AppState *app)
 {
-    bench_history_record(app->history, &app->bench);
+    if (!app_history_record(app, &app->bench))
+        return;
     bench_remove(&app->bench, app->selected);
     app->packed_placing = 0;
     bench_selection_clear(&app->selection);
@@ -441,7 +446,8 @@ static void command_delete_part(AppState *app)
 
 static void command_delete_wire(AppState *app)
 {
-    bench_history_record(app->history, &app->bench);
+    if (!app_history_record(app, &app->bench))
+        return;
     bench_remove_wire(&app->bench, app->selected_wire);
     bench_selection_clear(&app->selection);
     if (bench_prune_junctions(&app->bench))

@@ -1,3 +1,4 @@
+#include "app_editing.h"
 #include "bench_scope.h"
 #include "app_editor.h"
 #include "ui_text.h"
@@ -253,7 +254,12 @@ int app_editor_apply(AppState *app)
         app->status = app->selection_status;
         return 0;
     }
-    bench_history_record(parent->history, &before);
+    if (!app_history_record(parent, &before))
+    {
+        app->status = parent->status;
+        return 0;
+    }
+    sim_live_graph_close(&parent->live_graph);
     parent->selected = bench_group_first(&parent->bench, app->editor_group);
     parent->selected_wire = -1;
     parent->pending.component = -1;

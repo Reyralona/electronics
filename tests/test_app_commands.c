@@ -299,8 +299,29 @@ static void check_project_replaces_editor_and_runtime(void)
     app_state_dispose(&app);
 }
 
+static void failed_code_history_keeps_draft(void)
+{
+    static AppState app;
+    app_state_init(&app);
+    int board = bench_add(&app.bench, PART_ARDUINO_UNO, 400, 300);
+    app.code_part = board;
+    strcpy(app.code_text, "void setup(){} void loop(){delay(123);}");
+    app.code_dirty = 1;
+    BenchHistory *history = app.history;
+    app.history = NULL;
+    uint64_t revision = app.bench.revision;
+    assert(!app_code_apply(&app));
+    assert(app.code_dirty && app.code_part == board && app.bench.revision == revision);
+    assert(!app.bench.parts[board].code);
+    app.history = history;
+    assert(app_code_apply(&app) && !app.code_dirty);
+    assert(bench_history_undo(app.history, &app.bench) && !app.bench.parts[board].code);
+    app_state_dispose(&app);
+}
+
 int main(void)
 {
+    failed_code_history_keeps_draft();
     check_project_replaces_editor_and_runtime();
     check_project_overwrite_flow();
     check_project_growth_and_fit_flow();

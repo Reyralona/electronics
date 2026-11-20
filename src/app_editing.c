@@ -85,7 +85,8 @@ static void delete_selection(AppState *app)
 {
     if (!bench_selection_count(&app->selection, &app->bench))
         return;
-    bench_history_record(app->history, &app->bench);
+    if (!app_history_record(app, &app->bench))
+        return;
     bench_selection_delete(&app->bench, &app->selection);
     reset_interaction(app);
     app->status = tr(TXT_APP_SELECTION_DELETED);
@@ -109,7 +110,8 @@ static void paste_selection(AppState *app)
         app->status = app->selection_status;
         return;
     }
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return;
     reset_interaction(app);
     app->selected = before.part_count;
     app->mouse_world.x += 24;
@@ -369,7 +371,8 @@ int app_code_apply(AppState *app)
         app->status = tr(TXT_MCU_CODE_NO_MEMORY);
         return 0;
     }
-    bench_history_record(app->history, &before);
+    if (!app_history_record(app, &before))
+        return 0;
     app->code_dirty = 0;
     app->status = tr(TXT_MCU_CODE_SENT);
     return 1;
@@ -390,3 +393,13 @@ int app_code_close(AppState *app, SDL_Window *window)
     return 1;
 }
 
+
+int app_history_record(AppState *app, Workbench *before)
+{
+    if (bench_history_record(app->history, before))
+        return 1;
+    if (before != &app->bench)
+        bench_snapshot_move(&app->bench, before);
+    app->status = tr(TXT_APP_HISTORY_FAILED);
+    return 0;
+}

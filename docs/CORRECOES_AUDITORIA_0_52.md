@@ -7,14 +7,14 @@ Pedido: corrigir os onze pontos, sem integrar/publicar por enquanto. Não altera
 
 | Item | Estado | Evidência / próximo passo |
 |---|---|---|
-| 1. Corrente de alimentação do 555/LM358 | Pendente | Regressão com carga e fonte CV/CC limitada |
+| 1. Corrente de alimentação do 555/LM358 | Corrigido; teste especifico passou | test_linear_chips: carga 100 ohms, fonte 10 mA e 1 A; astavel/reset preservados |
 | 2. Identidade do runtime ao excluir placa | Corrigido; teste especifico passou | test_mcu: exclusao com codigo igual, sem VCC, queda e retorno |
-| 3. Gráfico após aplicar chip | Pendente | Regressão: fonte muda de índice sem mudar contagens |
+| 3. Gráfico após aplicar chip | Corrigido; teste especifico passou | test_app_editor: editar/aplicar fecha grafico; consultar nao fecha |
 | 4. ATtiny sem alimentação | Corrigido; teste especifico passou | test_mcu: exclusao com codigo igual, sem VCC, queda e retorno |
-| 5. Histórico sob falha de memória | Pendente | Injetar falha, garantir transação |
+| 5. Histórico sob falha de memória | Corrigido; teste especifico passou | test_app_editor e test_app_commands: armazenamento de historico indisponivel conserva bancada e rascunho |
 | 6. Erro de envio ocultado | Pendente | Preservar causa no botão e Ctrl+Enter |
 | 7. Relógio das placas | Pendente | Usar tempo aceito do solver, limitar latência de saída |
-| 8. Conectividade do LCD | Pendente | Cache por revisão; regressão de desconectar/reconectar |
+| 8. Conectividade do LCD | Corrigido; teste especifico passou | test_mcu: reutiliza cache e invalida ao desconectar/reconectar SCL |
 | 9. Bateria CTest | Pendente | Registrar lógica, lineares e proteção |
 | 10. Arquivos temporários concorrentes | Pendente | Pasta por processo; testar execuções simultâneas |
 | 11. Roadmap | Pendente | Separar implementado de validação restante |
@@ -138,3 +138,11 @@ Fonte de corrente comportamental debita de VCC a corrente positiva medida na sa?
 ### Itens 2 e 4
 
 Identidade de runtime atribuida na primeira execucao, conservada ao mover e em snapshots; colar zera identidade para criar instancia independente. Nao altera formato de arquivo. Undo/redo reiniciam programas. ATtiny mede VCC no elemento 6 e so executa com pelo menos 2,7 V; perder alimentacao limpa VM/pinos, retornar repete setup. Uno/ESP32 mantem fonte USB ideal. Regressao de test_mcu falhou antes; depois passaram identidade, energia, blink, entradas e LCD.
+
+### Itens 3 e 5
+
+Regressoes permanentes falharam antes: aplicar chip e enviar codigo anunciam sucesso mesmo sem armazenamento de historico. Agora app_history_record restaura snapshot preparado sem alocar se o registro falhar; chamadas antes de mutacoes abortam. Todos os chamadores que ignoravam o retorno em comandos, entrada e empacotamento foram revisados. Injetado history=NULL para obter o mesmo retorno de falha, sem provocar esgotamento real do heap. Aplicar chip so fecha grafico depois de publicar com historico; consultar/cancelar conserva a sonda. Passaram test_app_commands e test_app_editor.
+
+### Item 8
+
+Mapa de nos pertence ao runtime, reutilizado enquanto bancada/revisao coincidem, liberado no reset/destrutor. netlist_same_net continua disponivel e agora valida pinos. Teste LCD passa por escrever, reutilizar mapa, desconectar SCL, tentar escrever sem alterar display, reconectar e escrever novamente.
