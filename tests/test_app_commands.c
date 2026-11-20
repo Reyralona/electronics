@@ -1,3 +1,5 @@
+#include "mcu_board.h"
+#include <direct.h>
 #include "app_commands.h"
 #include "app_code_editor.h"
 #include "app_packing.h"
@@ -244,8 +246,62 @@ static void check_project_growth_and_fit_flow(void)
     app_state_dispose(&app);
 }
 
+static void check_project_replaces_editor_and_runtime(void)
+{
+    static AppState app;
+    static Workbench project;
+    _mkdir("build/test-slots");
+    app_state_init(&app);
+    app.selftest = 1;
+    app.save_slot = 10;
+    assert(bench_add(&app.bench, PART_ARDUINO_UNO, 500, 300) == 0);
+    assert(bench_set_code(&app.bench, 0, "void setup(){}void loop(){delay(11);}"));
+    app_code_open(&app, NULL, 0);
+    snprintf(app.code_text, sizeof(app.code_text), "void setup(){}void loop(){delay(22);}");
+    app.code_dirty = 1;
+    assert(bench_add(&project, PART_ARDUINO_UNO, 500, 300) == 0);
+    const char *code_b = "void setup(){}void loop(){delay(33);}";
+    assert(bench_set_code(&project, 0, code_b));
+    WorkbenchSettings settings = workbench_settings_default();
+    assert(workbench_save_project("build/test-slots/slot-11.elec", &project, &settings));
+    app_projects_refresh(&app);
+    app.save_slot = 11;
+    app_projects_load(&app);
+    assert(app.code_part == 0 && app.code_dirty && strstr(app.code_text, "delay(22)"));
+    app.save_slot = 10;
+    app_projects_load(&app);
+    assert(app.code_part == -1 && !strcmp(app.bench.parts[0].code, code_b));
+    assert(!app_code_apply(&app) && !strcmp(app.bench.parts[0].code, code_b));
+    app_commands_key(&app, NULL, SDLK_Z, SDL_KMOD_CTRL);
+    assert(strstr(app.bench.parts[0].code, "delay(22)"));
+    app_commands_key(&app, NULL, SDLK_Y, SDL_KMOD_CTRL);
+    assert(!strcmp(app.bench.parts[0].code, code_b));
+    const char *program = "void setup(){pinMode(13,OUTPUT);}void loop(){digitalWrite(13,HIGH);delay(1);}";
+    assert(bench_set_code(&app.bench, 0, program));
+    mcu_runtime_reset(app.mcu);
+    mcu_runtime_step(app.mcu, &app.bench, NULL, 1);
+    int io = mcu_board_io(mcu_board(PART_ARDUINO_UNO), 13);
+    assert(app.bench.parts[0].io_mode[io] == MCU_OUTPUT);
+    bench_move_part(&app.bench, 0, 600, 300);
+    mcu_runtime_step(app.mcu, &app.bench, NULL, 2);
+    assert(app.bench.parts[0].io_mode[io] == MCU_OUTPUT);
+    assert(workbench_save_project("build/test-slots/slot-11.elec", &app.bench, &settings));
+    app_projects_load(&app);
+    mcu_runtime_step(app.mcu, &app.bench, NULL, 2);
+    assert(app.bench.parts[0].io_mode[io] == MCU_OUTPUT);
+    app_code_open(&app, NULL, 0);
+    strcpy(app.code_text, "void setup(){}void loop(){delay(44);}");
+    app.code_dirty = 1;
+    app_commands_load_example(&app, 0);
+    assert(app.code_part == -1);
+    remove("build/test-slots/slot-11.elec");
+    bench_snapshot_clear(&project);
+    app_state_dispose(&app);
+}
+
 int main(void)
 {
+    check_project_replaces_editor_and_runtime();
     check_project_overwrite_flow();
     check_project_growth_and_fit_flow();
     check_long_code_flow();

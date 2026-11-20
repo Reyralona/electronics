@@ -69,8 +69,8 @@ void app_code_open(AppState *app, SDL_Window *window, int part)
 {
     if (!app_code_editable(app, part))
         return;
-    if (app->code_part >= 0 && app->code_part != part)
-        app_code_close(app, window);
+    if (app->code_part >= 0 && app->code_part != part && !app_code_close(app, window))
+        return;
     if (app->code_part != part)
     {
         if (!load_draft(app, mcu_program_text(&app->bench.parts[part])))
@@ -113,15 +113,19 @@ int app_code_apply(AppState *app)
     return 1;
 }
 
-void app_code_close(AppState *app, SDL_Window *window)
+int app_code_close(AppState *app, SDL_Window *window)
 {
     if (app->code_part < 0)
-        return;
+        return 1;
     int applied = app->code_dirty && app_code_apply(app);
+    if (app->code_dirty && !applied)
+        return 0;
     app->code_part = -1;
     app->code_dirty = 0;
-    SDL_StopTextInput(window);
+    if (window)
+        SDL_StopTextInput(window);
     app->status = applied ? tr(TXT_MCU_CODE_APPLIED) : tr(TXT_MCU_EDITOR_CLOSED);
+    return 1;
 }
 
 void app_code_validate(AppState *app, SDL_Window *window)

@@ -3,6 +3,7 @@
 #include "ui_text.h"
 #include "app_settings.h"
 #include "app_simulation.h"
+#include "app_code_editor.h"
 #include "workbench_file.h"
 #include "component_registry.h"
 #include <direct.h>
@@ -309,20 +310,31 @@ void app_projects_load(AppState *app)
     if (app->project_overwrite >= 0 || app->save_slot < 0 || app->save_slot >= app->project_slot_count)
         return;
     char path[128];
+    Workbench loaded BENCH_AUTO_CLEAR = {0};
+    WorkbenchSettings settings;
+    slot_path(app, app->save_slot, path, sizeof(path));
+    if (!workbench_load_project(path, &loaded, &settings))
+    {
+        app->status = tr(TXT_APP_PROJECT_LOAD_FAILED);
+        return;
+    }
+    if (!app_code_close(app, NULL))
+        return;
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
     {
         app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
-    WorkbenchSettings settings;
-    slot_path(app, app->save_slot, path, sizeof(path));
-    if (!workbench_load_project(path, &app->bench, &settings))
+    if (!bench_history_record(app->history, &before))
     {
-        app->status = tr(TXT_APP_PROJECT_LOAD_FAILED);
+        app->status = tr(TXT_APP_HISTORY_FAILED);
         return;
     }
-    bench_history_record(app->history, &before);
+    uint64_t revision = app->bench.revision + 1;
+    bench_snapshot_move(&app->bench, &loaded);
+    app->bench.revision = revision;
+    mcu_runtime_reset(app->mcu);
     spice_job_request_reset(&app->dc_job);
     reset_interaction(app);
     bench_selection_clear(&app->selection);

@@ -3,6 +3,7 @@
 #include "ui_text.h"
 #include "app_editor.h"
 #include "app_editing.h"
+#include "app_code_editor.h"
 #include "app_packing.h"
 #include "app_palette.h"
 #include "component_registry.h"
@@ -18,8 +19,11 @@ void app_commands_load_example(AppState *app, int choice)
     app->examples_open = 0;
     if (workbench_example_create(choice, &example, &example_selected))
     {
+        if (!app_code_close(app, NULL))
+            return;
         bench_history_record(app->history, &app->bench);
         bench_replace(&app->bench, &example);
+        mcu_runtime_reset(app->mcu);
         spice_job_request_reset(&app->dc_job);
         app->packed_placing = 0;
         bench_selection_clear(&app->selection);
@@ -82,6 +86,8 @@ static void command_home(AppState *app)
 
 static void command_history(AppState *app, SDL_Keycode key)
 {
+    if (!app_code_close(app, NULL))
+        return;
     int changed =
         key == SDLK_Z ? bench_history_undo(app->history, &app->bench) : bench_history_redo(app->history, &app->bench);
     if (changed)

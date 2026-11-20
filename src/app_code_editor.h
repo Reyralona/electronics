@@ -9,8 +9,8 @@
 
 int app_code_editable(const AppState *app, int part);
 void app_code_open(AppState *app, SDL_Window *window, int part);
-/* Applies a changed draft, then closes. */
-void app_code_close(AppState *app, SDL_Window *window);
+/* Applies a changed draft, then closes; failure keeps the draft open and returns 0. */
+int app_code_close(AppState *app, SDL_Window *window);
 /* Stores the draft in the part and restarts that board; returns 0 when nothing changed. */
 int app_code_apply(AppState *app);
 /* Returns 1 when the event belonged to the editor. */
