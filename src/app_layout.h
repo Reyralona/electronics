@@ -23,8 +23,8 @@ WirePoint app_layout_from_ui(int width, int height, float x, float y);
 #define APP_FOOTER_HEIGHT 60.0f
 #define APP_HEADER_HEIGHT 68.0f
 #define APP_PALETTE_WIDTH 220.0f
-#define APP_PALETTE_TABS 6
-/* Catalog cards that fit the canvas height (8 on the design canvas). */
+#define APP_PALETTE_TABS 9
+/* Catalog cards that fit the canvas height (7 on the design canvas). */
 int app_layout_palette_visible(void);
 #define APP_PALETTE_VISIBLE app_layout_palette_visible()
 

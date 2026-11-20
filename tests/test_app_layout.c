@@ -22,7 +22,7 @@ static void maximized_window_grows_the_workspace(void)
     AppRect examples = app_layout_examples_panel();
     assert(near(examples.x, 270 + 320) && near(examples.y, 84 + 180)); /* half the extra room on each side */
     assert(near(app_layout_header(APP_HEADER_PLAY).x + app_layout_header(APP_HEADER_PLAY).w, 1902));
-    assert(APP_PALETTE_VISIBLE == 14);
+    assert(APP_PALETTE_VISIBLE == 13);
 }
 
 /* Then picks 150%: the same window shows the design canvas, every unit 1.5 pixels, with no margins. */
@@ -32,7 +32,7 @@ static void larger_scale_shrinks_the_canvas(void)
     assert(near(app_layout_canvas_width(), 1280) && near(app_layout_canvas_height(), 720));
     AppRect viewport = app_layout_viewport(1920, 1080);
     assert(near(viewport.w, 1920) && near(viewport.h, 1080));
-    assert(APP_PALETTE_VISIBLE == 8);
+    assert(APP_PALETTE_VISIBLE == 7);
     WirePoint ui = app_layout_to_ui(1920, 1080, 960, 540), back = app_layout_from_ui(1920, 1080, ui.x, ui.y);
     assert(near(ui.x, 640) && near(ui.y, 360) && near(back.x, 960) && near(back.y, 540));
 }

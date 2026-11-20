@@ -60,9 +60,7 @@ static void command_palette(AppState *app)
     app->placing = -1;
     app->packed_placing = 0;
     app_packing_refresh(app);
-    static const TextId labels[PALETTE_PAGES] = {TXT_APP_PAGE_BASIC,   TXT_APP_PAGE_LOGIC,   TXT_APP_PAGE_CHIPS,
-                                                 TXT_APP_PAGE_SENSORS, TXT_APP_PAGE_OUTPUTS, TXT_APP_PAGE_INSTRUMENTS};
-    app->status = tr(labels[app->palette_page]);
+    app->status = palette_page_name(app->palette_page);
     return;
 }
 

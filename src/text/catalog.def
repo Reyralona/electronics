@@ -3,7 +3,7 @@
 UI_TEXT(CAT_SOURCE, "Fonte", "Power supply")
 UI_TEXT(CAT_SWITCH, "Interruptor", "Switch")
 UI_TEXT(CAT_LED, "LED", "LED")
-UI_TEXT(CAT_BREADBOARD, "Breadboard", "Breadboard")
+UI_TEXT(CAT_BREADBOARD, "Protoboard", "Breadboard")
 UI_TEXT(CAT_RESISTOR, "Resistor", "Resistor")
 UI_TEXT(CAT_CAPACITOR, "Capacitor", "Capacitor")
 UI_TEXT(CAT_INDUCTOR, "Indutor", "Inductor")

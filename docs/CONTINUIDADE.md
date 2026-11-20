@@ -102,3 +102,8 @@ Notas agora sao aceitas como elementos sem efeito eletrico no gerador de netlist
 ### Post-its e terminais - 0.50.0
 
 Notas com fita, sombra e canto levantado; alca no canto inferior direito altera a escala proporcionalmente, ancora o canto oposto e registra uma unica acao para desfazer. Teste test_app_ui_flow falha com app_input anterior e passa com a implementacao, incluindo clique duplo na alca; autoteste --self-test-history passou. Capturas de zoom com roda real no build/build.exe em build/human-review/captures/notes-{normal,zoom-out,zoom-in}.png; revisao do papel em build/postits-paper.bmp. Terminais usam raio de 3 unidades da bancada, independente da escala do componente; picking mantido. Sem mudanca de formato (37). Suite completa nao repetida neste ajuste.
+
+
+### Papel e catalogo - 0.51.0
+
+Papel usa malha sombreada com borda inferior arqueada, fita fora da area de texto e a mesma representacao nas miniaturas. Nota e juncao nao usam mais fallback de LED. Catalogo tem 9 categorias; biblioteca de chips conserva indice 2 (Salvos), Fontes=6, Placas=7, Bancada=8. Cada tipo aparece uma unica vez, verificado em test_app_ui_flow, que tambem cria Nota pela aba Bancada e verifica texto, cores e redimensionamento. Passaram test_app_layout, test_app_ui_flow, test_app_commands e --self-test-history. Capturas de todas as abas e do papel em build/catalog-review/. Suite completa nao repetida; formato permanece 37.

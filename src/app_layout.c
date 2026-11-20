@@ -2,7 +2,7 @@
 #include "workbench_view.h"
 #include <math.h>
 
-#define PALETTE_ITEM_TOP 210.0f
+#define PALETTE_ITEM_TOP 252.0f
 #define PALETTE_ITEM_PITCH 59.0f
 #define APP_PALETTE_BOTTOM_MARGIN 8.0f
 #define HEADER_BUTTON_Y 14.0f
@@ -557,12 +557,12 @@ AppRect app_layout_action(AppAction action)
 
 AppRect app_layout_search(void)
 {
-    return (AppRect){14, 170, 186, 32};
+    return (AppRect){14, 212, 186, 32};
 }
 
 AppRect app_layout_search_clear(void)
 {
-    return (AppRect){172, 170, 28, 32};
+    return (AppRect){172, 212, 28, 32};
 }
 
 AppRect app_layout_value_panel(void)

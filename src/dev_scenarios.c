@@ -890,15 +890,37 @@ static int junction_phase_valid(const AppState *app)
     return junction && b->wire_count == 3 && app->pending.component < 0;
 }
 
+static int click_builtin(SDL_Window *window, PartType type)
+{
+    for (int page = 0; page < PALETTE_PAGES; ++page)
+    {
+        if (page == 2)
+            continue;
+        for (int item = 0; item < palette_count(page); ++item)
+        {
+            if (palette_part(page, item) != type)
+                continue;
+            int offset = item >= APP_PALETTE_VISIBLE ? item - APP_PALETTE_VISIBLE + 1 : 0;
+            if (!click_rect(window, app_layout_palette_tab(page)))
+                return 0;
+            for (int step = 0; step < offset; ++step)
+                if (!dev_test_wheel(window, 50, 400, -1))
+                    return 0;
+            return click_palette(window, item - offset);
+        }
+    }
+    return 0;
+}
+
 void dev_scenario_queue(AppState *app, SDL_Window *window)
 {
 
     SDL_SetModState(SDL_KMOD_NONE);
     int queued = 1;
     if (app->selftest_phase == 0)
-        queued = click_palette(window, 0) && dev_test_click(window, 400, 250);
+        queued = click_builtin(window, PART_SOURCE) && dev_test_click(window, 400, 250);
     else if (app->selftest_phase == 1)
-        queued = click_palette(window, 4) && dev_test_click(window, 600, 250);
+        queued = click_builtin(window, PART_RESISTOR) && dev_test_click(window, 600, 250);
     else if (app->selftest_phase == 2)
         queued =
             dev_test_click(window, 351, 250) && dev_test_click(window, 450, 180) && dev_test_click(window, 551, 250);
@@ -935,9 +957,9 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 18)
         queued = dev_test_key(window, SDLK_HOME);
     else if (app->selftest_phase == 19)
-        queued = click_palette(window, 3) && dev_test_click(window, 850, 430);
+        queued = click_builtin(window, PART_BREADBOARD) && dev_test_click(window, 850, 430);
     else if (app->selftest_phase == 20)
-        queued = click_palette(window, 4) && dev_test_click(window, 838, 377);
+        queued = click_builtin(window, PART_RESISTOR) && dev_test_click(window, 838, 377);
     else if (app->selftest_phase == 21)
         queued = dev_test_key(window, SDLK_Z);
     else if (app->selftest_phase == 22)
@@ -1027,13 +1049,13 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 59)
         queued = dev_test_key(window, SDLK_F1);
     else if (app->selftest_phase == 60)
-        queued = click_palette(window, 7) && dev_test_click(window, 1000, 300);
+        queued = click_builtin(window, PART_AND) && dev_test_click(window, 1000, 300);
     else if (app->selftest_phase == 61)
-        queued = dev_test_shortcut(window, SDLK_TAB, SDL_KMOD_CTRL);
+        queued = click_rect(window, app_layout_palette_tab(0)) && dev_test_shortcut(window, SDLK_TAB, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 62)
-        queued = click_palette(window, 3) && dev_test_click(window, 1100, 400);
+        queued = click_builtin(window, PART_XOR) && dev_test_click(window, 1100, 400);
     else if (app->selftest_phase == 63)
-        queued = click_palette(window, 5) && dev_test_click(window, 1000, 500);
+        queued = click_builtin(window, PART_CLOCK) && dev_test_click(window, 1000, 500);
     else if (app->selftest_phase == 64)
         queued = dev_test_click_count(window, 1000, 500, 2);
     else if (app->selftest_phase == 65)
@@ -1078,9 +1100,9 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 72)
         queued = dev_test_key(window, SDLK_UNKNOWN);
     else if (app->selftest_phase == 73)
-        queued = dev_test_key(window, SDLK_ESCAPE) && click_palette(window, 6) && dev_test_click(window, 750, 550);
+        queued = dev_test_key(window, SDLK_ESCAPE) && click_builtin(window, PART_DFF) && dev_test_click(window, 750, 550);
     else if (app->selftest_phase == 74)
-        queued = dev_test_key(window, SDLK_ESCAPE) && click_palette(window, 7) && dev_test_click(window, 750, 450);
+        queued = dev_test_key(window, SDLK_ESCAPE) && click_builtin(window, PART_74HC00) && dev_test_click(window, 750, 450);
     else if (app->selftest_phase == 75)
         queued = dev_test_shortcut(window, SDLK_F2, SDL_KMOD_CTRL);
     else if (app->selftest_phase == 76)
@@ -1205,7 +1227,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
         queued = dev_test_key(window, SDLK_F1);
     }
     else if (app->selftest_phase == 127)
-        queued = click_palette(window, 4) && dev_test_click(window, 530, 257);
+        queued = click_builtin(window, PART_RESISTOR) && dev_test_click(window, 530, 257);
     else if (app->selftest_phase == 128)
         queued = dev_test_click(window, 528, 260) && dev_test_drag_finish(window, 559, 283);
     else if (app->selftest_phase == 129)
@@ -1320,7 +1342,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 156)
         queued = dev_test_wheel(window, 50, 400, -1);
     else if (app->selftest_phase == 157)
-        queued = click_palette(window, 7);
+        queued = click_builtin(window, PART_POTENTIOMETER);
     else if (app->selftest_phase == 158)
     {
         app->placing = -1;
@@ -1339,7 +1361,7 @@ void dev_scenario_queue(AppState *app, SDL_Window *window)
     else if (app->selftest_phase == 163)
         queued = dev_test_wheel(window, 50, 400, -2);
     else if (app->selftest_phase == 164)
-        queued = dev_test_key(window, SDLK_ESCAPE) && dev_test_wheel(window, 50, 400, -1) && click_palette(window, 6);
+        queued = dev_test_key(window, SDLK_ESCAPE) && click_builtin(window, PART_NOR);
     else if (app->selftest_phase == 165)
         queued = dev_test_click(window, 700, 500);
     else if (app->selftest_phase == 166)

@@ -1711,9 +1711,71 @@ static void draw_diode(const Part *part)
     gradient_rect(x + 11, y - 8, 5, 16, (SurfaceColor){.91f,.92f,.93f}, (SurfaceColor){.54f,.57f,.60f});
 }
 
+/* A bowed sheet: the edge lifts away from its cast shadow across the full width. */
+static float paper_y(float y, float height, float u, float v)
+{
+    float edge = 2 * u - 1;
+    return y + height * v - height * .14f * v * v * v * (.35f + .65f * edge * edge);
+}
+
+static void draw_note_paper(const Part *part, float width, float height)
+{
+    float x = part->x - width / 2, y = part->y - height / 2;
+    const float *bg = palette_tone(((part->states & 255) + BENCH_COLOR_YELLOW) % BENCH_COLOR_COUNT)->wire;
+    ui_shadow((AppRect){x + 3, y + 5, width, height - 6}, 3, 8);
+    for (int row = 0; row < 16; ++row)
+    {
+        glBegin(GL_QUAD_STRIP);
+        for (int col = 0; col <= 20; ++col)
+            for (int side = 0; side < 2; ++side)
+            {
+                float u = col / 20.0f, v = (row + side) / 16.0f;
+                float bow = sinf(v * 3.14159265f);
+                float shade = .96f + .13f * bow - .22f * powf(v, 6);
+                glColor3f(fminf(1, bg[0] * shade + .02f * bow),
+                          fminf(1, bg[1] * shade + .02f * bow), fminf(1, bg[2] * shade + .02f * bow));
+                glVertex2f(x + width * u, paper_y(y, height, u, v));
+            }
+        glEnd();
+    }
+    glColor3f(bg[0] * .65f, bg[1] * .65f, bg[2] * .65f);
+    glBegin(GL_LINE_STRIP);
+    for (int col = 0; col <= 20; ++col)
+    {
+        float u = col / 20.0f;
+        glVertex2f(x + width * u, paper_y(y, height, u, 1) + 1);
+    }
+    glEnd();
+    float tape = fminf(26, width * .16f);
+    glColor4f(.92f, .85f, .65f, .76f);
+    glBegin(GL_QUADS);
+    glVertex2f(part->x - tape, y - 12);
+    glVertex2f(part->x + tape, y - 15);
+    glVertex2f(part->x + tape - 2, y + 6);
+    glVertex2f(part->x - tape - 1, y + 9);
+    glEnd();
+}
+
 static void part_draw(const Part *p, int selected, int led, float brightness)
 {
     float x = p->x, y = p->y;
+    if (p->type == PART_NOTE)
+    {
+        draw_note_paper(p, 240, 110);
+        glColor3f(.24f, .20f, .10f);
+        glLineWidth(1);
+        for (int row = 0; row < 3; ++row)
+            line(x - 84, y - 18 + row * 20, x + (row == 2 ? 25 : 78), y - 18 + row * 20);
+        return;
+    }
+    if (p->type == PART_JUNCTION)
+    {
+        color(.10f, .38f, .22f);
+        line(x - 18, y, x + 18, y);
+        line(x, y - 18, x, y + 18);
+        circle(x, y, 7);
+        return;
+    }
     if (bench_is_board(p->type))
     {
         draw_part_board(p, selected);
@@ -1824,7 +1886,7 @@ static void part_draw(const Part *p, int selected, int led, float brightness)
     {
         draw_part_inductor(p);
     }
-    else
+    else if (p->type == PART_LED)
     {
         draw_part_led(p, led, brightness);
     }
@@ -3292,37 +3354,11 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
         float scale = bench_part_scale(part);
         float w = 240 * scale, h = 110 * scale;
         float x = part->x - w / 2, y = part->y - h / 2;
-        float curl = fminf(18, h * .2f);
-        const float *bg = palette_tone(((part->states & 255) + BENCH_COLOR_YELLOW) % BENCH_COLOR_COUNT)->wire;
         const float *fg = palette_tone(((part->states >> 8) + BENCH_COLOR_BLACK) % BENCH_COLOR_COUNT)->wire;
-        ui_shadow((AppRect){x + 2, y + 3, w, h}, 2, 5);
-        glBegin(GL_POLYGON);
-        glColor3f(fminf(1, bg[0] * .92f + .08f), fminf(1, bg[1] * .92f + .08f), fminf(1, bg[2] * .92f + .08f));
-        glVertex2f(x, y);
-        glVertex2f(x + w, y);
-        glColor3fv(bg);
-        glVertex2f(x + w, y + h - curl);
-        glVertex2f(x + w - curl, y + h);
-        glVertex2f(x + w * .45f, y + h + 2);
-        glVertex2f(x, y + h);
-        glEnd();
-        glColor3f(bg[0] * .72f, bg[1] * .72f, bg[2] * .72f);
-        glBegin(GL_TRIANGLES);
-        glVertex2f(x + w - curl, y + h);
-        glColor3f(fminf(1, bg[0] + .2f), fminf(1, bg[1] + .2f), fminf(1, bg[2] + .2f));
-        glVertex2f(x + w - curl, y + h - curl);
-        glVertex2f(x + w, y + h - curl);
-        glEnd();
-        glColor4f(.92f, .85f, .65f, .72f);
-        glBegin(GL_QUADS);
-        glVertex2f(part->x - 25, y - 7);
-        glVertex2f(part->x + 26, y - 10);
-        glVertex2f(part->x + 24, y + 11);
-        glVertex2f(part->x - 26, y + 14);
-        glEnd();
+        draw_note_paper(part, w, h);
         glColor3fv(fg);
-        ui_wrapped(font, x + 10, y + 23, part->code ? part->code : tr(TXT_UI_NOTE_HINT),
-                   (int)fmaxf(1, w - 20), (int)fmaxf(1, (h - 30) / 22 + 1), 22);
+        ui_wrapped(font, x + 12, y + 36, part->code ? part->code : tr(TXT_UI_NOTE_HINT),
+                   (int)fmaxf(1, w - 24), (int)fmaxf(1, (h * .90f - 42) / 18 + 1), 18);
         if (app->selected == i || app->selection.parts[i])
         {
             glColor3f(.12f, .49f, .84f);

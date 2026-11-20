@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.51.0 - 20/11/2026
+
+- Papel curvado em toda a superfície, com luz e sombra; fita afastada da área de escrita. Nota e junção recebem miniaturas próprias, sem reutilizar LED.
+- Catálogo organizado em nove categorias, sem repetir ou omitir componentes: Básicos, Digital, Salvos, Sensores, Saídas, Medição, Fontes, Placas e Bancada. Busca global preservada.
+
 ## 0.50.0 - 20/11/2026
 
 - Post-its com fita, sombra e canto levantado; alça no canto inferior direito para redimensionar proporcionalmente, mantendo o canto oposto fixo e permitindo desfazer.

@@ -1,6 +1,7 @@
 #include "app_input.h"
 #include "app_controls.h"
 #include "app_palette.h"
+#include "component_registry.h"
 #include "app_editing.h"
 #include "app_packing.h"
 #include "ui_text.h"
@@ -225,7 +226,7 @@ static void graph_options_flow(AppState *app, SDL_Window *window)
 static void values_and_chip_flow(AppState *app, SDL_Window *window)
 {
     /* Add a resistor, reject invalid text beside its field, confirm a value, then undo. */
-    click(app, window, app_layout_palette_item(4));
+    click(app, window, app_layout_palette_item(0));
     assert(app->placing == PART_RESISTOR);
     click(app, window, (AppRect){750, 450, 2, 2});
     click(app, window, (AppRect){750, 450, 2, 2}); /* Select the newly placed part before editing. */
@@ -304,8 +305,26 @@ static void multi_value_flow(AppState *app, SDL_Window *window)
     app->selected = -1;
 }
 
+static void catalog_categories_cover_every_part(void)
+{
+    int seen[PART_NOTE + 1] = {0};
+    for (int page = 0; page < PALETTE_PAGES; ++page)
+    {
+        assert(palette_page_name(page)[0]);
+        if (page == 2)
+            continue;
+        for (int item = 0; item < palette_count(page); ++item)
+            ++seen[palette_part(page, item)];
+    }
+    for (size_t type = 0; type < component_registry_count(); ++type)
+        assert(seen[type] == 1);
+    assert(palette_part(8, 3) == PART_NOTE);
+    assert(palette_part(6, 0) == PART_SOURCE);
+}
+
 int main(void)
 {
+    catalog_categories_cover_every_part();
     static Workbench dense_leds;
     assert(bench_add(&dense_leds, PART_LED, 500, 350) == 0);
     assert(bench_add(&dense_leds, PART_LED, 520, 350) == 1);
@@ -350,7 +369,15 @@ int main(void)
     key(&app, window, SDLK_ESCAPE, 0);
     bench_snapshot_clear(&app.bench);
     bench_selection_clear(&app.selection);
-    app.selected = bench_add(&app.bench, PART_NOTE, 500, 350);
+    app.selected = -1;
+    click(&app, window, app_layout_palette_tab(8));
+    click(&app, window, app_layout_palette_item(3));
+    assert(app.placing == PART_NOTE);
+    WirePoint note_center;
+    bench_view_to_screen(&app.view, 500, 350, &note_center.x, &note_center.y);
+    click(&app, window, (AppRect){note_center.x, note_center.y, 1, 1});
+    assert(app.bench.part_count == 1 && app.bench.parts[0].type == PART_NOTE);
+    app.selected = 0;
     assert(app.selected == 0 && bench_pin_count(app.bench.parts[0].type) == 0);
     click(&app, window, app_layout_inspector_value());
     assert(app.editing == APP_EDIT_NOTE);

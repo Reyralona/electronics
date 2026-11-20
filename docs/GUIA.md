@@ -5,7 +5,7 @@ Este guia descreve o programa como ele está na versão 0.45.0. Para instalar, v
 ## A tela
 
 - **Topo:** **Projetos** (slots de salvamento), **Exemplos**, **Configurações** e o botão **Simulando/Pausado** da simulação.
-- **Esquerda:** o catálogo de peças, em seis abas: **Básicos**, **Digital**, **Chips** (seus chips), **Sensores**, **Saídas** e **Medição**. `Ctrl+Tab` alterna entre as abas, e a roda do mouse rola a lista.
+- **Esquerda:** o catálogo de peças, em nove abas: **Básicos** (passivos e chaves), **Digital** (portas e CIs), **Salvos** (seus chips), **Sensores**, **Saídas**, **Medição**, **Fontes**, **Placas** (microcontroladores) e **Bancada** (protoboards, junções e notas). `Ctrl+Tab` alterna entre as abas, e a roda do mouse rola a lista.
 - **Busca:** clique em **Buscar peças** ou use `Ctrl+F`. A busca procura nomes e identificadores do catálogo padrão. Aceita maiúsculas e nomes sem acentos. **×** limpa a busca e volta à categoria escolhida.
 - **Barra da bancada:** **Desfazer**, **Refazer**, **Um passo**, **Criar chip**, **Ao vivo** e **Curva completa**. Ações indisponíveis ficam desabilitadas.
 - **Centro:** a bancada.
@@ -154,7 +154,7 @@ O que aparece na tela:
 
 ## Chips
 
-**Terminais escolhidos:** na aba Digital, coloque uma **Junção de fios**, conecte-a ao nó desejado
+**Terminais escolhidos:** na aba Bancada, coloque uma **Junção de fios**, conecte-a ao nó desejado
 e dê dois cliques no ponto para nomeá-lo. Junções nomeadas soltas no interior definem os terminais
 do próximo chip: por exemplo J, K, CLOCK, Q e Q_bar. Um CLOCK pode ligar várias entradas internas.
 Quando existem esses pontos nomeados, os demais nós livres não viram terminais automaticamente.
@@ -214,7 +214,7 @@ quando desabilitadas.
 
 ## Microcontroladores
 
-- Na aba **Digital** estão **Arduino Uno**, **ESP32** e **ATtiny85**. O ATtiny precisa de VCC e GND externos.
+- Na aba **Placas** estão **Arduino Uno**, **ESP32** e **ATtiny85**. O ATtiny precisa de VCC e GND externos.
 - Dois cliques na placa (ou **Editar código** no painel) abrem o editor à direita, com números de linha, indentação automática e sugestões (`Ctrl+Espaço`).
 - `Ctrl+Enter` ou **Executar** envia o programa e reinicia a placa. Erros de compilação aparecem marcados na linha.
 - O editor aceita até 16.383 bytes após expandir tabulações em quatro espaços e retirar `CR`.
@@ -313,10 +313,10 @@ No editor de chip: `S` salva o modelo, `Ctrl+Enter` aplica e `Esc` volta.
 
 Ctrl+clique adiciona ou remove somente a peça clicada. Se todas as peças selecionadas forem do mesmo tipo, Valor (ou E) altera o valor de todas: selecione resistores, pressione E, digite 200 e confirme para aplicar 200 ohms. Ctrl+A dentro do campo seleciona o texto. Ctrl+Z desfaz a alteração conjunta. O campo Tamanho e a cor dos LEDs também aceitam seleção do mesmo tipo.
 
-O catálogo Básicos inclui Protoboard larga (60 colunas), com o mesmo passo de furos da placa original. Ao reduzir uma peça conectada, suas pontas conservam os contatos. As marcas e áreas clicáveis dos terminais mantêm um tamanho útil na tela. A cor física dos LEDs é igual nos temas claro e escuro.
+O catálogo Bancada inclui Protoboard larga (60 colunas), com o mesmo passo de furos da placa original. Ao reduzir uma peça conectada, suas pontas conservam os contatos. As marcas e áreas clicáveis dos terminais mantêm um tamanho útil na tela. A cor física dos LEDs é igual nos temas claro e escuro.
 
 ### Notas flutuantes — 0.49.0
 
-Em Básicos, escolha **Nota** e coloque na bancada. Clique duplo ou use **Texto** no painel para escrever até 127 bytes (acentos ocupam mais de um byte); Enter confirma e Esc cancela. O texto quebra automaticamente conforme o espaço do papel. No painel, **Fundo** e **Texto** têm paletas independentes. Arraste para mover, ajuste Tamanho para ampliar e use Delete para remover. Notas não têm pinos nem participam eletricamente do circuito. São salvas no projeto e acompanham copiar/colar e desfazer.
+Em Bancada, escolha **Nota** e coloque na bancada. Clique duplo ou use **Texto** no painel para escrever até 127 bytes (acentos ocupam mais de um byte); Enter confirma e Esc cancela. O texto quebra automaticamente conforme o espaço do papel. No painel, **Fundo** e **Texto** têm paletas independentes. Arraste para mover, ajuste Tamanho para ampliar e use Delete para remover. Notas não têm pinos nem participam eletricamente do circuito. São salvas no projeto e acompanham copiar/colar e desfazer.
 
 Na 0.50.0, selecione a nota e arraste a alça azul no canto inferior direito para ampliar ou reduzir proporcionalmente (mínimo de 50% pelo arraste). O canto superior esquerdo fica fixo. Também pode digitar Tamanho no painel. Ctrl+Z desfaz o redimensionamento. A fita, a sombra e o canto levantado são apenas visuais.
