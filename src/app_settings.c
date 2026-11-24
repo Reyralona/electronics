@@ -23,6 +23,7 @@ WorkbenchSettings app_settings_capture(const AppState *app)
     settings.dark_theme = app->dark_theme;
     settings.gui_font_size = app->gui_font_size;
     settings.show_pin_labels = app->show_pin_labels;
+    settings.show_connection_pins = app->show_connection_pins;
     settings.language = ui_text_language();
     return settings;
 }
@@ -50,6 +51,7 @@ void app_settings_apply_all(AppState *app, const WorkbenchSettings *settings)
     app->dark_theme = settings->dark_theme;
     app->gui_font_size = settings->gui_font_size;
     app->show_pin_labels = settings->show_pin_labels;
+    app->show_connection_pins = settings->show_connection_pins;
     ui_text_set_language((UiLanguage)settings->language);
 }
 

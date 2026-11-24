@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.53.0 (em desenvolvimento)
+
+- Chips criados podem ter largura e altura ajustadas juntas por `Ctrl+roda`; o encaixe na protoboard quantiza a largura conforme o passo dos furos.
+- `Shift+R` e `Shift` + botão direito giram peças e chips criados em passos de 45°. Orientação diagonal persistida no formato 39, que continua lendo projetos anteriores.
+- Pontas flexíveis próximas a furos são realinhadas após o encaixe; peças redimensionadas voltam a encaixar na protoboard. A preferência **Mostrar pinos verdes** controla os indicadores de contato.
+- Comparação técnica, limites e fontes em `docs/COMPARACAO_GEOMETRIA_2026_11_24.md`.
+
 ## 0.52.1
 
 - Correcoes da auditoria Ponytail: 555 e LM358 debitam a corrente de carga da alimentacao, incluindo o efeito do limite CV/CC.

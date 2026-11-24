@@ -27,6 +27,8 @@ _Static_assert(APP_EXAMPLE_CARDS == WORKBENCH_EXAMPLE_COUNT, "one examples card 
 #include <stdio.h>
 #include <string.h>
 
+static void snap_part_terminals(const AppState *app, int component, float *x, float *y);
+
 /* Limits of the typed settings, shown in their error messages. */
 enum
 {
@@ -323,6 +325,43 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
             else
                 report(app, TXT_APP_SIZE_RANGE, PART_SCALE_MIN * 100.0, PART_SCALE_MAX * 100.0);
         }
+        else if (app->editing == APP_EDIT_GROUP_SCALE)
+        {
+            int group = app->selected >= 0 ? app->bench.parts[app->selected].group : 0;
+            int valid = group && bench_parse_value(app->edit_text, &value) &&
+                        value >= 64 * 100.0 / 98 && value <= 10000 * 100.0 / 98;
+            if (valid)
+            {
+                float old_width = bench_group_width(&app->bench, group);
+                float width = (float)(98 * value / 100);
+                float height = bench_group_height(&app->bench, group) * width / old_width;
+                height = fmaxf(44, height);
+                if (app->snap_board && width != old_width)
+                    width = fmaxf(76, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
+                valid = bench_group_resize(&app->bench, group, width, height);
+                if (valid && app->snap_board && !app->bench.groups[group - 1].rotation_diagonal)
+                {
+                    float x = app->bench.parts[app->selected].x;
+                    float y = app->bench.parts[app->selected].y;
+                    snap_part_terminals(app, app->selected, &x, &y);
+                    BenchSelection selection = {0};
+                    selection.parts[app->selected] = 1;
+                    bench_selection_move(&app->bench, &selection,
+                                         x - app->bench.parts[app->selected].x,
+                                         y - app->bench.parts[app->selected].y);
+                }
+            }
+            if (valid)
+            {
+                if (before.revision != app->bench.revision && !app_history_record(app, &before))
+                    return;
+                app->editing = -1;
+                SDL_StopTextInput(window);
+                app->status = tr(TXT_APP_CHIP_RESIZED);
+            }
+            else
+                app->status = tr(TXT_APP_CHIP_SIZE_INVALID);
+        }
         else if (app->editing == APP_EDIT_GRID)
         {
             if (bench_parse_value(app->edit_text, &value) && value >= GRID_SPACING_MIN &&
@@ -438,12 +477,38 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 float width = bench_group_width(&app->bench, group);
                 float height = bench_group_height(&app->bench, group);
                 float factor = direction > 0 ? 1.1f : 1 / 1.1f;
-                if (SDL_GetModState() & SDL_KMOD_SHIFT)
+                SDL_Keymod modifiers = SDL_GetModState();
+                if (modifiers & SDL_KMOD_SHIFT)
                     height = fminf(10000, fmaxf(44, height * factor));
-                else
+                else if (modifiers & SDL_KMOD_ALT)
                     width = fminf(10000, fmaxf(64, width * factor));
+                else
+                {
+                    width = fminf(10000, fmaxf(64, width * factor));
+                    height = fminf(10000, fmaxf(44, height * factor));
+                }
+                if (app->snap_board && width != bench_group_width(&app->bench, group))
+                    width = fmaxf(76, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
                 if (!bench_group_resize(&app->bench, group, width, height))
                     app->status = tr(TXT_APP_CHIP_SIZE_INVALID);
+                else if (app->snap_board && !app->bench.groups[group - 1].rotation_diagonal)
+                {
+                    float x = app->bench.parts[app->selected].x;
+                    float y = app->bench.parts[app->selected].y;
+                    snap_part_terminals(app, app->selected, &x, &y);
+                    BenchSelection selection = {0};
+                    selection.parts[app->selected] = 1;
+                    bench_selection_move(&app->bench, &selection,
+                                         x - app->bench.parts[app->selected].x,
+                                         y - app->bench.parts[app->selected].y);
+                    if (!bench_history_record(app->history, &before))
+                    {
+                        bench_replace(&app->bench, &before);
+                        app->status = tr(TXT_APP_HISTORY_FAILED);
+                    }
+                    else
+                        app->status = tr(TXT_APP_CHIP_RESIZED);
+                }
                 else if (!bench_history_record(app->history, &before))
                 {
                     bench_replace(&app->bench, &before);
@@ -469,6 +534,8 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
             scale = fminf(PART_SCALE_MAX, fmaxf(PART_SCALE_MIN, scale));
             if (bench_set_scale(&app->bench, app->selected, scale) && app->bench.revision != before.revision)
             {
+                if (app->snap_board && !bench_is_board(app->bench.parts[app->selected].type))
+                    bench_snap_to_breadboard(&app->bench, app->selected);
                 if (bench_history_record(app->history, &before))
                     app->status = tr(TXT_APP_SIZE_CHANGED);
                 else
@@ -533,6 +600,7 @@ static void input_rotate(AppState *app, SDL_Window *window, const SDL_Event *eve
         app->selected_wire = -1;
         shortcut.type = SDL_EVENT_KEY_DOWN;
         shortcut.key.key = SDLK_R;
+        shortcut.key.mod = SDL_GetModState();
         SDL_PushEvent(&shortcut);
     }
 }
@@ -682,6 +750,9 @@ static void input_settings(AppState *app, SDL_Window *window, float x, float y)
         break;
     case APP_SETTING_PIN_LABELS:
         app->show_pin_labels = !app->show_pin_labels;
+        break;
+    case APP_SETTING_CONNECTION_PINS:
+        app->show_connection_pins = !app->show_connection_pins;
         break;
     case APP_SETTING_SNAP_GRID:
         app->snap_grid = !app->snap_grid;
@@ -1177,6 +1248,14 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
         return 1;
     if (input_click_environment(app, x, y))
         return 1;
+    if (!app->inspector_minimized && app->selected >= 0 && app->bench.parts[app->selected].group &&
+        app_rect_contains(app_layout_inspector_scale(), x, y))
+    {
+        int group = app->bench.parts[app->selected].group;
+        start_settings_edit(app, window, APP_EDIT_GROUP_SCALE,
+                            bench_group_width(&app->bench, group) * 100 / 98);
+        return 1;
+    }
     if (app_editor_click(app, window, x, y))
         return 1;
     if (input_click_inspector(app, window, x, y) || input_click_wire_inspector(app, x, y))

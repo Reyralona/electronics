@@ -17,6 +17,7 @@
 #define APP_FONT_MAX 20
 #define APP_EDIT_SCALE (WORKBENCH_MAX_COMPONENTS + 4)
 #define APP_EDIT_NOTE (WORKBENCH_MAX_COMPONENTS + 6)
+#define APP_EDIT_GROUP_SCALE (WORKBENCH_MAX_COMPONENTS + 7)
 #define APP_EDIT_PORT_NAME (WORKBENCH_MAX_COMPONENTS + 5) /* name of chip terminal name_target_pin */
 #define APP_EDIT_GRID (WORKBENCH_MAX_COMPONENTS + 3)
 #define APP_EDIT_GROUP_NAME (WORKBENCH_MAX_COMPONENTS + 2)
@@ -64,7 +65,7 @@ typedef struct AppState
     double simulation_speed;
     double grid_spacing;
     int snap_grid, snap_board;
-    int dark_theme, gui_font_size, show_pin_labels;
+    int dark_theme, gui_font_size, show_pin_labels, show_connection_pins;
     int xray; /* X: transparent part bodies; covered terminals become reachable. */
     int inspector_minimized; /* Inspector shown as a small name tab; kept across selections. */
     BenchHistory *history;

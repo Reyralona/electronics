@@ -181,7 +181,7 @@ void app_commands_close_graph(AppState *app)
     app->status = tr(TXT_APP_GRAPH_CLOSED);
 }
 
-static void command_rotate(AppState *app)
+static void command_rotate(AppState *app, int diagonal)
 {
     Workbench before BENCH_AUTO_CLEAR = {0};
     if (!bench_snapshot_clone(&before, &app->bench))
@@ -189,7 +189,9 @@ static void command_rotate(AppState *app)
         app->status = tr(TXT_APP_OUT_OF_MEMORY);
         return;
     }
-    if (bench_rotate_part(&app->bench, app->selected))
+    int rotated = diagonal ? bench_rotate_part_45(&app->bench, app->selected) :
+                             bench_rotate_part(&app->bench, app->selected);
+    if (rotated)
     {
         if (!app->bench.parts[app->selected].group)
             bench_snap_to_breadboard(&app->bench, app->selected);
@@ -467,7 +469,7 @@ static void command_selection(AppState *app, SDL_Window *window, SDL_Keycode key
     switch (key)
     {
     case SDLK_R:
-        command_rotate(app);
+        command_rotate(app, (mod & SDL_KMOD_SHIFT) != 0);
         break;
     case SDLK_M:
         command_mirror(app);

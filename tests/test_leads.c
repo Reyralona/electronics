@@ -38,6 +38,12 @@ int main(int argc, char **argv)
         bench_pin_position(&fitting.parts[1], pin, &after_x, &after_y);
         assert(hypotf(x - after_x, y - after_y) < .001f);
     }
+    WirePoint loose_tip = bench_lead_point(&fitting.parts[1], 0, 0);
+    loose_tip.x += 3;
+    assert(bench_lead_move(&fitting, 1, 0, 0, loose_tip));
+    assert(!bench_find_contact(&fitting, 1, 0, &initial_contact));
+    assert(bench_snap_to_breadboard(&fitting, 1));
+    assert(bench_find_contact(&fitting, 1, 0, &initial_contact) && initial_contact.component == 0);
     bench_snapshot_clear(&fitting);
     assert(bench_add(&fitting, PART_BREADBOARD, 650, 400) == 0);
     assert(bench_add(&fitting, PART_DIP_SWITCH, 650, 400) == 1);

@@ -253,6 +253,8 @@ AppRect app_layout_setting(AppSetting setting)
         return settings_row(SETTINGS_LEFT, 4);
     case APP_SETTING_PIN_LABELS:
         return settings_row(SETTINGS_LEFT, 5);
+    case APP_SETTING_CONNECTION_PINS:
+        return settings_row(SETTINGS_RIGHT, 2);
     case APP_SETTING_SNAP_GRID:
         return settings_row(SETTINGS_LEFT, 7);
     case APP_SETTING_GRID_SPACING:

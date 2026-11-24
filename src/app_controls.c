@@ -66,6 +66,7 @@ static void inspector_targets(const AppState *app, AppRect *targets, int *count)
     if (part->group)
     {
         target(targets, count, app_layout_group_button(0));
+        target(targets, count, app_layout_inspector_scale());
         return;
     }
     const ComponentInfo *info = component_info(part->type);

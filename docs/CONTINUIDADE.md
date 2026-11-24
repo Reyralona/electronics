@@ -1,5 +1,9 @@
 # Continuidade
 
+## Branch de geometria — 24/11/2026
+
+`codex/scale-rotate-snap-markers`, baseada em `fix/ponytail-audit-0.52`: escala percentual e por roda para chips criados, rotação de 45° em peças e chips, realinhamento de pontas próximas aos furos e preferência para ocultar marcadores verdes. Formato 39 e versão de desenvolvimento 0.53.0. Comparação e limites em [COMPARACAO_GEOMETRIA_2026_11_24.md](COMPARACAO_GEOMETRIA_2026_11_24.md). Em 24/11, `./build.ps1` passou com testes de interface, contatos, persistência, simulação e componentes; o executável local é `build/build.exe`.
+
 Estado para retomar o desenvolvimento em 19/11/2026. O histórico detalhado permanece no Git;
 este arquivo registra apenas fatos e pendências que continuam relevantes.
 

@@ -52,8 +52,13 @@ int app_selection_set_scale(AppState *app, float scale)
     if (!app_selection_same_type(app) || !isfinite(scale) || scale < PART_SCALE_MIN || scale > PART_SCALE_MAX)
         return 0;
     for (int i = 0; i < app->bench.part_count; ++i)
-        if ((i == app->selected || app->selection.parts[i]) && !bench_set_scale(&app->bench, i, scale))
-            return 0;
+        if (i == app->selected || app->selection.parts[i])
+        {
+            if (!bench_set_scale(&app->bench, i, scale))
+                return 0;
+            if (app->snap_board && !bench_is_board(app->bench.parts[i].type))
+                bench_snap_to_breadboard(&app->bench, i);
+        }
     return 1;
 }
 

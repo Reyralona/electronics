@@ -41,14 +41,14 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 ### Peças
 
 - Clique numa peça do catálogo e depois na bancada para colocá-la.
-- Arraste para mover. `R` gira 90°.
+- Arraste para mover. `R` gira 90°; `Shift+R` (ou `Shift` + botão direito) gira 45°.
 - `M` (ou **Espelhar**, no painel da peça) espelha a peça da esquerda para a direita: os terminais trocam de
   lado e os fios acompanham. Mostradores e textos continuam legíveis: o visor da fonte, o display de
   7 segmentos, o LCD e as marcas das baterias não ficam invertidos. Como na rotação, a breadboard e os
   instrumentos de bancada não espelham. Chips também espelham (os terminais passam para o outro lado).
 - `Delete` apaga a peça e os fios ligados a ela.
 - Com uma peça selecionada, escolher outro tipo no catálogo **troca a peça no lugar**, mantendo os fios nos terminais equivalentes.
-- **Tamanho:** clique em **Tamanho** no painel (1% a 10000%) ou use `Ctrl+roda`. É só visual: não muda o valor elétrico.
+- **Tamanho:** clique em **Tamanho** no painel (1% a 10000%) ou use `Ctrl+roda`. O valor elétrico não muda; terminais conectados preservam a posição ao redimensionar.
 - Passe o mouse sobre um terminal para ver o nome e a função dele: IN/OUT, V+/GND, A/K (anodo/catodo) etc.
 
 ### Fios
@@ -72,6 +72,8 @@ mudam de idioma quando uma nova ação gera outra mensagem.
 
 - A breadboard tem duas metades de 30 colunas de 5 contatos ligados entre si, mais quatro trilhos de alimentação independentes.
 - Solte uma peça perto dos furos e os terminais encaixam. Terminais encaixados entram na conexão, sem fio.
+- O encaixe usa a posição dos terminais e funciona com a grade visual desligada. Ao redimensionar uma peça sobre a breadboard, as pontas próximas aos furos são realinhadas. A rotação de 45° não garante que todos os pinos de um componente rígido caibam na malha retangular; confira os contatos ou use fios.
+- O marcador verde indica contato geométrico, não que o circuito esteja fechado nem que exista tensão entre os pinos. Em **Configurações**, desative **Mostrar pinos verdes** para ocultá-lo.
 - Para posicionar uma peça livremente perto de outros terminais, segure `Alt` durante o arraste; isso suspende o encaixe na grade, na breadboard e entre terminais.
 - Para alinhar o centro da peça à grade mesmo perto de furos ou terminais, segure `Ctrl` durante o arraste; a grade deve estar com o encaixe ligado.
 - Um **terminal encostado em outro terminal** também conecta. Isso vale para todos os tipos,
@@ -164,7 +166,8 @@ seus próprios terminais. Para remover um terminal escolhido, apague o nome do p
 1. Selecione as peças e pressione `Ctrl+G`. Elas viram um **chip** compacto e vão para a aba **Chips**.
    A seleção também pode conter chips: eles ficam preservados dentro do novo chip, em vários níveis.
 2. Na aba **Chips**, clique no chip e depois na bancada para colocar uma cópia independente.
-   Selecione o chip e pressione `R` para girar 90°. As portas e os fios acompanham o corpo.
+   Selecione o chip e pressione `R` para girar 90° ou `Shift+R` para girar 45°. As portas e os fios acompanham o corpo.
+   Clique em **Tamanho** no painel do chip para informar o percentual. `Ctrl+roda` reduz ou amplia largura e altura; `Ctrl+Shift+roda` altera só a altura e `Ctrl+Alt+roda` só a largura. O tamanho mínimo mantém o espaçamento físico entre as portas. Com encaixe na breadboard ligado, a largura ajustada segue passos compatíveis com os furos.
    A orientação fica salva no projeto e pode ser desfeita. Girar não muda a montagem interna.
 3. Selecione um chip e pressione `Enter` (ou **Ver interior**) para abrir o **editor isolado**.
    Ele tem bancada, simulação e histórico próprios. Alterações no circuito só chegam à bancada ao aplicar.
@@ -227,7 +230,7 @@ quando desabilitadas.
 
 - **Projetos** (ou `F3`): slots que crescem conforme os projetos são salvos, em páginas de seis cartões com miniaturas e resumo de peças/fios. Ao carregar, a vista tenta enquadrar o circuito inteiro. Escolha um e use **Salvar**/**Carregar**, ou `Ctrl+S`/`Ctrl+L`. Em slot ocupado, **Substituir** pede confirmação; cancelar conserva o arquivo salvo. Carregar um arquivo inválido não apaga a montagem aberta. Os slots guardam a montagem e as configurações, não o instante da simulação.
 - **Exemplos** (ou `F2`): 18 circuitos prontos, com título e explicação. `Ctrl+F2` avança diretamente para o próximo. `Ctrl+Z` volta à montagem anterior.
-- **Configurações:** tema claro/escuro, escala da interface, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, curvas e alças dos fios, nomes dos terminais, simulação e parâmetros do gráfico. A cor fica no painel do fio. As preferências são salvas automaticamente em `saves/preferences.txt`.
+- **Configurações:** tema claro/escuro, escala da interface, grade (espaçamento, mostrar, encaixar), encaixe na breadboard, curvas e alças dos fios, nomes dos terminais, marcadores verdes de contato, simulação e parâmetros do gráfico. A cor fica no painel do fio. As preferências são salvas automaticamente em `saves/preferences.txt`.
 
 ### Onde ficam os arquivos
 

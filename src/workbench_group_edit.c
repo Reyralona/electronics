@@ -52,7 +52,8 @@ static int valid_draft(const Workbench *parent, int group, const Workbench *draf
             !isfinite(bench_part_scale(part)) ||
             bench_part_scale(part) < PART_SCALE_MIN || bench_part_scale(part) > PART_SCALE_MAX || !isfinite(part->x) || !isfinite(part->y) ||
             (info->primary && !component_value_valid(part->type, part->value)) || part->rotation < 0 ||
-            part->rotation > 3 || (part->on != 0 && part->on != 1))
+            part->rotation > 3 || (part->rotation_diagonal != 0 && part->rotation_diagonal != 1) ||
+            (part->on != 0 && part->on != 1))
             return 0;
         if (part->edit_origin < 0 || part->edit_origin > parent->part_count)
             return 0;

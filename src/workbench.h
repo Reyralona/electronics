@@ -139,6 +139,7 @@ typedef struct
     float io_level[WORKBENCH_MAX_IO];
     unsigned char io_mode[WORKBENCH_MAX_IO];
     int rotation;
+    int rotation_diagonal; /* Extra 45 degrees after the quarter turn. */
     int mirrored; /* Left-right mirror in the package frame, applied before rotation; saved from format 34. */
     int board_layout;
     int group; /* 0 = ordinary part; otherwise index in groups + 1. */
@@ -212,6 +213,7 @@ typedef struct
     char name[BENCH_GROUP_NAME_CAPACITY];
     float width, height; /* Zero selects the automatic package dimensions. */
     int rotation; /* Package orientation, independent of internal parts; saved from format 29. */
+    int rotation_diagonal; /* Extra 45 degrees; saved from format 39. */
     int mirrored; /* Terminal sides swapped (left <-> right) before rotation; saved from format 34. */
     uint64_t model; /* Library model identity shared by its copies (0 = none); saved from format 28. */
     /* Number of terminals the custom arrangement covers; 0 or a different terminal count = automatic
@@ -283,6 +285,7 @@ int bench_pin_count(PartType type);
 int bench_board_group_first(int pin);
 int bench_set_value(Workbench *bench, int component, double value);
 int bench_rotate_part(Workbench *bench, int component);
+int bench_rotate_part_45(Workbench *bench, int component);
 int bench_parse_value(const char *text, double *value);
 WirePoint bench_part_to_world(const Part *part, WirePoint local);
 WirePoint bench_part_to_local(const Part *part, WirePoint world);

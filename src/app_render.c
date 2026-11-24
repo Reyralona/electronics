@@ -808,7 +808,8 @@ static void draw_part_led(const Part *p, int led, float brightness)
     /* The leads follow package rotation; the standing lens keeps its projection. */
     glPushMatrix();
     glTranslatef(x, y, 0);
-    glRotatef((drawing_mirrored ? 1 : -1) * p->rotation * 90.0f, 0, 0, 1);
+    glRotatef((drawing_mirrored ? 1 : -1) *
+                  (p->rotation * 90.0f + p->rotation_diagonal * 45.0f), 0, 0, 1);
     glTranslatef(-x, -y, 0);
     /* Unlit lens is much darker than the lit one, so a change of state is obvious at a glance. */
     const float unlit_share = .28f, rim_share = .18f, white_unlit = .40f;
@@ -1992,7 +1993,7 @@ static void part_draw_oriented(const Part *part, int selected, int led, float br
     local.y = 0;
     glPushMatrix();
     glTranslatef(part->x, part->y, 0);
-    glRotatef((float)part->rotation * 90.0f, 0, 0, 1);
+    glRotatef(part->rotation * 90.0f + part->rotation_diagonal * 45.0f, 0, 0, 1);
     float scale = bench_part_scale(part);
     glScalef(scale, scale, 1);
     drawing_mirrored = part->mirrored && !bench_is_board(part->type);
@@ -2879,6 +2880,9 @@ static void draw_workspace_parts(const AppState *app)
                 float x, y;
                 Pin contact;
                 int snapped = bench_find_contact(&app->bench, i, p, &contact);
+                if (snapped && !app->show_connection_pins &&
+                    (app->pending.component != i || app->pending.pin != p))
+                    continue;
                 float outer_radius = TERMINAL_WORLD_RADIUS;
                 float inner_radius = outer_radius * .7f;
                 bench_pin_position(&app->bench.parts[i], p, &x, &y);
@@ -2889,7 +2893,7 @@ static void draw_workspace_parts(const AppState *app)
                     color(1, .7f, .2f);
                     circle(x, y, inner_radius);
                 }
-                else if (snapped)
+                else if (snapped && app->show_connection_pins)
                 {
                     color(.18f, .78f, .46f);
                     circle(x, y, inner_radius);
@@ -3290,7 +3294,7 @@ static void draw_groups(const AppState *app, GLuint font)
         /* Same package language as the DIP ICs: dark molded body, pin-1 notch, metal legs, small pads. */
         glPushMatrix();
         glTranslatef(group->x, group->y, 0);
-        glRotatef(group->rotation * 90.0f, 0, 0, 1);
+        glRotatef(group->rotation * 90.0f + group->rotation_diagonal * 45.0f, 0, 0, 1);
         int previous_mirror = drawing_mirrored;
         drawing_mirrored = group->mirrored;
         if (group->mirrored)
@@ -3337,7 +3341,8 @@ static void draw_groups(const AppState *app, GLuint font)
             glColor3f(.70f, .72f, .74f);
             rect(fminf(x, edge), y - 1.5f, fabsf(edge - x), 3);
             Pin contact;
-            if (bench_find_contact(&app->bench, pin.component, pin.pin, &contact))
+            if (app->show_connection_pins &&
+                bench_find_contact(&app->bench, pin.component, pin.pin, &contact))
                 color(.15f, .66f, .79f);
             circle(x, y, 3.5f);
             named |= draw_group_port_name(app, font, &app->bench.parts[pin.component], pin.pin, x < group->x, left, width, y);
@@ -3462,7 +3467,7 @@ static void draw_workspace(const AppState *app, GLuint font, int width, int heig
 #define INSPECTOR_BOTTOM_PAD 12.0f
 #define INSPECTOR_LED_HEIGHT 176.0f
 #define INSPECTOR_ENVIRONMENT_HEIGHT 228.0f
-#define INSPECTOR_GROUP_HEIGHT 104.0f
+#define INSPECTOR_GROUP_HEIGHT 190.0f
 #define INSPECTOR_WIRE_NOTE 268.0f
 
 static float inspector_text_x(void)
@@ -3564,7 +3569,14 @@ static void draw_group_inspector(const AppState *app, GLuint font)
     snprintf(dimensions, sizeof(dimensions), tr(TXT_UI_CHIP_DIMENSIONS), bench_group_width(&app->bench, group),
              bench_group_height(&app->bench, group));
     AppRect button = app_layout_group_button(0);
-    ui_note(font, inspector_text_x(), button.y + button.h + 20, dimensions, inspector_text_w());
+    char size[32];
+    snprintf(size, sizeof(size), "%.0f %%", bench_group_width(&app->bench, group) * 100 / 98);
+    draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), size, 1);
+    ui_note(font, inspector_text_x(), button.y + button.h + 58, dimensions, inspector_text_w());
+    ui_note(font, inspector_text_x(), button.y + button.h + 81,
+            tr(TXT_UI_CHIP_RESIZE_HINT), inspector_text_w());
+    ui_note(font, inspector_text_x(), button.y + button.h + 102,
+            tr(TXT_UI_CHIP_RESIZE_WIDTH_HINT), inspector_text_w());
 }
 
 /* Datasheet warning of the selected part, shown in place of its current reading. */
@@ -4065,6 +4077,8 @@ static void draw_settings_snapping(const AppState *app, GLuint font)
 static void draw_settings_wires(const AppState *app, GLuint font)
 {
     ui_section(font, app_layout_settings_section(1, 0), tr(TXT_SETTINGS_SIMULATION));
+    ui_toggle(app, font, app_layout_setting(APP_SETTING_CONNECTION_PINS),
+              tr(TXT_SETTINGS_SHOW_CONNECTION_PINS), app->show_connection_pins);
     AppRect current = app_layout_setting(APP_SETTING_SHOW_CURRENT);
     ui_toggle(app, font, current, tr(TXT_SETTINGS_SHOW_CURRENT), app->show_current);
     AppRect minus = app_layout_setting(APP_SETTING_SIM_SPEED_SLOWER);

@@ -5,6 +5,7 @@
 #include "component_registry.h"
 #include "app_editing.h"
 #include "app_packing.h"
+#include "workbench_pack.h"
 #include "ui_text.h"
 #include <assert.h>
 #include <math.h>
@@ -171,6 +172,9 @@ static void actions_and_scaling_flow(AppState *app, SDL_Window *window)
     int dark = app->dark_theme;
     click(app, window, app_layout_setting(APP_SETTING_DARK_THEME));
     assert(app->dark_theme != dark);
+    assert(app->show_connection_pins);
+    click(app, window, app_layout_setting(APP_SETTING_CONNECTION_PINS));
+    assert(!app->show_connection_pins);
     int scale = app->gui_font_size;
     click(app, window, app_layout_setting(APP_SETTING_FONT_LARGER));
     if (app->gui_font_size == scale)
@@ -454,6 +458,36 @@ int main(void)
     assert(fabsf(app.bench.parts[0].y - 55 * 1.5f - top) < .01f);
     key(&app, window, SDLK_Z, SDL_KMOD_CTRL);
     assert(bench_part_scale(&app.bench.parts[0]) == 1);
+
+    /* Person creates a chip, shrinks it in the inspector, rejects an impossible size, and reopens it. */
+    bench_snapshot_clear(&app.bench);
+    bench_selection_clear(&app.selection);
+    assert(bench_add(&app.bench, PART_RESISTOR, 500, 350) == 0);
+    app.selection.parts[0] = 1;
+    assert(app_packing_key(&app, SDLK_G, SDL_KMOD_CTRL));
+    assert(app.bench.parts[0].group == 1);
+    app.selected = 0;
+    app.inspector_minimized = 0;
+    click(&app, window, app_layout_inspector_scale());
+    assert(app.editing == APP_EDIT_GROUP_SCALE);
+    key(&app, window, SDLK_A, SDL_KMOD_CTRL);
+    type(&app, window, "80");
+    key(&app, window, SDLK_RETURN, 0);
+    assert(app.editing == -1 && bench_group_width(&app.bench, 1) == 76);
+    click(&app, window, app_layout_inspector_scale());
+    key(&app, window, SDLK_A, SDL_KMOD_CTRL);
+    type(&app, window, "1");
+    key(&app, window, SDLK_RETURN, 0);
+    assert(app.editing == APP_EDIT_GROUP_SCALE && bench_group_width(&app.bench, 1) == 76);
+    key(&app, window, SDLK_ESCAPE, 0);
+    Workbench loaded = {0};
+    FILE *project = tmpfile();
+    assert(project && workbench_write(project, &app.bench));
+    rewind(project);
+    assert(workbench_read(project, &loaded));
+    fclose(project);
+    assert(bench_group_width(&loaded, 1) == 76);
+    bench_snapshot_clear(&loaded);
 
     app_state_dispose(&app);
     SDL_DestroyWindow(window);

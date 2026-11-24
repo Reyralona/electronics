@@ -71,12 +71,49 @@ static void chip_ports_and_persistence(void)
         assert(bench.parts[0].rotation == 0);
     }
     assert(bench.groups[0].rotation == 0);
+    assert(bench_group_width(&bench, 1) == 98);
+    assert(bench_group_resize(&bench, 1, 76, bench_group_height(&bench, 1)));
+    assert(bench_group_width(&bench, 1) == 76);
+    assert(bench_rotate_part_45(&bench, 0));
+    assert(bench.groups[0].rotation_diagonal == 1);
+    {
+        Workbench loaded = {0};
+        FILE *file = tmpfile();
+        assert(file && workbench_write(file, &bench));
+        rewind(file);
+        assert(workbench_read(file, &loaded));
+        fclose(file);
+        assert(loaded.groups[0].rotation_diagonal == 1);
+        assert(bench_group_width(&loaded, 1) == 76);
+        bench_snapshot_clear(&loaded);
+    }
     /* Hidden internal geometry cannot become an external contact. */
     float x, y, sx, sy;
     bench_pin_position(&bench.parts[0], 0, &x, &y);
     bench_pin_position(&bench.parts[1], 0, &sx, &sy);
     assert(bench_move_part(&bench, 1, bench.parts[1].x + x - sx, bench.parts[1].y + y - sy));
     assert(!netlist_same_net(&bench, (Pin){0, 0}, (Pin){1, 0}));
+    bench_snapshot_clear(&bench);
+}
+
+static void diagonal_part_roundtrip(void)
+{
+    Workbench bench = {0}, loaded = {0};
+    assert(bench_add(&bench, PART_RESISTOR, 500, 300) == 0);
+    assert(bench_rotate_part_45(&bench, 0));
+    float x, y;
+    bench_pin_position(&bench.parts[0], 0, &x, &y);
+    assert(fabsf(x - (500 - 49 * .70710678f)) < .001f);
+    assert(fabsf(y - (300 - 49 * .70710678f)) < .001f);
+    FILE *file = tmpfile();
+    assert(file && workbench_write(file, &bench));
+    rewind(file);
+    assert(workbench_read(file, &loaded));
+    fclose(file);
+    assert(loaded.parts[0].rotation_diagonal == 1);
+    bench_pin_position(&loaded.parts[0], 0, &x, &y);
+    assert(fabsf(x - (500 - 49 * .70710678f)) < .001f);
+    bench_snapshot_clear(&loaded);
     bench_snapshot_clear(&bench);
 }
 
@@ -197,6 +234,7 @@ int main(int argc, char **argv)
     wire_junctions();
     every_catalog_terminal();
     chip_ports_and_persistence();
+    diagonal_part_roundtrip();
     chip_to_chip();
     switched_chip_circuit(argc > 1 ? argv[1] : NULL);
     puts("Every catalog terminal, chip rotation, direct contacts and save/reopen passed.");

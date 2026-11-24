@@ -21,6 +21,7 @@ static void roundtrip(void)
     original.transient_step = 2e-5;
     original.simulation_speed = .25;
     original.wire_color = 3;
+    original.show_connection_pins = 0;
     FILE *file = tmpfile();
     assert(file && app_preferences_write(file, &original));
     rewind(file);

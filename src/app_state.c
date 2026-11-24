@@ -48,6 +48,7 @@ void app_state_init(AppState *app)
     app->grid_spacing = 24;
     app->snap_board = 1;
     app->show_handles = 1;
+    app->show_connection_pins = 1;
     app->round_wires = 1;
     app->selected_wire = -1;
     app->wire_color = BENCH_DEFAULT_WIRE_COLOR;

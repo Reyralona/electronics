@@ -24,7 +24,7 @@ static const PreferenceField fields[] = {
     INT_FIELD(show_handles),   INT_FIELD(round_wires),       INT_FIELD(show_current),
     INT_FIELD(wire_color),     INT_FIELD(probe_pin),         INT_FIELD(probe_current),
     INT_FIELD(snap_grid),      INT_FIELD(snap_board),        DOUBLE_FIELD(grid_spacing),
-    INT_FIELD(show_pin_labels), INT_FIELD(language),
+    INT_FIELD(show_pin_labels), INT_FIELD(show_connection_pins), INT_FIELD(language),
     DOUBLE_FIELD(transient_step), DOUBLE_FIELD(transient_stop), DOUBLE_FIELD(simulation_speed),
 };
 #define FIELD_COUNT (sizeof(fields) / sizeof(fields[0]))

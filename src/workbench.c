@@ -612,6 +612,12 @@ WirePoint bench_part_to_world(const Part *part, WirePoint local)
         rotated = (WirePoint){local.y, -local.x};
         break;
     }
+    if (part->rotation_diagonal && !bench_is_board(part->type))
+    {
+        const float diagonal = 0.7071067811865476f;
+        rotated = (WirePoint){(rotated.x - rotated.y) * diagonal,
+                              (rotated.x + rotated.y) * diagonal};
+    }
     return (WirePoint){part->x + rotated.x, part->y + rotated.y};
 }
 
@@ -619,6 +625,12 @@ WirePoint bench_part_to_local(const Part *part, WirePoint world)
 {
     float scale = bench_part_scale(part);
     WirePoint offset = {(world.x - part->x) / scale, (world.y - part->y) / scale};
+    if (part->rotation_diagonal && !bench_is_board(part->type))
+    {
+        const float diagonal = 0.7071067811865476f;
+        offset = (WirePoint){(offset.x + offset.y) * diagonal,
+                             (offset.y - offset.x) * diagonal};
+    }
     int rotation = bench_is_board(part->type) ? 0 : part->rotation;
     WirePoint local = offset;
     switch (rotation)
@@ -1065,19 +1077,24 @@ int bench_snap_to_breadboard(Workbench *b, int component)
         return 0;
     bench_move_part(b, component, x, y);
     Part footprint = b->parts[component];
-    if (footprint.terminals)
-        return 1;
     for (int board = 0; board < b->part_count; ++board)
     {
         if (!bench_is_board(b->parts[board].type) || b->parts[board].group != footprint.group)
             continue;
-        footprint.scale = bench_part_scale(&b->parts[board]);
+        if (!footprint.terminals)
+            footprint.scale = bench_part_scale(&b->parts[board]);
         for (int pin = 0; pin < bench_pin_count(footprint.type); ++pin)
         {
             if (!lead_editable(&footprint, pin))
                 continue;
+            Pin contact;
+            if (bench_find_contact(b, component, pin, &contact))
+                continue;
             WirePoint point;
-            bench_pin_position(&footprint, pin, &point.x, &point.y);
+            if (footprint.terminals)
+                bench_pin_position(&b->parts[component], pin, &point.x, &point.y);
+            else
+                bench_pin_position(&footprint, pin, &point.x, &point.y);
             float best = 64;
             WirePoint target = point;
             int found = 0;
@@ -1157,6 +1174,7 @@ int bench_swap_type(Workbench *b, int component, PartType type)
     float x = part->x, y = part->y, scale = part->scale;
     int rotation = component_has_flag(type, COMPONENT_ROTATES) ? part->rotation : 0;
     int mirrored = component_has_flag(type, COMPONENT_ROTATES) ? part->mirrored : 0;
+    int diagonal = component_has_flag(type, COMPONENT_ROTATES) ? part->rotation_diagonal : 0;
     bench_part_clear(part);
     *part = (Part){.type = type,
                    .x = x,
@@ -1165,6 +1183,7 @@ int bench_swap_type(Workbench *b, int component, PartType type)
                    .control = component_default_control(type),
                    .value = info->primary ? info->primary->initial : 0,
                    .rotation = rotation,
+                   .rotation_diagonal = diagonal,
                    .mirrored = mirrored,
                    .scale = scale};
     ++b->revision;
@@ -1184,6 +1203,30 @@ int bench_rotate_part(Workbench *b, int component)
         !component_has_flag(b->parts[component].type, COMPONENT_ROTATES))
         return 0;
     b->parts[component].rotation = (b->parts[component].rotation + 1) % 4;
+    ++b->revision;
+    return 1;
+}
+
+int bench_rotate_part_45(Workbench *b, int component)
+{
+    if (!b || component < 0 || component >= b->part_count)
+        return 0;
+    Part *part = &b->parts[component];
+    if (part->group)
+    {
+        BenchGroup *group = &b->groups[part->group - 1];
+        if (group->rotation_diagonal)
+            group->rotation = (group->rotation + 1) % 4;
+        group->rotation_diagonal = !group->rotation_diagonal;
+    }
+    else
+    {
+        if (!component_has_flag(part->type, COMPONENT_ROTATES))
+            return 0;
+        if (part->rotation_diagonal)
+            part->rotation = (part->rotation + 1) % 4;
+        part->rotation_diagonal = !part->rotation_diagonal;
+    }
     ++b->revision;
     return 1;
 }
@@ -1663,13 +1706,15 @@ void bench_terminal_position(const Workbench *bench, Pin pin, float *x, float *y
 
 WirePoint bench_group_to_world(const BenchGroup *group, WirePoint local)
 {
-    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation, .mirrored = group->mirrored};
+    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation,
+                  .rotation_diagonal = group->rotation_diagonal, .mirrored = group->mirrored};
     return bench_part_to_world(&frame, local);
 }
 
 WirePoint bench_group_to_local(const BenchGroup *group, WirePoint world)
 {
-    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation, .mirrored = group->mirrored};
+    Part frame = {.x = group->x, .y = group->y, .rotation = group->rotation,
+                  .rotation_diagonal = group->rotation_diagonal, .mirrored = group->mirrored};
     return bench_part_to_local(&frame, world);
 }
 
