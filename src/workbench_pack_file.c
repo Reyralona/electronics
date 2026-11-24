@@ -146,8 +146,8 @@ static int read_groups(FILE *file, Workbench *bench, int version)
         {
             if (fscanf(file, "%f %f", &group->width, &group->height) != 2 ||
                 !isfinite(group->width) || !isfinite(group->height) ||
-                (group->width != 0 && (group->width < 64 || group->width > 10000)) ||
-                (group->height != 0 && (group->height < 44 || group->height > 10000)))
+                (group->width != 0 && (group->width < 20 || group->width > 10000)) ||
+                (group->height != 0 && (group->height < 28 || group->height > 10000)))
                 return 0;
         }
         if (version >= 28 && fscanf(file, "%" SCNu64, &group->model) != 1)

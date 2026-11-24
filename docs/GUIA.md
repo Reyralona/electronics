@@ -167,7 +167,7 @@ seus próprios terminais. Para remover um terminal escolhido, apague o nome do p
    A seleção também pode conter chips: eles ficam preservados dentro do novo chip, em vários níveis.
 2. Na aba **Chips**, clique no chip e depois na bancada para colocar uma cópia independente.
    Selecione o chip e pressione `R` para girar 90° ou `Shift+R` para girar 45°. As portas e os fios acompanham o corpo.
-   Clique em **Tamanho** no painel do chip para informar o percentual. `Ctrl+roda` reduz ou amplia largura e altura; `Ctrl+Shift+roda` altera só a altura e `Ctrl+Alt+roda` só a largura. O tamanho mínimo mantém o espaçamento físico entre as portas. Com encaixe na breadboard ligado, a largura ajustada segue passos compatíveis com os furos.
+   Clique em **Tamanho** no painel do chip para informar o percentual. `Ctrl+roda` reduz ou amplia largura e altura; `Ctrl+Shift+roda` altera só a altura e `Ctrl+Alt+roda` só a largura. A caixa pode chegar a 20 × 28 unidades quando a disposição dos pinos permitir; o nome diminui para caber. O espaçamento físico entre as portas não é reduzido. Com encaixe na breadboard ligado, a largura ajustada segue passos compatíveis com os furos.
    A orientação fica salva no projeto e pode ser desfeita. Girar não muda a montagem interna.
 3. Selecione um chip e pressione `Enter` (ou **Ver interior**) para abrir o **editor isolado**.
    Ele tem bancada, simulação e histórico próprios. Alterações no circuito só chegam à bancada ao aplicar.

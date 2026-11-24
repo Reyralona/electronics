@@ -471,14 +471,15 @@ int main(void)
     click(&app, window, app_layout_inspector_scale());
     assert(app.editing == APP_EDIT_GROUP_SCALE);
     key(&app, window, SDLK_A, SDL_KMOD_CTRL);
-    type(&app, window, "80");
+    type(&app, window, "25");
     key(&app, window, SDLK_RETURN, 0);
-    assert(app.editing == -1 && bench_group_width(&app.bench, 1) == 76);
+    assert(app.editing == -1 && bench_group_width(&app.bench, 1) == 20);
+    assert(bench_group_height(&app.bench, 1) == 28);
     click(&app, window, app_layout_inspector_scale());
     key(&app, window, SDLK_A, SDL_KMOD_CTRL);
     type(&app, window, "1");
     key(&app, window, SDLK_RETURN, 0);
-    assert(app.editing == APP_EDIT_GROUP_SCALE && bench_group_width(&app.bench, 1) == 76);
+    assert(app.editing == APP_EDIT_GROUP_SCALE && bench_group_width(&app.bench, 1) == 20);
     key(&app, window, SDLK_ESCAPE, 0);
     Workbench loaded = {0};
     FILE *project = tmpfile();
@@ -486,7 +487,7 @@ int main(void)
     rewind(project);
     assert(workbench_read(project, &loaded));
     fclose(project);
-    assert(bench_group_width(&loaded, 1) == 76);
+    assert(bench_group_width(&loaded, 1) == 20 && bench_group_height(&loaded, 1) == 28);
     bench_snapshot_clear(&loaded);
 
     app_state_dispose(&app);

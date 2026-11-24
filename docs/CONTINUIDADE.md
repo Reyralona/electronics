@@ -4,6 +4,8 @@
 
 `codex/scale-rotate-snap-markers`, baseada em `fix/ponytail-audit-0.52`: escala percentual e por roda para chips criados, rotação de 45° em peças e chips, realinhamento de pontas próximas aos furos e preferência para ocultar marcadores verdes. Formato 39 e versão de desenvolvimento 0.53.0. Comparação e limites em [COMPARACAO_GEOMETRIA_2026_11_24.md](COMPARACAO_GEOMETRIA_2026_11_24.md). Em 24/11, `./build.ps1` passou com testes de interface, contatos, persistência, simulação e componentes; o executável local é `build/build.exe`.
 
+Após pedido de chip menor, o mínimo da caixa passou a 20 × 28 com nome reduzido para caber; altura automática de projetos anteriores permanece 44. O teste de contato falhou antes da correção no novo mínimo e passou depois. `./build.ps1 -OutputName chip-small-review` passou; `./build/chip-small-review.exe --capture-file=build/chip-mini-review.elec --capture-output=build/chip-mini-review.bmp` produziu uma captura revista com corpo, pinos e nome visíveis.
+
 Estado para retomar o desenvolvimento em 19/11/2026. O histórico detalhado permanece no Git;
 este arquivo registra apenas fatos e pendências que continuam relevantes.
 

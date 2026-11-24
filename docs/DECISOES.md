@@ -4,6 +4,8 @@
 
 Fatos, hipóteses e fontes oficiais consultadas nesta data: [comparação de geometria](COMPARACAO_GEOMETRIA_2026_11_24.md). Decisão: permitir 45° como orientação adicional salva no formato 39, manter os pinos calculados pelo modelo como fonte do contato, alinhar pontas próximas aos furos após encaixe e quantizar a largura de chips redimensionados quando o encaixe na protoboard estiver ativo. O espaçamento entre portas de chips não encolhe abaixo do passo físico; uma rotação diagonal de encapsulamento rígido pode impedir a inserção simultânea de todos os pinos numa malha ortogonal. Marcadores verdes são preferência visual independente do circuito.
 
+Complemento de 24/11: o pedido de chips menores reduz o mínimo explícito da caixa para 20 × 28, mantendo os projetos antigos com a altura automática de 44. O nome usa fonte proporcional à área disponível; os pinos conservam as posições elétricas. Chips com mais portas continuam sujeitos à altura mínima calculada pelo número de linhas.
+
 > **Registro de decisões técnicas**, em ordem cronológica, com fatos, fontes e datas de consulta. Uma decisão posterior pode substituir uma anterior; o comportamento atual está no [guia](GUIA.md).
 
 Consulta: 14/11/2026.

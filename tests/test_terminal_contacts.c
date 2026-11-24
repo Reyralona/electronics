@@ -72,8 +72,9 @@ static void chip_ports_and_persistence(void)
     }
     assert(bench.groups[0].rotation == 0);
     assert(bench_group_width(&bench, 1) == 98);
-    assert(bench_group_resize(&bench, 1, 76, bench_group_height(&bench, 1)));
-    assert(bench_group_width(&bench, 1) == 76);
+    assert(bench_group_resize(&bench, 1, 20, 28));
+    assert(bench_group_width(&bench, 1) == 20);
+    assert(bench_group_height(&bench, 1) == 28);
     assert(bench_rotate_part_45(&bench, 0));
     assert(bench.groups[0].rotation_diagonal == 1);
     {
@@ -84,7 +85,8 @@ static void chip_ports_and_persistence(void)
         assert(workbench_read(file, &loaded));
         fclose(file);
         assert(loaded.groups[0].rotation_diagonal == 1);
-        assert(bench_group_width(&loaded, 1) == 76);
+        assert(bench_group_width(&loaded, 1) == 20);
+        assert(bench_group_height(&loaded, 1) == 28);
         bench_snapshot_clear(&loaded);
     }
     /* Hidden internal geometry cannot become an external contact. */

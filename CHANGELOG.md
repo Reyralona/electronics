@@ -3,6 +3,7 @@
 ## 0.53.0 (em desenvolvimento)
 
 - Chips criados podem ter largura e altura ajustadas juntas por `Ctrl+roda`; o encaixe na protoboard quantiza a largura conforme o passo dos furos.
+- O corpo dos chips criados pode chegar a 20 × 28 unidades quando a disposição dos pinos permitir; o nome reduz sua fonte para caber, sem alterar a posição elétrica das portas.
 - `Shift+R` e `Shift` + botão direito giram peças e chips criados em passos de 45°. Orientação diagonal persistida no formato 39, que continua lendo projetos anteriores.
 - Pontas flexíveis próximas a furos são realinhadas após o encaixe; peças redimensionadas voltam a encaixar na protoboard. A preferência **Mostrar pinos verdes** controla os indicadores de contato.
 - Comparação técnica, limites e fontes em `docs/COMPARACAO_GEOMETRIA_2026_11_24.md`.

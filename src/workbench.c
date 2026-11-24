@@ -1543,7 +1543,7 @@ float bench_group_width(const Workbench *bench, int group)
 
 int bench_group_resize(Workbench *bench, int group, float width, float height)
 {
-    const float minimum_width = 64, minimum_height = 44, maximum_extent = 10000;
+    const float minimum_width = 20, minimum_height = 28, maximum_extent = 10000;
     if (!bench || group < 1 || group > WORKBENCH_MAX_COMPONENTS || !bench->groups[group - 1].active ||
         !isfinite(width) || !isfinite(height) || width < minimum_width || width > maximum_extent ||
         height < minimum_height || height > maximum_extent)
@@ -1607,8 +1607,9 @@ static int group_rows(const Workbench *bench, int group)
 float bench_group_height(const Workbench *bench, int group)
 {
     int rows = group_rows(bench, group);
-    float minimum = rows > 2 ? rows * BENCH_GROUP_PIN_SPACING + 14.0f : 44.0f;
-    return fmaxf(minimum, bench->groups[group - 1].height);
+    float minimum = rows > 2 ? rows * BENCH_GROUP_PIN_SPACING + 14.0f : 28.0f;
+    float requested = bench->groups[group - 1].height;
+    return requested > 0 ? fmaxf(minimum, requested) : fmaxf(44.0f, minimum);
 }
 
 int bench_group_port_index(const Workbench *bench, Pin pin)

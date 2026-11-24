@@ -3368,16 +3368,15 @@ static void draw_groups(const AppState *app, GLuint font)
         snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), g + 1);
         float label_width = group->rotation % 2 ? height : width;
         const char *chip_name = group->name[0] ? group->name : label;
-        /* With named terminals along the side edges, the chip name is centred between them. */
-        float label_x = group->x - label_width * .5f + 14;
-        int label_room = (int)label_width - 24;
-        if (named)
-        {
-            float text_width = fminf((float)app_text_utf8_width(chip_name, 2048), label_width - 24);
-            label_x = group->x - text_width * .5f;
-        }
+        float text_width = fmaxf(1, (float)app_text_utf8_width(chip_name, 2048));
+        float text_scale = fminf(1, fmaxf(1, label_width - 6) / text_width);
+        text_scale = fminf(text_scale, fmaxf(1, height - 6) / 16);
         glColor3f(.86f, .89f, .91f);
-        name_text(font, label_x, group->y + 5, chip_name, label_room);
+        glPushMatrix();
+        glTranslatef(group->x, group->y, 0);
+        glScalef(text_scale, text_scale, 1);
+        name_text(font, -text_width * .5f, 5, chip_name, (int)ceilf(text_width) + 2);
+        glPopMatrix();
     }
 }
 

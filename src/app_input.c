@@ -329,15 +329,15 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         {
             int group = app->selected >= 0 ? app->bench.parts[app->selected].group : 0;
             int valid = group && bench_parse_value(app->edit_text, &value) &&
-                        value >= 64 * 100.0 / 98 && value <= 10000 * 100.0 / 98;
+                        value >= 20 * 100.0 / 98 && value <= 10000 * 100.0 / 98;
             if (valid)
             {
                 float old_width = bench_group_width(&app->bench, group);
                 float width = (float)(98 * value / 100);
                 float height = bench_group_height(&app->bench, group) * width / old_width;
-                height = fmaxf(44, height);
+                height = fmaxf(28, height);
                 if (app->snap_board && width != old_width)
-                    width = fmaxf(76, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
+                    width = fmaxf(20, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
                 valid = bench_group_resize(&app->bench, group, width, height);
                 if (valid && app->snap_board && !app->bench.groups[group - 1].rotation_diagonal)
                 {
@@ -479,16 +479,16 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 float factor = direction > 0 ? 1.1f : 1 / 1.1f;
                 SDL_Keymod modifiers = SDL_GetModState();
                 if (modifiers & SDL_KMOD_SHIFT)
-                    height = fminf(10000, fmaxf(44, height * factor));
+                    height = fminf(10000, fmaxf(28, height * factor));
                 else if (modifiers & SDL_KMOD_ALT)
-                    width = fminf(10000, fmaxf(64, width * factor));
+                    width = fminf(10000, fmaxf(20, width * factor));
                 else
                 {
-                    width = fminf(10000, fmaxf(64, width * factor));
-                    height = fminf(10000, fmaxf(44, height * factor));
+                    width = fminf(10000, fmaxf(20, width * factor));
+                    height = fminf(10000, fmaxf(28, height * factor));
                 }
                 if (app->snap_board && width != bench_group_width(&app->bench, group))
-                    width = fmaxf(76, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
+                    width = fmaxf(20, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
                 if (!bench_group_resize(&app->bench, group, width, height))
                     app->status = tr(TXT_APP_CHIP_SIZE_INVALID);
                 else if (app->snap_board && !app->bench.groups[group - 1].rotation_diagonal)
