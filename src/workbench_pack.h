@@ -2,7 +2,13 @@
 #define WORKBENCH_PACK_H
 #include "workbench_selection.h"
 #include <stddef.h>
-#define BENCH_GROUP_PIN_SPACING 20.0f
+#define BENCH_GROUP_PIN_SPACING 14.0f /* same as BENCH_DIP_PITCH: ports land on neighbouring holes */
+#define BENCH_BOARD_ROW_PITCH 10.0f
+#define BENCH_GROUP_DEFAULT_WIDTH 98.0f
+#define BENCH_GROUP_DEFAULT_HEIGHT 44.0f
+#define BENCH_GROUP_MIN_WIDTH 20.0f
+#define BENCH_GROUP_MIN_HEIGHT 8.0f
+#define BENCH_GROUP_MAX_EXTENT 10000.0f
 
 int bench_pin_exposed(const Part *part, int pin);
 int bench_group_first(const Workbench *bench, int group);
@@ -10,6 +16,8 @@ int bench_group_ports(const Workbench *bench, int group);
 int bench_group_port(const Workbench *bench, int group, int index, Pin *pin);
 float bench_group_width(const Workbench *bench, int group);
 int bench_group_resize(Workbench *bench, int group, float width, float height);
+/* Nearest width whose left-to-right port distance matches the breadboard holes in the current rotation. */
+float bench_group_board_width(const Workbench *bench, int group, float width);
 float bench_group_height(const Workbench *bench, int group);
 #define BENCH_PORT_LEFT 0
 #define BENCH_PORT_RIGHT 1

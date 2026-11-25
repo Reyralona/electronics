@@ -266,6 +266,19 @@ GLuint app_render_font_create(void)
     DeleteObject(font);
     return base;
 }
+
+/* Degrees that turn text along (dx, dy) while keeping it upright: never upside down. */
+static float readable_angle(float dx, float dy)
+{
+    const float degrees_per_radian = 57.2957795f;
+    float degrees = atan2f(dy, dx) * degrees_per_radian;
+    if (degrees > 90.5f)
+        return degrees - 180;
+    if (degrees < -90.5f)
+        return degrees + 180;
+    return degrees;
+}
+
 static void text(GLuint font, float x, float y, const char *str)
 {
     if (app_text_utf8(x, y, str, 2048))
@@ -3158,11 +3171,13 @@ static void draw_workspace_labels(const AppState *app, GLuint font)
             const Part *part = &app->bench.parts[i];
             const char *symbol = component_symbol(part->type);
             float body_width = (bench_pin_count(part->type) / 2 - 1) * BENCH_DIP_PITCH + 14;
-            float room = (part->rotation % 2 ? 26 : body_width) - 10;
+            float room = body_width - 10;
             float width = (float)app_text_utf8_width(symbol, 2048);
             float scale = bench_part_scale(part) * fminf(1, room / fmaxf(1, width));
+            WirePoint along = bench_part_to_world(part, (WirePoint){1, 0});
             glPushMatrix();
             glTranslatef(part->x, part->y, 0);
+            glRotatef(readable_angle(along.x - part->x, along.y - part->y), 0, 0, 1);
             glScalef(scale, scale, 1);
             text(font, -width / 2, 5, symbol);
             glPopMatrix();
@@ -3229,8 +3244,10 @@ static void draw_workspace_burns(const AppState *app, GLuint font)
 static void draw_group_displays(const AppState *app, int group, float width, float height)
 {
     const BenchGroup *body = &app->bench.groups[group - 1];
-    const float display_w = 60, display_h = 88, gap = 6, margin = 8;
+    const float display_w = 60, display_h = 88;
+    float margin = fminf(8, fminf(width, height) * .15f);
     float scale = fminf(1, (height - 2 * margin) / display_h);
+    float gap = fminf(6, width * .1f);
     float right = body->x + width * .5f - margin;
     for (int i = app->bench.part_count - 1; i >= 0; --i)
     {
@@ -3262,7 +3279,9 @@ static int draw_group_port_name(const AppState *app, GLuint font, const Part *pa
     char name[BENCH_PORT_NAME_CAPACITY];
     if (!bench_port_name(part, pin, name, sizeof(name)))
         return 0;
-    if (!labels_visible(app))
+    /* Below one glyph plus ellipsis the name would only show dots; the pin numbers still identify it. */
+    const float minimum_name_width = 24;
+    if (!labels_visible(app) || width * .5f < minimum_name_width)
         return 1;
     /* name_text draws in world units (it scales with the zoom), so widths need no zoom correction. */
     float text_width = fminf((float)app_text_utf8_width(name, 2048), width * .5f);
@@ -3340,6 +3359,9 @@ static void draw_groups(const AppState *app, GLuint font)
             float edge = x < group->x ? left : left + width;
             glColor3f(.70f, .72f, .74f);
             rect(fminf(x, edge), y - 1.5f, fabsf(edge - x), 3);
+            float body_y = fmaxf(top, fminf(top + height, y));
+            if (body_y != y)
+                rect(edge - 1.5f, fminf(y, body_y), 3, fabsf(y - body_y));
             Pin contact;
             if (app->show_connection_pins &&
                 bench_find_contact(&app->bench, pin.component, pin.pin, &contact))
@@ -3361,19 +3383,21 @@ static void draw_groups(const AppState *app, GLuint font)
         {
             /* Pin-1 dot; named terminals already identify the pins. */
             glColor3f(.70f, .74f, .76f);
-            circle(left + 9, top + 9, 2.5f);
+            float inset = fminf(9, fminf(width, height) * .25f);
+            circle(left + inset, top + inset, fminf(2.5f, inset * .5f));
         }
         glPopMatrix();
         drawing_mirrored = previous_mirror;
         snprintf(label, sizeof(label), tr(TXT_CHIP_DEFAULT_NAME), g + 1);
-        float label_width = group->rotation % 2 ? height : width;
         const char *chip_name = group->name[0] ? group->name : label;
         float text_width = fmaxf(1, (float)app_text_utf8_width(chip_name, 2048));
-        float text_scale = fminf(1, fmaxf(1, label_width - 6) / text_width);
+        float text_scale = fminf(1, fmaxf(1, width - 6) / text_width);
         text_scale = fminf(text_scale, fmaxf(1, height - 6) / 16);
+        WirePoint along = bench_group_to_world(group, (WirePoint){1, 0});
         glColor3f(.86f, .89f, .91f);
         glPushMatrix();
         glTranslatef(group->x, group->y, 0);
+        glRotatef(readable_angle(along.x - group->x, along.y - group->y), 0, 0, 1);
         glScalef(text_scale, text_scale, 1);
         name_text(font, -text_width * .5f, 5, chip_name, (int)ceilf(text_width) + 2);
         glPopMatrix();
@@ -3569,7 +3593,7 @@ static void draw_group_inspector(const AppState *app, GLuint font)
              bench_group_height(&app->bench, group));
     AppRect button = app_layout_group_button(0);
     char size[32];
-    snprintf(size, sizeof(size), "%.0f %%", bench_group_width(&app->bench, group) * 100 / 98);
+    snprintf(size, sizeof(size), "%.0f %%", bench_group_width(&app->bench, group) * 100 / BENCH_GROUP_DEFAULT_WIDTH);
     draw_inspector_row(app, font, app_layout_inspector_scale(), tr(TXT_UI_SIZE), size, 1);
     ui_note(font, inspector_text_x(), button.y + button.h + 58, dimensions, inspector_text_w());
     ui_note(font, inspector_text_x(), button.y + button.h + 81,

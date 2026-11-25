@@ -1,4 +1,5 @@
 #include "workbench_pack_file.h"
+#include "workbench_pack.h"
 #include "workbench_group_name.h"
 #include "ui_text.h"
 #include <inttypes.h>
@@ -146,8 +147,10 @@ static int read_groups(FILE *file, Workbench *bench, int version)
         {
             if (fscanf(file, "%f %f", &group->width, &group->height) != 2 ||
                 !isfinite(group->width) || !isfinite(group->height) ||
-                (group->width != 0 && (group->width < 20 || group->width > 10000)) ||
-                (group->height != 0 && (group->height < 28 || group->height > 10000)))
+                (group->width != 0 && (group->width < BENCH_GROUP_MIN_WIDTH ||
+                                       group->width > BENCH_GROUP_MAX_EXTENT)) ||
+                (group->height != 0 && (group->height < BENCH_GROUP_MIN_HEIGHT ||
+                                        group->height > BENCH_GROUP_MAX_EXTENT)))
                 return 0;
         }
         if (version >= 28 && fscanf(file, "%" SCNu64, &group->model) != 1)

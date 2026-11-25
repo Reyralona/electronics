@@ -1538,15 +1538,25 @@ int bench_group_ports(const Workbench *bench, int group)
 
 float bench_group_width(const Workbench *bench, int group)
 {
-    return bench->groups[group - 1].width > 0 ? bench->groups[group - 1].width : 98;
+    return bench->groups[group - 1].width > 0 ? bench->groups[group - 1].width : BENCH_GROUP_DEFAULT_WIDTH;
+}
+
+float bench_group_board_width(const Workbench *bench, int group, float width)
+{
+    /* Ports sit 11 units outside each side. Upright, the sides cross columns (14 apart); turned 90 degrees
+     * they cross rows (10 apart). shortcut: assumes the current board rows, older 7-unit boards may not align. */
+    const float port_reach = 22;
+    float pitch = bench->groups[group - 1].rotation % 2 ? BENCH_BOARD_ROW_PITCH : BENCH_DIP_PITCH;
+    float steps = fmaxf(roundf((width + port_reach) / pitch), ceilf((BENCH_GROUP_MIN_WIDTH + port_reach) / pitch));
+    return steps * pitch - port_reach;
 }
 
 int bench_group_resize(Workbench *bench, int group, float width, float height)
 {
-    const float minimum_width = 20, minimum_height = 28, maximum_extent = 10000;
     if (!bench || group < 1 || group > WORKBENCH_MAX_COMPONENTS || !bench->groups[group - 1].active ||
-        !isfinite(width) || !isfinite(height) || width < minimum_width || width > maximum_extent ||
-        height < minimum_height || height > maximum_extent)
+        !isfinite(width) || !isfinite(height) || width < BENCH_GROUP_MIN_WIDTH ||
+        width > BENCH_GROUP_MAX_EXTENT || height < BENCH_GROUP_MIN_HEIGHT ||
+        height > BENCH_GROUP_MAX_EXTENT)
         return 0;
     BenchGroup *package = &bench->groups[group - 1];
     if (package->width != width || package->height != height)
@@ -1607,9 +1617,13 @@ static int group_rows(const Workbench *bench, int group)
 float bench_group_height(const Workbench *bench, int group)
 {
     int rows = group_rows(bench, group);
-    float minimum = rows > 2 ? rows * BENCH_GROUP_PIN_SPACING + 14.0f : 28.0f;
     float requested = bench->groups[group - 1].height;
-    return requested > 0 ? fmaxf(minimum, requested) : fmaxf(44.0f, minimum);
+    /* The body never gets shorter than its pin column, so ports and names stay on the package. */
+    float pin_column = (rows - 1) * BENCH_GROUP_PIN_SPACING + BENCH_GROUP_MIN_HEIGHT;
+    if (requested > 0)
+        return fmaxf(requested, pin_column);
+    float automatic = rows > 2 ? rows * BENCH_GROUP_PIN_SPACING + 14.0f : BENCH_GROUP_DEFAULT_HEIGHT;
+    return fmaxf(BENCH_GROUP_DEFAULT_HEIGHT, automatic);
 }
 
 int bench_group_port_index(const Workbench *bench, Pin pin)

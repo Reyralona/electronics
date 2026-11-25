@@ -35,6 +35,17 @@ static void fit_draft(AppState *app)
         right = fmaxf(right, x + width);
         top = fminf(top, y - height);
         bottom = fmaxf(bottom, y + height);
+        if (part->group)
+            for (int pin = 0; pin < bench_pin_count(part->type); ++pin)
+                if (bench_pin_exposed(part, pin))
+                {
+                    float px, py;
+                    bench_terminal_position(&app->bench, (Pin){i, pin}, &px, &py);
+                    left = fminf(left, px);
+                    right = fmaxf(right, px);
+                    top = fminf(top, py);
+                    bottom = fmaxf(bottom, py);
+                }
     }
     float zoom = fminf(1.2f, fminf(980 / (right - left), 510 / (bottom - top)));
     app->view = (BenchView){zoom, 750 - 220 - ((left + right) * .5f - 220) * zoom,

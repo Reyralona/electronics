@@ -28,6 +28,20 @@ _Static_assert(APP_EXAMPLE_CARDS == WORKBENCH_EXAMPLE_COUNT, "one examples card 
 #include <string.h>
 
 static void snap_part_terminals(const AppState *app, int component, float *x, float *y);
+static void app_input_seat_group(AppState *app);
+
+static int resize_group_uniform(Workbench *bench, int group, float target_width, int snap_board)
+{
+    if (!bench || !isfinite(target_width))
+        return 0;
+    float old_width = bench_group_width(bench, group);
+    float old_height = bench_group_height(bench, group);
+    float width = target_width;
+    if (snap_board && width != old_width)
+        width = bench_group_board_width(bench, group, width);
+    float height = old_height * width / old_width;
+    return bench_group_resize(bench, group, width, height);
+}
 
 /* Limits of the typed settings, shown in their error messages. */
 enum
@@ -329,27 +343,14 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
         {
             int group = app->selected >= 0 ? app->bench.parts[app->selected].group : 0;
             int valid = group && bench_parse_value(app->edit_text, &value) &&
-                        value >= 20 * 100.0 / 98 && value <= 10000 * 100.0 / 98;
+                        value >= BENCH_GROUP_MIN_WIDTH * 100.0 / BENCH_GROUP_DEFAULT_WIDTH &&
+                        value <= BENCH_GROUP_MAX_EXTENT * 100.0 / BENCH_GROUP_DEFAULT_WIDTH;
             if (valid)
             {
-                float old_width = bench_group_width(&app->bench, group);
-                float width = (float)(98 * value / 100);
-                float height = bench_group_height(&app->bench, group) * width / old_width;
-                height = fmaxf(28, height);
-                if (app->snap_board && width != old_width)
-                    width = fmaxf(20, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
-                valid = bench_group_resize(&app->bench, group, width, height);
-                if (valid && app->snap_board && !app->bench.groups[group - 1].rotation_diagonal)
-                {
-                    float x = app->bench.parts[app->selected].x;
-                    float y = app->bench.parts[app->selected].y;
-                    snap_part_terminals(app, app->selected, &x, &y);
-                    BenchSelection selection = {0};
-                    selection.parts[app->selected] = 1;
-                    bench_selection_move(&app->bench, &selection,
-                                         x - app->bench.parts[app->selected].x,
-                                         y - app->bench.parts[app->selected].y);
-                }
+                float width = (float)(BENCH_GROUP_DEFAULT_WIDTH * value / 100);
+                valid = resize_group_uniform(&app->bench, group, width, app->snap_board);
+                if (valid)
+                    app_input_seat_group(app);
             }
             if (valid)
             {
@@ -478,29 +479,32 @@ static void input_zoom(AppState *app, SDL_Window *window, const SDL_Event *event
                 float height = bench_group_height(&app->bench, group);
                 float factor = direction > 0 ? 1.1f : 1 / 1.1f;
                 SDL_Keymod modifiers = SDL_GetModState();
+                int resized;
                 if (modifiers & SDL_KMOD_SHIFT)
-                    height = fminf(10000, fmaxf(28, height * factor));
+                {
+                    height = fminf(BENCH_GROUP_MAX_EXTENT,
+                                   fmaxf(BENCH_GROUP_MIN_HEIGHT, height * factor));
+                    resized = bench_group_resize(&app->bench, group, width, height);
+                }
                 else if (modifiers & SDL_KMOD_ALT)
-                    width = fminf(10000, fmaxf(20, width * factor));
+                {
+                    width = fminf(BENCH_GROUP_MAX_EXTENT,
+                                  fmaxf(BENCH_GROUP_MIN_WIDTH, width * factor));
+                    if (app->snap_board)
+                        width = bench_group_board_width(&app->bench, group, width);
+                    resized = bench_group_resize(&app->bench, group, width, height);
+                }
                 else
                 {
-                    width = fminf(10000, fmaxf(20, width * factor));
-                    height = fminf(10000, fmaxf(28, height * factor));
+                    float pitch = app->bench.groups[group - 1].rotation % 2 ? BENCH_BOARD_ROW_PITCH : BENCH_DIP_PITCH;
+                    float target = app->snap_board ? width + (direction > 0 ? pitch : -pitch) : width * factor;
+                    resized = resize_group_uniform(&app->bench, group, target, app->snap_board);
                 }
-                if (app->snap_board && width != bench_group_width(&app->bench, group))
-                    width = fmaxf(20, roundf((width + 22) / BENCH_DIP_PITCH) * BENCH_DIP_PITCH - 22);
-                if (!bench_group_resize(&app->bench, group, width, height))
+                if (!resized)
                     app->status = tr(TXT_APP_CHIP_SIZE_INVALID);
                 else if (app->snap_board && !app->bench.groups[group - 1].rotation_diagonal)
                 {
-                    float x = app->bench.parts[app->selected].x;
-                    float y = app->bench.parts[app->selected].y;
-                    snap_part_terminals(app, app->selected, &x, &y);
-                    BenchSelection selection = {0};
-                    selection.parts[app->selected] = 1;
-                    bench_selection_move(&app->bench, &selection,
-                                         x - app->bench.parts[app->selected].x,
-                                         y - app->bench.parts[app->selected].y);
+                    app_input_seat_group(app);
                     if (!bench_history_record(app->history, &before))
                     {
                         bench_replace(&app->bench, &before);
@@ -1253,7 +1257,7 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
     {
         int group = app->bench.parts[app->selected].group;
         start_settings_edit(app, window, APP_EDIT_GROUP_SCALE,
-                            bench_group_width(&app->bench, group) * 100 / 98);
+                            bench_group_width(&app->bench, group) * 100 / BENCH_GROUP_DEFAULT_WIDTH);
         return 1;
     }
     if (app_editor_click(app, window, x, y))
@@ -2120,6 +2124,21 @@ static void snap_part_terminals(const AppState *app, int component, float *x, fl
     }
     *x += shift_x;
     *y += shift_y;
+}
+
+/* Puts the selected chip's ports on the nearest holes after a resize or turn; a diagonal turn cannot align. */
+static void app_input_seat_group(AppState *app)
+{
+    int group = app->bench.parts[app->selected].group;
+    if (!group || !app->snap_board || app->bench.groups[group - 1].rotation_diagonal)
+        return;
+    float x = app->bench.parts[app->selected].x;
+    float y = app->bench.parts[app->selected].y;
+    snap_part_terminals(app, app->selected, &x, &y);
+    BenchSelection selection = {0};
+    selection.parts[app->selected] = 1;
+    bench_selection_move(&app->bench, &selection, x - app->bench.parts[app->selected].x,
+                         y - app->bench.parts[app->selected].y);
 }
 
 static void input_drag_part(AppState *app, SDL_Window *window, const SDL_Event *event)

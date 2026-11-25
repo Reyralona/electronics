@@ -3,9 +3,11 @@
 ## 0.53.0 (em desenvolvimento)
 
 - Chips criados podem ter largura e altura ajustadas juntas por `Ctrl+roda`; o encaixe na protoboard quantiza a largura conforme o passo dos furos.
-- O corpo dos chips criados pode chegar a 20 × 28 unidades quando a disposição dos pinos permitir; o nome reduz sua fonte para caber, sem alterar a posição elétrica das portas.
+- O tamanho principal dos chips criados preserva a proporção mesmo após encaixar a largura no passo da protoboard. Altura e largura independentes exigem seus atalhos próprios; a caixa pode chegar perto de 20 × 9 unidades na proporção original. O nome diminui para caber; o corpo nunca fica mais baixo que a coluna de pinos, que mantém o passo físico.
 - `Shift+R` e `Shift` + botão direito giram peças e chips criados em passos de 45°. Orientação diagonal persistida no formato 39, que continua lendo projetos anteriores.
 - Pontas flexíveis próximas a furos são realinhadas após o encaixe; peças redimensionadas voltam a encaixar na protoboard. A preferência **Mostrar pinos verdes** controla os indicadores de contato.
+- Portas de chips criados seguem o passo de uma DIP (14). Com o encaixe ligado, a distância entre os lados acompanha as colunas (chip em pé) ou as fileiras (chip deitado, atravessando o vão) ao redimensionar; um chip deitado com lados até 110 unidades de distância encaixa todas as portas nos furos.
+- O nome de chips criados e de CIs gira com o corpo, sem ficar de cabeça para baixo, e não encolhe ao girar.
 - Comparação técnica, limites e fontes em `docs/COMPARACAO_GEOMETRIA_2026_11_24.md`.
 
 ## 0.52.1
