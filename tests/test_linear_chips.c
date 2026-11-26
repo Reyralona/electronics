@@ -170,6 +170,61 @@ static void regulator_output(double input, double expected)
     bench_snapshot_clear(&rig.bench);
 }
 
+static void rectified_ac_regulator(void)
+{
+    static Rig rig;
+    memset(&rig, 0, sizeof(rig));
+    int source = add(&rig, PART_SOURCE_AC, 12);
+    int high_a = add(&rig, PART_DIODE, 0);
+    int high_b = add(&rig, PART_DIODE, 0);
+    int low_a = add(&rig, PART_DIODE, 0);
+    int low_b = add(&rig, PART_DIODE, 0);
+    int regulator = add(&rig, PART_LM7805, 0);
+    int filter = add(&rig, PART_CAPACITOR, .001);
+    int load = add(&rig, PART_RESISTOR, 1000);
+    assert(bench_set_control(&rig.bench, source, (60.0 - .1) / (1000.0 - .1)));
+    wire(&rig, source, 0, high_a, 0);
+    wire(&rig, source, 0, low_a, 1);
+    wire(&rig, source, 1, high_b, 0);
+    wire(&rig, source, 1, low_b, 1);
+    wire(&rig, high_a, 1, high_b, 1);
+    wire(&rig, high_b, 1, regulator, 0);
+    wire(&rig, regulator, 0, filter, 0);
+    wire(&rig, low_a, 0, low_b, 0);
+    wire(&rig, low_b, 0, regulator, 1);
+    wire(&rig, regulator, 1, filter, 1);
+    wire(&rig, regulator, 1, load, 1);
+    wire(&rig, regulator, 2, load, 0);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    for (int sample = 0; sample < 100; ++sample)
+        step(live, &rig, .001);
+    assert(fabs(volts(live, &rig, regulator, 2) - volts(live, &rig, regulator, 1) - 5) < .1);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
+static void regulator_limits_short_current(void)
+{
+    static Rig rig;
+    memset(&rig, 0, sizeof(rig));
+    supply(&rig, 9);
+    int regulator = add(&rig, PART_LM7805, 0);
+    wire(&rig, 0, 0, regulator, 0);
+    wire(&rig, regulator, 1, 0, 1);
+    int load = resistor(&rig, 1, regulator, 2, 0, 1);
+    SpiceLive *live = spice_live_create();
+    assert(live);
+    SimAutoOptions options = {0, {0, 0}, 1e-5, .005, burn_limits_default(),
+                              {SIM_LIVE_PROBE_NONE, {0, 0}, 0}};
+    options.limits.resistor_max_power = 10;
+    assert(spice_live_step(live, &rig.bench, executable, &options, .001, &result));
+    assert(result.burnt_count == 0);
+    assert(fabs(result.currents[load]) > 1.8 && fabs(result.currents[load]) < 2.2);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&rig.bench);
+}
+
 /* ULN2003A channel 1 sinking a 100 ohm load from 5 V: input high gives about 40 mA (about 1 V saturation),
  * input low leaves the load off. */
 static void darlington_sinks(int input_high)
@@ -270,6 +325,8 @@ int main(int argc, char **argv)
     comparator_switches(3, 1);
     regulator_output(9, 5);
     regulator_output(6, 4);
+    rectified_ac_regulator();
+    regulator_limits_short_current();
     darlington_sinks(1);
     darlington_sinks(0);
     half_bridge_drives(1);

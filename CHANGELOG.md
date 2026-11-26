@@ -2,6 +2,7 @@
 
 ## 0.53.0 (em desenvolvimento)
 
+- O LM7805 agora inicia com ponte retificadora e capacitor sem erro de convergência; a limitação de corrente continua perto de 2,1 A.
 - Fonte AC senoidal na alimentação, com amplitude de pico e frequência ajustáveis, persistidas no formato 40.
 - A frequência da fonte AC também aceita digitação exata no inspetor.
 - `build-notests.ps1` compila o aplicativo e seus auxiliares sem executar testes.

@@ -25,6 +25,8 @@
 #define LM7805_VOLTS 5.0
 #define LM7805_DROPOUT 2.0
 #define LM7805_LIMIT_AMPS 2.1
+/* A softer current-limit slope converges while a bridge capacitor charges from zero. */
+#define LM7805_LIMIT_GAIN 100.0
 #define LM7805_QUIESCENT_OHMS 2000.0
 /* ULN2003A (TI SLRS027T): 2.7 kOhm base resistor; a channel turns on between about 2 and 2.4 V. */
 #define ULN2003_BASE_OHMS 2700.0
@@ -135,7 +137,7 @@ static void regulator_7805(LinearWriter *w)
     emit(w, "B%st %st 0 V=V(%d)+max(min(%g,V(%d,%d)-%g),0)\nV%ss %st %ss 0\n", p, p, w->gnd, LM7805_VOLTS, in, w->gnd,
          LM7805_DROPOUT, p, p, p);
     emit(w, "B%sd %d %ss V=-%g*.5*((I(V%ss)-%g*V(%salive))+sqrt((I(V%ss)-%g*V(%salive))^2+%g)+(-I(V%ss))+sqrt(I(V%ss)^2+%g))\n",
-         p, out, p, NETLIST_SOURCE_LIMIT_GAIN, p, LM7805_LIMIT_AMPS, p, p, LM7805_LIMIT_AMPS, p,
+         p, out, p, LM7805_LIMIT_GAIN, p, LM7805_LIMIT_AMPS, p, p, LM7805_LIMIT_AMPS, p,
          NETLIST_SOURCE_LIMIT_SMOOTH * NETLIST_SOURCE_LIMIT_SMOOTH, p, p, NETLIST_SOURCE_LIMIT_SMOOTH * NETLIST_SOURCE_LIMIT_SMOOTH);
     emit(w, "F%sin %d %d V%ss 1\n", p, in, w->gnd, p);
 }

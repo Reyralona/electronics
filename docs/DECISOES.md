@@ -863,3 +863,13 @@ frequencia de 0,1 a 1000 Hz e resistencia serie de 0,1 ohm. O controle de freque
 campo `control` existente; o tipo novo exige formato 40. Sem carga, a tensao oscila entre os
 picos positivo e negativo. Analise DC ve o ponto de 0 V. A comparacao esta em
 `COMPARACAO_FONTE_AC_2026_11_26.md`.
+
+# LM7805 com entrada retificada (26/11/2026)
+
+O modelo de limite de corrente usava ganho 10000 V/A, suficiente para fazer o ngspice parar no
+primeiro passo quando a entrada vinha de uma ponte retificadora com capacitor. O ganho 100 V/A
+mantém o limite de curto perto de 2,1 A e permite iniciar e simular o circuito completo.
+O teste de ponte + capacitor + LM7805 falhou antes da correção e passou depois, com 5 V na carga.
+O [datasheet da TI](https://www.ti.com/lit/ds/symlink/lm340.pdf), consultado em 26/11/2026,
+descreve limite de corrente, desligamento térmico e situações em que tensão forçada na saída
+ou entrada negativa pode danificar o regulador. O modelo continua didático e sem temperatura.

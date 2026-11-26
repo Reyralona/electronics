@@ -1,5 +1,12 @@
 # Continuidade
 
+## Ponte retificadora e LM7805 — 26/11/2026
+
+O modelo do LM7805 passou a usar ganho 100 V/A no limite de corrente para convergir com
+entrada retificada e capacitor; regressão da ponte falhou antes e passou depois. O teste de
+curto ainda mede corrente próxima de 2,1 A. O circuito pessoal do slot 2 foi corrigido em
+arquivo de dados local, com backup em `saves/backup`; ele não integra o repositório público.
+
 ## Fonte AC — 26/11/2026
 
 `main` recebeu o histórico de geometria, correções e `build-notests.ps1`; branches anteriores foram apagadas.
