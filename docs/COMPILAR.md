@@ -34,6 +34,9 @@ cd electronics
 ./build/build.exe
 ```
 
+Para compilar o aplicativo e seus auxiliares sem executar testes, use `./build-notests.ps1`.
+Feche a Bancada antes para que o Windows permita atualizar `build/build.exe`.
+
 O script de preparação baixa e verifica as dependências do ngspice.
 Ele preserva um destino existente. Não precisa executá-lo em todo build.
 O build exige o runtime: verifica os arquivos essenciais e a referência DC antes de compilar.
