@@ -8,6 +8,7 @@
 
 /* Didactic parameters; the inspector and docs/DECISOES.md state that they are approximations. */
 #define GENERATOR_OUTPUT_OHMS 50.0
+#define AC_SOURCE_OUTPUT_OHMS 0.1
 #define METER_INPUT_OHMS 10e6
 #define METER_OHMS_TEST_AMPERES COMPONENT_METER_OHMS_TEST_AMPS
 #define METER_TEST_ZENER_VOLTS 2.7
@@ -33,7 +34,7 @@ int netlist_device_supported(PartType type)
 
 int netlist_device_rebuilds_on_change(PartType type)
 {
-    return type == PART_FUNCTION_GENERATOR || type == PART_LED;
+    return type == PART_FUNCTION_GENERATOR || type == PART_SOURCE_AC || type == PART_LED;
 }
 
 static int write_motor(FILE *out, int i, const int *n, const MotorModel *m)
@@ -94,6 +95,13 @@ static int write_generator(FILE *out, const Part *part, int i, const int *n)
         snprintf(wave, sizeof(wave), "SIN(2.5 2.5 %.17g)", part->value);
     return fprintf(out, "Vgen%d gen%d %d %s\nRgen%d gen%d %d %.17g\n", i, i, n[1], wave, i, i, n[0],
                    part->on ? GENERATOR_OUTPUT_OHMS : NETLIST_LIVE_OPEN_OHMS) >= 0;
+}
+
+static int write_ac_source(FILE *out, const Part *part, int i, const int *n)
+{
+    return fprintf(out, "Vac%d ac%d %d SIN(0 %.17g %.17g)\nRac%d ac%d %d %.17g\n",
+                   i, i, n[1], part->value, component_environment_value(part), i, i, n[0],
+                   part->on ? AC_SOURCE_OUTPUT_OHMS : NETLIST_LIVE_OPEN_OHMS) >= 0;
 }
 
 static const char *module_transfer(PartType type)
@@ -232,6 +240,8 @@ int netlist_device_write(FILE *out, const Part *part, int i, const int *n)
                        PIEZO_FARADS, i, i, n[1]) >= 0;
     case PART_FUNCTION_GENERATOR:
         return write_generator(out, part, i, n);
+    case PART_SOURCE_AC:
+        return write_ac_source(out, part, i, n);
     case PART_MULTIMETER:
         return fprintf(out, "Rmm%d %d %d %.17g\nBmm%d mmv%d 0 V=V(%d)-V(%d)\nVamm%d %d %d 0\n"
                             "Imm%d %d ohm_test%d DC %.17g\nDohm%d ohm_test%d %d METER_TEST_DIODE\n"
@@ -282,6 +292,7 @@ int netlist_device_control_count(const Part *part)
     case PART_DPST:
         return 2;
     case PART_FUNCTION_GENERATOR:
+    case PART_SOURCE_AC:
     case PART_MULTIMETER:
     case PART_PIR:
     case PART_GAS:
@@ -323,6 +334,10 @@ int netlist_device_control(const Part *part, int index, int control, char *name,
     case PART_FUNCTION_GENERATOR:
         snprintf(name, capacity, "Rgen%d", index);
         *value = part->on ? GENERATOR_OUTPUT_OHMS : NETLIST_LIVE_OPEN_OHMS;
+        return 1;
+    case PART_SOURCE_AC:
+        snprintf(name, capacity, "Rac%d", index);
+        *value = part->on ? AC_SOURCE_OUTPUT_OHMS : NETLIST_LIVE_OPEN_OHMS;
         return 1;
     case PART_MULTIMETER:
         snprintf(name, capacity, "Imm%d", index);

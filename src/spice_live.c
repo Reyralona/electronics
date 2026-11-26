@@ -151,7 +151,8 @@ static char *topology_key(const Workbench *bench, int measure_wires, int *instru
             return NULL;
         }
         part->on = 1;
-        part->control = .5;
+        if (!netlist_device_rebuilds_on_change(part->type))
+            part->control = .5;
         if (!netlist_device_rebuilds_on_change(part->type))
             part->states = 0;
         memset(part->io_level, 0, sizeof(part->io_level));
@@ -864,7 +865,7 @@ int spice_live_step(SpiceLive *live, const Workbench *bench, const char *executa
         result->burnt_count += live->burnt[i] != 0;
     result->has_dc = 1;
     for (int i = 0; i < bench->part_count; ++i)
-        if ((component_electrical_type(bench->parts[i].type) == PART_SOURCE || bench->parts[i].type == PART_CLOCK || bench->parts[i].type == PART_FUNCTION_GENERATOR) && bench->parts[i].on)
+        if ((component_electrical_type(bench->parts[i].type) == PART_SOURCE || bench->parts[i].type == PART_CLOCK || bench->parts[i].type == PART_FUNCTION_GENERATOR || bench->parts[i].type == PART_SOURCE_AC) && bench->parts[i].on)
             result->powered = 1;
         else if (mcu_board(bench->parts[i].type) && mcu_board(bench->parts[i].type)->supply_volts > 0)
             result->powered = 1;

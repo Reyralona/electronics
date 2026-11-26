@@ -1563,7 +1563,7 @@ static void input_select(AppState *app, float x, float y, int clicks)
         if (!app->bench.parts[hit].group && clicks >= 2 &&
             (component_electrical_type(app->bench.parts[hit].type) == PART_SOURCE || app->bench.parts[hit].type == PART_SWITCH ||
              app->bench.parts[hit].type == PART_CLOCK || app->bench.parts[hit].type == PART_DPST ||
-             app->bench.parts[hit].type == PART_FUNCTION_GENERATOR))
+             app->bench.parts[hit].type == PART_FUNCTION_GENERATOR || app->bench.parts[hit].type == PART_SOURCE_AC))
         {
             if (!app_history_record(app, &app->bench))
                 return;

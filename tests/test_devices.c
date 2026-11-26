@@ -188,6 +188,48 @@ static void generator_and_scope(void)
     bench_snapshot_clear(&b);
 }
 
+static void ac_source_and_scope(void)
+{
+    Workbench bench = {0}, reopened = {0};
+    int source = add(&bench, PART_SOURCE_AC, 6);
+    int scope = add(&bench, PART_OSCILLOSCOPE, 0);
+    wire(&bench, source, 0, scope, 0);
+    wire(&bench, source, 1, scope, 1);
+    assert(bench_set_control(&bench, source, (50.0 - 0.1) / (1000.0 - 0.1)));
+    FILE *file = tmpfile();
+    WorkbenchSettings settings = workbench_settings_default();
+    assert(file && workbench_write_project(file, &bench, &settings));
+    rewind(file);
+    assert(workbench_read_project(file, &reopened, &settings));
+    assert(fclose(file) == 0);
+    assert(reopened.parts[source].type == PART_SOURCE_AC);
+    assert(reopened.parts[source].value == 6);
+    assert(fabs(reopened.parts[source].control - bench.parts[source].control) < 1e-12);
+    SpiceLive *live = spice_live_create();
+    double low = 10, high = -10;
+    for (int sample = 0; sample < 20; ++sample)
+    {
+        run(live, &reopened, .001);
+        low = fmin(low, result.elements[scope][0]);
+        high = fmax(high, result.elements[scope][0]);
+    }
+    assert(result.powered && low < -5 && high > 5);
+    assert(bench_set_value(&reopened, source, 3));
+    run(live, &reopened, .001);
+    assert(spice_live_restarted(live));
+    assert(bench_set_control(&reopened, source, (100.0 - 0.1) / (1000.0 - 0.1)));
+    run(live, &reopened, .001);
+    assert(spice_live_restarted(live));
+    assert(sim_auto_live_max_step(&reopened) < sim_auto_live_max_step(&bench));
+    assert(bench_set_on(&reopened, source, 0));
+    run(live, &reopened, .001);
+    assert(!result.powered);
+    assert(fabs(result.elements[scope][0]) < .01);
+    spice_live_destroy(live);
+    bench_snapshot_clear(&reopened);
+    bench_snapshot_clear(&bench);
+}
+
 static void multimeter(void)
 {
     Workbench b = {0};
@@ -264,6 +306,7 @@ int main(int argc, char **argv)
     encoder();
     servo();
     generator_and_scope();
+    ac_source_and_scope();
     multimeter();
     sensor_module(PART_PIR, 0, 1);
     sensor_module(PART_GAS, 0, 1);

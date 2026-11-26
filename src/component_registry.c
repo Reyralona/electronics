@@ -170,6 +170,7 @@ static const ComponentPinInfo pins_generator[] = {{NULL, PIN_OUTPUT}, {"COM", PI
 static const ComponentPinInfo pins_meter[] = {{"COM", PIN_SUPPLY_RETURN}, {"VΩ", PIN_INPUT}, {"A", PIN_INPUT}};
 static const ComponentPinInfo pins_scope[] = {{"CH1", PIN_INPUT}, {"GND", PIN_GROUND}};
 static const ComponentParameter generator_frequency = {"frequency", "Hz", 1000.0, 1e-3, 1e6};
+static const ComponentParameter ac_peak_voltage = {"peak-voltage", "V", 5.0, 0.1, 30.0};
 static const ComponentPinInfo pins_uno[] = {
     {"D0", PIN_PASSIVE},  {"D1", PIN_PASSIVE},  {"D2", PIN_PASSIVE},  {"D3", PIN_PASSIVE},  {"D4", PIN_PASSIVE},
     {"D5", PIN_PASSIVE},  {"D6", PIN_PASSIVE},  {"D7", PIN_PASSIVE},  {"D8", PIN_PASSIVE},  {"D9", PIN_PASSIVE},
@@ -243,6 +244,7 @@ static const ComponentInfo components[] = {
     [PART_SERVO] = {PART_SERVO, "servo", NULL, 3, COMPONENT_ROTATES, 26, NULL, pins_servo},
     [PART_PIEZO] = {PART_PIEZO, "piezo", NULL, 2, COMPONENT_ROTATES, 26, NULL, pins_motor},
     [PART_FUNCTION_GENERATOR] = {PART_FUNCTION_GENERATOR, "function-generator", NULL, 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 26, &generator_frequency, pins_generator},
+    [PART_SOURCE_AC] = {PART_SOURCE_AC, "source-ac", NULL, 2, COMPONENT_ROTATES | COMPONENT_STARTS_ON, 40, &ac_peak_voltage, pins_generator},
     [PART_MULTIMETER] = {PART_MULTIMETER, "multimeter", NULL, 3, 0, 26, NULL, pins_meter},
     [PART_OSCILLOSCOPE] = {PART_OSCILLOSCOPE, "oscilloscope", NULL, 2, 0, 26, NULL, pins_scope},
     [PART_PIR] = {PART_PIR, "pir", NULL, 3, COMPONENT_ROTATES, 26, NULL, pins_sensor},
@@ -375,6 +377,7 @@ static const TextId display_texts[] = {
     [PART_74HC151] = TXT_CAT_74HC151,
     [PART_74HC157] = TXT_CAT_74HC157,
     [PART_74HC4511] = TXT_CAT_74HC4511,
+    [PART_SOURCE_AC] = TXT_CAT_SOURCE_AC,
 };
 
 /* Pins whose names are words; symbols such as GND or 1A are the same in every language. */
@@ -388,6 +391,7 @@ typedef struct
 static const PinText pin_texts[] = {
     {PART_SERVO, 2, TXT_CAT_PIN_SIGNAL},
     {PART_FUNCTION_GENERATOR, 0, TXT_CAT_PIN_OUTPUT},
+    {PART_SOURCE_AC, 0, TXT_CAT_PIN_OUTPUT},
     {PART_RELAY, 3, TXT_CAT_PIN_NORMALLY_OPEN},
     {PART_RELAY, 4, TXT_CAT_PIN_NORMALLY_CLOSED},
 };
@@ -417,6 +421,7 @@ static const EnvironmentText environment_texts[] = {
     {PART_DISTANCE, TXT_CAT_ENV_DISTANCE, "cm", 10, 80, 30, TXT_CAT_ENV_DISTANCE_NOTE},
     /* Bench supply knob, not a stimulus: 0..3 A like a common 30 V / 3 A lab supply channel. */
     {PART_SOURCE, TXT_CAT_ENV_CURRENT_LIMIT, "A", 0, SOURCE_CURRENT_LIMIT_MAX, .5, TXT_CAT_ENV_CURRENT_LIMIT_NOTE},
+    {PART_SOURCE_AC, TXT_CAT_ENV_FREQUENCY, "Hz", 0.1, 1000, 50, TXT_CAT_ENV_FREQUENCY_NOTE},
 };
 
 enum
@@ -584,7 +589,8 @@ static const PartType legacy_types[] = {
     PART_74HC139,
     PART_74HC151,
     PART_74HC157,
-    PART_74HC4511};
+    PART_74HC4511,
+    PART_SOURCE_AC};
 _Static_assert(sizeof(legacy_types) / sizeof(legacy_types[0]) == PART_TYPE_COUNT, "every type needs its file code");
 
 size_t component_registry_count(void)
@@ -794,7 +800,8 @@ double component_source_limit(const Part *part)
 
 int component_radial_pins(PartType type)
 {
-    return (component_environment(type) != NULL && type != PART_SOURCE) || type == PART_NPN || type == PART_PNP ||
+    return (component_environment(type) != NULL && type != PART_SOURCE && type != PART_SOURCE_AC) ||
+           type == PART_NPN || type == PART_PNP ||
            type == PART_LM7805;
 }
 

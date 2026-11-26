@@ -255,6 +255,10 @@ Para mover projetos antigos, feche o programa e copie `saves/` e `blocks/` para 
 - **Osciloscópio:** mede tensão entre seus terminais, com entrada de 1 MΩ. O gráfico usa a sondagem por `T`.
 - **Gerador de função:** oferece seno, onda quadrada e triangular. A frequência é ajustável;
   a saída usa níveis de 0 a 5 V e resistência de 50 Ω.
+- **Fonte AC:** fica na página de alimentação. O valor no inspetor é a amplitude de pico
+  (0,1 a 30 V); o controle **Frequência** ajusta de 0,1 a 1000 Hz. A saída senoidal é
+  bipolar, centrada em 0 V, entre SAÍDA e COM, com resistência série de 0,1 Ω.
+  A tensão eficaz de uma senoide sem carga é aproximadamente 0,707 vezes o valor de pico.
 
 Ainda faltam pontas independentes posicionáveis, osciloscópio de vários canais e medidor dedicado de clock/pulso.
 

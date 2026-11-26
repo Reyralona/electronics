@@ -1,6 +1,7 @@
 /* Texts of the catalog area. Format: UI_TEXT(ID, "pt-BR", "en-US"); style and glossary: docs/TEXTOS.md. */
 /* Part names (catalog and inspector). Persistent ids stay in component_registry.c. */
 UI_TEXT(CAT_SOURCE, "Fonte", "Power supply")
+UI_TEXT(CAT_SOURCE_AC, "Fonte AC", "AC power supply")
 UI_TEXT(CAT_SWITCH, "Interruptor", "Switch")
 UI_TEXT(CAT_LED, "LED", "LED")
 UI_TEXT(CAT_BREADBOARD, "Protoboard", "Breadboard")
@@ -140,6 +141,9 @@ UI_TEXT(CAT_ENV_DISTANCE, "Distância", "Distance")
 UI_TEXT(CAT_ENV_DISTANCE_NOTE, "IR analógico GP2Y0A21: V ≈ 27/d a 5 V. Não é ultrassônico.",
         "Analog IR GP2Y0A21: V ≈ 27/d at 5 V. Not ultrasonic.")
 UI_TEXT(CAT_ENV_CURRENT_LIMIT, "Limite de corrente", "Current limit")
+UI_TEXT(CAT_ENV_FREQUENCY, "Frequência", "Frequency")
+UI_TEXT(CAT_ENV_FREQUENCY_NOTE, "Frequência da fonte AC senoidal; tensão informada é de pico.",
+        "Sine AC supply frequency; the voltage setting is peak amplitude.")
 UI_TEXT(CAT_ENV_CURRENT_LIMIT_NOTE, "Acima do limite, a tensão cai e a corrente fica fixa (CC). Ajuste baixo protege o circuito.",
         "Above the limit, voltage drops and current stays fixed (CC). A low limit protects the circuit.")
 /* Device modes (double click) and measured quantities. */

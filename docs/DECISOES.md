@@ -855,3 +855,11 @@ Fontes oficiais e datas: `docs/datasheets/LOGICA_74HC.md` e `docs/datasheets/ANA
 - **Pendentes conhecidos:** estado de registradores ao ligar continua 0 (real: indefinido); corrente de entrada
   acima de VCC (diodos de grampo, ±20 mA) não é verificada; fusível do multímetro e capacitor eletrolítico
   invertido não são modelados.
+
+# Fonte AC (26/11/2026)
+
+A fonte AC usa a forma `SIN(0 amplitude frequencia)` do ngspice, amplitude de pico de 0,1 a 30 V,
+frequencia de 0,1 a 1000 Hz e resistencia serie de 0,1 ohm. O controle de frequencia e salvo no
+campo `control` existente; o tipo novo exige formato 40. Sem carga, a tensao oscila entre os
+picos positivo e negativo. Analise DC ve o ponto de 0 V. A comparacao esta em
+`COMPARACAO_FONTE_AC_2026_11_26.md`.

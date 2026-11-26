@@ -26,6 +26,7 @@ Preservar nomes/IDs, pinagem e leitura dos arquivos anteriores.
 | Bateria 9 V | Corpo retangular e conector de pressao, polaridade, resistencia interna identificada | Implementado: 9 V / 1 ohm didatico |
 | Pilha 1.5 V | Corpo cilindrico, ressalto positivo e negativo plano | Implementado: AA / 0.2 ohm |
 | Moeda 3 V | Disco com espessura/borda e identificacao da face positiva | Implementado: 3 V / 15 ohm didatico |
+| Fonte AC | Senoide bipolar, tensao de pico e frequencia ajustaveis, terminais identificados | Implementado: 0,1 a 30 V de pico, 0,1 a 1000 Hz, 0,1 ohm serie; sem limite de corrente |
 | DIP configuravel | Banco de contatos independentes; quantidade, geometria e estados salvos | Parcial: quatro contatos independentes, estados salvos; quantidade fixa |
 | DPST configuravel | Dois polos acionados juntos; distinguir de banco DIP SPST | Implementado: dois polos acionados juntos; geometria fixa |
 

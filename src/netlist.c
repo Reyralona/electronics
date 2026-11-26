@@ -422,7 +422,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
     /* Instruments can be the only reference: generator COM (pin 1) or multimeter COM (pin 0). */
     int reference_pin = 1, supply_pin = -1;
     for (i = 0; source < 0 && i < b->part_count; ++i)
-        if (b->parts[i].type == PART_FUNCTION_GENERATOR ||
+        if (b->parts[i].type == PART_FUNCTION_GENERATOR || b->parts[i].type == PART_SOURCE_AC ||
             (session && b->parts[i].type == PART_MULTIMETER))
         {
             source = i;
@@ -477,7 +477,7 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                     period * .001, period * .499, period) < 0)
             return NETLIST_IO_ERROR;
     }
-    else if (b->parts[source].type != PART_FUNCTION_GENERATOR &&
+    else if (b->parts[source].type != PART_FUNCTION_GENERATOR && b->parts[source].type != PART_SOURCE_AC &&
              !write_supply(out, &b->parts[source], source, 1, positive + 1, 0))
         return NETLIST_IO_ERROR;
     for (i = 0; i < b->part_count; ++i)
@@ -763,6 +763,8 @@ static NetlistResult write_netlist(FILE *out, const Workbench *b, int transient,
                 else
                     snprintf(vector, sizeof(vector), "@vclock%d[i]", component);
             }
+            else if (type == PART_SOURCE_AC)
+                snprintf(vector, sizeof(vector), "@vac%d[i]", component);
             else if (component_electrical_type(type) == PART_RESISTOR)
                 snprintf(vector, sizeof(vector), "@r%d[i]", component);
             else if (type == PART_CAPACITOR)
@@ -915,7 +917,7 @@ int netlist_live_node(const Workbench *bench, int measure_wires, Pin pin)
             }
     if (source < 0)
         for (int i = 0; i < bench->part_count; ++i)
-            if (bench->parts[i].type == PART_FUNCTION_GENERATOR)
+            if (bench->parts[i].type == PART_FUNCTION_GENERATOR || bench->parts[i].type == PART_SOURCE_AC)
             {
                 source = i;
                 break;

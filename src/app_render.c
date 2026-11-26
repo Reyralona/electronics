@@ -1359,6 +1359,21 @@ static void draw_function_generator(const Part *p)
     circle(x + 24, y + 15, 2.6f);
 }
 
+static void draw_ac_source(const Part *p)
+{
+    float x = p->x, y = p->y;
+    glColor3f(.12f, .13f, .15f);
+    rounded_rect(x - 42, y - 30, 84, 60, 5);
+    gradient_rect(x - 39, y - 27, 78, 54, (SurfaceColor){.24f, .35f, .48f},
+                  (SurfaceColor){.12f, .22f, .34f});
+    glColor3f(.05f, .09f, .14f);
+    rounded_rect(x - 29, y - 19, 58, 25, 3);
+    glColor3f(.36f, .85f, .96f);
+    draw_wave_icon(x - 18, y - 7, 0);
+    binding_post(x - 20, y + 15, .82f, .12f, .10f);
+    binding_post(x + 20, y + 15, .10f, .10f, .11f);
+}
+
 static void draw_number(float x, float y, float h, double value, int decimals)
 {
     char digits[16];
@@ -1696,6 +1711,9 @@ static int draw_device(const Part *p)
         return 1;
     case PART_FUNCTION_GENERATOR:
         draw_function_generator(p);
+        return 1;
+    case PART_SOURCE_AC:
+        draw_ac_source(p);
         return 1;
     case PART_MULTIMETER:
         draw_multimeter(p);

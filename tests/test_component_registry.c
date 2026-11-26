@@ -32,9 +32,10 @@ int main(void)
     for (int type = 0; type < PART_TYPE_COUNT; ++type)
     {
         const ComponentInfo *info = component_info((PartType)type);
-        assert(info && component_from_legacy(type, 38) == info);
+        assert(info && component_from_legacy(type, 40) == info);
         assert(component_by_id(info->id) == info);
     }
+    assert(!component_from_legacy(PART_SOURCE_AC, 39));
     /* This is the historical file contract, not the current enum's declaration order. */
     static const char *legacy_ids[] = {"source",    "switch",   "led",   "breadboard", "resistor",
                                        "capacitor", "inductor", "and",   "nand",       "or",

@@ -43,7 +43,7 @@ int sim_auto_is_periodic(const Workbench *bench)
 {
     int i;
     for (i = 0; i < bench->part_count; ++i) {
-        if (bench->parts[i].type == PART_CLOCK && bench->parts[i].on) return 1;
+        if ((bench->parts[i].type == PART_CLOCK || bench->parts[i].type == PART_SOURCE_AC) && bench->parts[i].on) return 1;
     }
     return 0;
 }
@@ -64,7 +64,8 @@ int sim_auto_uses_live_session(const Workbench *bench)
 
 static int is_sine_generator(const Part *part)
 {
-    return part->type == PART_FUNCTION_GENERATOR && part->states == 0 && isfinite(part->value) && part->value > 0;
+    return (part->type == PART_FUNCTION_GENERATOR && part->states == 0 && isfinite(part->value) && part->value > 0) ||
+           (part->type == PART_SOURCE_AC && component_environment_value(part) > 0);
 }
 
 double sim_auto_live_max_step(const Workbench *bench)
@@ -74,7 +75,9 @@ double sim_auto_live_max_step(const Workbench *bench)
     {
         if (!is_sine_generator(&bench->parts[i]))
             continue;
-        double sine_step = 1.0 / (bench->parts[i].value * SIM_LIVE_SINE_POINTS_PER_PERIOD);
+        double frequency = bench->parts[i].type == PART_SOURCE_AC ?
+                           component_environment_value(&bench->parts[i]) : bench->parts[i].value;
+        double sine_step = 1.0 / (frequency * SIM_LIVE_SINE_POINTS_PER_PERIOD);
         step = fmin(step, sine_step);
     }
     return step;
@@ -125,7 +128,8 @@ static int has_energized_source(const Workbench *bench)
     int i;
     for (i = 0; i < bench->part_count; ++i) {
         const Part *part = &bench->parts[i];
-        if ((component_electrical_type(part->type) == PART_SOURCE || part->type == PART_CLOCK) && part->on) return 1;
+        if ((component_electrical_type(part->type) == PART_SOURCE || part->type == PART_CLOCK ||
+             part->type == PART_SOURCE_AC) && part->on) return 1;
     }
     return 0;
 }
