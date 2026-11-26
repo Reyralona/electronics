@@ -419,6 +419,11 @@ AppRect app_layout_environment_slider(void)
     return (AppRect){INSPECTOR_ROW_X - 6, INSPECTOR_TOP + 150, INSPECTOR_ROW_W + 12, 28};
 }
 
+AppRect app_layout_environment_value(void)
+{
+    return (AppRect){INSPECTOR_ROW_X, INSPECTOR_TOP + 112, INSPECTOR_ROW_W, INSPECTOR_ROW_H};
+}
+
 AppRect app_layout_environment_track(void)
 {
     return (AppRect){INSPECTOR_ROW_X + 4, INSPECTOR_TOP + 161, INSPECTOR_ROW_W - 8, 6};

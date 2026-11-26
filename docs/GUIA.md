@@ -256,7 +256,8 @@ Para mover projetos antigos, feche o programa e copie `saves/` e `blocks/` para 
 - **Gerador de função:** oferece seno, onda quadrada e triangular. A frequência é ajustável;
   a saída usa níveis de 0 a 5 V e resistência de 50 Ω.
 - **Fonte AC:** fica na página de alimentação. O valor no inspetor é a amplitude de pico
-  (0,1 a 30 V); o controle **Frequência** ajusta de 0,1 a 1000 Hz. A saída senoidal é
+  (0,1 a 30 V); clique no valor de **Frequência** para digitar um número exato, como 60 Hz,
+  ou use o slider para ajustes rápidos (0,1 a 1000 Hz). A saída senoidal é
   bipolar, centrada em 0 V, entre SAÍDA e COM, com resistência série de 0,1 Ω.
   A tensão eficaz de uma senoide sem carga é aproximadamente 0,707 vezes o valor de pico.
 

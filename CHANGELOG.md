@@ -3,6 +3,7 @@
 ## 0.53.0 (em desenvolvimento)
 
 - Fonte AC senoidal na alimentação, com amplitude de pico e frequência ajustáveis, persistidas no formato 40.
+- A frequência da fonte AC também aceita digitação exata no inspetor.
 - `build-notests.ps1` compila o aplicativo e seus auxiliares sem executar testes.
 - Chips criados podem ter largura e altura ajustadas juntas por `Ctrl+roda`; o encaixe na protoboard quantiza a largura conforme o passo dos furos.
 - O tamanho principal dos chips criados preserva a proporção mesmo após encaixar a largura no passo da protoboard. Altura e largura independentes exigem seus atalhos próprios; a caixa pode chegar perto de 20 × 9 unidades na proporção original. O nome diminui para caber; o corpo nunca fica mais baixo que a coluna de pinos, que mantém o passo físico.

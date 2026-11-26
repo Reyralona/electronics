@@ -3768,14 +3768,22 @@ static void inspector_note(const Part *part, char *note, size_t capacity)
         snprintf(note, capacity, "%s", tr(TXT_UI_GENERIC_SPICE_MODEL));
 }
 
-static void draw_environment_control(GLuint font, const Part *part)
+static void draw_environment_control(const AppState *app, GLuint font, const Part *part)
 {
     const ComponentEnvironment *environment = component_environment(part->type);
     char reading[128];
-    snprintf(reading, sizeof(reading), "%s: %.3g %s", environment->label, component_environment_value(part),
-             environment->unit);
-    color(UI_INK);
-    text(font, inspector_text_x(), INSPECTOR_LINE_2, reading);
+    if (part->type == PART_SOURCE_AC)
+    {
+        snprintf(reading, sizeof(reading), "%.9g %s", component_environment_value(part), environment->unit);
+        draw_inspector_row(app, font, app_layout_environment_value(), environment->label, reading, 1);
+    }
+    else
+    {
+        snprintf(reading, sizeof(reading), "%s: %.3g %s", environment->label, component_environment_value(part),
+                 environment->unit);
+        color(UI_INK);
+        text(font, inspector_text_x(), INSPECTOR_LINE_2, reading);
+    }
     AppRect track = app_layout_environment_track();
     color(.80f, .84f, .87f);
     ui_rounded(track, track.h / 2);
@@ -3905,7 +3913,7 @@ static void draw_part_inspector(const AppState *app, GLuint font)
     name_text(font, inspector_text_x(), INSPECTOR_LINE_1, reading[0] ? reading : tr(TXT_UI_NO_CURRENT_READING),
               inspector_text_w());
     if (environment)
-        draw_environment_control(font, part);
+        draw_environment_control(app, font, part);
     else if (part->type == PART_LED)
         draw_led_colors(font, part);
     else if (note[0])
@@ -4191,6 +4199,8 @@ static TextId value_editor_title(int editing)
         return TXT_UI_EDIT_STEP;
     if (editing == APP_EDIT_STOP)
         return TXT_UI_EDIT_DURATION;
+    if (editing == APP_EDIT_AC_FREQUENCY)
+        return TXT_CAT_ENV_FREQUENCY;
     return TXT_UI_EDIT_VALUE;
 }
 

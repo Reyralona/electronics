@@ -205,6 +205,8 @@ UI_TEXT(APP_WIRE_COLOR_CHANGED, "Cor do fio alterada.", "Wire color changed.")
 UI_TEXT(APP_SELECT_WIRE_FOR_CURRENT, "Selecione um fio e aperte T para medir a corrente no tempo.",
         "Select a wire and press T to measure its current over time.")
 UI_TEXT(APP_ENVIRONMENT_DRAG, "Arraste para mudar o ambiente.", "Drag to change the environment.")
+UI_TEXT(APP_AC_FREQUENCY_CHANGED, "Frequência da fonte AC alterada.", "AC supply frequency changed.")
+UI_TEXT(APP_AC_FREQUENCY_RANGE, "Use uma frequência de %g a %g Hz.", "Use a frequency from %g to %g Hz.")
 UI_TEXT(APP_TYPE_TERMINAL_NAME, "Digite o nome do terminal. Enter: confirmar · vazio: remover · Esc: cancelar.",
         "Type the terminal name. Enter: confirm · empty: remove · Esc: cancel.")
 UI_TEXT(APP_TERMINAL_NAMED, "Terminal nomeado. Ctrl+Z desfaz.", "Terminal named. Ctrl+Z undoes it.")

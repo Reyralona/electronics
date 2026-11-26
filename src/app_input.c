@@ -376,6 +376,25 @@ static void input_edit_key(AppState *app, SDL_Window *window, const SDL_Event *e
             else
                 report(app, TXT_APP_GRID_SPACING_RANGE, GRID_SPACING_MIN, GRID_SPACING_MAX);
         }
+        else if (app->editing == APP_EDIT_AC_FREQUENCY)
+        {
+            int selected = app->selected;
+            const ComponentEnvironment *frequency = component_environment(PART_SOURCE_AC);
+            if (selected >= 0 && selected < app->bench.part_count &&
+                app->bench.parts[selected].type == PART_SOURCE_AC && bench_parse_value(app->edit_text, &value) &&
+                value >= frequency->minimum && value <= frequency->maximum &&
+                bench_set_control(&app->bench, selected,
+                    (value - frequency->minimum) / (frequency->maximum - frequency->minimum)))
+            {
+                if (before.revision != app->bench.revision && !app_history_record(app, &before))
+                    return;
+                app->editing = -1;
+                SDL_StopTextInput(window);
+                app->status = tr(TXT_APP_AC_FREQUENCY_CHANGED);
+            }
+            else
+                report(app, TXT_APP_AC_FREQUENCY_RANGE, frequency->minimum, frequency->maximum);
+        }
         else if (app->editing >= WORKBENCH_MAX_COMPONENTS)
         {
             double step = app->transient_step, stop = app->transient_stop;
@@ -925,10 +944,18 @@ static int input_click_inspector_toggle(AppState *app, float x, float y)
     return 1;
 }
 
-static int input_click_environment(AppState *app, float x, float y)
+static int input_click_environment(AppState *app, SDL_Window *window, float x, float y)
 {
-    if (app->inspector_minimized || !selected_plain_part(app) || !component_environment(app->bench.parts[app->selected].type) ||
-        !app_rect_contains(app_layout_environment_slider(), x, y))
+    if (app->inspector_minimized || !selected_plain_part(app) || !component_environment(app->bench.parts[app->selected].type))
+        return 0;
+    if (app->bench.parts[app->selected].type == PART_SOURCE_AC &&
+        app_rect_contains(app_layout_environment_value(), x, y))
+    {
+        start_settings_edit(app, window, APP_EDIT_AC_FREQUENCY,
+                            component_environment_value(&app->bench.parts[app->selected]));
+        return 1;
+    }
+    if (!app_rect_contains(app_layout_environment_slider(), x, y))
         return 0;
     if (!bench_history_record(app->history, &app->bench))
     {
@@ -1250,7 +1277,7 @@ static int input_click_controls(AppState *app, SDL_Window *window, float x, floa
     }
     if (input_click_inspector_toggle(app, x, y))
         return 1;
-    if (input_click_environment(app, x, y))
+    if (input_click_environment(app, window, x, y))
         return 1;
     if (!app->inspector_minimized && app->selected >= 0 && app->bench.parts[app->selected].group &&
         app_rect_contains(app_layout_inspector_scale(), x, y))

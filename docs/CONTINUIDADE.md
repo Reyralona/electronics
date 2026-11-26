@@ -7,6 +7,9 @@ A fonte AC usa amplitude de pico no valor principal, frequência no controle do 
 `SIN` do ngspice, com formato 40. `./build.ps1 -OutputName ac-review` passou com a suíte completa;
 `./build-notests.ps1 -OutputName ac-review` compilou após a revisão visual. Comparação e limites
 em `COMPARACAO_FONTE_AC_2026_11_26.md`.
+Em 26/11, a frequência passou a aceitar texto exato no inspetor; o fluxo de interface verifica
+60 Hz, valor inválido, cancelamento, salvamento, reabertura e desfazer. O teste falhou antes da
+correção no clique do campo de frequência; depois, `./build.ps1` passou com a suíte completa.
 
 ## Branch de geometria — 24/11/2026
 

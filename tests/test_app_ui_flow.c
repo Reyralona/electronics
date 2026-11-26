@@ -268,6 +268,53 @@ static void values_and_chip_flow(AppState *app, SDL_Window *window)
     }
 }
 
+static void ac_frequency_text_flow(SDL_Window *window)
+{
+    static AppState app;
+    app_state_init(&app);
+    app.selftest = 1;
+    app_input_poll(&app, window);
+    click(&app, window, app_layout_palette_tab(6));
+    click(&app, window, app_layout_palette_item(1));
+    assert(app.placing == PART_SOURCE_AC);
+    click(&app, window, (AppRect){750, 450, 2, 2});
+    click(&app, window, (AppRect){750, 450, 2, 2});
+    assert(app.selected == 0);
+    double original = component_environment_value(&app.bench.parts[0]);
+    click(&app, window, (AppRect){app_layout_inspector_value().x, 195,
+                                  app_layout_inspector_value().w, 28});
+    assert(app.editing >= WORKBENCH_MAX_COMPONENTS);
+    for (int i = 0; i < 32; ++i)
+        key(&app, window, SDLK_BACKSPACE, 0);
+    type(&app, window, "bad");
+    click(&app, window, app_layout_value_button(1));
+    assert(app.editing >= 0 && app.edit_error);
+    assert(component_environment_value(&app.bench.parts[0]) == original);
+    for (int i = 0; i < 3; ++i)
+        key(&app, window, SDLK_BACKSPACE, 0);
+    type(&app, window, "60");
+    click(&app, window, app_layout_value_button(1));
+    assert(app.editing < 0);
+    assert(fabs(component_environment_value(&app.bench.parts[0]) - 60) < 1e-9);
+    Workbench reopened = {0};
+    WorkbenchSettings settings = workbench_settings_default();
+    FILE *file = tmpfile();
+    assert(file && workbench_write_project(file, &app.bench, &settings));
+    rewind(file);
+    assert(workbench_read_project(file, &reopened, &settings));
+    assert(fclose(file) == 0);
+    assert(fabs(component_environment_value(&reopened.parts[0]) - 60) < 1e-9);
+    bench_snapshot_clear(&reopened);
+    click(&app, window, (AppRect){app_layout_inspector_value().x, 195,
+                                  app_layout_inspector_value().w, 28});
+    key(&app, window, SDLK_ESCAPE, 0);
+    assert(app.editing < 0);
+    assert(fabs(component_environment_value(&app.bench.parts[0]) - 60) < 1e-9);
+    click(&app, window, app_layout_action(APP_ACTION_UNDO));
+    assert(component_environment_value(&app.bench.parts[0]) == original);
+    app_state_dispose(&app);
+}
+
 static void multi_value_flow(AppState *app, SDL_Window *window)
 {
     /* Select only clicked resistors, edit them together, then undo the entire edit. */
@@ -372,6 +419,7 @@ int main(void)
     SDL_Window *window = SDL_CreateWindow("UI flow", 1280, 720, SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE);
     assert(window);
     failed_code_send_keeps_message(window);
+    ac_frequency_text_flow(window);
     static AppState app;
     app_state_init(&app);
     app.selftest = 1;

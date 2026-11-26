@@ -139,6 +139,7 @@ AppRect app_layout_doc_pin_list(void);
 AppRect app_layout_inspector_value(void);
 AppRect app_layout_inspector_scale(void);
 AppRect app_layout_environment_slider(void);
+AppRect app_layout_environment_value(void);
 AppRect app_layout_environment_track(void);
 /* Normalized slider position for a pointer x coordinate, clamped to 0..1. */
 double app_layout_environment_position(float x);

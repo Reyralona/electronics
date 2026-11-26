@@ -82,7 +82,11 @@ static void inspector_targets(const AppState *app, AppRect *targets, int *count)
         for (int i = 0; i < COMPONENT_LED_COLORS; ++i)
             target(targets, count, app_layout_color_swatch(i));
     if (component_environment(part->type))
+    {
+        if (part->type == PART_SOURCE_AC)
+            target(targets, count, app_layout_environment_value());
         target(targets, count, app_layout_environment_slider());
+    }
 }
 
 int app_controls_targets(const AppState *app, AppRect targets[APP_CONTROL_LIMIT])
